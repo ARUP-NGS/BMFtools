@@ -96,7 +96,6 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		b = plp[i].b;
 		// Skip any reads failed for FA < minFA or FR < minFR
 		qname = bam_get_qname(b);
-		LOG_DEBUG("About to check for membership in the hash.\n");
 		k = kh_get(names, hash, qname);
 		if(k == kh_end(hash)) {
 			kh_put(names, hash, qname, &khr);
@@ -168,9 +167,10 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 {
 	int ret;
 	if(vcf_iter) {
-		LOG_INFO("Accessing vcf_iter at %p. tid: %i. start: %i. vrec->pos: %i.\n", (void *)vcf_iter, tid, start, vrec->pos);
+		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
+		LOG_DEBUG("Accessing vcf_iter at %p. tid: %i. start: %i. vrec->pos: %i.\n", (void *)vcf_iter, tid, start, vrec->pos);
 		if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
-		LOG_INFO("pos: %i.\n", vrec->pos);
+		LOG_DEBUG("pos: %i.\n", vrec->pos);
 		while(vrec->pos < start)
 		{
 			/* Zoom ahead until you're at the correct position */
@@ -178,8 +178,12 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 		}
 	} else {
 		if((ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) < 0) return ret;
-		while((vrec->rid < tid || vrec->pos < start) && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0) {
-			/* Zoom ahead until you're at the correct position */
+		while(vrec->rid < tid) {
+			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
+		}
+		while(vrec->pos < start) {
+			if(vrec->rid != tid) return ret;
+			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
 		}
 	}
 	return ret;
@@ -187,11 +191,12 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 
 int vet_core(aux_t *aux) {
 	khiter_t ki;
-	int n_plp;
+	int n_plp, vcf_iter_ret;
 	const bam_pileup1_t *plp;
 	hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
-	tbx_t *vcf_idx = is_bgzipped_vcf(aux->vcf_fp->fn)? tbx_index_load2(aux->vcf_fp->fn, aux->vcf_fp->fn): NULL;
-	hts_idx_t *bcf_idx = vcf_idx ? NULL: bcf_index_load(aux->vcf_fp->fn);
+	tbx_t *vcf_idx = is_bgzipped_vcf(aux->vcf_fp->fn)? tbx_index_load(aux->vcf_fp->fn): NULL;
+	LOG_INFO("Vcf index: %p.\n", (void *)vcf_idx);
+	hts_idx_t *bcf_idx = vcf_idx ? vcf_idx->idx: bcf_index_load(aux->vcf_fp->fn);
 	/*
 	if(!(vcf_idx || bcf_idx)) {
 		LOG_ERROR("Require an indexed variant file. Abort!\n");
@@ -202,10 +207,12 @@ int vet_core(aux_t *aux) {
 	vrec->max_unpack = BCF_UN_FMT;
 	hts_itr_t *vcf_iter = NULL;
 	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
+	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+	bam_plp_set_maxcnt(pileup, max_depth);
 	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
+		hash_label:
 		if(!kh_exist(aux->bed, ki)) continue;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
-
 			int tid, start, stop, pos = -1;
 
 			// Handle coordinates
@@ -213,27 +220,33 @@ int vet_core(aux_t *aux) {
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
 			if(vcf_idx) {
-				LOG_DEBUG("Using bgzipped vcf index.\n");
-				vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
-				LOG_DEBUG("Successfully made iterator.\n");
+				LOG_DEBUG("Attempting to build a query iterator from a bgzipped vcf index.\n");
+				//vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
+				//vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
+				vcf_iter = hts_itr_query(bcf_idx, tid, start, stop, &tbx_readrec);
+				LOG_DEBUG("Successfully made iterator from bgzipped vcf index.\n");
 			} else if(bcf_idx) {
-				vcf_iter = bcf_itr_queryi(bcf_idx, tid, start, stop);
 				LOG_DEBUG("Using bcf index. vcf_iter: %p\n", (void *)vcf_iter);
+				vcf_iter = bcf_itr_queryi(bcf_idx, tid, start, stop);
 			} else {
 				LOG_DEBUG("Iterating through whole genome.\n");
 				vcf_iter = NULL;
 			}
-			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-			bam_plp_set_maxcnt(pileup, max_depth);
-			while(read_bcf(aux, vcf_iter, vrec, start, tid) >= 0) {
+			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec, start, tid)) >= 0) {
 				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
+				if(tid != vrec->rid) {
+					// No variants on this contig.
+					// Increment ki to go to the next contig.
+					++ki;
+					goto hash_label;
+				}
 				assert(tid == vrec->rid);
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
-				aux->iter = sam_itr_queryi(idx, tid, start, stop);
+				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
 				if(!plp) {
 					LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
@@ -241,7 +254,8 @@ int vet_core(aux_t *aux) {
 				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
-				if(pos != vrec->pos) {
+				LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
+				if(pos != vrec->pos || tid != vrec->rid) {
 					LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n", aux->header->target_name[tid], vrec->pos + 1);
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue;
@@ -256,9 +270,9 @@ int vet_core(aux_t *aux) {
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 			}
 			if(vcf_iter) tbx_itr_destroy(vcf_iter);
-			bam_plp_destroy(pileup);
 		}
 	}
+	bam_plp_destroy(pileup);
 	if(bcf_idx) hts_idx_destroy(bcf_idx);
 	if(vcf_idx) tbx_destroy(vcf_idx);
 	if(aux->iter) hts_itr_destroy(aux->iter);

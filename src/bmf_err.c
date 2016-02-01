@@ -223,7 +223,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	khash_t(obs) *hash;
-	uint8_t *seq;
+	uint8_t *seq, *drdata;
 	uint32_t *cigar, *pv_array;
 	khiter_t k;
 	bam1_t *b = bam_init1();
@@ -233,7 +233,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
-		DR = bam_aux2i(bam_aux_get(b, "DR"));
+		DR = ((drdata = bam_aux_get(b, "DR")) != NULL) ? bam_aux2i(drdata): 0;
 		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, QCFAIL
 				b->core.qual < f->minMQ || //  minMQ
 				(f->refcontig && tid_to_study != b->core.tid) ||

@@ -36,11 +36,11 @@ OBJS = $(SOURCES:.c=.o)
 
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test
-EXECUTABLES=bmftools bmftools_db bmftools_p
+BINS=bmftools bmftools_db bmftools_p
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test
 
-all: libhts.a tests $(EXECUTABLES)
+all: libhts.a tests $(BINS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -64,19 +64,20 @@ bmftools_p: $(P_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
+	echo $(BINS): list of executables
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.o libhts.a -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
 target_test: $(OBJS) $(TEST_OBJS) libhts.a
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.o libhts.a -o ./target_test && ./target_test
-hashdmp_test: $(EXECUTABLES)
+hashdmp_test: $(BINS)
 	cd test/dmp && python hashdmp_test.py && cd ../..
-marksplit_test: $(EXECUTABLES)
+marksplit_test: $(BINS)
 	cd test/marksplit && python marksplit_test.py && cd ../..
 
 
 
-tests: $(TEST_OBJS) $(EXECUTABLES) $(ALL_TESTS)
+tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS)
 	@echo "Passed all tests!"
 
 python:
@@ -84,10 +85,9 @@ python:
 
 
 
-clean:
-	rm -f *.a && rm -f *.o && rm -f bmftools* && rm -f src/*.o && rm -f dlib/*.o && \
-		rm -f include/*.o && rm -f lib/*.o && cd htslib && make clean
+clean: mostlyclean
+		cd htslib && make clean && cd ..
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
-		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o
+		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o && rm -f *.a
