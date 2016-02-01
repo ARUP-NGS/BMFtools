@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
+#include "include/igamc_cephes.h"
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
@@ -12,6 +13,10 @@
 #include "htslib/tbx.h"
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"
+#include "dlib/misc_util.h"
+#include "dlib/vcf_util.h"
+
+KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
@@ -21,6 +26,7 @@ extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt
 #define BAM_PLP_DEC
 extern void bam_plp_init_overlaps(bam_plp_t);
 
+/*
 typedef struct {
 	int k, x, y, end;
 } cstate_t;
@@ -39,7 +45,6 @@ typedef struct {
 
 KHASH_MAP_INIT_STR(olap_hash, lbnode_t *)
 typedef khash_t(olap_hash) olap_hash_t;
-
 struct __bam_plp_t {
 	mempool_t *mp;
 	lbnode_t *head, *tail, *dummy;
@@ -53,75 +58,65 @@ struct __bam_plp_t {
 	void *data;
 	olap_hash_t *overlaps;
 };
+**/
 
 #endif /* BAM_PLP_DEC */
 
-
+// Need to expand for new options, but I'll wait until I'm finished first.
+/*
+		}*/
 #define VETTER_OPTIONS \
 	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
-	{"min-family-size",		 required_argument, NULL, 's'}, \
-	{"min-fraction-agreed",		 required_argument, NULL, 'f'}, \
-	{"min-mapping-quality",		 required_argument, NULL, 'm'}, \
-	{"min-phred-quality",		 required_argument, NULL, 'v'}, \
-	{"out-vcf",		 required_argument, NULL, 'o'}, \
+	{"min-family-size",          optional_argument, NULL, 's'}, \
+	{"min-fraction-agreed",		 optional_argument, NULL, 'f'}, \
+	{"min-mapping-quality",		 optional_argument, NULL, 'm'}, \
+	{"min-phred-quality",		 optional_argument, NULL, 'v'}, \
+	{"min-count",		 optional_argument, NULL, 'c'}, \
+	{"min-duplex",		 optional_argument, NULL, 'D'}, \
+	{"min-overlap",		 optional_argument, NULL, 'O'}, \
+	{"out-vcf",		 optional_argument, NULL, 'o'}, \
 	{"bedpath",		 required_argument, NULL, 'b'}, \
 	{"ref",		 required_argument, NULL, 'r'}, \
-	{"padding",		 required_argument, NULL, 'p'}, \
+	{"padding",		 optional_argument, NULL, 'p'}, \
+	{"skip-secondary", optional_argument, NULL, '2'},\
+	{"skip-supplementary", optional_argument, NULL, 'S'},\
+	{"skip-qcfail", optional_argument, NULL, 'q'},\
+	{"skip-improper", optional_argument, NULL, 'P'},\
+	{"max-depth", optional_argument, NULL, 'd'},\
+	{"emit-bcf", optional_argument, NULL, 'B'},\
 	{0, 0, 0, 0}
 
-typedef struct vparams {
-	uint32_t minFA; // Minimum Family Members Agreed on base
-	uint32_t minFM; // Minimum family size
-	double minFR; // Minimum  fraction agreed on base
-	uint32_t minMQ; // Minimum mapping quality to include
-	uint32_t minPV; // Minimum PV score to include
-	uint64_t flag;
-} vparams_t;
+const char *bmf_header_lines[] =  {
+		"##FORMAT=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">"
+};
 
-typedef struct vetplp_conf {
-	bam_plp_auto_f func;
-	vparams_t params;
-	int n_regions;
-	samFile *bam;
-	bam_hdr_t *bh;
-	hts_itr_t *bam_iter;
-	hts_idx_t *bi; // Bam index
-	hts_idx_t *vi;
-	khash_t(bed) *bed; // Really khash_t(bed) *
-	faidx_t *fai;
-	vcfFile *vin;
-	vcfFile *vout;
-	bcf_hdr_t *vh;
-	tbx_t *tbx;
-	bam_plp_t *pileup;
-	char *contig; // Holds the string for contig
-	int32_t last_ref_tid; // Holds the transcript ID for the contig string.
-	uint32_t minFA; // Minimum Family Members Agreed on base
-	uint32_t minFM; // Minimum family size
-	double minFR; // Minimum  fraction agreed on base
-	uint32_t minMQ; // Minimum mapping quality to include
-	uint32_t minPV; // Minimum PV score to include
-	uint64_t flag;
-} vetplp_conf_t;
+typedef struct {
+	samFile *fp;
+	hts_itr_t *iter;
+	bam_hdr_t *header;
+	vcfFile *vcf_fp;
+	vcfFile *vcf_ofp;
+	bcf_hdr_t *vcf_header;
+	khash_t(bed) *bed;
+	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int max_depth;
+	int minFM;
+	int minFA;
+	int minPV;
+	int minMQ;
+	int minCount;
+	int minDuplex;
+	int minOverlap;
+	int skip_improper;
+	uint32_t skip_flag; // Skip reads with any bits set to true
+} aux_t;
 
 #define SKIP_IMPROPER 4096
 #define BAM_FETCH_BUFFER 150
 
 extern void *bed_read(const char *fn);
 
-
-typedef struct vetter_settings {
-
-	char bam_path[200]; // Path to input bam
-	char out_vcf_path[200]; // Path to output vcf path
-	char in_vcf_path[200]; // Path to input vcf
-	char bed_path[200]; // Path to bedfile
-	char ref_path[200];
-	char bam_rmode[4];
-	char vcf_rmode[4];
-	char vcf_wmode[4];
-	vetplp_conf_t conf;
-} vetter_settings_t;
 
 extern void bed_destroy(void *);
 

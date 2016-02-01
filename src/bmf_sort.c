@@ -1277,9 +1277,8 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	}
 	else {
 		outfps[0] = sam_open_format(out, mode, out_fmt);
-		if(!outfps[0]) {
+		if(!*outfps) {
 			LOG_ERROR("Could not open output bam %s. Abort!\n", outfname);
-			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(outfps[0], hout);
 		hts_set_threads(outfps[0], n_threads);
@@ -1581,26 +1580,26 @@ typedef struct {
 static void write_buffer_split(const char *split_prefix, const char *mode, size_t l, bam1_p *buf,
 		int n_threads, const bam_hdr_t *h, const htsFormat *fmt)
 {
+	uint64_t li;
+	int i;
 	samFile** fps = calloc(h->n_targets + 1, sizeof(samFile *));
 	char tmpbuf[200];
 	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
 	fps[0] = sam_open_format(tmpbuf, mode, fmt);
 	sam_hdr_write(fps[0], h);
-	for(int i = 1; i < h->n_targets + 1;++i) {
+	for(i = 1; i < h->n_targets + 1;++i) {
 		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open_format(tmpbuf, mode, fmt);
-		if(fps[i] == NULL) {
-			fprintf(stderr, "[E:%s] Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
-			exit(EXIT_FAILURE);
+		if(!fps[i]) {
+			LOG_ERROR("Couldn't open file %s. Abort!\n", tmpbuf);
 		}
 		sam_hdr_write(fps[i], h);
 	}
 
-	for(uint64_t li = 0; li < l; ++li)
-		sam_write1(fps[split_index(buf[li])], h, buf[li]);
+	for(li = 0; li < l; ++li) sam_write1(fps[split_index(buf[li])], h, buf[li]);
 
-	for(uint64_t i = 0; i < h->n_targets + 1;++i)
-		if(fps[i]) sam_close(fps[i]);
+	for(li = 0; li < h->n_targets + 1;++li)
+		if(fps[li]) sam_close(fps[li]);
 	free(fps);
 }
 

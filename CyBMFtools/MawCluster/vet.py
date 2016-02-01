@@ -5,6 +5,11 @@ from enum import Enum
 from math import log10
 from scipy.stats import combine_pvalues
 from array import array
+from sys import float_info
+from math import log10 as mlog10
+
+MIN_FLOAT = float_info.min
+MAX_PHRED = -10 * mlog10(MIN_FLOAT)
 
 """
 Tools for creating a vetter using metadata from molecular barcodes.
@@ -117,28 +122,6 @@ class UniqueObs(object):
                                r2a.mapping_quality,
                                False, RV not in [0, FM])
                 
-                                      
-
-def get_plp(af=None, contig=None, pos=None):
-    """
-    af is a pysam.AlignmentFile object.
-    contig is a string.
-    pos (integer) is 0-based, like in a vcf.
-    """
-    if pos is None:
-        raise ValueError("Need a position argument.")
-    if contig is None:
-        raise ValueError("Need a contig argument.")
-    if af is None:
-        raise ValueError("Need an alignmentfile argument.")
-    assert isinstance(pos, int)
-    assert isinstance(contig, str)
-    assert isinstance(af, pysam.calignmentfile.AlignmentFile)
-    plp_iterator = af.pileup(contig, pos, pos + 1)
-    plp_col = plp_iterator.next()
-    while plp_col.pos < pos:
-        plp_col = plp_iterator.next()
-    return plp_col
 
 class filters(Enum):
     minOverlap = 1
@@ -166,18 +149,24 @@ class VetSettings(object):
 
 
 def phred2pval(phred):
-    return 10 ** (phred * -0.1)
+    ret = 10. ** (phred * -0.1)
+    return ret
 
 
 def combine_phreds(phred1, phred2):
-    return int(-10 * log10(combine_pvalues([phred2pval(phred1),
-                                            phred2pval(phred2)],
-                                           "fisher")[1]))
+    new_pvalue = combine_pvalues([phred2pval(phred1),
+                                  phred2pval(phred2)],
+                                  "fisher")[1]
+    if new_pvalue < MIN_FLOAT:
+        return MAX_PHRED
+    else:
+        return -10 * mlog10(new_pvalue)
+
 
 
 def get_tagpos(pr):
     return (pr.alignment.query_length - 1 - pr.query_position
-            if(pr.is_reverse) else pr.query_position)
+            if(pr.alignment.is_reverse) else pr.query_position)
 
 
 
@@ -196,10 +185,11 @@ def get_name_bins(iter_obj):
         # 3844 is supp/second/qcfail/duplicate/unmapped
         if i.is_refskip or i.is_del or i.alignment.flag & 3844:
             continue
-        if i.query_name in ret:
-            ret[i.query_name].append(i)
+        qname = i.alignment.query_name
+        if qname in ret:
+            ret[qname].append(i)
         else:
-            ret[i.query_name] = [i]
+            ret[qname] = [i]
     return ret
 
 
@@ -223,15 +213,15 @@ class BaseCallSummary(object):
         self.base_call = bin_tuple[0]
         self.count = len(obs)
         dup = 0
-        olap = 0
+        overlap = 0
         for i in obs:
             dup += i.duplex
-            olap += i.overlap
+            overlap += i.overlap
         self.duplex = dup
-        self.overlap = olap
-        self.Pass = (self.duplex > settings.minDuplex and
-                     self.overlap > settings.minOverlap and
-                     self.count > settings.minCount)
+        self.overlap = overlap
+        self.Pass = (self.duplex >= settings.minDuplex and
+                     self.overlap >= settings.minOverlap and
+                     self.count >= settings.minCount)
 
 
 def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
@@ -245,8 +235,11 @@ def get_plp_summary(plp, vet_settings):
     ref_base = vet_settings.ref.fetch(plp.reference_name, plp.pos, plp.pos + 1)
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
-    passing = filter(VetSettings.pass_unibos, observations)
+    print("N observations: %i." % len(observations))
+    passing = [obs for obs in observations if vet_settings.pass_uniobs(obs)]
+    print("N passing: %i." % len(passing))
     bc_bins = get_bc_bins(passing)
+    print("N bins: %i." % len(bc_bins))
     summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
     return [i for i in summary if i.Pass]
 
@@ -265,14 +258,13 @@ def add_info_line(header, info_field):
     header.info.add(info_field.id, info_field.number,
                     info_field.type, info_field.description)
 
-def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
+def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="w", **kwargs):
     # cdef pysam.cbcf.VariantFile invf = pysam.cbcf.VariantFile(vf_path)
     # Open variant file handles
-    settings = VetSettings(**kwargs)
+    settings = VetSettings(fasta=pysam.FastaFile(refpath), **kwargs)
     invf = pysam.cbcf.VariantFile(vf_path)
     outvf = pysam.cbcf.VariantFile(outvf_path, outmode, header=invf.header)
     bam = pysam.AlignmentFile(bampath, "rb")
-    fasta = pysam.FastaFile(refpath)
     from pysam.cbcf import add_info_array
     # Add header lines
     [add_info_line(outvf.header, line) for line in bmf_header_lines]
@@ -281,19 +273,27 @@ def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
     pass_arr = array('i', [0, 0, 0, 0])
     num_passed = 0
     num_failed = 0
+    passing_nucs = set()
     for rec in invf:
         # Goes to pileup at that position
-        plp = get_plp(bam, rec.contig, rec.pos - 1)
-        passing_vars = get_plp_summary(plp, settings)
-        pass_arr[0] = 'A' in passing_vars
-        pass_arr[1] = 'C' in passing_vars
-        pass_arr[2] = 'G' in passing_vars
-        pass_arr[3] = 'T' in passing_vars
+        plp_iterator = bam.pileup(rec.contig, rec.pos - 1)
+        plp_col = plp_iterator.next()
+        while plp_col.pos < rec.pos:
+            plp_col = plp_iterator.next()
+        passing_vars = get_plp_summary(plp_col, settings)
+        passing_nucs = set([i.base_call for i in passing_vars])
+        pass_arr[0] = 'A' in passing_nucs
+        pass_arr[1] = 'C' in passing_nucs
+        pass_arr[2] = 'G' in passing_nucs
+        pass_arr[3] = 'T' in passing_nucs
+        print ("Passing variants: '%s'" % ", ".join([i for i in passing_nucs]))
         add_info_array(rec, "BMF_PASS", pass_arr)
         if(sum(pass_arr) != 0):
+            "passed"
             num_passed += 1
             ovw(rec)
         else:
+            print "Failed"
             num_failed += 1
     invf.close()
     outvf.close()

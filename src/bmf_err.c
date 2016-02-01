@@ -111,16 +111,14 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
 	khash_t(obs_union) *shared_keys = kh_init(obs_union);
-	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1) {
-		if(!kh_exist(f->hash1, k1)) continue;
-		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
-			k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
-	}
-	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2) {
-		if(!kh_exist(f->hash2, k2)) continue;
-		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
-			k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
-	}
+	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
+		if(kh_exist(f->hash1, k1))
+			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
+				k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
+	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2)
+		if(kh_exist(f->hash2, k2))
+			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
+				k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
 
 	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
@@ -148,7 +146,6 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 				kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs,
 				kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
-
 	}
 	kh_destroy(obs_union, shared_keys);
 }
@@ -899,18 +896,6 @@ int err_main(int argc, char *argv[])
 	if(strcmp(argv[1], "cycle") == 0)
 		return err_cycle_main(argc - 1, argv + 1);
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
-}
-
-void check_bam_tag_exit(char *bampath, const char *tag)
-{
-	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
-		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
-				 "Tag '%s' has not been verified.\n", tag);
-		return;
-	}
-	if(!bampath_has_tag(bampath, tag)) {
-		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
-	}
 }
 
 

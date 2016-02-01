@@ -20,7 +20,7 @@ void print_crms_usage(char *executable)
 						" a homopolymer of length >= this limit is flagged as QC fail."
 						"Default: 10.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
-						"-m: Mask first n nucleotides in read for barcode. Default: 1.\n"
+						"-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
 						"-p: Number of threads to use if running uthash_dmp.\n"
 						"-d: Use this flag to to run hash_dmp.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
@@ -362,15 +362,12 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
 		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
     }
-	if(settings->rescaler_path) {
-		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
-	}
+	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter = init_splitter(settings);
 	gzFile fp1 = gzopen(settings->input_r1_path, "r");
 	gzFile fp2 = gzopen(settings->input_r2_path, "r");
-	kseq_t *seq1 = kseq_init(fp1);
-	kseq_t *seq2 = kseq_init(fp2);
+	kseq_t *seq1 = kseq_init(fp1), *seq2 = kseq_init(fp2);
 	int l1, l2;
 	int pass_fail = 1;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
@@ -378,7 +375,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			splitter_destroy(splitter);
 			LOG_ERROR("Could not open fastqs for reading. Abort!\n");
 	}
-	LOG_DEBUG("[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
+	LOG_DEBUG("Read length (inferred): %lu.\n", seq1->seq.l);
 	check_rescaler(settings, seq1->seq.l * 4 * 2 * nqscores);
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);
@@ -391,8 +388,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	if(switch_reads) {
 		memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
-	}
-	else {
+	} else {
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	}
@@ -415,9 +411,11 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Sets pass_fail
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+		// Update mseqs
+		update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
+		update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
+
 		if(switch_test(seq1, seq2, settings->offset)) {
-			update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
-			update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
 			// Copy barcode over
 			memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -425,20 +423,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 			// Write out
-#if !NDEBUG
-			if(pass_fail) {
-				for(int t = 0; t < settings->blen; ++t) {
-					if(rseq1->barcode[t] == 'N') {
-						LOG_ERROR("WTF THIS SHOULD HAVE BEEN FAILED THERE'S AN N. (%s).\n", rseq1->barcode);
-					}
-				}
-			}
-#endif
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 		} else {
-			update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
-			update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
 			// Copy barcode over
 			memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
@@ -477,7 +464,7 @@ int dmp_main(int argc, char *argv[])
 		.notification_interval = 1000000,
 		.blen = 0,
 		.homing_sequence_length = 0,
-		.offset = 1,
+		.offset = 0,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
 		.run_hash_dmp = 0,

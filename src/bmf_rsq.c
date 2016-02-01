@@ -1,41 +1,14 @@
-/*  bam_rsq.c -- duplicate read detection.
-
-	Copyright (C) 2009, 2015 Genome Research Ltd.
-	Portions copyright (C) 2009 Broad Institute.
-
-	Author: Heng Li <lh3@sanger.ac.uk>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.  */
+/*  bam_rsq.c */
 #include "bmf_rsq.h"
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-#if !NDEBUG
-			if(!stack->a) {
-				fprintf(stderr, "[E:%s] Failed to reallocate memory for %i bam1_t * objects. Abort!\n", __func__, stack->max);
-				exit(EXIT_FAILURE);
-			}
-#endif
-	}
-	else if(n < stack->n){
+		if(!stack->a) {
+			LOG_ERROR("Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
+		}
+	} else if(n < stack->n){
 		for(uint64_t i = stack->n;i > n;) bam_destroy1(stack->a[--i]);
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
@@ -90,14 +63,12 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 #if !NDEBUG
 	// Check for required PV and FA tags
 	if(!bPV || !pPV) {
-		fprintf(stderr, "[E:%s] Required PV tag not found. Abort mission! Read names: %s, %s.\n",
-				__func__, bam_get_qname(b), bam_get_qname(p));
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Required PV tag not found. Abort mission! Read names: %s, %s.\n",
+				bam_get_qname(b), bam_get_qname(p));
 	}
 	if(!bFA || !pFA) {
-		fprintf(stderr, "[E:%s] Required FA tag not found. Abort mission! Read names: %s, %s.\n",
-				__func__, bam_get_qname(b), bam_get_qname(p));
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Required FA tag not found. Abort mission! Read names: %s, %s.\n",
+				bam_get_qname(b), bam_get_qname(p));
 	}
 #endif
 
@@ -107,7 +78,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint8_t *const pQual = (uint8_t *)bam_get_qual(p);
 #if !NDEBUG
 	if(!(bSeq && pSeq && bQual && pQual)) {
-		fprintf(stderr, "[E:%s] Qual strings or sequence strings are null. Abort!\n", __func__);
+		LOG_ERROR("Qual strings or sequence strings are null. Abort!\n");
 	}
 #endif
 	const int qlen = p->core.l_qseq;
@@ -423,25 +394,22 @@ int rsq_main(int argc, char *argv[])
 	settings->in = sam_open_format(argv[optind], "rb", &ga.in);
 	settings->hdr = sam_hdr_read(settings->in);
 	if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
-		fprintf(stderr, "[bam_rsq] input SAM does not have header. Abort!\n");
-		return 1;
+		LOG_ERROR("input SAM does not have header. Abort!\n");
 	}
 
 	settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
 	if (settings->in == 0 || settings->out == 0) {
-		fprintf(stderr, "[bam_rsq] fail to read/write input files\n");
-		return 1;
+		LOG_ERROR("fail to read/write input files\n");
 	}
 	sam_hdr_write(settings->out, settings->hdr);
 
 	if(!(settings->in && settings->hdr && settings->out)) {
-		fprintf(stderr, "[E:%s] Failed to read input/output files....\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Failed to read input/output files....\n");
 	}
 	bam_rsq_bookends(settings);
 	bam_hdr_destroy(settings->hdr);
 	sam_close(settings->in); sam_close(settings->out);
 	if(settings->fqh)
 		fclose(settings->fqh);
-	return 0;
+	return EXIT_SUCCESS;
 }

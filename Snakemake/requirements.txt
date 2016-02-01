@@ -1,0 +1,33 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: linux-64
+bwa=0.7.12=1
+cutadapt=1.9.1=py34_0
+decorator=4.0.4=py34_0
+docutils=0.12=py34_0
+freetype=2.5.5=0
+ipython=4.0.0=py34_0
+ipython_genutils=0.1.0=py34_0
+jbig=2.1=0
+jpeg=8d=0
+libpng=1.6.17=0
+libtiff=4.0.6=1
+openssl=1.0.2d=0
+path.py=8.1.2=py34_1
+pexpect=3.3=py34_0
+pickleshare=0.5=py34_0
+pip=7.1.2=py34_0
+python=3.4.3=2
+pyyaml=3.11=py34_1
+readline=6.2=2
+samtools=1.2=1
+setuptools=18.5=py34_0
+simplegeneric=0.8.1=py34_0
+snakemake=3.4.2=py34_1
+sqlite=3.8.4.1=1
+tk=8.5.18=0
+traitlets=4.0.0=py34_0
+wheel=0.26.0=py34_1
+xz=5.0.5=0
+yaml=0.1.6=0
+zlib=1.2.8=0
