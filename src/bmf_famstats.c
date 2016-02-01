@@ -23,10 +23,9 @@ int fm_cmp(const void *fm1, const void *fm2)
 int get_nbins(khash_t(fm) *table)
 {
 	int ret = 0;
-	for(khiter_t k = kh_begin(table); k != kh_end(table); ++k) {
-		if(!kh_exist(table, k)) continue;
-		++ret;
-	}
+	for(khiter_t k = kh_begin(table); k != kh_end(table); ++k)
+		if(kh_exist(table, k))
+			++ret;
 	return ret;
 }
 
@@ -110,7 +109,7 @@ int famstats_target_main(int argc, char *argv[])
 	}
 
 	if (argc != optind+1)
-		return (argc == optind) ? famstats_target_usage_exit(stdout, EXIT_SUCCESS): famstats_target_usage_exit(stderr, EXIT_FAILURE);
+		return famstats_target_usage_exit(stderr, EXIT_FAILURE);
 
 	if(!bedpath) {
 		fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
@@ -127,11 +126,16 @@ int famstats_target_main(int argc, char *argv[])
 		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	bed = parse_bed_hash(bedpath, header, padding);
-	uint64_t fm_target = 0, total_fm = 0, count = 0;
+	uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
 	bam1_t *b = bam_init1();
+	uint8_t *fpdata = NULL;
 	int FM;
 	while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
-		if((b->core.flag & 2820) || bam_aux2i(bam_aux_get(b, "FP")) == 0) continue;
+		if((b->core.flag & 2816)) {
+			++n_flag_skipped; continue;
+		} else if((fpdata = bam_aux_get(b, "FP")) != NULL && !bam_aux2i(fpdata)) {
+			++n_fp_skipped; continue;
+		}
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		total_fm += FM;
 		if(bed_test(b, bed)) fm_target += FM;
@@ -139,6 +143,7 @@ int famstats_target_main(int argc, char *argv[])
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		}
 	}
+	LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
@@ -152,8 +157,11 @@ int famstats_target_main(int argc, char *argv[])
 
 static void print_stats(famstats_t *stats, FILE *fp)
 {
-	fprintf(fp, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(fp, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(fp, "#Number passing filters: %lu.\n", stats->n_pass);
+	fprintf(fp, "#Number failing filters: %lu.\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
+	fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
+	fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
+	fprintf(fp, "#Number failing flag filters: %lu.\n", stats->n_flag_fail);
 	fprintf(fp, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
 	fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
 	fprintf(fp, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
@@ -177,12 +185,17 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 {
 	//tag_test(data, "FM");
 	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
-			b->core.qual < settings->minMQ) return;
+			b->core.qual < settings->minMQ) {
+
+		++s->n_flag_fail; return;
+	}
 	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
 	const int RV = bam_aux2i(bam_aux_get(b, "RV"));
-	if(FM < settings->minFM || !bam_aux2i(bam_aux_get(b, "FP"))) {
-		++s->n_fail;
-		return;
+	if(FM < settings->minFM) {
+		++s->n_fm_fail; return;
+	}
+	if(!bam_aux2i(bam_aux_get(b, "FP"))) {
+		++s->n_fp_fail; return;
 	}
 	++s->n_pass;
 
@@ -402,5 +415,4 @@ int famstats_main(int argc, char *argv[])
 		return famstats_target_main(argc - 1, argv + 1);
 	fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
 	return famstats_usage_exit(stderr, EXIT_FAILURE);
-	return EXIT_FAILURE; // This never happens
 }

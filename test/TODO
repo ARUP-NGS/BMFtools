@@ -11,8 +11,13 @@
 	3. Sort
 	4. Cap
 	5. Vet (Once finished)
-2. Wishlists
+2. Wishlists:
   1. Take multiple fastqs for input.
+3. Core:
+  1. C Vetter
+4. Analysis/Design
+  1. Panel Design (uniqueness analysis)
+
 	
 
 1. TODONE:
@@ -22,6 +27,9 @@
         1. FA
         2. FM
         3. PV
+		4. FP
+		  1. Ambiguous
+		  2. Homopolymer
         5. NF
         6. RV
     2. QC Failing Reads
@@ -30,3 +38,8 @@
 	  2. Homopolyer stretches
   1. BAM tests
     1. Unclipped start
+  1. Wishlists:
+    1. InsertSize parser
+  2. Bed coverage tool
+  3. Drafted python vetter
+

@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "dlib/logging_util.h"
 
 extern int sort_main(int argc, char *argv[]);
 extern int dmp_main(int argc, char *argv[]);
@@ -10,7 +11,7 @@ extern int sdmp_main(int argc, char *argv[]);
 extern int rsq_main(int argc, char *argv[]);
 extern int hash_dmp_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
-extern int bmf_vetter_main(int argc, char *argv[]);
+extern int vetter_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
@@ -20,6 +21,7 @@ extern int depth_main(int argc, char *argv[]);
 static int bmftools_usage(int rc)
 {
 	fprintf(stderr, "Usage: bmftools <subcommand>. See subcommand menus for usage.\n");
+	fprintf(stderr, "-v/--version:			Print BMFtools version and exit.");
 	fprintf(stderr, "sort:			Sort for bam rescue.\n"
 					"dmp:			 Demultiplex inline barcoded experiments.\n"
 					"sdmp:			Demultiplex secondary-index barcoded experiments.\n"
@@ -41,7 +43,7 @@ int main(int argc, char *argv[])
 	if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		return bmftools_usage(EXIT_FAILURE);
 	if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        fprintf(stderr, "[%s] BMFtools version: '%s'.\n", __func__, VERSION);
+        LOG_INFO("BMFtools version: '%s'.\n", VERSION);
         exit(EXIT_SUCCESS);
     }
 	if(strcmp(argv[1], "sort") == 0)
@@ -57,7 +59,7 @@ int main(int argc, char *argv[])
 	else if(strcmp(argv[1], "famstats") == 0)
 		return famstats_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "vet") == 0)
-		return bmf_vetter_main(argc - 1, argv + 1);
+		return vetter_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "err") == 0)
 		return err_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "mark_unclipped") == 0)

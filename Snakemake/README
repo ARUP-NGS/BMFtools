@@ -1,0 +1,13 @@
+#BMFtools Snakemake Workflow
+###Summary
+>Runs a variety of tools to process barcoded from FASTQ to variant calling ready BAMs
+
+##Snakemake
+>Tutorial: http://snakemake.bitbucket.org/snakemake-tutorial.html
+>Bitbucket: https://bitbucket.org/snakemake/snakemake
+
+##Requirements
+>Besides BMFtools see requirements.txt for other tools, also requires GATK 3.0+
+
+##Setup
+>Fill in relevant info in the tumor_normal_config.yaml, place FASTQs to be processed in a directory called 'FASTQ'

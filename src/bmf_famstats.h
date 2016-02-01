@@ -22,7 +22,9 @@ KHASH_MAP_INIT_INT64(rc, uint64_t)
 
 typedef struct famstats {
 	uint64_t n_pass;
-	uint64_t n_fail;
+	uint64_t n_fp_fail;
+	uint64_t n_fm_fail;
+	uint64_t n_flag_fail;
 	uint64_t allfm_sum;
 	uint64_t allfm_counts;
 	uint64_t allrc_sum;

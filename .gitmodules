@@ -1,6 +1,7 @@
 [submodule "htslib"]
 	path = htslib
 	url = https://github.com/samtools/htslib
+	branch = develop
 [submodule "dlib"]
 	path = dlib
 	url = https://github.com/noseatbelts/dlib

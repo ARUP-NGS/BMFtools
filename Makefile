@@ -5,7 +5,7 @@
 
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 # pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -17,7 +17,7 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
 SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
@@ -34,7 +34,7 @@ P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
-.PHONY: all clean install
+.PHONY: all clean install tests python mostlyclean
 
 all: libhts.a tests bmftools bmftools_db bmftools_p
 
@@ -79,6 +79,6 @@ clean:
 	rm -f *.a && rm -f *.o && rm -f bmftools* && rm -f src/*.o && rm -f dlib/*.o && \
 		rm -f include/*.o && rm -f lib/*.o && cd htslib && make clean
 
-mostly_clean:
+mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
 		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o
