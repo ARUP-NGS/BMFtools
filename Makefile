@@ -77,7 +77,7 @@ marksplit_test: $(EXECUTABLES)
 
 
 tests: $(TEST_OBJS) $(EXECUTABLES) $(ALL_TESTS)
-	echo "Passed all tests!"
+	@echo "Passed all tests!"
 
 python:
 	cd CyBMFtools && python setup.py build_ext && python setup.py install && cd ..
