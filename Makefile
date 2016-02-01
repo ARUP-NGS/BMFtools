@@ -5,7 +5,7 @@
 
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 # pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -17,7 +17,7 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
 SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \

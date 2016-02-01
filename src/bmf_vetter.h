@@ -83,6 +83,7 @@ struct __bam_plp_t {
 	{"skip-qcfail", optional_argument, NULL, 'q'},\
 	{"skip-improper", optional_argument, NULL, 'P'},\
 	{"max-depth", optional_argument, NULL, 'd'},\
+	{"emit-bcf", optional_argument, NULL, 'B'},\
 	{0, 0, 0, 0}
 
 const char *bmf_header_lines[] =  {

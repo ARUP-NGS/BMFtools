@@ -50,19 +50,21 @@ int file_has_ext(char *fn, const char *ext);
 void vetter_usage(int retcode)
 {
 	char buf[2000];
-	sprintf(buf, "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
-			 "Optional arguments:\n"
-			 "-b, --bedpath\tPath to bed file to only validate variants in said region\n"
-			 "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
-			 "-2, --skip-secondary\tSkip secondary alignments.\n"
-			 "-S, --skip-supplementary\tSkip supplementary alignments.\n"
-			 "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
-			 "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-			 "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
-			 "-p, --padding\tNumber of bases outside of bed region to pad.\n"
-			 "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
-			 "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-			 );
+	sprintf(buf,
+			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
+			"Optional arguments:\n"
+			"-b, --bedpath\tPath to bed file to only validate variants in said region\n"
+			"-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+			"-2, --skip-secondary\tSkip secondary alignments.\n"
+			"-S, --skip-supplementary\tSkip supplementary alignments.\n"
+			"-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
+			"-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
+			"-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+			"-p, --padding\tNumber of bases outside of bed region to pad.\n"
+			"-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
+			"-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
+			"-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
+			);
 	vetter_error(buf, retcode);
 }
 
@@ -157,18 +159,29 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
  *     3. Number of unique observations (subtracting overlapping reads) for each allele.
  */
 
-int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start)
+int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 {
+	LOG_DEBUG("Beginning to read bcf.\n");
 	int ret;
 	if(vcf_iter) {
+		LOG_DEBUG("vcf_iter exists. Using it (%p) to read from filename %s.\n", (void *)vcf_iter, aux->vcf_fp->fn);
+		LOG_ASSERT(aux->vcf_fp->fp.bgzf != NULL);
 		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
-		while(vrec->pos < start && (ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) >= 0)
+		LOG_DEBUG("Got bcf_itr_next.\n");
+		if(ret < 0) return ret;
+		while(vrec->pos < start)
 		{
 			/* Zoom ahead until you're at the correct position */
+			if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0)
+				return ret;
 		}
-	}
-	else {
-		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
+	} else {
+		LOG_DEBUG("vcf_iter doesn't exist. Full file iteration.\n");
+
+		if((ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) < 0) return ret;
+		while(vrec->rid < tid && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0) {
+			// Skip to the right contig, assume sorted.
+		}
 		while(vrec->pos < start && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0)
 		{
 			/* Zoom ahead until you're at the correct position */
@@ -202,13 +215,27 @@ int vet_core(aux_t *aux) {
 			tid = kh_key(aux->bed, ki);
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-
-			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			if(vcf_idx) {
+				LOG_INFO("Using bgzipped vcf index.\n");
+				vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
+			} else if(bcf_idx) {
+				LOG_INFO("Using bcf index.\n");
+				vcf_iter = bcf_itr_queryi(bcf_idx, tid, start, stop);
+			} else {
+				LOG_DEBUG("Iterating through whole genome.\n");
+				vcf_iter = NULL;
+			}
 			if (aux->iter) hts_itr_destroy(aux->iter);
 			aux->iter = sam_itr_queryi(idx, tid, start, stop);
 			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 			bam_plp_set_maxcnt(pileup, max_depth);
-			while(read_bcf(aux, vcf_iter, vrec, start) >= 0) {
+			vcfFile *delete_me = vcf_open("-", "w");
+			LOG_DEBUG("Attempt to query index %p, %p, %p, %p\n", aux->vcf_fp, vcf_iter, vrec, aux->vcf_header);
+			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
+				bcf_write1(aux->vcf_fp, aux->vcf_header, vrec);
+			}
+			vcf_close(delete_me);
+			while(read_bcf(aux, vcf_iter, vrec, start, tid) >= 0) {
 				if(!bcf_is_snp(vrec)) continue; // Only handle simple SNVs
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
@@ -245,14 +272,16 @@ int vetter_main(int argc, char *argv[])
 	char vcf_wmode[4] = "w";
 	char *outvcf = NULL, *bed = NULL;
 	int c;
-	int padding = 0;
+	int padding = 0, output_bcf = 0;
+	// Defaults to outputting textual (vcf)
 	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	aux_t aux = {0};
 	aux.max_depth = (1 << 18); // Default max depth
-	if(argc < 5) vetter_usage(EXIT_FAILURE);
+	if(argc < 3) vetter_usage(EXIT_FAILURE);
 
-	while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:P?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?h", lopts, NULL)) >= 0) {
 		switch (c) {
+		case 'B': output_bcf = 1; break;
 		case 'a': aux.minFA = atoi(optarg); break;
 		case 'c': aux.minCount = atoi(optarg); break;
 		case 'D': aux.minDuplex = atoi(optarg); break;
@@ -275,8 +304,7 @@ int vetter_main(int argc, char *argv[])
 	}
 
 	// Check for required tags.
-	if(aux.minAF)
-		check_bam_tag_exit(argv[optind + 1], "AF");
+	if(aux.minAF) check_bam_tag_exit(argv[optind + 1], "AF");
 	check_bam_tag_exit(argv[optind + 1], "FA");
 	check_bam_tag_exit(argv[optind + 1], "FM");
 	check_bam_tag_exit(argv[optind + 1], "FP");
@@ -287,13 +315,12 @@ int vetter_main(int argc, char *argv[])
 
 	if(optind + 1 >= argc)
 		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
-	if(outvcf[0] == '-') {
-		LOG_INFO("Emitting to stdout as vcf.\n");
-		strcpy(vcf_wmode, "w");
+	strcpy(vcf_wmode, output_bcf ? "wb": "w");
+	if(!outvcf) // Default to emitting to stdout.
+		outvcf = strdup("-");
+	if(strcmp(outvcf, "-") == 0) {
+		LOG_INFO("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
 	}
-	if(file_has_ext(outvcf, "bcf"))
-		strcpy(vcf_wmode, "wb");
-
 	// Open bam
 	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if(!aux.fp) {LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);}
@@ -303,24 +330,40 @@ int vetter_main(int argc, char *argv[])
 	if(!aux.header || aux.header->n_targets == 0) {LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);}
 	// Open bed file
 	// if no bed provided, do whole genome.
-	if(!bed || !*bed) {
+	if(!bed) {
+		bed = strdup("FullGenomeAnalysis");
 		LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
 		aux.bed = build_ref_hash(aux.header);
 	} else aux.bed = parse_bed_hash(bed, aux.header, padding);
-	check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
+	//check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
+	aux.vcf_fp = vcf_open(argv[optind], "r");
+	if(!aux.vcf_fp) {
+		LOG_ERROR("BLAH");
+	}
+	aux.vcf_header = bcf_hdr_read(aux.vcf_fp);
+	if(!aux.vcf_header) {
+		LOG_ERROR("BLAH");
+	}
 
 	// Add lines to header
-	size_t n_header_lines = COUNT_OF(bmf_header_lines);
-	for(int i = 0; i < n_header_lines; ++i) bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]);
+	for(int i = 0; i < COUNT_OF(bmf_header_lines); ++i)
+		bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]);
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
 		kstring_t tmpstr = {0};
 		ksprintf(&tmpstr, "##cmdline=");
+		kputs("bmftools ", &tmpstr);
 		for(int i = 0; i < argc; ++i) kputs(argv[i], &tmpstr), kputc(' ', &tmpstr);
 		bcf_hdr_append(aux.vcf_header, tmpstr.s);
 		free(tmpstr.s);
 	}
 	bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);
+
+	// Open output vcf
+	aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);
+	if(!aux.vcf_ofp) {
+		LOG_ERROR("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
+	}
 	bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
 	// Open out vcf
