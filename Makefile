@@ -26,7 +26,7 @@ SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c s
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
 		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c
 
-TEST_SOURCES = test/target_test.c
+TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c
 
 TEST_OBJS = $(TEST_SOURCES:.c=.o)
 
@@ -34,9 +34,13 @@ P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
-.PHONY: all clean install tests python mostlyclean
 
-all: libhts.a tests bmftools bmftools_db bmftools_p
+ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test
+EXECUTABLES=bmftools bmftools_db bmftools_p
+
+.PHONY: all clean install tests python mostlyclean hashdmp_test
+
+all: libhts.a tests $(EXECUTABLES)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -53,22 +57,27 @@ install: all
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 libhts.a:
-	cd htslib && make -j $(THREADS) && cp libhts.a ../
+	+cd htslib && echo "/* Empty config.h */" >> config.h && make -j $(THREADS) && cp libhts.a ../
 bmftools_db: $(D_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
 bmftools_p: $(P_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
-test/ucs/ucs_test: libhts.a
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.c libhts.a -o test/ucs/ucs_test
-
-
-tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p test/ucs/ucs_test
-	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
-	cd test/ucs && ./ucs_test && cd ../..
+test/ucs/ucs_test: libhts.a $(TEST_OBJS)
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.o libhts.a -o test/ucs/ucs_test
+	cd test/ucs && ./ucs_test && cd ./..
+target_test: $(OBJS) $(TEST_OBJS) libhts.a
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.o libhts.a -o ./target_test && ./target_test
+hashdmp_test: $(EXECUTABLES)
 	cd test/dmp && python hashdmp_test.py && cd ../..
+marksplit_test: $(EXECUTABLES)
 	cd test/marksplit && python marksplit_test.py && cd ../..
+
+
+
+tests: $(TEST_OBJS) $(EXECUTABLES) $(ALL_TESTS)
+	echo "Passed all tests!"
 
 python:
 	cd CyBMFtools && python setup.py build_ext && python setup.py install && cd ..

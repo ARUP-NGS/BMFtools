@@ -96,10 +96,15 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		b = plp[i].b;
 		// Skip any reads failed for FA < minFA or FR < minFR
 		qname = bam_get_qname(b);
-		if((k = kh_get(names, hash, qname)) == kh_end(hash)) {
+		LOG_DEBUG("About to check for membership in the hash.\n");
+		k = kh_get(names, hash, qname);
+		if(k == kh_end(hash)) {
+			LOG_DEBUG("Not found in hash.\n");
 			kh_put(names, hash, qname, &khr);
+			k = kh_get(names, hash, qname);
 			kh_val(hash, k) = &plp[i];
 		} else {
+			LOG_DEBUG("Found in hash. Do pair adjustment.\n");
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
 			PV1 = array_tag(kh_val(hash, k)->b, "PV");
@@ -125,6 +130,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			}
 		}
 	}
+	LOG_INFO("Make final call iterations.\n");
 	for(i = 0; i < n_plp; ++i) {
 		if(plp[i].is_del || plp[i].is_refskip) continue;
 		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
@@ -209,7 +215,7 @@ int vet_core(aux_t *aux) {
 		if(!kh_exist(aux->bed, ki)) continue;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 
-			int tid, start, stop, pos;
+			int tid, start, stop, pos = -1;
 
 			// Handle coordinates
 			tid = kh_key(aux->bed, ki);
@@ -219,8 +225,8 @@ int vet_core(aux_t *aux) {
 				LOG_INFO("Using bgzipped vcf index.\n");
 				vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
 			} else if(bcf_idx) {
-				LOG_INFO("Using bcf index.\n");
 				vcf_iter = bcf_itr_queryi(bcf_idx, tid, start, stop);
+				LOG_INFO("Using bcf index. vcf_iter: %p\n", (void *)vcf_iter);
 			} else {
 				LOG_DEBUG("Iterating through whole genome.\n");
 				vcf_iter = NULL;
@@ -231,12 +237,16 @@ int vet_core(aux_t *aux) {
 			bam_plp_set_maxcnt(pileup, max_depth);
 			vcfFile *delete_me = vcf_open("-", "w");
 			LOG_DEBUG("Attempt to query index %p, %p, %p, %p\n", aux->vcf_fp, vcf_iter, vrec, aux->vcf_header);
-			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
-				bcf_write1(aux->vcf_fp, aux->vcf_header, vrec);
-			}
+			/*
+			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0)
+				bcf_write1(delete_me, aux->vcf_header, vrec);
 			vcf_close(delete_me);
+			*/
 			while(read_bcf(aux, vcf_iter, vrec, start, tid) >= 0) {
-				if(!bcf_is_snp(vrec)) continue; // Only handle simple SNVs
+				if(!bcf_is_snp(vrec)) {
+					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
+					continue; // Only handle simple SNVs
+				}
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
@@ -379,5 +389,6 @@ int vetter_main(int argc, char *argv[])
 	kh_destroy(bed, aux.bed);
 	cond_free(outvcf);
 	cond_free(bed);
+	LOG_INFO("Successfully completed!\n");
 	return ret;
 }
