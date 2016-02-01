@@ -85,7 +85,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 	uint32_t *FA1, *PV1, *FA2, *PV2;
 	char *qname;
 	bam1_t *b;
-	uint8_t *seq, *seq2, *tmptag;
+	uint8_t *seq, *seq2, *tmptag, *drdata;
 	// Build overlap hash
 	khash_t(names) *hash = kh_init(names);
 	const int sk = 1;
@@ -148,7 +148,8 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		seq = bam_get_seq(b);
 		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
 			++count;
-			if(bam_aux2i(bam_aux_get(b, "DR"))) ++duplex;
+			if((drdata = bam_aux_get(b, "DR")) != NULL &&
+				bam_aux2i(drdata)) ++duplex; // Has DR tag and its value is nonzero.
 			if((tmptag = bam_aux_get(b, "KR")) != NULL) {
 				++overlap;
 				bam_aux_del(b, tmptag);
@@ -170,26 +171,15 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 	LOG_DEBUG("Beginning to read bcf.\n");
 	int ret;
 	if(vcf_iter) {
-		LOG_DEBUG("vcf_iter exists. Using it (%p) to read from filename %s.\n", (void *)vcf_iter, aux->vcf_fp->fn);
-		LOG_ASSERT(aux->vcf_fp->fp.bgzf != NULL);
-		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
-		LOG_DEBUG("Got bcf_itr_next.\n");
-		if(ret < 0) return ret;
+		if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
 		while(vrec->pos < start)
 		{
 			/* Zoom ahead until you're at the correct position */
-			if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0)
-				return ret;
+			if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
 		}
 	} else {
-		LOG_DEBUG("vcf_iter doesn't exist. Full file iteration.\n");
-
 		if((ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) < 0) return ret;
-		while(vrec->rid < tid && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0) {
-			// Skip to the right contig, assume sorted.
-		}
-		while(vrec->pos < start && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0)
-		{
+		while((vrec->rid < tid || vrec->pos < start) && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0) {
 			/* Zoom ahead until you're at the correct position */
 		}
 	}
@@ -235,13 +225,6 @@ int vet_core(aux_t *aux) {
 			aux->iter = sam_itr_queryi(idx, tid, start, stop);
 			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 			bam_plp_set_maxcnt(pileup, max_depth);
-			vcfFile *delete_me = vcf_open("-", "w");
-			LOG_DEBUG("Attempt to query index %p, %p, %p, %p\n", aux->vcf_fp, vcf_iter, vrec, aux->vcf_header);
-			/*
-			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0)
-				bcf_write1(delete_me, aux->vcf_header, vrec);
-			vcf_close(delete_me);
-			*/
 			while(read_bcf(aux, vcf_iter, vrec, start, tid) >= 0) {
 				if(!bcf_is_snp(vrec)) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -259,7 +242,7 @@ int vet_core(aux_t *aux) {
 
 				for(unsigned i = 0; i < vrec->n_allele; ++i)
 					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)*(vrec->d.allele[i])], aux, n_plp, pos);
-				bcf_update_format(aux->vcf_header, vrec, "BMF", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
+				bcf_update_format(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -356,8 +339,11 @@ int vetter_main(int argc, char *argv[])
 	}
 
 	// Add lines to header
-	for(int i = 0; i < COUNT_OF(bmf_header_lines); ++i)
-		bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]);
+	for(int i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
+		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) {
+			LOG_ERROR("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
+		}
+	}
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
 		kstring_t tmpstr = {0};
