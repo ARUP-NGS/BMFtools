@@ -64,7 +64,6 @@ bmftools_p: $(P_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
-	echo $(BINS): list of executables
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.o libhts.a -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
