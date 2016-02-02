@@ -21,7 +21,7 @@ def main():
         subprocess.check_call("%s err fm -o err_test.out "
                               "/mounts/genome/human_g1k_v37.fasta NA12878.on_target.bam" % ex,
                               shell=True)
-        assert "8837658f973be2853cc5764add928f4c" == hashlib.md5(open("err_test.out", "r").read()).hexdigest()
+        assert "927785e79d28995c49de2d429e39936f" == hashlib.md5(open("err_test.out", "r").read()).hexdigest()
     return 0
 
 if __name__ == "__main__":
