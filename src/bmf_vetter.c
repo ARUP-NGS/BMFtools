@@ -273,7 +273,8 @@ int vet_core(aux_t *aux) {
 
 				for(unsigned i = 0; i < vrec->n_allele; ++i)
 					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos);
-				bcf_update_format(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
+				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);

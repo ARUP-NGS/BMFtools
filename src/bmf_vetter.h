@@ -87,7 +87,7 @@ struct __bam_plp_t {
 	{0, 0, 0, 0}
 
 const char *bmf_header_lines[] =  {
-		"##FORMAT=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">"
+		"##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">"
 };
 
 typedef struct {
