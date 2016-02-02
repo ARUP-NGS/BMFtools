@@ -968,7 +968,7 @@ int err_main_main(int argc, char *argv[])
 	int maxFM = INT_MAX;
 	int flag = 0;
 	uint32_t minPV = 0;
-	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?FdDp")) >= 0) {
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?FdDP")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
