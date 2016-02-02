@@ -54,6 +54,7 @@ Copyright 1984, 1995 by Stephen L. Moshier
 #include <tgmath.h>
 #include "igamc_cephes.h"
 
+
 #if 1
 double MACHEP =  1.11022302462515654042E-16;   /* 2**-53 */
 #else
@@ -871,4 +872,3 @@ double lgam(double x)
 		q += polevl( p, A, 4 ) / x;
 	return( q );
 }
-

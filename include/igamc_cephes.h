@@ -12,6 +12,10 @@
 #define MAX_PV 3117
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#else
+#endif
 extern double MAXNUM;
 
 double igamc(double a, double x);
@@ -630,5 +634,11 @@ CONST static inline uint32_t disc_pvalues(uint32_t pv_better, uint32_t pv_worse)
 {
     return pv_better - pv_worse;
 }
+
+
+#ifdef __cplusplus
+}
+#else
+#endif
 
 #endif

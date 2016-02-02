@@ -452,33 +452,17 @@ int dmp_main(int argc, char *argv[])
 {
 	if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
 	// Build settings struct
-	marksplit_settings_t settings = {
-		.hp_threshold = 10,
-		.n_nucs = 2,
-		.tmp_basename = NULL,
-		.input_r1_path = NULL,
-		.input_r2_path = NULL,
-		.index_fq_path = NULL, // This is unused for inline experiments.
-		.homing_sequence = NULL,
-		.n_handles = 0,
-		.notification_interval = 1000000,
-		.blen = 0,
-		.homing_sequence_length = 0,
-		.offset = 0,
-		.rescaler = NULL,
-		.rescaler_path = NULL,
-		.run_hash_dmp = 0,
-		.ffq_prefix = NULL,
-		.threads = 1,
-		.max_blen = -1,
-		.gzip_output = 0,
-		.panthera = 0,
-		.gzip_compression = 1,
-		.cleanup = 1,
-		.annealed = 0,
-		.salt = 0, // This is unused for inline experiments
-		.is_se = 0
-	};
+
+	marksplit_settings_t settings = {0};
+
+	settings.hp_threshold = 10;
+	settings.n_nucs = 2;
+	settings.notification_interval = 1000000;
+	settings.threads = 1;
+	settings.max_blen = -1;
+	settings.gzip_compression = 1;
+	settings.cleanup = 1;
+
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
 	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$=")) > -1) {
@@ -594,15 +578,12 @@ int dmp_main(int argc, char *argv[])
 				__func__, settings.tmp_basename);
 	}
 
-	// Misc.
-	if(settings.annealed) {
-		fprintf(stderr, "[E:%s] annealed chemistry not supported. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-
 	// Run core
 	mark_splitter_t *splitter = pp_split_inline(&settings);
 	//mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings): pp_split_inline(&settings);
+	splitterhash_params_t *params;
+	char ffq_r1[500];
+	char ffq_r2[500];
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
 		goto cleanup;
@@ -612,13 +593,11 @@ int dmp_main(int argc, char *argv[])
 				__func__);
 #endif
 	if(!settings.ffq_prefix) make_outfname(&settings);
-	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
+	params = init_splitterhash(&settings, splitter);
 	// Run core.
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
 	// Remove temporary split files.
-	char ffq_r1[500];
-	char ffq_r2[500];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
 	// Cat temporary files together.

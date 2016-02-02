@@ -12,7 +12,6 @@
 #endif
 
 typedef struct marksplit_settings {
-	int annealed; // Set to true to avoid reversing sequences TODO: Actually implement this.
 	int blen;
 	int blen1_2;
 	int cleanup; // Set to false to leave temporary files

@@ -3,9 +3,10 @@
 #     d.nephi.baker@gmail.com       #
 ######################################
 
+STD=gnu99
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 # pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) # pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -21,7 +22,7 @@ OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function 
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
-SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
+SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
 		  src/bmf_sort.c src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
@@ -92,4 +93,4 @@ clean: mostlyclean
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
-		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o && rm -f *.a
+		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o
