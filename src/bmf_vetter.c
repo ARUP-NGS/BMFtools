@@ -237,9 +237,7 @@ int vet_core(aux_t *aux) {
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			if(vcf_idx)
-				vcf_iter = hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec);
-			else vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 
 			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec, start, tid)) >= 0) {
 				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
