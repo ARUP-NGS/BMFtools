@@ -351,8 +351,9 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
  */
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
-#if WRITE_BARCODE_FQ
-	FILE *fp = fopen("tmp.molbc.fq", "w");
+#ifdef WRITE_BARCODE_FQ
+	FILE *bcfp1 = fopen("tmp.molbc.r1.fq", "w");
+	FILE *bcfp2 = fopen("tmp.molbc.r2.fq", "w");
 #endif
 	LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
@@ -385,6 +386,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
 	rseq1->barcode[settings->blen] = '\0';
+#ifdef WRITE_BARCODE_FQ
+	write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
+#endif
 	if(switch_reads) {
 		memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -407,6 +411,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	uint64_t count = 0;
 	while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)) {
+#ifdef WRITE_BARCODE_FQ
+		write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
+#endif
 		if(UNLIKELY(++count % settings->notification_interval == 0))
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Sets pass_fail
@@ -444,6 +451,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	mseq_destroy(rseq1), mseq_destroy(rseq2);
 	kseq_destroy(seq1), kseq_destroy(seq2);
 	gzclose(fp1), gzclose(fp2);
+#ifdef WRITE_BARCODE_FQ
+	fclose(bcfp1), fclose(bcfp2);
+#endif
 	return splitter;
 }
 

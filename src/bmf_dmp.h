@@ -128,4 +128,20 @@ static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_sett
 	return default_len;
 }
 
+#define write_bc_to_file(fp1, fp2, seq1, seq2, settings)\
+	do {\
+	    fputc('@', fp1), fputc('@', fp2);\
+	    for(int k = 0; k < settings->blen1_2; ++k)\
+	        fputc(seq1->seq.s[k + settings->offset], fp1),\
+	        fputc(seq1->seq.s[k + settings->offset], fp2);\
+	    for(int k = 0; k < settings->blen1_2; ++k)\
+	        fputc(seq2->seq.s[k + settings->offset], fp1),\
+	        fputc(seq2->seq.s[k + settings->offset], fp2);\
+	    /* */ \
+	    fputc('\n', fp1); fputs(seq1->seq.s, fp1); fputs("\n+\n", fp1);\
+	    fputc('\n', fp2); fputs(seq2->seq.s, fp2); fputs("\n+\n", fp2);\
+		fputs(seq1->qual.s, fp1); fputc('\n', fp1);\
+		fputs(seq2->qual.s, fp2); fputc('\n', fp2);\
+	} while(0)
+
 #endif /* BMF_DMP_H */

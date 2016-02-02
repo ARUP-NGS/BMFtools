@@ -19,7 +19,7 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -DWRITE_BARCODE_FQ
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
@@ -78,14 +78,11 @@ marksplit_test: $(BINS)
 err_test: $(BINS)
 	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
 
-
-
 tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS)
 	@echo "Passed all tests!"
 
 python:
 	cd CyBMFtools && python setup.py build_ext && python setup.py install && cd ..
-
 
 
 clean: mostlyclean
