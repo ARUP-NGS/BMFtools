@@ -11,6 +11,7 @@ INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
 INSTALL=/usr/bin/install -c
 THREADS=12
+GENOME_PATH=/mounts/genome/human_g1k_v37.fasta
 
 prefix = /usr/local
 bindir = $(prefix)/bin
@@ -35,10 +36,10 @@ D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
 
-ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test
+ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test
 BINS=bmftools bmftools_db bmftools_p
 
-.PHONY: all clean install tests python mostlyclean hashdmp_test
+.PHONY: all clean install tests python mostlyclean hashdmp_test err_test
 
 all: libhts.a tests $(BINS)
 
@@ -73,6 +74,8 @@ hashdmp_test: $(BINS)
 	cd test/dmp && python hashdmp_test.py && cd ../..
 marksplit_test: $(BINS)
 	cd test/marksplit && python marksplit_test.py && cd ../..
+err_test: $(BINS)
+	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
 
 
 

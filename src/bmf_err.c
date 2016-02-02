@@ -288,7 +288,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			((f->flag & REFUSE_DUPLEX) && DR) ||
 			((f->flag & REQUIRE_FP_PASS) && FP == 0)) /* Fails barcode QC */ {
 				++f->nskipped;
-				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+				//LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
 				continue;
 		}
 		seq = (uint8_t *)bam_get_seq(b);
@@ -309,8 +309,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pos = b->core.pos;
 		is_rev = b->core.flag & BAM_FREVERSE;
-		LOG_DEBUG("Max err count in hashmap: %lu.\n", get_max_err(hash));
-		LOG_DEBUG("Max obs count in hashmap: %lu.\n", get_max_obs(hash));
+		//LOG_DEBUG("Max err count in hashmap: %lu.\n", get_max_err(hash));
+		//LOG_DEBUG("Max obs count in hashmap: %lu.\n", get_max_obs(hash));
 		if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
