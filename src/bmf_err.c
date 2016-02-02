@@ -104,7 +104,7 @@ void err_cycle_report(FILE *fp, cycle_err_t *ce)
 	}
 }
 
-int int32_cmp(void *a, void *b)
+int int32_cmp(const void *a, const void *b)
 {
 	return *((int *)a) - *((int *)b);
 }
