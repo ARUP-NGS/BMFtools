@@ -193,10 +193,25 @@ int vet_core(aux_t *aux) {
 	khiter_t ki;
 	int n_plp, vcf_iter_ret;
 	const bam_pileup1_t *plp;
+	tbx_t *vcf_idx = NULL;
+	hts_idx_t *bcf_idx = NULL;
 	hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
-	tbx_t *vcf_idx = is_bgzipped_vcf(aux->vcf_fp->fn)? tbx_index_load(aux->vcf_fp->fn): NULL;
-	LOG_INFO("Vcf index: %p.\n", (void *)vcf_idx);
-	hts_idx_t *bcf_idx = vcf_idx ? vcf_idx->idx: bcf_index_load(aux->vcf_fp->fn);
+	switch(hts_get_format(aux->vcf_fp)->format) {
+	case vcf:
+		vcf_idx = tbx_index_load(aux->vcf_fp->fn);
+		if(!vcf_idx) {
+			LOG_WARNING("Could not load TBI index for %s. Defaulting to all variants.\n", aux->vcf_fp->fn);
+		}
+		break;
+	case bcf:
+		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
+		if(!bcf_idx) {
+			LOG_ERROR("Could not load CSI index: %s\n");
+		}
+		break;
+	default:
+		LOG_ERROR("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
+	}
 	/*
 	if(!(vcf_idx || bcf_idx)) {
 		LOG_ERROR("Require an indexed variant file. Abort!\n");
@@ -219,19 +234,13 @@ int vet_core(aux_t *aux) {
 			tid = kh_key(aux->bed, ki);
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-			if(vcf_idx) {
-				LOG_DEBUG("Attempting to build a query iterator from a bgzipped vcf index.\n");
-				//vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
-				//vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
-				vcf_iter = hts_itr_query(bcf_idx, tid, start, stop, &tbx_readrec);
-				LOG_DEBUG("Successfully made iterator from bgzipped vcf index.\n");
-			} else if(bcf_idx) {
-				LOG_DEBUG("Using bcf index. vcf_iter: %p\n", (void *)vcf_iter);
-				vcf_iter = bcf_itr_queryi(bcf_idx, tid, start, stop);
-			} else {
-				LOG_DEBUG("Iterating through whole genome.\n");
-				vcf_iter = NULL;
-			}
+
+			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
+			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			if(vcf_idx)
+				vcf_iter = hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec);
+			else vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+
 			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec, start, tid)) >= 0) {
 				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
