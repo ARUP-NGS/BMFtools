@@ -134,18 +134,23 @@ int int32_cmp(const void *a, const void *b)
 void err_fm_report(FILE *fp, fmerr_t *f)
 {
 	LOG_DEBUG("Beginning err fm report.\n");
-	int khr;
+	int khr, fm, i;
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
-	khash_t(obs_union) *shared_keys = kh_init(obs_union);
+	khash_t(obs_union) *key_union = kh_init(obs_union);
 	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
 		if(kh_exist(f->hash1, k1))
-			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
-				k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
+			if((k = kh_get(obs_union, key_union, kh_key(f->hash1, k1))) == kh_end(key_union))
+				k = kh_put(obs_union, key_union, kh_key(f->hash1, k1), &khr);
 	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2)
 		if(kh_exist(f->hash2, k2))
-			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
-				k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
+			if((k = kh_get(obs_union, key_union, kh_key(f->hash2, k2))) == kh_end(key_union))
+				k = kh_put(obs_union, key_union, kh_key(f->hash2, k2), &khr);
+#if !NDEBUG
+	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
+		if(kh_exist(f->hash1, k1))
+			fprintf(stderr, "Key for FM: %i.\n",  kh_key(f->hash1, k1));
+#endif
 
 	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
@@ -155,32 +160,37 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			f->flag & REFUSE_DUPLEX ? "True": "False");
 	fprintf(fp, "##STATS\n##nread:%lu\n##nskipped:%lu\n", f->nread, f->nskipped);
 	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Errors\tRead 1 Counts\tRead 2 Errors\tRead 2 Counts\n");
-	int *tmp = (int *)malloc(shared_keys->n_occupied * sizeof(int));
-	for(k = kh_begin(shared_keys), khr = 0; k != kh_end(shared_keys); ++k)
-		if(kh_exist(shared_keys, k))
-			tmp[khr++] = k;
-	qsort(tmp, shared_keys->n_occupied, sizeof(int), &int32_cmp);
-	for(int i = 0; i < shared_keys->n_occupied; ++i) {
-		k = tmp[i];
-		fprintf(fp, "%i\t", kh_key(shared_keys, k));
+	int *tmp = (int *)malloc(key_union->n_occupied * sizeof(int));
+	for(k = kh_begin(key_union), khr = 0; k != kh_end(key_union); ++k)
+		if(kh_exist(key_union, k))
+			tmp[khr++] = kh_key(key_union, k);
+	qsort(tmp, key_union->n_occupied, sizeof(int), &int32_cmp);
+	for(i = 0; i < key_union->n_occupied; ++i) {
+		fm = tmp[i];
+		fprintf(fp, "%i\t", fm);
 
-		k1 = kh_get(obs, f->hash1, kh_key(shared_keys, k));
-		if(k1 == kh_end(f->hash1)) fprintf(fp, "-nan\t");
-		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
-
+		if((k1 = kh_get(obs, f->hash1, fm)) == kh_end(f->hash1))
+			fprintf(fp, "-nan\t");
+		else
+			fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
 		LOG_DEBUG("R1 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash1, k1), kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
 
-		k2 = kh_get(obs, f->hash2, kh_key(shared_keys, k));
-		if(k2 == kh_end(f->hash2)) fprintf(fp, "-nan\t");
-		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+		if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2))
+			fprintf(fp, "-nan\t");
+		else
+			fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
-		fprintf(fp, "%lu\t%lu\t%lu\t%lu\n",
-				kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs,
+		if(k1 != kh_end(f->hash1))
+			fprintf(fp, "%lu\t%lu\t",
+				kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+		else fputs("0\t0\t", fp);
+		if(k2 != kh_end(f->hash2))
+			fprintf(fp, "%lu\t%lu\n",
 				kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
-		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+		else fputs("0\t0\n", fp);
 	}
 	free(tmp);
-	kh_destroy(obs_union, shared_keys);
+	kh_destroy(obs_union, key_union);
 }
 
 void err_report(FILE *fp, fullerr_t *e)
