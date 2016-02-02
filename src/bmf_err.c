@@ -104,6 +104,11 @@ void err_cycle_report(FILE *fp, cycle_err_t *ce)
 	}
 }
 
+int int32_cmp(void *a, void *b)
+{
+	return *((int *)a) - *((int *)b);
+}
+
 void err_fm_report(FILE *fp, fmerr_t *f)
 {
 	LOG_DEBUG("Beginning err fm report.\n");
@@ -127,9 +132,14 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			f->flag & REQUIRE_DUPLEX ? "True": "False",
 			f->flag & REFUSE_DUPLEX ? "True": "False");
 	fprintf(fp, "##STATS\n##nread:\"%lu\"\n##nskipped:\"%lu\"\n", f->nread, f->nskipped);
-	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Counts\tRead 1 Errors\tRead 2 Counts\tRead 2 Errors\n");
-	for(k = kh_begin(shared_keys); k != kh_end(shared_keys); ++k) {
-		if(!kh_exist(shared_keys, k)) continue;
+	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Errors\tRead 1 Counts\tRead 2 Errors\tRead 2 Counts\n");
+	int *tmp = (int *)malloc(shared_keys->n_occupied * sizeof(int));
+	for(k = kh_begin(shared_keys), khr = 0; k != kh_end(shared_keys); ++k)
+		if(kh_exist(shared_keys, k))
+			tmp[khr++] = k;
+	qsort(tmp, shared_keys->n_occupied, sizeof(int), &int32_cmp);
+	for(int i = 0; i < shared_keys->n_occupied; ++i) {
+		k = tmp[i];
 		fprintf(fp, "%i\t", kh_key(shared_keys, k));
 
 		k1 = kh_get(obs, f->hash1, kh_key(shared_keys, k));
@@ -147,6 +157,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 				kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 	}
+	free(tmp);
 	kh_destroy(obs_union, shared_keys);
 }
 
