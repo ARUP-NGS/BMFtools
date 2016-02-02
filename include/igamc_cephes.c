@@ -320,8 +320,7 @@ Copyright 1985, 1995 by Stephen L. Moshier
 
 #define BIG 9.223372036854775808e18
 
-double igamc(a, x)
-double a, x;
+double igamc(double a, double x)
 {
 double ans, c, yc, ax, y, z, r, t;
 double pk, pkm1, pkm2, qk, qkm1, qkm2;
@@ -764,8 +763,7 @@ static double C[] = {
 /* Logarithm of gamma function */
 
 
-double lgam(x)
-double x;
+double lgam(double x)
 {
 	double p, q, u, w, z;
 	int i;

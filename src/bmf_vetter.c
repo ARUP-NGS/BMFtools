@@ -104,12 +104,12 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		} else {
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-			PV1 = array_tag(kh_val(hash, k)->b, "PV");
-			FA1 = array_tag(kh_val(hash, k)->b, "FA");
+			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
+			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
 			seq = bam_get_seq(kh_val(hash, k)->b);
 			s = bam_seqi(seq, kh_val(hash, k)->qpos);
-			PV2 = array_tag(plp[i].b, "PV");
-			FA2 = array_tag(plp[i].b, "FA");
+			PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
+			FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
 			seq2 = bam_get_seq(plp[i].b);
 			s2 = bam_seqi(seq2, plp[i].qpos);
 			if(s == s2) {

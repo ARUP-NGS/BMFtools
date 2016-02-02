@@ -29,7 +29,11 @@ DEALINGS IN THE SOFTWARE. */
 
 #include "bmf_depth.h"
 
-#define NO_ID_STR "L'Innommable"
+#ifdef __cplusplus
+#define NO_ID_STR ((char *)"L'Innommable")
+#else
+#define NO_ID_STR ("L'Innommable")
+#endif
 
 
 typedef struct {
@@ -138,18 +142,12 @@ int depth_main(int argc, char *argv[])
 	int requireFP = 0;
 	char *bedpath = NULL;
 
-	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
-	static const struct option lopts[] = {
-		SAM_OPT_GLOBAL_OPTIONS('-', 0, '-', '-', 0),
-		{ NULL, 0, NULL, 0 }
-	};
-
 	if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
 		depth_usage(EXIT_SUCCESS);
 
 	if(argc < 4) depth_usage(EXIT_FAILURE);
 
-	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:p:?hs", lopts, NULL)) >= 0) {
+	while ((c = getopt(argc, argv, "Q:b:m:f:n:p:?hs")) >= 0) {
 		switch (c) {
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
@@ -168,14 +166,14 @@ int depth_main(int argc, char *argv[])
 	memset(&str, 0, sizeof(kstring_t));
 	n = argc - optind;
 	fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
-	aux = calloc(n, sizeof(aux_t*));
-	idx = calloc(n, sizeof(hts_idx_t*));
+	aux = (aux_t **)calloc(n, sizeof(aux_t*));
+	idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
 	for (i = 0; i < n; ++i) {
-		aux[i] = calloc(1, sizeof(aux_t));
+		aux[i] = (aux_t *)calloc(1, sizeof(aux_t));
 		aux[i]->minMQ = minMQ;
 		aux[i]->minFM = minFM;
 		aux[i]->requireFP = requireFP;
-		aux[i]->fp = sam_open_format(argv[i + optind], "r", &ga.in);
+		aux[i]->fp = sam_open(argv[i + optind], "r");
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
 		if (aux[i]->fp == 0 || idx[i] == 0) {
@@ -193,17 +191,17 @@ int depth_main(int argc, char *argv[])
 	if(!bedpath) {
 		LOG_ERROR("Bed path required. Abort!\n");
 	}
-	counts = calloc(n, sizeof(uint64_t));
+	counts = (uint64_t *)calloc(n, sizeof(uint64_t));
 	int n_cols = count_lines(bedpath);
-	col_names = calloc(n_cols, sizeof(char *));
+	col_names = (char **)calloc(n_cols, sizeof(char *));
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
 		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
 	}
 	ks = ks_init(fp);
-	n_plp = calloc(n, sizeof(int));
-	plp = calloc(n, sizeof(bam_pileup1_t*));
+	n_plp = (int *)calloc(n, sizeof(int));
+	plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
 	int line_num = 0;
 	// Write header
 	// stderr ONLY for this development phase.
@@ -222,9 +220,10 @@ int depth_main(int argc, char *argv[])
 	putc('\n', stdout);
 	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
 		char *p, *q;
-		int tid, start, stop, pos, region_len;
+		int tid, start, stop, pos, region_len, arr_ind;
 		double raw_mean, dmp_mean, raw_stdev, dmp_stdev;
 		bam_mplp_t mplp;
+		uint64_t *raw_sort_array, *dmp_sort_array;
 
 		for (p = q = str.s; *p && *p != '\t'; ++p);
 		if (*p != '\t') goto bed_error;
@@ -245,10 +244,10 @@ int depth_main(int argc, char *argv[])
 		for(i = 0; i < n; ++i) {
 			if(aux[i]->dmp_counts)
 				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->dmp_counts = calloc(region_len, sizeof(uint64_t));
+			else aux[i]->dmp_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
 			if(aux[i]->raw_counts)
 				aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->raw_counts = calloc(region_len, sizeof(uint64_t));
+			else aux[i]->raw_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
 		}
 		if(*p == '\t') {
 			q = ++p;
@@ -265,7 +264,7 @@ int depth_main(int argc, char *argv[])
 		mplp = bam_mplp_init(n, read_bam, (void**)aux);
 		bam_mplp_set_maxcnt(mplp, max_depth);
 		memset(counts, 0, sizeof(uint64_t) * n);
-		int arr_ind = 0;
+		arr_ind = 0;
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= start && pos < stop) {
 				for (i = 0; i < n; ++i) {
@@ -295,8 +294,8 @@ int depth_main(int argc, char *argv[])
 		 */
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
-		uint64_t *raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
-		uint64_t *dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
+		raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
+		dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
 		for(i = 0; i < n; ++i) {
 			memcpy(raw_sort_array, aux[i]->raw_counts, region_len * sizeof(uint64_t));
 			qsort(raw_sort_array, region_len, sizeof(uint64_t), &u64cmp);
@@ -344,6 +343,5 @@ bed_error:
 	free(aux); free(idx);
 	free(str.s);
 	free(bedpath);
-	sam_global_args_free(&ga);
 	return(EXIT_SUCCESS);
 }

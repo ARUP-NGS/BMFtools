@@ -1384,13 +1384,13 @@ static void merge_usage(FILE *to)
 
 int bam_merge(int argc, char *argv[])
 {
-	int c, cmpkey = 0, flag = 0, ret = 0, n_threads = 0, level = -1;
+	int c, cmpkey = 0, flag = 0, ret = 0, n_threads = 0, level = -1, nargcfiles;
 	char *fn_headers = NULL, *reg = NULL, mode[12];
 	long random_seed = (long)time(NULL);
 	char** fn = NULL;
 	int fn_size = 0;
 
-	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+	sam_global_args ga = {0};
 	static const struct option lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),
 		{ NULL, 0, NULL, 0 }
@@ -1421,7 +1421,7 @@ int bam_merge(int argc, char *argv[])
 			char **fn_read = hts_readlines(optarg, &nfiles);
 			if (fn_read) {
 				// Append to end of array
-				fn = realloc(fn, (fn_size+nfiles) * sizeof(char*));
+				fn = (char **)realloc(fn, (fn_size+nfiles) * sizeof(char*));
 				if (fn == NULL) { ret = 1; goto end; }
 				memcpy(fn+fn_size, fn_read, nfiles * sizeof(char*));
 				fn_size += nfiles;
@@ -1454,10 +1454,10 @@ int bam_merge(int argc, char *argv[])
 		}
 	}
 
-	int nargcfiles = argc - (optind+1);
+	nargcfiles = argc - (optind+1);
 	if (nargcfiles > 0) {
 		// Add argc files to end of array
-		fn = realloc(fn, (fn_size+nargcfiles) * sizeof(char*));
+		fn = (char **)realloc(fn, (fn_size+nargcfiles) * sizeof(char*));
 		if (fn == NULL) { ret = 1; goto end; }
 		memcpy(fn+fn_size, argv + (optind+1), nargcfiles * sizeof(char*));
 	}
@@ -1582,7 +1582,7 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 {
 	uint64_t li;
 	int i;
-	samFile** fps = calloc(h->n_targets + 1, sizeof(samFile *));
+	samFile **fps = (samFile **)calloc(h->n_targets + 1, sizeof(samFile *));
 	char tmpbuf[200];
 	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
 	fps[0] = sam_open_format(tmpbuf, mode, fmt);
@@ -1598,8 +1598,8 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 
 	for(li = 0; li < l; ++li) sam_write1(fps[split_index(buf[li])], h, buf[li]);
 
-	for(li = 0; li < h->n_targets + 1;++li)
-		if(fps[li]) sam_close(fps[li]);
+	for(i = 0; i < h->n_targets + 1;++i)
+		if(fps[i]) sam_close(fps[i]);
 	free(fps);
 }
 
@@ -1648,7 +1648,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
 	worker_t *w;
 
 	if (n_threads < 1) n_threads = 1;
-	if (k < n_threads * 64) n_threads = 1; // use a single thread if we only sort a small batch of records
+	if ((int64_t)k < n_threads * 64) n_threads = 1; // use a single thread if we only sort a small batch of records
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	w = (worker_t*)calloc(n_threads, sizeof(worker_t));
@@ -1693,10 +1693,11 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 					  int is_se)
 {
 	int ret = -1, i, n_files = 0;
-	size_t mem, max_k, k, max_mem;
+	size_t mem, max_k, k, max_mem, count;
 	bam_hdr_t *header = NULL;
 	samFile *fp;
 	bam1_t *b, **buf;
+	char **fns;
 
 	if (n_threads < 2) n_threads = 1;
 	g_cmpkey = cmpkey;
@@ -1716,7 +1717,7 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 	if (cmpkey) change_SO(header, "queryname");
 	else change_SO(header, "coordinate");
 	// write sub files
-	size_t count = 0;
+	count = 0;
 	for (;;) {
 		if (k == max_k) {
 			size_t kk, old_max = max_k;
@@ -1756,7 +1757,6 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 		else
 			write_buffer(fnout, modeout, k, buf, header, n_threads, out_fmt);
 	} else { // then merge
-		char **fns;
 		LOG_DEBUG("n_files before sort_blocks: %d.\n", n_files);
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
 		LOG_INFO("merging from %d files...\n", n_files);
@@ -1833,7 +1833,7 @@ int sort_main(int argc, char *argv[])
 	char tmpprefix[200];
 	rand_string(tmpprefix, 30);
 	kstring_t fnout_buffer = { 0, 0, NULL };
-	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+	sam_global_args ga = (sam_global_args){0};
 
 	static const struct option lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),

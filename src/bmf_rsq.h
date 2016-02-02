@@ -33,7 +33,7 @@
 typedef bam1_t *bam1_p;
 
 typedef struct {
-	int n, max;
+	size_t n, max;
 	bam1_t **a;
 } tmp_stack_t;
 

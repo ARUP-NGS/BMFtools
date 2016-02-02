@@ -46,6 +46,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"-m:\t\tMinimum family size for inclusion. Default: 0.\n"
 			"-M:\t\tMaximum family size for inclusion. Default: %i.\n"
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
+			"-D:\t\tFlag to only calculate error rates for non-duplex reads.\n"
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			"-P:\t\tOnly include proper pairs.\n"
 			, INT_MAX);

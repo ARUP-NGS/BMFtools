@@ -6,7 +6,7 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 		if(!stack->a) {
-			LOG_ERROR("Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
+			LOG_ERROR("Failed to reallocate memory for %lu bam1_t * objects. Abort!\n", stack->max);
 		}
 	} else if(n < stack->n){
 		for(uint64_t i = stack->n;i > n;) bam_destroy1(stack->a[--i]);
@@ -207,7 +207,7 @@ void bam2ffq(bam1_t *b, FILE *fp)
 
 void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
-	for(int i = 0; i < stack->n; ++i) {
+	for(unsigned i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			uint8_t *data;
 			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
@@ -241,7 +241,7 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 {
 	char *aname = (char *)bam_get_qname(a);
 	char *bname = (char *)bam_get_qname(b);
-	int l_qname = a->core.l_qname - 1; // Skip the terminal null in comparison.
+	unsigned l_qname = a->core.l_qname - 1; // Skip the terminal null in comparison.
 	int hd = 0;
 	for(uint64_t i = 0; i < l_qname; ++i) {
 		if(aname[i] != bname[i]) {
@@ -254,8 +254,8 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *settings)
 {
-	for(int i = 0; i < stack->n; ++i) {
-		for(int j = i + 1; j < stack->n; ++j) {
+	for(unsigned i = 0; i < stack->n; ++i) {
+		for(unsigned j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
@@ -345,12 +345,6 @@ int rsq_main(int argc, char *argv[])
 {
 	int c;
 	char wmode[4] = {'w', 'b', 0, 0};
-	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
-
-	static const struct option lopts[] = {
-		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
-		{ NULL, 0, NULL, 0 }
-	};
 
 	pr_settings_t *settings = (pr_settings_t *)malloc(sizeof(pr_settings_t));
 	settings->fqh = NULL;
@@ -364,7 +358,7 @@ int rsq_main(int argc, char *argv[])
 
 	char fqname[200] = "";
 
-	while ((c = getopt_long(argc, argv, "l:f:t:aur?h", lopts, NULL)) >= 0) {
+	while ((c = getopt(argc, argv, "l:f:t:aur?h")) >= 0) {
 		switch (c) {
 		case 'r': settings->realign_unchanged = 1; break;
 		case 'u': settings->cmpkey = UNCLIPPED; break;
@@ -391,13 +385,13 @@ int rsq_main(int argc, char *argv[])
 	}
 
 
-	settings->in = sam_open_format(argv[optind], "rb", &ga.in);
+	settings->in = sam_open(argv[optind], "r");
 	settings->hdr = sam_hdr_read(settings->in);
 	if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
 		LOG_ERROR("input SAM does not have header. Abort!\n");
 	}
 
-	settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
+	settings->out = sam_open(argv[optind+1], wmode);
 	if (settings->in == 0 || settings->out == 0) {
 		LOG_ERROR("fail to read/write input files\n");
 	}

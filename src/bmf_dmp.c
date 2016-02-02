@@ -208,7 +208,7 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	str1.l += sizeof(suffix);
 	str2 = str1; // Copy everything, including a pointer that str2 doesn't own.
 	str2.s = strdup(str1.s); // strdup the string.
-	for(int i = 0; i < str2.l - 1; ++i)
+	for(uint32_t i = 0; i < str2.l - 1; ++i)
 		if(str2.s[i] == 'R' && str2.s[i + 1] == '1')
 			str2.s[i + 1] = '2';
 
