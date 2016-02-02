@@ -87,7 +87,8 @@ void fm_destroy(fmerr_t *fm);
 enum err_flags {
 	REQUIRE_DUPLEX = 1,
 	REFUSE_DUPLEX = 2,
-	REQUIRE_PROPER = 4
+	REQUIRE_PROPER = 4,
+	REQUIRE_FP_PASS = 8
 };
 
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
@@ -124,7 +125,7 @@ static inline int pv2ph(double pv)
 static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
 
-#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen)\
+#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen, fpdata)\
 	do {\
         LOG_DEBUG("Got into cycle loop.\n");\
 		if(++ce->nread % 1000000 == 0) {\
@@ -133,8 +134,9 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		if((b->core.flag & 772) || \
 			b->core.qual < ce->minMQ || \
 			(ce->refcontig && tid_to_study != b->core.tid) ||\
+			((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) || \
 			((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||\
-		(ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
+			(ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
 			++ce->nskipped;\
 			LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));\
 			continue;\

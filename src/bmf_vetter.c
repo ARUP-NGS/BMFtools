@@ -206,7 +206,7 @@ int vet_core(aux_t *aux) {
 	case bcf:
 		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
 		if(!bcf_idx) {
-			LOG_ERROR("Could not load CSI index: %s\n");
+			LOG_ERROR("Could not load CSI index: %s\n", aux->vcf_fp->fn);
 		}
 		break;
 	default:
@@ -236,7 +236,6 @@ int vet_core(aux_t *aux) {
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 			if(vcf_idx)
 				vcf_iter = hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec);
 			else vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;

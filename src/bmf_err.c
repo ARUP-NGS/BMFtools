@@ -7,6 +7,27 @@ int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
 int err_cycle_main(int argc, char *argv[]);
 
+uint64_t get_max_obs(khash_t(obs) *hash)
+{
+	uint64_t ret = 0;
+	for(khiter_t k = kh_begin(hash); k != kh_end(hash); ++k)
+		if(kh_exist(hash, k))
+			if(kh_val(hash, k).obs > ret)
+				ret = kh_val(hash, k).obs;
+	return ret;
+}
+
+
+uint64_t get_max_err(khash_t(obs) *hash)
+{
+	uint64_t ret = 0;
+	for(khiter_t k = kh_begin(hash); k != kh_end(hash); ++k)
+		if(kh_exist(hash, k))
+			if(kh_val(hash, k).err > ret)
+				ret = kh_val(hash, k).err;
+	return ret;
+}
+
 int err_main_usage(FILE *fp, int retcode)
 {
 	fprintf(fp,
@@ -46,6 +67,7 @@ int err_fm_usage(FILE *fp, int retcode)
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			"-P:\t\tOnly include proper pairs.\n"
+			"-F:\t\tRequire that the FP tag be present and nonzero.\n"
 			);
 	exit(retcode);
 	return retcode; // This never happens.
@@ -104,7 +126,7 @@ void err_cycle_report(FILE *fp, cycle_err_t *ce)
 	}
 }
 
-int int32_cmp(void *a, void *b)
+int int32_cmp(const void *a, const void *b)
 {
 	return *((int *)a) - *((int *)b);
 }
@@ -131,7 +153,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			f->bedpath? f->bedpath: "N/A", f->minMQ,
 			f->flag & REQUIRE_DUPLEX ? "True": "False",
 			f->flag & REFUSE_DUPLEX ? "True": "False");
-	fprintf(fp, "##STATS\n##nread:\"%lu\"\n##nskipped:\"%lu\"\n", f->nread, f->nskipped);
+	fprintf(fp, "##STATS\n##nread:%lu\n##nskipped:%lu\n", f->nread, f->nskipped);
 	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Errors\tRead 1 Counts\tRead 2 Errors\tRead 2 Counts\n");
 	int *tmp = (int *)malloc(shared_keys->n_occupied * sizeof(int));
 	for(k = kh_begin(shared_keys), khr = 0; k != kh_end(shared_keys); ++k)
@@ -221,7 +243,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
@@ -234,7 +256,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	khash_t(obs) *hash;
-	uint8_t *seq, *drdata;
+	uint8_t *seq, *drdata, *fpdata;
 	uint32_t *cigar, *pv_array;
 	khiter_t k;
 	bam1_t *b = bam_init1();
@@ -245,14 +267,16 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		DR = ((drdata = bam_aux_get(b, "DR")) != NULL) ? bam_aux2i(drdata): 0;
+		FP = ((fpdata = bam_aux_get(b, "FP")) != NULL) ? bam_aux2i(fpdata): 0;
+		// Pass reads without FP tag.
 		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, QCFAIL
 				b->core.qual < f->minMQ || //  minMQ
 				(f->refcontig && tid_to_study != b->core.tid) ||
 				((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // improper pair
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
 			((f->flag & REQUIRE_DUPLEX) && !DR) || // Requires  duplex
-			((f->flag & REFUSE_DUPLEX) && DR) || // Refuses  duplex
-			(bam_aux2i(bam_aux_get(b, "FP")) == 0) /* Fails barcode QC */ ) {
+			((f->flag & REFUSE_DUPLEX) && DR) ||
+			((f->flag & REQUIRE_FP_PASS) && FP == 0)) /* Fails barcode QC */ {
 				++f->nskipped;
 				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
 				continue;
@@ -275,6 +299,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pos = b->core.pos;
 		is_rev = b->core.flag & BAM_FREVERSE;
+		LOG_DEBUG("Max err count in hashmap: %lu.\n", get_max_err(hash));
+		LOG_DEBUG("Max obs count in hashmap: %lu.\n", get_max_obs(hash));
 		if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
@@ -343,12 +369,12 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
 		}
 	}
-	uint8_t *seq;
+	uint8_t *seq, *fpdata;
 	uint32_t *cigar;
 	obserr_t *arr;
-	cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen);
+	cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen, fpdata);
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen);
+		cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen, fpdata);
 	}
 	LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", ce->nread, ce->nskipped);
 	cond_free(ref);
@@ -393,7 +419,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
 			((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
-			(pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
+			((f->flag & REQUIRE_FP_PASS) && pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
 				++f->nskipped;
 				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
 				continue;
@@ -932,12 +958,13 @@ int err_main_main(int argc, char *argv[])
 	int maxFM = INT_MAX;
 	int flag = 0;
 	uint32_t minPV = 0;
-	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?dDp")) >= 0) {
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?FdDp")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'D': flag |= REFUSE_DUPLEX; break;
 		case 'P': flag |= REQUIRE_PROPER; break;
+		case 'F': flag |= REQUIRE_FP_PASS; break;
 		case 'm': minFM = atoi(optarg); break;
 		case 'M': maxFM = atoi(optarg); break;
 		case 'f': df = open_ofp(optarg); break;
@@ -1079,7 +1106,7 @@ int err_fm_main(int argc, char *argv[])
 	char *bedpath = NULL;
 	int flag = 0, padding = -1, minMQ = 0, c;
 	uint32_t minPV;
-	while ((c = getopt(argc, argv, "$:p:b:r:o:a:h?dP")) >= 0) {
+	while ((c = getopt(argc, argv, "$:p:b:r:o:a:Fh?dP")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -1089,6 +1116,7 @@ int err_fm_main(int argc, char *argv[])
 		case 'p': padding = atoi(optarg); break;
 		case 'P': flag |= REQUIRE_PROPER; break;
 		case '$': minPV = strtoul(optarg, NULL, 0); break;
+		case 'F': flag |= REQUIRE_FP_PASS; break;
 		case '?': case 'h': return err_fm_usage(stderr, EXIT_SUCCESS);
 		}
 	}
