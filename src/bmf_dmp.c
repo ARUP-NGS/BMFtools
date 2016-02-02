@@ -351,7 +351,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
  */
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
-#ifdef WRITE_BARCODE_FQ
+#if WRITE_BARCODE_FQ
 	FILE *bcfp1 = fopen("tmp.molbc.r1.fq", "w");
 	FILE *bcfp2 = fopen("tmp.molbc.r2.fq", "w");
 #endif
@@ -386,7 +386,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
 	rseq1->barcode[settings->blen] = '\0';
-#ifdef WRITE_BARCODE_FQ
+#if WRITE_BARCODE_FQ
 	write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
 #endif
 	if(switch_reads) {
@@ -411,7 +411,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	uint64_t count = 0;
 	while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)) {
-#ifdef WRITE_BARCODE_FQ
+#if WRITE_BARCODE_FQ
 		write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
 #endif
 		if(UNLIKELY(++count % settings->notification_interval == 0))

@@ -19,7 +19,7 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -DWRITE_BARCODE_FQ
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
