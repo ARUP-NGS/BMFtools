@@ -53,7 +53,7 @@ void vetter_usage(int retcode)
 	sprintf(buf,
 			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
-			"-b, --bedpath\tPath to bed file to only validate variants in said region\n"
+			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
 			"-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
 			"-2, --skip-secondary\tSkip secondary alignments.\n"
 			"-S, --skip-supplementary\tSkip supplementary alignments.\n"
@@ -234,6 +234,7 @@ int vet_core(aux_t *aux) {
 			tid = kh_key(aux->bed, ki);
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
+			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
 			if(vcf_idx)
@@ -245,13 +246,12 @@ int vet_core(aux_t *aux) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
-				if(tid != vrec->rid) {
+				if(vrec->rid > tid) {
 					// No variants on this contig.
 					// Increment ki to go to the next contig.
 					++ki;
 					goto hash_label;
 				}
-				assert(tid == vrec->rid);
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
@@ -259,7 +259,7 @@ int vet_core(aux_t *aux) {
 				if(!plp) {
 					LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
 				}
-				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
+				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
 				LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
@@ -272,7 +272,8 @@ int vet_core(aux_t *aux) {
 
 				for(unsigned i = 0; i < vrec->n_allele; ++i)
 					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos);
-				bcf_update_format(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
+				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -355,9 +356,10 @@ int vetter_main(int argc, char *argv[])
 	// Open bed file
 	// if no bed provided, do whole genome.
 	if(!bed) {
-		bed = strdup("FullGenomeAnalysis");
-		LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
-		aux.bed = build_ref_hash(aux.header);
+		LOG_ERROR("No bed file provided. Required. Abort!\n");
+		//bed = strdup("FullGenomeAnalysis");
+		//LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
+		//aux.bed = build_ref_hash(aux.header);
 	} else aux.bed = parse_bed_hash(bed, aux.header, padding);
 	//check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
 	aux.vcf_fp = vcf_open(argv[optind], "r");
