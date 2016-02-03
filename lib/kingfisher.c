@@ -20,6 +20,31 @@
 // TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output
 // rather than writing to a temporary object and writing that later.
 
+void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev)
+{
+	int i, diffs = kfp->length * kfp->readlen;
+	for(i = 0; i < kfp->readlen; ++i) {
+		const int argmaxret = kfp_argmax(kfp, i);
+		const int index = argmaxret + i * 5;
+		dmp_pos(kfp, bufs, argmaxret, i, index, diffs);
+	}
+	kstring_t ks = {0, 0, NULL}, tmp = {0, 0, NULL};
+	kfill_agrees(kfp->readlen, bufs->agrees, &ks, &tmp);
+	kputc('\t', &ks);
+	kfill_pv(kfp->readlen, bufs->cons_quals, &ks, &tmp);
+	fprintf(handle, "@%s %s\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%0.6f\tDR:i:0\n%s\n+\n", kfp->barcode + 1,
+			ks.s, kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
+			(double) diffs / kfp->length,
+			bufs->cons_seq_buffer);
+	for(i = 0; i < kfp->readlen; ++i) fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);
+	fputc('\n', handle);
+	return;
+}
+
+
+// TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output
+// rather than writing to a temporary object and writing that later.
+
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev)
 {
 	int i, diffs = kfp->length * kfp->readlen;

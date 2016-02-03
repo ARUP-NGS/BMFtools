@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
+#include "htslib/kstring.h"
 #include "include/igamc_cephes.h"
 #include "lib/mseq.h"
 #include "lib/rescaler.h"
@@ -71,9 +72,24 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
 static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
+void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
 CONST static inline int kfp_argmax(KingFisher_t *kfp, int index);
 CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
+
+static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks, kstring_t *tmp)
+{
+	kputsn("PV:B:I", 6, ks);
+	for(int i = 0; i < readlen; ++i)
+		kputc(',', ks), ksprintf(tmp, "%u", quals[i]), kputs(tmp->s, ks);
+}
+
+static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks, kstring_t *tmp)
+{
+	kputsn("FA:B:I", 6, ks);
+	for(int i = 0; i < readlen; ++i)
+		kputc(',', ks), ksprintf(tmp, "%u", agrees[i]), kputs(tmp->s, ks);
+}
 
 /*
  * @func fill_fa
@@ -86,10 +102,8 @@ static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
 {
 	char tmpbuf[7];
 	memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
-	for(int i = 0; i < readlen; ++i) {
-		sprintf(tmpbuf, ",%" PRIu16 "", agrees[i]);
-		strcat(buffer, tmpbuf);
-	}
+	for(int i = 0; i < readlen; ++i)
+		sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
 }
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
