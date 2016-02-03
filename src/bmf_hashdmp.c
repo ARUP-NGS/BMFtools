@@ -210,8 +210,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		cfor->value = init_kfp(tmp->readlen);
 		HASH_ADD_STR(hfor, id, cfor);
 		pushback_kseq(cfor->value, seq, blen);
-	}
-	else {
+	} else {
 		cp_view2buf(bs_ptr + 1, crev->id);
 		crev->value = init_kfp(tmp->readlen);
 		HASH_ADD_STR(hrev, id, crev);
@@ -251,15 +250,18 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
+	uint64_t duplex = 0, non_duplex = 0;
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
+			++non_duplex;
 			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
 			continue;
 		}
+		++duplex;
 		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
@@ -268,6 +270,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
 	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp);
 	LOG_DEBUG("Cleaning up.\n");
+	LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu\n", duplex, non_duplex);
 	gzclose(fp);
 	fclose(in_handle), fclose(out_handle);
 	kseq_destroy(seq);
