@@ -56,6 +56,9 @@ int hash_dmp_main(int argc, char *argv[])
 		exit(1);
 	}
 	if(argc - 1 == optind) infname = strdup(argv[optind]);
+	else {
+		LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
+	}
 	stranded_analysis ? stranded_hash_dmp_core(infname, outfname) :hash_dmp_core (infname, outfname);
 	cond_free(outfname); cond_free(infname);
 	return 0;
@@ -109,9 +112,16 @@ void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *
 }
 
 
-void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp)
+void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp, uint64_t *count)
 {
+	LOG_DEBUG("Beginning se_hash_process.\n");
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
+		++*count;
+#if !NDEBUG
+		if(*count % 10) {
+			LOG_DEBUG("Count: %lu.\n", count);
+		}
+#endif
 		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
@@ -127,7 +137,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	if(!in_handle) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
-    }
+	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	// Initialized kseq
@@ -136,7 +146,7 @@ void hash_dmp_core(char *infname, char *outfname)
 		fprintf(stderr, "[E:%s]: Could not open fastq file (%s). Abort mission!\n",
 				__func__, strcmp(infname, "-") == 0 ? "stdin": infname);
 		exit(EXIT_FAILURE);
-    }
+	}
 	char *bs_ptr = barcode_mem_view(seq);
 	const int blen = infer_barcode_length(bs_ptr);
 #if !NDEBUG
@@ -170,7 +180,7 @@ void hash_dmp_core(char *infname, char *outfname)
 		} else pushback_kseq(tmp_hk->value, seq, blen);
 	}
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
-	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp);
+	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count);
 	gzclose(fp);
 	fclose(out_handle);
 	kseq_destroy(seq);
@@ -184,9 +194,10 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	if(!in_handle) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
-    }
+	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
+	LOG_INFO("Seq: %p.\n", (void *)seq);
 	// Initialized kseq
 	int l = kseq_read(seq);
 	if(l < 0) {
@@ -205,7 +216,9 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	hk_t *crev = (hk_t *)malloc(sizeof(hk_t)); // Current reverse, current forward.
 	hk_t *cfor = (hk_t *)malloc(sizeof(hk_t));
 	hk_t *tmp_hkr = crev, *tmp_hkf = cfor;
+	uint64_t count = 1, fcount = 0;
 	if(*bs_ptr == 'F') {
+		++fcount;
 		cp_view2buf(bs_ptr + 1, cfor->id);
 		cfor->value = init_kfp(tmp->readlen);
 		HASH_ADD_STR(hfor, id, cfor);
@@ -217,7 +230,6 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		pushback_kseq(hrev->value, seq, blen);
 	}
 
-	uint64_t count = 0, fcount = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
@@ -268,7 +280,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		cond_free(crev); cond_free(cfor);
 	}
 	duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
-	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp);
+	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp, &non_duplex);
 	LOG_DEBUG("Cleaning up.\n");
 	LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu\n", duplex, non_duplex);
 	gzclose(fp);

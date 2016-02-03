@@ -2,12 +2,16 @@
 
 void splitterhash_destroy(splitterhash_params_t *params)
 {
+	/*
+	 * Is this freed by splitterhash_params?
 	for(int i = 0; i < params->n; ++i) {
+		LOG_DEBUG("i: %i.\n", i);
 		cond_free(params->outfnames_r1[i]);
 		cond_free(params->outfnames_r2[i]);
 		cond_free(params->infnames_r1[i]);
 		cond_free(params->infnames_r2[i]);
 	}
+	*/
 	cond_free(params->outfnames_r1);
 	cond_free(params->outfnames_r2);
 	cond_free(params->infnames_r1);
@@ -81,9 +85,9 @@ void splitter_destroy(mark_splitter_t *var)
 	for(int i = 0; i < var->n_handles; i++) {
 		cond_free(var->fnames_r1[i]); cond_free(var->fnames_r2[i]);
 	}
-	free(var->tmp_out_handles_r1);
-	free(var->tmp_out_handles_r2);
-	free(var);
+	cond_free(var->tmp_out_handles_r1);
+	cond_free(var->tmp_out_handles_r2);
+	cond_free(var);
 }
 
 

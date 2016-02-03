@@ -127,7 +127,7 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
 #define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen, fpdata)\
 	do {\
-        LOG_DEBUG("Got into cycle loop.\n");\
+		LOG_DEBUG("Got into cycle loop.\n");\
 		if(++ce->nread % 1000000 == 0) {\
 			LOG_INFO("Records read: %lu.\n", ce->nread);\
 		}\
@@ -155,7 +155,7 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		pos = b->core.pos;\
 		is_rev = b->core.flag & BAM_FREVERSE;\
 		obsarr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;\
-        LOG_DEBUG("obsarr pointer: %p.\n", (void *)obsarr);\
+		LOG_DEBUG("obsarr pointer: %p.\n", (void *)obsarr);\
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {\
 			length = bam_cigar_oplen(*cigar);\
 			switch(bam_cigar_op(*cigar++)) {\

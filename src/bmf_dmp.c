@@ -362,7 +362,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
 		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
-    }
+	}
 	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter = init_splitter(settings);
@@ -396,7 +396,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	}
-    pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
+	pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 	mask_mseq(rseq1, n_len); mask_mseq(rseq2, n_len);
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
@@ -416,6 +416,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Sets pass_fail
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+#if WRITE_BARCODE_FQ
+		write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
+#endif
 		// Update mseqs
 		update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
 		update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
@@ -604,7 +607,7 @@ int dmp_main(int argc, char *argv[])
 #endif
 	if(!settings.ffq_prefix) make_outfname(&settings);
 	params = init_splitterhash(&settings, splitter);
-	// Run core.
+	// Run cores.
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
 	// Remove temporary split files.

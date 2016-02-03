@@ -67,7 +67,7 @@ struct __bam_plp_t {
 		}*/
 #define VETTER_OPTIONS \
 	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
-	{"min-family-size",          optional_argument, NULL, 's'}, \
+	{"min-family-size",		  optional_argument, NULL, 's'}, \
 	{"min-fraction-agreed",		 optional_argument, NULL, 'f'}, \
 	{"min-mapping-quality",		 optional_argument, NULL, 'm'}, \
 	{"min-phred-quality",		 optional_argument, NULL, 'v'}, \
