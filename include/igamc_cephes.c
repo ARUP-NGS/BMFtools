@@ -603,7 +603,11 @@ Relative error spread =  8.8e-4
 int sgngam = 0;
 extern int sgngam;
 
+#ifdef __cplusplus
+double gamma(double x) throw()
+#else
 double gamma(double x)
+#endif
 {
 double p, q, z;
 int i;

@@ -57,16 +57,17 @@ typedef struct KingFisher {
 	char pass_fail;
 } KingFisher_t;
 
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
-static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
-
-
-
 
 
 extern double igamc(double a, double x);
 
+#ifdef __cpluslus
+extern "C" {
+#endif
 
+
+static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
+static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
 static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
@@ -142,5 +143,9 @@ CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
 	return arr_max_u32(kfp->phred_sums, index);
 }
 
+
+#ifdef __cpluslus
+}
+#endif
 
 #endif /*KINGFISHER_H*/

@@ -45,6 +45,6 @@ typedef struct famstats {
 typedef struct famstat_settings {
 	uint64_t notification_interval;
 	uint32_t minMQ;
-	uint32_t minFM;
+	int minFM;
 } famstat_settings_t;
 #endif /* BMF_FAMSTATS_H */

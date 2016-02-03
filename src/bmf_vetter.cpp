@@ -237,7 +237,7 @@ int vet_core(aux_t *aux) {
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx, tid, start, stop, &tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			vcf_iter = vcf_idx ? hts_itr_query((const hts_idx_t *)vcf_idx, tid, start, stop, &tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 
 			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec, start, tid)) >= 0) {
 				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
@@ -370,11 +370,9 @@ int vetter_main(int argc, char *argv[])
 	}
 
 	// Add lines to header
-	for(int i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
-		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) {
-			LOG_ERROR("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
-		}
-	}
+	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i)
+		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]))
+			fprintf(stderr, "[E:%s:%d] Could not add header line '%s'. Abort!\n", __func__, __LINE__, bmf_header_lines[i]), exit(EXIT_FAILURE);
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
 		kstring_t tmpstr = {0};

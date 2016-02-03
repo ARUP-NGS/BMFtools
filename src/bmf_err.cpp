@@ -135,7 +135,7 @@ int int32_cmp(const void *a, const void *b)
 void err_fm_report(FILE *fp, fmerr_t *f)
 {
 	LOG_DEBUG("Beginning err fm report.\n");
-	int khr, fm, i;
+	int khr, fm;
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
 	khash_t(obs_union) *key_union = kh_init(obs_union);
@@ -166,7 +166,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 		if(kh_exist(key_union, k))
 			tmp[khr++] = kh_key(key_union, k);
 	qsort(tmp, key_union->n_occupied, sizeof(int), &int32_cmp);
-	for(i = 0; i < key_union->n_occupied; ++i) {
+	for(unsigned i = 0; i < key_union->n_occupied; ++i) {
 		fm = tmp[i];
 		fprintf(fp, "%i\t", fm);
 
@@ -202,8 +202,8 @@ void err_report(FILE *fp, fullerr_t *e)
 	uint64_t n2_obs = 0, n2_err = 0, n2_ins = 0;
 	// n_ins is number with insufficient observations to report.
 	for(int i = 0; i < 4; ++i) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int k = 0; k < e->l; ++k) {
+		for(unsigned j = 0; j < nqscores; ++j) {
+			for(unsigned k = 0; k < e->l; ++k) {
 				n1_obs += e->r1->obs[i][j][k]; n1_err += e->r1->err[i][j][k];
 				n2_obs += e->r2->obs[i][j][k]; n2_err += e->r2->err[i][j][k];
 				if(e->r1->obs[i][j][k] < min_obs) ++n1_ins;
@@ -223,7 +223,7 @@ void err_report(FILE *fp, fullerr_t *e)
 
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
-		for(int j = 0; j < nqscores; ++j) {
+		for(unsigned j = 0; j < nqscores; ++j) {
 			cond_free(e->obs[i][j]);
 			cond_free(e->err[i][j]);
 			cond_free(e->final[i][j]);
@@ -720,9 +720,9 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 
 void impute_scores(fullerr_t *f)
 {
-	int j, i;
+	unsigned j, i;
 	uint64_t l;
-	for(i = 0; i < 4; ++i)
+	for(i = 0; i < 4u; ++i)
 		for(l = 0; l < f->l; ++l)
 			for(j = 0; j < nqscores; ++j)
 				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2 > 0 ? f->r1->qdiffs[i][l] + j + 2: 0,
@@ -735,7 +735,7 @@ void fill_qvals(fullerr_t *f)
 	uint64_t l;
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < f->l; ++l) {
-			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
+			for(unsigned j = 1; j < nqscores; ++j) { // Skip qualities of 2
 				f->r1->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
 				f->r2->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
 				f->r1->qobs[i][l] += f->r1->obs[i][j][l]; f->r2->qobs[i][l] += f->r2->obs[i][j][l];
@@ -760,7 +760,7 @@ void fill_qvals(fullerr_t *f)
 void fill_sufficient_obs(fullerr_t *f)
 {
 	for(int i = 0; i < 4; ++i) {
-		for(int j = 0; j < nqscores; ++j) {
+		for(unsigned j = 0; j < nqscores; ++j) {
 			for(uint64_t l = 0; l < f->l; ++l) {
 				if(f->r1->obs[i][j][l] > min_obs)
 					f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
@@ -775,11 +775,10 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
 	FILE *dictwrite = fopen("dict.txt", "w");
 	fprintf(dictwrite, "{\n\t");
-	int i, j;
-	uint32_t l;
+	unsigned i, j, l;
 	for(l = 0; l < f->l; ++l) {
 		for(j = 0; j < nqscores; ++j) {
-			for(i = 0; i < 4; ++i) {
+			for(i = 0; i < 4u; ++i) {
 				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->obs[i][j][l]);
 				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->obs[i][j][l]);
 				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->err[i][j][l]);

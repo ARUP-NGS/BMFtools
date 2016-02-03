@@ -64,6 +64,10 @@ enum {
     {"reference",         required_argument, NULL, SAM_OPT_VAL(o5, SAM_OPT_REFERENCE)}
     //{"verbose",           no_argument,       NULL, SAM_OPT_VERBOSE}
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Processes a standard "global" samtools long option.
  *
@@ -95,5 +99,9 @@ void sam_global_opt_help(FILE *fp, const char *shortopts);
 
 void sam_global_args_init(sam_global_args *ga);
 void sam_global_args_free(sam_global_args *ga);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -10,4 +10,7 @@ typedef struct {
 	uint64_t target;
 } target_counts_t;
 
+
+target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval);
+
 #endif /* BMF_TARGET_H */

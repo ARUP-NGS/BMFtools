@@ -45,7 +45,7 @@ typedef struct {
 	int minMQ;
 	int minFM;
 	int requireFP;
-} aux_t;
+} vaux_t;
 
 void depth_usage(int retcode)
 {
@@ -111,7 +111,7 @@ static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 
 static int read_bam(void *data, bam1_t *b)
 {
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	vaux_t *aux = (vaux_t*)data; // data in fact is a pointer to an auxiliary structure
 	int ret;
 	for(;;)
 	{
@@ -133,7 +133,7 @@ int depth_main(int argc, char *argv[])
 	kstring_t str;
 	kstream_t *ks;
 	hts_idx_t **idx;
-	aux_t **aux;
+	vaux_t **aux;
 	char **col_names;
 	int *n_plp, dret, i, n, c, minMQ = 0;
 	uint64_t *counts;
@@ -166,10 +166,10 @@ int depth_main(int argc, char *argv[])
 	memset(&str, 0, sizeof(kstring_t));
 	n = argc - optind;
 	fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
-	aux = (aux_t **)calloc(n, sizeof(aux_t*));
+	aux = (vaux_t **)calloc(n, sizeof(vaux_t*));
 	idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
 	for (i = 0; i < n; ++i) {
-		aux[i] = (aux_t *)calloc(1, sizeof(aux_t));
+		aux[i] = (vaux_t *)calloc(1, sizeof(vaux_t));
 		aux[i]->minMQ = minMQ;
 		aux[i]->minFM = minFM;
 		aux[i]->requireFP = requireFP;

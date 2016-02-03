@@ -34,13 +34,13 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 {
 	size_t size = MAX2(stats->fm->n_occupied, stats->rc->n_occupied);
 	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * size);
-	int i;
+	unsigned i;
 	fprintf(fp, "#Family size\tNumber of families\n");
 	LOG_DEBUG("Copy FMs over into fm_t array. Size: %lu. fm size: %u. rc size: %u.\n", size, stats->fm->n_occupied, stats->rc->n_occupied);
 	for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
 		if(!kh_exist(stats->fm, stats->ki)) continue;
 		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = (fm_t){.fm = kh_key(stats->fm, stats->ki), .n = kh_val(stats->fm, stats->ki)};
+		fms[i++] = (fm_t){kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
 		LOG_DEBUG("Value of i after incrementing but not using: %i.\n", i);
 	}
 	LOG_DEBUG("Qsorting fm_t array.\n");
@@ -51,7 +51,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki)) continue;
 		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = (fm_t){.fm = kh_key(stats->rc, stats->ki), .n = kh_val(stats->rc, stats->ki)};
+		fms[i++] = (fm_t){kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
 	}
 	LOG_DEBUG("Qsorting fm_t array.\n");
 	qsort(fms, stats->rc->n_occupied, sizeof(fm_t), fm_cmp);
@@ -162,10 +162,10 @@ static void print_stats(famstats_t *stats, FILE *fp)
 	fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
 	fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
 	fprintf(fp, "#Number failing flag filters: %lu.\n", stats->n_flag_fail);
-	fprintf(fp, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(fp, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(fp, "#Summed FM (total founding reads): %lu.\n", stats->allfm_sum);
+	fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu.\n", stats->realfm_sum);
+	fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu.\n", stats->allrc_sum);
+	fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu.\n", stats->realrc_sum);
 	fprintf(fp, "#RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
 	fprintf(fp, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
 	fprintf(fp, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);

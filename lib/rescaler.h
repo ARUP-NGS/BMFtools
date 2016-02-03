@@ -12,7 +12,7 @@
 		int _readlen = count_lines(settings.rescaler_path);\
 		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
 			for(int j##settings = 0; j##settings < _readlen; ++j##settings) {\
-				for(int k##settings = 0; k##settings < nqscores; ++k##settings) {\
+				for(unsigned k##settings = 0; k##settings < nqscores; ++k##settings) {\
 					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
 				}\
 				cond_free(settings.rescaler[i##settings][j##settings]);\
@@ -20,6 +20,10 @@
 			cond_free(settings.rescaler[i##settings]);\
 		}\
 		cond_free(settings.rescaler)\
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * @func rescale_qscore
@@ -77,7 +81,7 @@ static inline char ****parse_rescaler(char *qual_rescale_fname)
 		ret[i] = (char ***)malloc(readlen * sizeof(char **));
 		for(int j = 0; j < readlen; ++j) {
 			ret[i][j] = (char **)malloc(nqscores * sizeof(char *));
-			for(int k = 0; k < nqscores; ++k) {
+			for(unsigned k = 0; k < nqscores; ++k) {
 				ret[i][j][k] = (char *)malloc(4 * sizeof(char));
 			}
 		}
@@ -159,17 +163,17 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 		  exit(EXIT_FAILURE);
 	}
 	fclose(fp), fp = NULL;
-	const int arr_len = 2 * readlen * nqscores * 4;
+	const size_t arr_len = 2 * readlen * nqscores * 4;
 	char *ret = (char *)malloc(arr_len * sizeof(char));
 	memset(ret, -127, arr_len); // Set all of these char values to -127, which is definitely unprintable
 	char *tok = NULL;
 	size_t index = 0;
-	fprintf(stderr, "[D:%s] Parsing in array with read len %i from %s...\n", __func__,
+	fprintf(stderr, "[D:%s] Parsing in array with read len %lu from %s...\n", __func__,
 			arr_len, qual_rescale_fname);
 	int lnum;
 	for(lnum = 0; lnum < readlen; ++lnum) {
 		for(int readnum = 0; readnum < 2; ++readnum) {
-			for(int qnum = 0; qnum < nqscores; ++qnum) {
+			for(unsigned qnum = 0; qnum < nqscores; ++qnum) {
 				for(int bnum = 0; bnum < 4; ++bnum) {
 					tok = strtok(tok ? NULL : buffer, "|:,\n");
 					if(!tok)
@@ -203,5 +207,9 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 	free(buffer);
 	return ret;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ARRAY_PARSER_H

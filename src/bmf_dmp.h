@@ -22,6 +22,7 @@
 #include "bmf_hashdmp.h"
 
 extern int64_t ipow(int32_t, int32_t);
+extern void update_mseq(mseq*, kseq_t*, char*, tmp_mseq*, int, int);
 
 typedef void (*hash_dmp_fn)(char *, char *);
 

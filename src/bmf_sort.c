@@ -15,7 +15,7 @@ static inline int split_index(bam1_t *b)
 
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
-	uint32_t* target_iter = target;
+	uint32_t* target_iter = (uint32_t *)target;
 	size_t loops = size/4;
 	size_t i;
 	for (i = 0; i < loops; ++i) {
@@ -1833,7 +1833,8 @@ int sort_main(int argc, char *argv[])
 	char tmpprefix[200];
 	rand_string(tmpprefix, 30);
 	kstring_t fnout_buffer = { 0, 0, NULL };
-	sam_global_args ga = (sam_global_args){0};
+	sam_global_args ga;
+	memset(&ga, 0, sizeof(sam_global_args));
 
 	static const struct option lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),

@@ -113,10 +113,10 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	mseq_destroy(rseq1); mseq_destroy(rseq2);
 	kseq_destroy(seq1); kseq_destroy(seq2); kseq_destroy(seq_index);
 	gzclose(fp_read1); gzclose(fp_read2); gzclose(fp_index);
-	for(count = 0; count < settings->n_handles; ++count) {
-		fclose(splitter_ptr->tmp_out_handles_r1[count]);
-		fclose(splitter_ptr->tmp_out_handles_r2[count]);
-		splitter_ptr->tmp_out_handles_r1[count] = splitter_ptr->tmp_out_handles_r2[count] = NULL;
+	for(int j = 0; j < settings->n_handles; ++j) {
+		fclose(splitter_ptr->tmp_out_handles_r1[j]);
+		fclose(splitter_ptr->tmp_out_handles_r2[j]);
+		splitter_ptr->tmp_out_handles_r1[j] = splitter_ptr->tmp_out_handles_r2[j] = NULL;
 	}
 	return splitter_ptr;
 }
@@ -174,8 +174,8 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 	mseq_destroy(rseq);
 	kseq_destroy(seq); kseq_destroy(seq_index);
 	gzclose(fp); gzclose(fp_index);
-	for(count = 0; count < settings->n_handles; ++count)
-		fclose(splitter_ptr->tmp_out_handles_r1[count]);
+	for(int j = 0; j < settings->n_handles; ++j)
+		fclose(splitter_ptr->tmp_out_handles_r1[j]);
 	// Set out handles to NULL.
 	memset(splitter_ptr->tmp_out_handles_r1, 0, settings->n_handles * sizeof(FILE *));
 	return splitter_ptr;
@@ -194,28 +194,13 @@ int sdmp_main(int argc, char *argv[])
 		sdmp_usage(argv); return EXIT_FAILURE;
 	}
 	// Build settings struct
-	marksplit_settings_t settings = {
-		.hp_threshold = 10,
-		.n_nucs = 2,
-		.index_fq_path = NULL,
-		.tmp_basename = NULL,
-		.input_r1_path = NULL,
-		.input_r2_path = NULL,
-		.n_handles = 0,
-		.notification_interval = 1000000,
-		.run_hash_dmp = 0,
-		.panthera = 0,
-		.gzip_output = 0,
-		.ffq_prefix = NULL,
-		.salt = 0,
-		.offset = 1,
-		.threads = 4,
-		.gzip_compression = 1,
-		.rescaler = NULL,
-		.rescaler_path = NULL,
-		.cleanup = 1,
-		.is_se = 0
-	};
+	marksplit_settings_t settings = {0};
+	settings.hp_threshold = 10;
+	settings.n_nucs = 2;
+	settings.notification_interval = 1000000;
+	settings.threads = 4;
+	settings.gzip_compression = 1;
+	settings.cleanup = 1;
 
 	int c;
 	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?$&")) > -1) {
@@ -292,6 +277,7 @@ int sdmp_main(int argc, char *argv[])
 				__func__, settings.tmp_basename);
 	}
 
+	splitterhash_params_t *params = NULL;
 	mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] Finished mark/split.\n", __func__);
@@ -300,7 +286,7 @@ int sdmp_main(int argc, char *argv[])
 	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 					__func__);
 	if(!settings.ffq_prefix) make_outfname(&settings);
-	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
+	params = init_splitterhash(&settings, splitter);
 	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 
 	parallel_hash_dmp_core(&settings, params, &hash_dmp_core);

@@ -3,10 +3,11 @@
 #     d.nephi.baker@gmail.com       #
 ######################################
 
-STD=gnu99
-CC=gcc
+STD=c++11
+CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) # pedantic
+CFLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -DWRITE_BARCODE_FQ -fno-builtin-gamma # pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -DWRITE_BARCODE_FQ -fno-builtin-gamma # pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -18,15 +19,15 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
+OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing -fno-builtin-gamma
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -fno-builtin-gamma
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \
-		  src/bmf_sort.c src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
+		  src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
-		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c
+		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c
 
@@ -49,14 +50,24 @@ install: all
 	$(INSTALL) bmftools_db $(bindir)/$(binprefix)bmftools_db
 	$(INSTALL) bmftools_p $(bindir)/$(binprefix)bmftools_p
 
-%.o: %.c
+%.o: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.po: %.c
+%.o: %.c
+	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
+
+%.po: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.dbo: %.c
+%.po: %.c
+	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
+
+%.dbo: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
+
+%.dbo: %.c
+	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
+
 
 libhts.a:
 	+cd htslib && echo "/* Empty config.h */" >> config.h && make -j $(THREADS) && cp libhts.a ../

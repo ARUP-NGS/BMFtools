@@ -438,7 +438,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			// Test for homopolymer failure
 			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-			assert(bin < settings->n_handles);
+			assert(bin < (uint64_t)settings->n_handles);
 			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');

@@ -67,7 +67,7 @@ int *bed_index_core(int n, uint64_t *a, int *n_idx)
             int oldm = m;
             m = end + 1;
             kroundup32(m);
-            idx = realloc(idx, m * sizeof(int));
+            idx = (int *)realloc(idx, m * sizeof(int));
             for (j = oldm; j < m; ++j) idx[j] = -1;
         }
         if (beg == end) {
@@ -220,7 +220,7 @@ void *bed_read(const char *fn)
         // Add begin,end to the list
         if (p->n == p->m) {
             p->m = p->m? p->m<<1 : 4;
-            p->a = realloc(p->a, p->m * 8);
+            p->a = (uint64_t *)realloc(p->a, p->m * 8);
             if (NULL == p->a) goto fail;
         }
         p->a[p->n++] = (uint64_t)beg<<32 | end;
