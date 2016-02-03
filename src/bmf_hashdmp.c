@@ -70,12 +70,12 @@ void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(crev) {
-			stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+			kstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 			destroy_kf(cfor->value), destroy_kf(crev->value);
 			HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 			free(crev); free(cfor);
 		} else {
-			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
+			kdmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
@@ -114,15 +114,12 @@ void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *
 
 void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp, uint64_t *count)
 {
-	LOG_DEBUG("Beginning se_hash_process.\n");
+	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		++*count;
-#if !NDEBUG
-		if(*count % 10) {
-			LOG_DEBUG("Count: %lu.\n", count);
+		if(++(*count) % 1000000) {
+			LOG_DEBUG("Number of records written: %lu.\n", *count);
 		}
-#endif
-		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
+		kdmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
@@ -180,7 +177,9 @@ void hash_dmp_core(char *infname, char *outfname)
 		} else pushback_kseq(tmp_hk->value, seq, blen);
 	}
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
+	count = 0;
 	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count);
+	fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
 	gzclose(fp);
 	fclose(out_handle);
 	kseq_destroy(seq);
@@ -197,7 +196,6 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
-	LOG_INFO("Seq: %p.\n", (void *)seq);
 	// Initialized kseq
 	int l = kseq_read(seq);
 	if(l < 0) {
@@ -267,14 +265,14 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
 			++non_duplex;
-			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
+			kdmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
 			continue;
 		}
 		++duplex;
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+		kstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);

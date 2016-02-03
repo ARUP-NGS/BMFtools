@@ -352,8 +352,8 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
 #if WRITE_BARCODE_FQ
-	FILE *bcfp1 = fopen("tmp.molbc.r1.fq", "w");
-	FILE *bcfp2 = fopen("tmp.molbc.r2.fq", "w");
+	gzFile bcfp1 = gzopen("tmp.molbc.r1.fq.gz", "wb4");
+	gzFile bcfp2 = gzopen("tmp.molbc.r2.fq.gz", "wb4");
 #endif
 	LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
@@ -455,7 +455,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	kseq_destroy(seq1), kseq_destroy(seq2);
 	gzclose(fp1), gzclose(fp2);
 #ifdef WRITE_BARCODE_FQ
-	fclose(bcfp1), fclose(bcfp2);
+	gzclose(bcfp1), gzclose(bcfp2);
 #endif
 	return splitter;
 }
