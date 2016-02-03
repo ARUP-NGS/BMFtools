@@ -402,6 +402,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
 	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+	assert(bin < settings->n_handles);
 	if(switch_reads) {
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
@@ -411,9 +412,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	uint64_t count = 0;
 	while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)) {
-#if WRITE_BARCODE_FQ
-		write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
-#endif
 		if(UNLIKELY(++count % settings->notification_interval == 0))
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Sets pass_fail
@@ -429,6 +427,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			// Test for homopolymer failure
 			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+			assert(bin < settings->n_handles);
 			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
@@ -439,6 +438,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			// Test for homopolymer failure
 			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+			assert(bin < settings->n_handles);
 			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');

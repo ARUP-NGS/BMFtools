@@ -16,9 +16,8 @@
 
 #define DECLARE_BINNER(type_t) \
 	CONST static inline type_t get_binner_##type_t(char *barcode, size_t length) {\
-		barcode += length;\
 		type_t bin = 0;\
-		for(;length; length--) bin += ipow(4, length) * nuc2num_acgt(*--barcode);\
+		for(unsigned i = 0;i < length; ++i) bin += ipow(4, i) * nuc2num_acgt(*barcode++);\
 		return bin;\
 	}
 
