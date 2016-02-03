@@ -142,7 +142,4 @@ static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_sett
 		GZPUTS(seq2->qual.s, fp2); GZPUTC('\n', fp2);\
 	} while(0)
 
-#undef GZPUTC
-#undef GZPUTS
-
 #endif /* BMF_DMP_H */
