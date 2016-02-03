@@ -10,7 +10,7 @@ extern target_counts_t target_core(char *bedpath, char *bampath,
 #define assert(x) \
 	do {\
 		if(!(x)) {\
-			LOG_ERROR("Assert failed! Assertion: '%s'.", #x);\
+			LOG_ERROR((char *)"Assert failed! Assertion: '%s'.", #x);\
 		}\
 	} while(0)
 #endif
@@ -18,7 +18,7 @@ extern target_counts_t target_core(char *bedpath, char *bampath,
 
 int main(int c, char **argv)
 {
-	target_counts_t counts = target_core("test/target_test.bed", "test/target_test.bam", 0u, 0u, 1000000);
+	target_counts_t counts = target_core((char *)"test/target_test.bed", (char *)"test/target_test.bam", 0u, 0u, 1000000);
 	assert(counts.count == 2185uL);
 	assert(counts.n_skipped == 0uL);
 	assert(counts.target == 2032uL);

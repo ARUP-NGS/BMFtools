@@ -17,12 +17,12 @@
 #include "dlib/math_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/nix_util.h"
+#include "lib/mseq.h"
 #include "lib/binner.h"
 #include "lib/kingfisher.h"
 #include "bmf_hashdmp.h"
 
 extern int64_t ipow(int32_t, int32_t);
-extern void update_mseq(mseq*, kseq_t*, char*, tmp_mseq*, int, int);
 
 typedef void (*hash_dmp_fn)(char *, char *);
 
@@ -90,18 +90,6 @@ static inline char *make_crms_outfname(char *fname)
 	return make_default_outfname(fname, ".crms.split");
 }
 
-
-CONST static inline int infer_barcode_length(char *bs_ptr)
-{
-	char *const current = bs_ptr;
-	for (;;) {
-		switch(*bs_ptr++) {
-		case '|': // Fall-through
-		case '\0': return bs_ptr - current - 1;
-		}
-	}
-	return -1; // This never happens.
-}
 
 static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {

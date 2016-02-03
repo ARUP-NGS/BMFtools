@@ -6,8 +6,7 @@
 #include <string.h>
 #include <omp.h>
 #include <stdlib.h>
-#include "dlib/cstr_util.h"
-#include "bmf_hashdmp.h"
+#include "bmf_dmp.h"
 
 void sdmp_usage(char *argv[])
 {

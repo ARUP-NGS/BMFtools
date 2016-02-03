@@ -355,7 +355,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 
 
 cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
-							char *bedpath, char *refcontig, int padding, int minMQ, int flag)
+							char *bedpath, char *refcontig, int padding, unsigned minMQ, int flag)
 {
 	bam1_t *b = bam_init1();
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
@@ -403,7 +403,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev, ind;
+	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
+	unsigned ind;
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
@@ -557,6 +558,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a contig
 	int tid_to_study = -1;
+	unsigned ind;
 	const readerr_t *rerr = f->r1;
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
@@ -601,7 +603,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
-				for(int ind = 0; ind < len; ++ind) {
+				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -638,10 +640,10 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 void write_full_rates(FILE *fp, fullerr_t *f)
 {
 	uint64_t l;
-	int i, j;
+	unsigned i, j;
 	for(l = 0; l < f->l; ++l) {
 		for(j = 0; j < nqscores; ++j) {
-			for(i = 0; i < 4; ++i) {
+			for(i = 0; i < 4u; ++i) {
 				if(f->r1->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
 				else fputs(i ? ":-1337": "-1337", fp);
@@ -650,7 +652,7 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 		}
 		fputc('|', fp);
 		for(j = 0; j < nqscores; ++j) {
-			for(i = 0; i < 4; ++i) {
+			for(i = 0; i < 4u; ++i) {
 				if(f->r2->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
 				else fputs(i ? ":-1337": "-1337", fp);

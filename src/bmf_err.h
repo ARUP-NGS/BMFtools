@@ -77,11 +77,11 @@ typedef struct fmerr {
 	uint64_t flag;
 	uint64_t nskipped;
 	uint64_t nread;
-	int minMQ;
-	int minPV;
+	unsigned minMQ;
+	unsigned minPV;
 } fmerr_t;
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ, uint32_t minPV);
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, unsigned minMQ, uint32_t minPV);
 void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
@@ -107,9 +107,9 @@ static inline int pv2ph(double pv)
 #define arr3d_init(var, l, type) \
 	do {\
 	var = (type ***)calloc(4, sizeof(type **));\
-	for(int i_ = 0; i_ < 4; ++i_) {\
+	for(unsigned i_ = 0; i_ < 4u; ++i_) {\
 		var[i_] = (type **)calloc(nqscores, sizeof(type *));\
-		for(int j_ = 0; j_ < nqscores; ++j_) {\
+		for(unsigned j_ = 0; j_ < nqscores; ++j_) {\
 			var[i_][j_] = (type *)calloc(l, sizeof(type));\
 		}\
 	}} while(0)

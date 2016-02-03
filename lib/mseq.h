@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
-CONST inline char *mem_view(char *comment)
+CONST static inline char *mem_view(char *comment)
 {
 	int hits = 0;
 	for(;;) {
@@ -152,7 +152,7 @@ static inline void mseq2fq(FILE *handle, mseq_t *mvar, int pass_fail, char *barc
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2.
  */
-inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
 	mvar->name[seq->name.l] = '\0';

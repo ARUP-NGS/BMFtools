@@ -101,7 +101,7 @@ typedef struct {
 	float minFR; // Minimum fraction of family members agreed on base
 	float minAF; // Minimum aligned fraction
 	int max_depth;
-	uint32_t minFM;
+	int minFM;
 	uint32_t minFA;
 	uint32_t minPV;
 	uint32_t minMQ;

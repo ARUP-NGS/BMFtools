@@ -7,7 +7,7 @@ STD=c++11
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 CFLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -DWRITE_BARCODE_FQ -fno-builtin-gamma # pedantic
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -DWRITE_BARCODE_FQ -fno-builtin-gamma # pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -DWRITE_BARCODE_FQ -fno-builtin-gamma -Wno-write-strings# pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -31,7 +31,7 @@ SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdm
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c
 
-TEST_OBJS = $(TEST_SOURCES:.c=.o)
+TEST_OBJS = $(TEST_SOURCES:.c=.dbo)
 
 P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
@@ -78,10 +78,10 @@ bmftools_p: $(P_OBJS) libhts.a
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.o libhts.a -o test/ucs/ucs_test
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
 target_test: $(OBJS) $(TEST_OBJS) libhts.a
-	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.o libhts.a -o ./target_test && ./target_test
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.dbo libhts.a -o ./target_test && ./target_test
 hashdmp_test: $(BINS)
 	cd test/dmp && python hashdmp_test.py && cd ../..
 marksplit_test: $(BINS)
