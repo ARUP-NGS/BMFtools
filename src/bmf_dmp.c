@@ -283,7 +283,7 @@ void clean_homing_sequence(char *sequence) {
  * Pre-processes (pp) and splits fastqs with inline barcodes.
 mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 {
-	fprintf(stderr, "[%s] Opening fastq file '%s'.\n", __func__, settings->input_r1_path);
+	LOG_DEBUG("Opening fastq file '%s'.\n", settings->input_r1_path);
 	if(!isfile(settings->input_r1_path)) {
 		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
 	}

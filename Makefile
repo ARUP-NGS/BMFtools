@@ -6,8 +6,8 @@
 STD=c++11
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-CFLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -DWRITE_BARCODE_FQ -fno-builtin-gamma # pedantic
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -DWRITE_BARCODE_FQ -fno-builtin-gamma -Wno-write-strings# pedantic
+CFLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -fno-builtin-gamma # pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -fno-builtin-gamma -Wno-write-strings# pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -20,8 +20,8 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing -fno-builtin-gamma
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -fno-builtin-gamma
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -fno-builtin-gamma -Wno-write-strings
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -Wno-write-strings
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \
@@ -41,9 +41,9 @@ OBJS = $(SOURCES:.c=.o)
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test
 BINS=bmftools bmftools_db bmftools_p
 
-.PHONY: all clean install tests python mostlyclean hashdmp_test err_test
+.PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
 
-all: libhts.a tests $(BINS)
+all: update_dlib libhts.a tests $(BINS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -98,6 +98,9 @@ python:
 
 clean: mostlyclean
 		cd htslib && make clean && cd ..
+
+update_dlib:
+	cd dlib && git pull origin master && cd ..
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \

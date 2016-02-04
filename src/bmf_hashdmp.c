@@ -114,13 +114,15 @@ void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *
 }
 
 
-void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count)
+void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
+		uint64_t *non_duplex_fm)
 {
 	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 		if(++(*count) % 1000000) {
 			LOG_DEBUG("Number of records written: %lu.\n", *count);
 		}
+		if(current_entry->value->length > 1 && non_duplex_fm) ++*non_duplex_fm;
 		kdmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
@@ -183,7 +185,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
 	}
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
 	count = 0;
-	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count);
+	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count, NULL);
 	fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
 	gzclose(fp);
 	gzclose(out_handle);
@@ -195,14 +197,13 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 {
 	char mode[4] = "wT";
 	if(level >= 0) sprintf(mode, "wb%i", level % 10);
-	LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.", mode);
-	FILE *in_handle = open_ifp(infname);
+	LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.\n", mode);
 	gzFile out_handle = gzopen(outfname, mode);
-	if(!in_handle) {
+	gzFile fp = gzopen((infname && *infname) ? infname: "-", "r");
+	if(!fp) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
 	}
-	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	// Initialized kseq
 	int l = kseq_read(seq);
@@ -268,11 +269,12 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
-	uint64_t duplex = 0, non_duplex = 0;
+	uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
 			++non_duplex;
+			if(cfor->value->length > 1) ++non_duplex_fm;
 			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
@@ -287,11 +289,10 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 	}
 	LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);
 	//duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
-	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp, &non_duplex);
+	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp, &non_duplex, &non_duplex_fm);
 	LOG_DEBUG("Cleaning up.\n");
-	LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu\n", duplex, non_duplex);
-	gzclose(fp);
-	fclose(in_handle), gzclose(out_handle);
+	LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu. Non-duplex families: %lu\n", duplex, non_duplex, non_duplex_fm);
+	gzclose(fp); gzclose(out_handle);
 	kseq_destroy(seq);
 	tmpvars_destroy(tmp);
 }
