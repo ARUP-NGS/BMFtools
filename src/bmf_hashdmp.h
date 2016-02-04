@@ -19,6 +19,7 @@ int hash_dmp_main(int argc, char *argv[]);
 extern "C" {
 #endif
 	extern void splitterhash_destroy(splitterhash_params_t *params);
+	extern void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
 	extern splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 	void stranded_hash_dmp_core(char *infname, char *outfname);
 	tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);

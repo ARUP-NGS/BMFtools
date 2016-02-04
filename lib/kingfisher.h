@@ -72,7 +72,7 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
 static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
 void kstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
+void dmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
 void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
 CONST static inline int kfp_argmax(KingFisher_t *kfp, int index);
 CONST static inline int arr_max_u32(uint32_t *arr, int index);
