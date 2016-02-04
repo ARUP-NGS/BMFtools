@@ -147,11 +147,6 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 		if(kh_exist(f->hash2, k2))
 			if((k = kh_get(obs_union, key_union, kh_key(f->hash2, k2))) == kh_end(key_union))
 				k = kh_put(obs_union, key_union, kh_key(f->hash2, k2), &khr);
-#if !NDEBUG
-	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
-		if(kh_exist(f->hash1, k1))
-			fprintf(stderr, "Key for FM: %i.\n",  kh_key(f->hash1, k1));
-#endif
 
 	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
@@ -174,7 +169,6 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			fprintf(fp, "-nan\t");
 		else
 			fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
-		LOG_DEBUG("R1 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash1, k1), kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
 
 		if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2))
 			fprintf(fp, "-nan\t");
