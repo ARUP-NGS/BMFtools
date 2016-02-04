@@ -83,7 +83,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 	for(int i = 0; i < settings->n_handles; ++i) {
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-		func(params->infnames_r1[i], params->outfnames_r1[i]);
+		func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
 		if(settings->cleanup) {
 			char tmpbuf[500];
 			sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
@@ -95,12 +95,14 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 	for(int i = 0; i < settings->n_handles; ++i) {
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-		func(params->infnames_r2[i], params->outfnames_r2[i]);
+		func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
+		kstring_t ks = {0, 0, NULL};
 		if(settings->cleanup) {
-			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-			CHECK_CALL(tmpbuf);
+			ksprintf(&ks, "rm %s", params->infnames_r2[i]);
+			CHECK_CALL(ks.s);
+			ks.l = 0;
 		}
+		free(ks.s);
 	}
 }
 
@@ -108,71 +110,61 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
 	// Clear output files.
-	char cat_buff[CAT_BUFFER_SIZE];
-	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(cat_buff);
+	kstring_t ks = {0, 0, NULL};
+	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(ks.s);
 	for(int i = 0; i < settings->n_handles; ++i) {
+		ks.l = 0;
 		// Clear files if present
-		if(settings->gzip_output)
-			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-					params->outfnames_r1[i], settings->threads, settings->gzip_compression, ffq_r1);
-		else
-			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		CHECK_POPEN(cat_buff);
+		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+		CHECK_POPEN(ks.s);
 	}
+	free(ks.s);
 }
 
 void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
 	// Clear output files.
-	char cat_buff[CAT_BUFFER_SIZE];
-	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(cat_buff);
-	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-	CHECK_CALL(cat_buff);
+	kstring_t ks = {0, 0, NULL};
+	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(ks.s);
+	ks.l = 0;
+	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
+	CHECK_CALL(ks.s);
 	for(int i = 0; i < settings->n_handles; ++i) {
 		// Clear files if present
-		if(settings->gzip_output)
-			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-					params->outfnames_r1[i], settings->threads >= 2 ? settings->threads >> 1: 1, settings->gzip_compression, ffq_r1);
-		else
-			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		FILE *g1_popen = popen(cat_buff, "w");
-		if(settings->gzip_output)
-			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-					params->outfnames_r2[i], settings->threads >= 2 ? settings->threads >> 1: 1, settings->gzip_compression, ffq_r2);
-		else
-			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-		FILE *g2_popen = popen(cat_buff, "w");
+		ks.l = 0;
+		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+		FILE *g1_popen = popen(ks.s, "w");
+		ks.l = 0;
+		ksprintf(&ks, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+		FILE *g2_popen = popen(ks.s, "w");
 		if(pclose(g2_popen) || pclose(g1_popen)){
 			LOG_ERROR("Background system call failed.\n");
 		}
 	}
+	free(ks.s);
 }
 
 
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
-	char cat_buff[CAT_BUFFER_SIZE];
+	kstring_t ks = {0, 0, NULL};
 	// Clear output files.
-	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(cat_buff);
-	strcpy(cat_buff, "/bin/cat ");
+	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(ks.s);
+	ks.l = 0;
+	ksprintf(&ks, "/bin/cat ");
 	for(int i = 0; i < settings->n_handles; ++i) {
 		if(!isfile(params->outfnames_r1[i])) {
 			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
-		strcat(cat_buff, params->outfnames_r1[i]); strcat(cat_buff, " ");
+		ksprintf(&ks, " %s", params->outfnames_r1[i]);
 	}
-	if(settings->gzip_output) {
-		char tmp_buf[CAT_BUFFER_SIZE];
-		sprintf(tmp_buf, " | pigz - -%i -p %i", settings->gzip_compression, settings->threads);
-		strcat(cat_buff, tmp_buf);
-	}
-	strcat(cat_buff, " > "); strcat(cat_buff, ffq_r1);
-	if(settings->gzip_output)
-		strcat(cat_buff, ".gz");
-	CHECK_POPEN(cat_buff);
+	ksprintf(&ks, " > %s", ffq_r1);
+	if(settings->gzip_output) kputs(".gz", &ks);
+	CHECK_POPEN(ks.s);
+	free(ks.s);
 }
 
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
@@ -235,14 +227,17 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 
 void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-	char cat_buff1[CAT_BUFFER_SIZE];
+	kstring_t ks1 = {0, 0, NULL};
+	kputs("> ", &ks1), kputs(ffq_r1, &ks1);
+	if(settings->gzip_output) kputs(".gz", &ks1);
 	// Clear output files.
-	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(cat_buff1);
-	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-	CHECK_CALL(cat_buff1);
-	strcpy(cat_buff1, "/bin/cat ");
-	char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+	//ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(ks1.s); ks1.l = 0;
+	ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
+	CHECK_CALL(ks1.s); ks1.l = 0;
+	kputs("/bin/cat ", &ks1);
+	kstring_t ks2 = {0};
+	ksprintf(&ks2, ks1.s);
 	for(int i = 0; i < settings->n_handles; ++i) {
 		if(!isfile(params->outfnames_r1[i])) {
 			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
@@ -250,25 +245,19 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 		if(!isfile(params->outfnames_r2[i])) {
 			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
 		}
-		strcat(cat_buff1, params->outfnames_r1[i]); strcat(cat_buff1, " ");
-		strcat(cat_buff2, params->outfnames_r2[i]); strcat(cat_buff2, " ");
+		ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
+		ksprintf(&ks2, "%s ", params->outfnames_r2[i]);
 	}
-	if(settings->gzip_output) {
-		char tmp_buf[CAT_BUFFER_SIZE];
-		sprintf(tmp_buf, " | pigz - -%i -p %i", settings->gzip_compression, settings->threads >= 2 ? settings->threads >> 1: 1);
-		strcat(cat_buff1, tmp_buf); strcat(cat_buff2, tmp_buf);
-	}
-	strcat(cat_buff1, " > "); strcat(cat_buff1, ffq_r1);
-	strcat(cat_buff2, " > "); strcat(cat_buff2, ffq_r2);
+	ksprintf(&ks1, " > %s", ffq_r1);
+	ksprintf(&ks2, " > %s", ffq_r2);
 	if(settings->gzip_output)
-		strcat(cat_buff1, ".gz"), strcat(cat_buff2, ".gz");
-	LOG_DEBUG("About to call command '%s'.\n", cat_buff1);
-	LOG_DEBUG("About to call command '%s'.\n", cat_buff2);
-	FILE *c1_popen = popen(cat_buff1, "w");
-	FILE *c2_popen = popen(cat_buff2, "w");
+		kputs(".gz", &ks1), kputs(".gz", &ks2);
+	FILE *c1_popen = popen(ks1.s, "w");
+	FILE *c2_popen = popen(ks2.s, "w");
 	if(pclose(c2_popen) || pclose(c1_popen)) {
-		LOG_ERROR("Background cat command failed. ('%s' or '%s').\n", cat_buff1, cat_buff2);
+		LOG_ERROR("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
 	}
+	free(ks1.s), free(ks2.s);
 }
 
 void clean_homing_sequence(char *sequence) {
@@ -352,8 +341,8 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
 #if WRITE_BARCODE_FQ
-	FILE *bcfp1 = fopen("tmp.molbc.r1.fq", "w");
-	FILE *bcfp2 = fopen("tmp.molbc.r2.fq", "w");
+	gzFile bcfp1 = gzopen("tmp.molbc.r1.fq.gz", "wb4");
+	gzFile bcfp2 = gzopen("tmp.molbc.r2.fq.gz", "wb4");
 #endif
 	LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
@@ -455,7 +444,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	kseq_destroy(seq1), kseq_destroy(seq2);
 	gzclose(fp1), gzclose(fp2);
 #ifdef WRITE_BARCODE_FQ
-	fclose(bcfp1), fclose(bcfp2);
+	gzclose(bcfp1), gzclose(bcfp2);
 #endif
 	return splitter;
 }
@@ -502,6 +491,8 @@ int dmp_main(int argc, char *argv[])
 			case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
 		}
 	}
+
+	if(!settings.gzip_output) settings.gzip_compression = 0;
 
 	// Check for proper command-line usage.
 	if(settings.is_se) {

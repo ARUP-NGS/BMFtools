@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
+#include "htslib/kstring.h"
 #include "include/igamc_cephes.h"
 #include "lib/mseq.h"
 #include "lib/rescaler.h"
@@ -70,10 +71,32 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
 static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
+void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, gzFile handle, tmpbuffers_t *bufs);
+void dmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
+void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
 CONST static inline int kfp_argmax(KingFisher_t *kfp, int index);
 CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
+static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
+{
+	int i;
+	kputsn("FA:B:I", 6, ks);
+	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+	kputsn("\tPV:B:I", 7, ks);
+	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+}
+
+static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks)
+{
+	kputsn("PV:B:I", 6, ks);
+	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+}
+
+static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
+{
+	kputsn("FA:B:I", 6, ks);
+	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+}
 
 /*
  * @func fill_fa
@@ -86,10 +109,8 @@ static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
 {
 	char tmpbuf[7];
 	memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
-	for(int i = 0; i < readlen; ++i) {
-		sprintf(tmpbuf, ",%" PRIu16 "", agrees[i]);
-		strcat(buffer, tmpbuf);
-	}
+	for(int i = 0; i < readlen; ++i)
+		sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
 }
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {

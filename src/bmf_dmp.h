@@ -24,7 +24,7 @@
 
 extern int64_t ipow(int32_t, int32_t);
 
-typedef void (*hash_dmp_fn)(char *, char *);
+typedef void (*hash_dmp_fn)(char *, char *, int);
 
 #define CAT_BUFFER_SIZE 250000
 #define METASYNTACTIC_FNAME_BUFLEN 100
@@ -117,26 +117,29 @@ static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_sett
 	return default_len;
 }
 
+#define GZPUTC(char, handle) gzputc(handle, char)
+#define GZPUTS(char, handle) gzputs(handle, char)
+
 #define write_bc_to_file(fp1, fp2, seq1, seq2, settings)\
 	do {\
-		fputc('@', fp1), fputc('@', fp2);\
+		GZPUTC('@', fp1), GZPUTC('@', fp2);\
 		for(int k = 0; k < settings->blen1_2; ++k)\
-			fputc(seq1->seq.s[k + settings->offset], fp1),\
-			fputc(seq1->seq.s[k + settings->offset], fp2);\
+			GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
+			GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
 		for(int k = 0; k < settings->blen1_2; ++k)\
-			fputc(seq2->seq.s[k + settings->offset], fp1),\
-			fputc(seq2->seq.s[k + settings->offset], fp2);\
-		fputs(" ~#!#~|FP=1|BS=Z", fp1), fputs(" ~#!#~|FP=1|BS=Z", fp2);\
+			GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
+			GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
+		GZPUTS(" ~#!#~|FP=1|BS=Z", fp1), GZPUTS(" ~#!#~|FP=1|BS=Z", fp2);\
 		for(int k = 0; k < settings->blen1_2; ++k)\
-			fputc(seq1->seq.s[k + settings->offset], fp1),\
-			fputc(seq1->seq.s[k + settings->offset], fp2);\
+			GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
+			GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
 		for(int k = 0; k < settings->blen1_2; ++k)\
-			fputc(seq2->seq.s[k + settings->offset], fp1),\
-			fputc(seq2->seq.s[k + settings->offset], fp2);\
-		fputc('\n', fp1); fputs(seq1->seq.s, fp1); fputs("\n+\n", fp1);\
-		fputc('\n', fp2); fputs(seq2->seq.s, fp2); fputs("\n+\n", fp2);\
-		fputs(seq1->qual.s, fp1); fputc('\n', fp1);\
-		fputs(seq2->qual.s, fp2); fputc('\n', fp2);\
+			GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
+			GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
+		GZPUTC('\n', fp1); GZPUTS(seq1->seq.s, fp1); GZPUTS("\n+\n", fp1);\
+		GZPUTC('\n', fp2); GZPUTS(seq2->seq.s, fp2); GZPUTS("\n+\n", fp2);\
+		GZPUTS(seq1->qual.s, fp1); GZPUTC('\n', fp1);\
+		GZPUTS(seq2->qual.s, fp2); GZPUTC('\n', fp2);\
 	} while(0)
 
 #endif /* BMF_DMP_H */
