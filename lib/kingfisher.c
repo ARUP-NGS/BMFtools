@@ -17,7 +17,7 @@
 		}\
 	} while(0)
 
-void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev)
+void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev)
 {
 	int i, diffs = kfp->length * kfp->readlen;
 	for(i = 0; i < kfp->readlen; ++i) {
@@ -33,7 +33,7 @@ void kdmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int
 			(double) diffs / kfp->length, bufs->cons_seq_buffer);
 	for(i = 0; i < kfp->readlen; ++i) kputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], &ks);
 	kputc('\n', &ks);
-	fputs(ks.s, handle);
+	gzputs(handle, ks.s);
 	free(ks.s);
 	return;
 }
@@ -91,7 +91,7 @@ void kstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handl
 		} else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
 	}
 	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, "@ %s ", kfpf->barcode + 1);
+	ksprintf(&ks, "@%s ", kfpf->barcode + 1);
 	// Add read name
 	kfill_both(kfpf->readlen, bufs->agrees, bufs->cons_quals, &ks);
 	ksprintf(&ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->pass_fail,
@@ -137,7 +137,7 @@ void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, gzFile hand
 		} else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
 	}
 	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, "@ %s ", kfpf->barcode + 1);
+	ksprintf(&ks, "@%s ", kfpf->barcode + 1);
 	// Add read name
 	kfill_both(kfpf->readlen, bufs->agrees, bufs->cons_quals, &ks);
 	ksprintf(&ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->pass_fail,

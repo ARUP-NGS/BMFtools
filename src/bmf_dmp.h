@@ -24,7 +24,7 @@
 
 extern int64_t ipow(int32_t, int32_t);
 
-typedef void (*hash_dmp_fn)(char *, char *);
+typedef void (*hash_dmp_fn)(char *, char *, int);
 
 #define CAT_BUFFER_SIZE 250000
 #define METASYNTACTIC_FNAME_BUFLEN 100

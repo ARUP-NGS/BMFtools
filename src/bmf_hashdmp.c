@@ -41,8 +41,10 @@ int hash_dmp_main(int argc, char *argv[])
 	char *outfname = NULL, *infname = NULL;
 	int c;
 	int stranded_analysis = 1;
-	while ((c = getopt(argc, argv, "o:sh?")) >= 0) {
+	int level = -1;
+	while ((c = getopt(argc, argv, "l:o:sh?")) >= 0) {
 		switch(c) {
+			case 'l': level = atoi(optarg); break;
 			case 'o': outfname = strdup(optarg); break;
 			case 's': stranded_analysis = 0; break;
 			case '?': // Fall-through
@@ -59,18 +61,18 @@ int hash_dmp_main(int argc, char *argv[])
 	else {
 		LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
 	}
-	stranded_analysis ? stranded_hash_dmp_core(infname, outfname) :hash_dmp_core (infname, outfname);
+	stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level) :hash_dmp_core (infname, outfname, level);
 	cond_free(outfname); cond_free(infname);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 
-void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t *hrev, FILE *out_handle, tmpvars_t *tmp)
+void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t *hrev, gzFile out_handle, tmpvars_t *tmp)
 {
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(crev) {
-			kstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+			zstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 			destroy_kf(cfor->value), destroy_kf(crev->value);
 			HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 			free(crev); free(cfor);
@@ -112,7 +114,7 @@ void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *
 }
 
 
-void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp, uint64_t *count)
+void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count)
 {
 	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
@@ -127,10 +129,13 @@ void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_ha
 }
 
 
-void hash_dmp_core(char *infname, char *outfname)
+void hash_dmp_core(char *infname, char *outfname, int level)
 {
-	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
-	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
+	char mode[4] = "wT";
+	if(level >= 0) sprintf(mode, "wb%i", level % 10);
+	LOG_DEBUG("Writing hash dmp information with mode: '%s'.", mode);
+	FILE *in_handle = open_ifp(infname);
+	gzFile out_handle = gzopen(outfname, mode);
 	if(!in_handle) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
@@ -181,15 +186,18 @@ void hash_dmp_core(char *infname, char *outfname)
 	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count);
 	fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
 	gzclose(fp);
-	fclose(out_handle);
+	gzclose(out_handle);
 	kseq_destroy(seq);
 	tmpvars_destroy(tmp);
 }
 
-void stranded_hash_dmp_core(char *infname, char *outfname)
+void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 {
+	char mode[4] = "wT";
+	if(level >= 0) sprintf(mode, "wb%i", level % 10);
+	LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.", mode);
 	FILE *in_handle = open_ifp(infname);
-	FILE *out_handle = open_ofp(outfname);
+	gzFile out_handle = gzopen(outfname, mode);
 	if(!in_handle) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
@@ -265,14 +273,14 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
 			++non_duplex;
-			kdmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
+			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
 			continue;
 		}
 		++duplex;
-		kstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+		zstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);
@@ -283,7 +291,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	LOG_DEBUG("Cleaning up.\n");
 	LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu\n", duplex, non_duplex);
 	gzclose(fp);
-	fclose(in_handle), fclose(out_handle);
+	fclose(in_handle), gzclose(out_handle);
 	kseq_destroy(seq);
 	tmpvars_destroy(tmp);
 }
