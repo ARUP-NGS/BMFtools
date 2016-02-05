@@ -3,9 +3,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <zlib.h>
+#include "dlib/cstr_util.h"
 #include "dlib/compiler_util.h"
 #include "dlib/mem_util.h"
 #include "lib/binner.h"
+#include "htslib/kstring.h"
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN
 #define METASYNTACTIC_FNAME_BUFLEN 100
@@ -38,6 +41,7 @@ typedef struct marksplit_settings {
 	int threads;
 	int is_se;
 	int to_stdout;
+	char mode[4];
 } marksplit_settings_t;
 
 #ifdef __cplusplus
@@ -50,8 +54,8 @@ void free_marksplit_settings(marksplit_settings_t settings);
 #endif
 
 typedef struct mark_splitter {
-	FILE **tmp_out_handles_r1;
-	FILE **tmp_out_handles_r2;
+	gzFile *tmp_out_handles_r1;
+	gzFile *tmp_out_handles_r2;
 	int n_nucs;
 	int n_handles;
 	char **fnames_r1;
