@@ -179,19 +179,19 @@ int depth_main(int argc, char *argv[])
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
 		if (aux[i]->fp == 0 || idx[i] == 0) {
-			fprintf(stderr, "ERROR: fail to open index BAM file '%s'\n", argv[i + optind]);
+			fprintf(stderr, (char *)"ERROR: fail to open index BAM file '%s'\n", argv[i + optind]);
 			return 2;
 		}
 		// TODO bgzf_set_cache_size(aux[i]->fp, 20);
 		aux[i]->header = sam_hdr_read(aux[i]->fp);
 		if (aux[i]->header == NULL) {
-			fprintf(stderr, "ERROR: failed to read header for '%s'\n",
+			fprintf(stderr, (char *)"ERROR: failed to read header for '%s'\n",
 					argv[i+optind+1]);
 			return 2;
 		}
 	}
 	if(!bedpath) {
-		LOG_ERROR("Bed path required. Abort!\n");
+		LOG_ERROR((char *)"Bed path required. Abort!\n");
 	}
 	counts = (uint64_t *)calloc(n, sizeof(uint64_t));
 	int n_cols = count_lines(bedpath);
@@ -199,7 +199,7 @@ int depth_main(int argc, char *argv[])
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
-		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
+		LOG_ERROR((char *)"Could not open bedfile %s. Abort!\n", bedpath);
 	}
 	ks = ks_init(fp);
 	n_plp = (int *)calloc(n, sizeof(int));

@@ -939,6 +939,7 @@ int err_main(int argc, char *argv[])
 	if(strcmp(argv[1], "cycle") == 0)
 		return err_cycle_main(argc - 1, argv + 1);
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
+	return EXIT_FAILURE;
 }
 
 
@@ -988,7 +989,7 @@ int err_main_main(int argc, char *argv[])
 	}
 
 	if(padding < 0 && bedpath && *bedpath) {
-		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+		LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
 	ofp = *outpath ? open_ofp(outpath): NULL;
@@ -999,10 +1000,10 @@ int err_main_main(int argc, char *argv[])
 	faidx_t *fai = fai_load(argv[optind]);
 
 	if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
-		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+		LOG_ERROR((char *)"Cannot open input file \"%s\"", argv[optind]);
 	}
 	if ((header = sam_hdr_read(fp)) == NULL) {
-		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
+		LOG_ERROR((char *)"Failed to read header for \"%s\"", argv[optind]);
 	}
 
 	if(minPV) check_bam_tag_exit(argv[optind + 1], "PV");
@@ -1019,7 +1020,7 @@ int err_main_main(int argc, char *argv[])
 	if(*refcontig) f->refcontig = strdup(refcontig);
 	bam_hdr_destroy(header), header = NULL;
 	err_main_core(argv[optind + 1], fai, f, &open_fmt);
-	LOG_DEBUG("Core finished.\n");
+	LOG_DEBUG((char *)"Core finished.\n");
 	fai_destroy(fai);
 	fill_qvals(f);
 	impute_scores(f);
@@ -1043,24 +1044,20 @@ int err_main_main(int argc, char *argv[])
 int err_cycle_main(int argc, char *argv[])
 {
 	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
-	char outpath[500] = "";
 
 	if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_cycle_usage(stderr, EXIT_SUCCESS);
 
-
-
 	FILE *ofp = NULL;
-	char refcontig[200] = "";
-	char *bedpath = NULL;
 	int padding = -1, minMQ = 0, flag = 0, c;
+	std::string bedpath(""), outpath(""), refcontig("");
 	while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
-		case 'o': strcpy(outpath, optarg); break;
-		case 'r': strcpy(refcontig, optarg); break;
-		case 'b': bedpath = strdup(optarg); break;
+		case 'o': outpath = optarg; break;
+		case 'r': refcontig = optarg; break;
+		case 'b': bedpath = optarg; break;
 		case 'p': padding = atoi(optarg); break;
 		case 'P': flag |= REQUIRE_PROPER; break;
 		case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
@@ -1068,20 +1065,21 @@ int err_cycle_main(int argc, char *argv[])
 	}
 
 	if(padding < 0) {
-		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+		LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-	if(!*outpath) {
-		LOG_ERROR("Required -o parameter unset. Abort!\n");
+	if(!*outpath.c_str()) {
+		outpath = "-";
+		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
 	}
-	ofp = open_ofp(outpath);
+	ofp = open_ofp((char *)outpath.c_str());
 
 	if (argc != optind+2)
 		return err_cycle_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ, flag);
+	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, (char *)bedpath.c_str(), (char *)refcontig.c_str(), padding, minMQ, flag);
 	err_cycle_report(ofp, ce); fclose(ofp);
 	cycle_destroy(ce);
 	fai_destroy(fai);
