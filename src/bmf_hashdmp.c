@@ -119,7 +119,7 @@ void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_h
 {
 	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		if(++(*count) % 1000000) {
+		if(++(*count) % 1000000 == 0) {
 			LOG_DEBUG("Number of records written: %lu.\n", *count);
 		}
 		if(current_entry->value->length > 1 && non_duplex_fm) ++*non_duplex_fm;
@@ -134,8 +134,7 @@ void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_h
 void hash_dmp_core(char *infname, char *outfname, int level)
 {
 	char mode[4] = "wT";
-	if(level >= 0) sprintf(mode, "wb%i", level % 10);
-	LOG_DEBUG("Writing hash dmp information with mode: '%s'.", mode);
+	if(level > 0) sprintf(mode, "wb%i", level % 10);
 	FILE *in_handle = open_ifp(infname);
 	gzFile out_handle = gzopen(outfname, mode);
 	if(!in_handle) {
@@ -196,7 +195,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
 void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 {
 	char mode[4] = "wT";
-	if(level >= 0) sprintf(mode, "wb%i", level % 10);
+	if(level > 0) sprintf(mode, "wb%i", level % 10);
 	LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.\n", mode);
 	gzFile out_handle = gzopen(outfname, mode);
 	gzFile fp = gzopen((infname && *infname) ? infname: "-", "r");

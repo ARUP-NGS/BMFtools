@@ -130,15 +130,15 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
-static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
+static inline void mseq2fq_stranded(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
+	gzprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
 			mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
 }
 
-static inline void mseq2fq(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode)
+static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
+	gzprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
 			mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
 }
 

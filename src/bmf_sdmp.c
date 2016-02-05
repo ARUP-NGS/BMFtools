@@ -19,7 +19,8 @@ void sdmp_usage(char *argv[])
 						"-i: Index fastq path. Required.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
 						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
-						"-g: Gzip compression ratio if piping to gzip (-z). Default: 1 (weak compression).\n"
+						"-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
+						"-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
 						"-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
 						"-m: Number of bases in the start of reads to skip when salting. Default: 1.\n"
 						"-d: Flag to run hash dmp. Default: False.\n"
@@ -113,8 +114,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	kseq_destroy(seq1); kseq_destroy(seq2); kseq_destroy(seq_index);
 	gzclose(fp_read1); gzclose(fp_read2); gzclose(fp_index);
 	for(int j = 0; j < settings->n_handles; ++j) {
-		fclose(splitter_ptr->tmp_out_handles_r1[j]);
-		fclose(splitter_ptr->tmp_out_handles_r2[j]);
+		gzclose(splitter_ptr->tmp_out_handles_r1[j]);
+		gzclose(splitter_ptr->tmp_out_handles_r2[j]);
 		splitter_ptr->tmp_out_handles_r1[j] = splitter_ptr->tmp_out_handles_r2[j] = NULL;
 	}
 	return splitter_ptr;
@@ -152,7 +153,7 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 	fprintf(stderr, "[D:%s] Splitter now opening files read ('%s') and index ('%s').\n",
 			__func__, settings->input_r1_path, settings->index_fq_path);
 #endif
-	mseq_t *rseq = mseq_init(seq, settings->rescaler, 0); // rseq is initialized
+	mseq_t *rseq = mseq_init(seq, settings->rescaler, 0);
 	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 	memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
@@ -174,7 +175,7 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 	kseq_destroy(seq); kseq_destroy(seq_index);
 	gzclose(fp); gzclose(fp_index);
 	for(int j = 0; j < settings->n_handles; ++j)
-		fclose(splitter_ptr->tmp_out_handles_r1[j]);
+		gzclose(splitter_ptr->tmp_out_handles_r1[j]);
 	// Set out handles to NULL.
 	memset(splitter_ptr->tmp_out_handles_r1, 0, settings->n_handles * sizeof(FILE *));
 	return splitter_ptr;
@@ -200,9 +201,10 @@ int sdmp_main(int argc, char *argv[])
 	settings.threads = 4;
 	settings.gzip_compression = 1;
 	settings.cleanup = 1;
+	sprintf(settings.mode, "wT");
 
 	int c;
-	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?$&")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?$&")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -210,7 +212,8 @@ int sdmp_main(int argc, char *argv[])
 			case 'i': settings.index_fq_path = strdup(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
-			case 'o': settings.tmp_basename = strdup(optarg);break;;
+			case 'o': settings.tmp_basename = strdup(optarg);break;
+			case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
 			case 'p': settings.threads = atoi(optarg); break;
 			case 's': settings.salt = atoi(optarg); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;

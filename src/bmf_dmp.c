@@ -10,7 +10,7 @@ void print_crms_usage(char *executable)
 {
 		fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
-						"-$: Flag for single-end mode.\n"
+						"-S: Flag for single-end mode.\n"
 						"-=: Emit interleaved final output to stdout.\n"
 						"-l: Number of nucleotides at the beginning of each read to "
 						"use for barcode. Final barcode length is twice this. REQUIRED.\n"
@@ -28,9 +28,9 @@ void print_crms_usage(char *executable)
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
 						"-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
 						" (-1), other barcode lengths will not be considered.\n"
-						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
-						"-g: Gzip compression ratio if piping to gzip (-z). Default: 1 (mostly to reduce I/O).\n"
-						"-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
+						"-z: Flag to write out final output as compressed. Default: False.\n"
+						"-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
+						"-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-u: Set notification/update interval for split. Default: 1000000.\n"
 						"-w: Set flag to leave temporary files. Primarily for debugging.\n"
@@ -65,14 +65,13 @@ void make_outfname(marksplit_settings_t *settings)
 
 void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params)
 {
-	if(settings->cleanup) {
-		#pragma omp parallel for
-		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[1000];
-			if(settings->is_se) sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
-			else sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			CHECK_CALL(tmpbuf);
-		}
+	if(!settings->cleanup) return;
+	#pragma omp parallel for
+	for(int i = 0; i < params->n; ++i) {
+		kstring_t ks = {0, 0, NULL};
+		ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
+		CHECK_CALL(ks.s);
+		free(ks.s);
 	}
 }
 
@@ -85,9 +84,10 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 		func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
 		if(settings->cleanup) {
-			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-			CHECK_CALL(tmpbuf);
+			kstring_t ks = {0, 0, NULL};
+			ksprintf(&ks, "rm %s", params->infnames_r1[i]);
+			CHECK_CALL(ks.s);
+			free(ks.s);
 		}
 	}
 	if(settings->is_se) return;
@@ -96,13 +96,12 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 		func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
-		kstring_t ks = {0, 0, NULL};
 		if(settings->cleanup) {
+			kstring_t ks = {0, 0, NULL};
 			ksprintf(&ks, "rm %s", params->infnames_r2[i]);
 			CHECK_CALL(ks.s);
-			ks.l = 0;
+			free(ks.s);
 		}
-		free(ks.s);
 	}
 }
 
@@ -185,31 +184,28 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-	char fname_buf[500];
 	kstring_t str1 = {0, 0, NULL}, str2 = {0, 0, NULL};
-	kputs("cat ", &str1);
+	kstring_t final = {0, 0, NULL};
+	kputs((settings->gzip_output)? "zcat": "cat", &str1);
 	ks_resize(&str1, 1 << 16);
-	for(int i = 0; i < settings->n_handles; ++i) {
-		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
-		while(str1.m < strlen(fname_buf) + str1.l + 1) ks_resize(&str1, str1.m << 1);
-		strcat(str1.s, fname_buf); str1.l += strlen(fname_buf);
-	}
+	for(int i = 0; i < settings->n_handles; ++i)
+		ksprintf(&str1, " %s", params->outfnames_r1[i]);
 	const char suffix[] = " | paste -d'~' - - - - ";
-	while(str1.m < sizeof(suffix) + str1.l) ks_resize(&str1, str1.m << 1);
-	strcat(str1.s, suffix);
-	str1.l += sizeof(suffix);
-	str2 = str1; // Copy everything, including a pointer that str2 doesn't own.
-	str2.s = strdup(str1.s); // strdup the string.
-	for(uint32_t i = 0; i < str2.l - 1; ++i)
-		if(str2.s[i] == 'R' && str2.s[i + 1] == '1')
+	kputs(suffix, &str1);
+	str2.s = kstrdup(&str1); // strdup the string.
+	LOG_DEBUG("Str1: %s. Str2: %s.\n", str1.s, str2.s);
+	for(uint32_t i = 0; i < str2.l; ++i) {
+		LOG_DEBUG("Current str.s + i: %s.\n", str2.s + i);
+		if(memcmp(str2.s + i, "R1", 2) == 0)
 			str2.s[i + 1] = '2';
+	}
+	LOG_DEBUG("Str1: %s. Str2: %s.\n", str1.s, str2.s);
 
 	const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
-	char *final = (char *)malloc(str1.m + str2.m + sizeof(final_template) / sizeof(char)); // Should be plenty of space
-	sprintf(final, final_template, str1.s, str2.s);
-	bash_system(final);
+	ksprintf(&final, final_template, str1.s, str2.s);
+	bash_system(final.s);
 	free(str1.s), free(str2.s);
-	free(final);
+	free(final.s);
 }
 
 
@@ -419,7 +415,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			// Test for homopolymer failure
 			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-			assert(bin < settings->n_handles);
+			assert(bin < (uint64_t)settings->n_handles);
 			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
@@ -438,7 +434,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	LOG_DEBUG("Cleaning up.\n");
 	for(l1 = 0; l1 < splitter->n_handles; ++l1)
-		fclose(splitter->tmp_out_handles_r1[l1]), fclose(splitter->tmp_out_handles_r2[l1]);
+		gzclose(splitter->tmp_out_handles_r1[l1]), gzclose(splitter->tmp_out_handles_r2[l1]);
 	tm_destroy(tmp);
 	mseq_destroy(rseq1), mseq_destroy(rseq2);
 	kseq_destroy(seq1), kseq_destroy(seq2);
@@ -464,12 +460,14 @@ int dmp_main(int argc, char *argv[])
 	settings.max_blen = -1;
 	settings.gzip_compression = 1;
 	settings.cleanup = 1;
+	settings.panthera = 1;
+	sprintf(settings.mode, "wT");
 
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$=")) > -1) {
+	while ((c = getopt(argc, argv, "T:t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?S=")) > -1) {
 		switch(c) {
-			case 'c': settings.panthera = 1; break;
+			case 'c': LOG_WARNING("Deprecated option -c.\n"); break;
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
@@ -485,7 +483,8 @@ int dmp_main(int argc, char *argv[])
 			case 'v': settings.max_blen = atoi(optarg); break;
 			case 'w': settings.cleanup = 0; break;
 			case 'z': settings.gzip_output = 1; break;
-			case '$': settings.is_se = 1; break;
+			case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
+			case 'S': settings.is_se = 1; break;
 			case '=': settings.to_stdout = 1; break;
 			case '?': // Fall-through
 			case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
