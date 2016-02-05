@@ -1,4 +1,4 @@
-/*  bmf_depth.c -- bedcov subcommand.
+/*  bmf_depth.c -- bmftools depth subcommand
 
 	Modified from bedcov.c
 
@@ -45,6 +45,7 @@ typedef struct {
 	int minMQ;
 	int minFM;
 	int requireFP;
+	khash_t(depth) *depth_hash;
 } vaux_t;
 
 void depth_usage(int retcode)
@@ -174,6 +175,7 @@ int depth_main(int argc, char *argv[])
 		aux[i]->minFM = minFM;
 		aux[i]->requireFP = requireFP;
 		aux[i]->fp = sam_open(argv[i + optind], "r");
+		aux[i]->depth_hash = kh_init(depth);
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
 		if (aux[i]->fp == 0 || idx[i] == 0) {
@@ -335,6 +337,7 @@ bed_error:
 		sam_close(aux[i]->fp);
 		cond_free(aux[i]->dmp_counts);
 		cond_free(aux[i]->raw_counts);
+		kh_destroy(depth, aux[i]->depth_hash);
 		cond_free(aux[i]);
 	}
 	for(i = 0; i < n_cols; ++i) free(col_names[i]);
