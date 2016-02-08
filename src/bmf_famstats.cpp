@@ -40,7 +40,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
 		if(!kh_exist(stats->fm, stats->ki)) continue;
 		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = (fm_t){kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
+		fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
 		LOG_DEBUG("Value of i after incrementing but not using: %i.\n", i);
 	}
 	LOG_DEBUG("Qsorting fm_t array.\n");
@@ -51,7 +51,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki)) continue;
 		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = (fm_t){kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
+		fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
 	}
 	LOG_DEBUG("Qsorting fm_t array.\n");
 	qsort(fms, stats->rc->n_occupied, sizeof(fm_t), fm_cmp);

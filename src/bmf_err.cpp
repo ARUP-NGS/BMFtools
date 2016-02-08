@@ -945,7 +945,7 @@ int err_main(int argc, char *argv[])
 
 int err_main_main(int argc, char *argv[])
 {
-	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
+	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	samFile *fp = NULL;
 	bam_hdr_t *header = NULL;
 	int c, minMQ = 0;
@@ -1043,7 +1043,7 @@ int err_main_main(int argc, char *argv[])
 
 int err_cycle_main(int argc, char *argv[])
 {
-	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
+	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
 
 	if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);
 

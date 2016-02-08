@@ -46,6 +46,7 @@ typedef struct {
 	int minFM;
 	int requireFP;
 	khash_t(depth) *depth_hash;
+	uint64_t n_analyzed;
 } vaux_t;
 
 void depth_usage(int retcode)
@@ -57,7 +58,6 @@ void depth_usage(int retcode)
 	fprintf(stderr, "  -n INT		Set N for quantile reporting. Default: 4 (quartiles)\n");
 	fprintf(stderr, "  -p INT		Number of bases around region to pad in coverage calculations. Default: %i\n", (int)DEFAULT_PADDING);
 	fprintf(stderr, "  -s FLAG		Skip reads with an FP tag whose value is 0. (Fail)\n");
-	sam_global_opt_help(stderr, "-.--.");
 	exit(retcode);
 }
 
@@ -69,6 +69,46 @@ void write_quantiles(kstring_t *k, uint64_t *sorted_array, size_t region_len, in
 	}
 }
 
+void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
+{
+	int i;
+	unsigned j;
+	khiter_t k;
+	std::set<int> keyset;
+	fprintf(fp, "##bedpath=%s\n", bedpath);
+	fprintf(fp, "#Depth");
+	for(i = 0; i < n_samples; ++i) {
+		fprintf(fp, "\t%s:#Bases with coverage >=", aux[i]->fp->fn);
+		fprintf(fp, "\t%s:%%Bases in bed interval set >=", aux[i]->fp->fn);
+	}
+	fputc('\n', fp);
+	for(i = 0; i < n_samples; ++i) {
+		for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
+			if(kh_exist(aux[i]->depth_hash, k))
+				keyset.insert(kh_key(aux[i]->depth_hash, k));
+	}
+	std::vector<int>keys(keyset.begin(), keyset.end());
+	std::sort(keys.begin(), keys.end());
+	keyset.clear();
+	std::vector<std::vector<uint64_t>> csums;
+	for(i = 0; i < n_samples; ++i) {
+		csums.push_back(std::vector<uint64_t>(keys.size()));
+
+		for(j = keys.size() - 1; j; --j) {
+			if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
+				csums[i][j] = kh_val(aux[i]->depth_hash, k);
+			else csums[i][j] = 0;
+			if(j != keys.size() - 1)
+				csums[i][j] += csums[i][j + 1];
+		}
+	}
+	for(j = 0; j < keys.size(); ++j) {
+		fprintf(fp, "%i", keys[j]);
+		for(i = 0; i < n_samples; ++i)
+			fprintf(fp, "\t%lu\t%0.4f%%", csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
+		fputc('\n', fp);
+	}
+}
 int u64cmp(const void *a, const void *b)
 {
 	return *((const uint64_t *)a) - *((const uint64_t *)b);
@@ -139,17 +179,22 @@ int depth_main(int argc, char *argv[])
 	int *n_plp, dret, i, n, c, minMQ = 0;
 	uint64_t *counts;
 	const bam_pileup1_t **plp;
-	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING;
-	int requireFP = 0;
+	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
+	int requireFP = 0, n_cols = 0;
 	char *bedpath = NULL;
-
+	FILE *histfp = NULL;
+	khiter_t k = 0;
 	if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
 		depth_usage(EXIT_SUCCESS);
 
 	if(argc < 4) depth_usage(EXIT_FAILURE);
 
-	while ((c = getopt(argc, argv, "Q:b:m:f:n:p:?hs")) >= 0) {
+	while ((c = getopt(argc, argv, "H:Q:b:m:f:n:p:?hs")) >= 0) {
 		switch (c) {
+		case 'H':
+			LOG_INFO("Writing output histogram to '%s'\n", optarg);
+			histfp = fopen(optarg, "w");
+			break;
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'm': max_depth = atoi(optarg); break;
@@ -179,27 +224,27 @@ int depth_main(int argc, char *argv[])
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
 		if (aux[i]->fp == 0 || idx[i] == 0) {
-			fprintf(stderr, (char *)"ERROR: fail to open index BAM file '%s'\n", argv[i + optind]);
+			fprintf(stderr, "ERROR: fail to open index BAM file '%s'\n", argv[i + optind]);
 			return 2;
 		}
 		// TODO bgzf_set_cache_size(aux[i]->fp, 20);
 		aux[i]->header = sam_hdr_read(aux[i]->fp);
 		if (aux[i]->header == NULL) {
-			fprintf(stderr, (char *)"ERROR: failed to read header for '%s'\n",
+			fprintf(stderr, "ERROR: failed to read header for '%s'\n",
 					argv[i+optind+1]);
 			return 2;
 		}
 	}
 	if(!bedpath) {
-		LOG_ERROR((char *)"Bed path required. Abort!\n");
+		LOG_ERROR("Bed path required. Abort!\n");
 	}
 	counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-	int n_cols = count_lines(bedpath);
+	n_cols = count_lines(bedpath);
 	col_names = (char **)calloc(n_cols, sizeof(char *));
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
-		LOG_ERROR((char *)"Could not open bedfile %s. Abort!\n", bedpath);
+		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
 	}
 	ks = ks_init(fp);
 	n_plp = (int *)calloc(n, sizeof(int));
@@ -270,6 +315,11 @@ int depth_main(int argc, char *argv[])
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= start && pos < stop) {
 				for (i = 0; i < n; ++i) {
+					++aux[i]->n_analyzed;
+					if((k = kh_get(depth, aux[i]->depth_hash, n_plp[i])) == kh_end(aux[i]->depth_hash)) {
+						k = kh_put(depth, aux[i]->depth_hash, n_plp[i], &khr);
+						kh_val(aux[i]->depth_hash, k) = 1;
+					} else ++kh_val(aux[i]->depth_hash, k);
 					counts[i] += n_plp[i];
 					aux[i]->dmp_counts[arr_ind] = n_plp[i];
 					aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
@@ -330,8 +380,11 @@ bed_error:
 	ks_destroy(ks);
 	gzclose(fp);
 
+	if(histfp) write_hist(aux, histfp, n, bedpath), fclose(histfp);
+
 	for (i = 0; i < n; ++i) {
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
+		kh_destroy(depth, aux[i]->depth_hash);
 		hts_idx_destroy(idx[i]);
 		bam_hdr_destroy(aux[i]->header);
 		sam_close(aux[i]->fp);

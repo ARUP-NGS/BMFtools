@@ -59,7 +59,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 #include <stdio.h>
 #include "mconf.h"
 
-static inline int mtherr ( char *name, int code );
+static inline int mtherr (const char *name, int code );
 
 //static int merror = 0;
 
@@ -80,7 +80,7 @@ static char *ermsg[7] = {
 */
 
 
-static inline int mtherr(char *name, int code)
+static inline int mtherr(const char *name, int code)
 {
 /* Display string passed by calling program,
  * which is supposed to be the name of the
