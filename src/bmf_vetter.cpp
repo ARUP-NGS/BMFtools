@@ -3,7 +3,7 @@
 int max_depth = (1 << 18); // 262144
 
 
-void vetter_error(char *message, int retcode)
+void vetter_error(const char *message, int retcode)
 {
 	fprintf(stderr, message);
 	exit(retcode);
@@ -297,7 +297,7 @@ int vetter_main(int argc, char *argv[])
 	int c;
 	int padding = 0, output_bcf = 0;
 	// Defaults to outputting textual (vcf)
-	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
+	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	aux_t aux = {0};
 	aux.max_depth = (1 << 18); // Default max depth
 	if(argc < 3) vetter_usage(EXIT_FAILURE);

@@ -40,8 +40,7 @@ void free_marksplit_settings_ptr(marksplit_settings_t *settings)
 splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Settings pointer null. Abort!\n");
 	}
 	if(!settings_ptr->tmp_basename) {
 		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
@@ -51,7 +50,7 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	char tmp_buffer[METASYNTACTIC_FNAME_BUFLEN];
+	kstring_t ks = {0, 0, NULL};
 	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
 	ret->n = splitter_ptr->n_handles;
 	if(settings_ptr->is_se) {
@@ -59,8 +58,9 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 		ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 		for(int i = 0; i < splitter_ptr->n_handles; ++i) {
 			ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-			sprintf(tmp_buffer, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
-			ret->outfnames_r1[i] = strdup(tmp_buffer);
+			ks.l = 0;
+			ksprintf(&ks, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r1[i] = ks.s;
 		}
 	} else {
 		ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
@@ -70,12 +70,15 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 		for(int i = 0; i < splitter_ptr->n_handles; ++i) {
 			ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
 			ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-			sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
-			ret->outfnames_r1[i] = strdup(tmp_buffer);
-			sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
-			ret->outfnames_r2[i] = strdup(tmp_buffer);
+			ks.l = 0;
+			ksprintf(&ks, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r1[i] = strdup(ks.s);
+			ks.l = 0;
+			ksprintf(&ks, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r2[i] = strdup(ks.s);
 		}
 	}
+	free(ks.s);
 	return ret;
 }
 
@@ -101,21 +104,24 @@ mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
 		NULL, // infnames_r1
 		NULL  // infnames_r2
 	};
-	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-	ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
+	ret.tmp_out_handles_r1 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
+	ret.tmp_out_handles_r2 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
 	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
 	ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	kstring_t ks = {0, 0, NULL};
 	for (int i = 0; i < ret.n_handles; i++) {
-		sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
-		ret.fnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);
-		ret.fnames_r2[i] = strdup(tmp_buffer);
-		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
-		ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
+		ks.l = 0;
+		ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r1[i] = kstrdup(&ks);
+		ks.l = 0;
+		ksprintf(&ks, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r2[i] = kstrdup(&ks);
+		ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
+		ret.tmp_out_handles_r2[i] = gzopen(ret.fnames_r2[i], settings_ptr->mode);
 	}
 	return ret;
 }
+
 mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
 {
 	mark_splitter_t ret = {
@@ -126,13 +132,14 @@ mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
         NULL, // infnames_r1
         NULL  // infnames_r2
 	};
-	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
+	ret.tmp_out_handles_r1 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
 	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	kstring_t ks = {0, 0, NULL};
 	for (int i = 0; i < ret.n_handles; i++) {
-		sprintf(tmp_buffer, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
-		ret.fnames_r1[i] = strdup(tmp_buffer);
-		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
+		ks.l = 0;
+		ksprintf(&ks, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r1[i] = kstrdup(&ks);
+		ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
 	}
 	return ret;
 }
