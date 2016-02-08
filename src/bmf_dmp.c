@@ -93,8 +93,8 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 	if(settings->is_se) return;
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
-		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
+		LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",
+				params->infnames_r2[i], params->outfnames_r2[i]);
 		func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
 		if(settings->cleanup) {
 			kstring_t ks = {0, 0, NULL};
@@ -190,16 +190,13 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	ks_resize(&str1, 1 << 16);
 	for(int i = 0; i < settings->n_handles; ++i)
 		ksprintf(&str1, " %s", params->outfnames_r1[i]);
-	const char suffix[] = " | paste -d'~' - - - - ";
-	kputs(suffix, &str1);
+	kputs(" | paste -d'~' - - - - ", &str1);
 	str2.s = kstrdup(&str1); // strdup the string.
-	LOG_DEBUG("Str1: %s. Str2: %s.\n", str1.s, str2.s);
 	for(uint32_t i = 0; i < str2.l; ++i) {
 		LOG_DEBUG("Current str.s + i: %s.\n", str2.s + i);
 		if(memcmp(str2.s + i, "R1", 2) == 0)
 			str2.s[i + 1] = '2';
 	}
-	LOG_DEBUG("Str1: %s. Str2: %s.\n", str1.s, str2.s);
 
 	const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
 	ksprintf(&final, final_template, str1.s, str2.s);
