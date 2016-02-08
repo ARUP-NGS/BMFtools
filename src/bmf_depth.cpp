@@ -94,11 +94,11 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	for(i = 0; i < n_samples; ++i) {
 		csums.push_back(std::vector<uint64_t>(keys.size()));
 
-		for(j = keys.size() - 1; j; --j) {
+		for(j = keys.size() - 1; j != (unsigned)-1; --j) {
 			if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
 				csums[i][j] = kh_val(aux[i]->depth_hash, k);
 			else csums[i][j] = 0;
-			if(j != keys.size() - 1)
+			if(j != (unsigned)keys.size() - 1)
 				csums[i][j] += csums[i][j + 1];
 		}
 	}
@@ -384,7 +384,6 @@ bed_error:
 
 	for (i = 0; i < n; ++i) {
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
-		kh_destroy(depth, aux[i]->depth_hash);
 		hts_idx_destroy(idx[i]);
 		bam_hdr_destroy(aux[i]->header);
 		sam_close(aux[i]->fp);
