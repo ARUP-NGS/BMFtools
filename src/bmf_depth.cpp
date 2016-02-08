@@ -1,4 +1,5 @@
-/*  bmf_depth.c -- bmftools depth subcommand
+/*  bmf_depth.cpp -- bmftools depth subcommand
+
 
 	Modified from bedcov.c
 
