@@ -1051,38 +1051,41 @@ int err_cycle_main(int argc, char *argv[])
 
 	FILE *ofp = NULL;
 	int padding = -1, minMQ = 0, flag = 0, c;
-	std::string bedpath(""), outpath(""), refcontig("");
+	char *bedpath = NULL, *outpath = NULL, *refcontig = NULL;
 	while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
-		case 'o': outpath = optarg; break;
-		case 'r': refcontig = optarg; break;
-		case 'b': bedpath = optarg; break;
+		case 'o': outpath = strdup(optarg); break;
+		case 'r': refcontig = strdup(optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'P': flag |= REQUIRE_PROPER; break;
 		case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
-	if(padding < 0) {
-		LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	if(padding < 0 && bedpath) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-	if(!*outpath.c_str()) {
-		outpath = "-";
+	if(!outpath) {
+		outpath = strdup("-");
 		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
 	}
-	ofp = open_ofp((char *)outpath.c_str());
+	ofp = open_ofp(outpath);
 
 	if (argc != optind+2)
 		return err_cycle_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, (char *)bedpath.c_str(), (char *)refcontig.c_str(), padding, minMQ, flag);
+	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ, flag);
 	err_cycle_report(ofp, ce); fclose(ofp);
 	cycle_destroy(ce);
 	fai_destroy(fai);
+	cond_free(refcontig);
+	cond_free(bedpath);
+	cond_free(outpath);
 	return EXIT_SUCCESS;
 }
 
@@ -1125,7 +1128,7 @@ int err_fm_main(int argc, char *argv[])
 		}
 	}
 
-	if(padding < 0) {
+	if(bedpath && padding < 0) {
 		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
