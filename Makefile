@@ -7,7 +7,7 @@ STD=c++11
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 CFLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -fno-builtin-gamma # pedantic
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -fno-builtin-gamma -Wno-write-strings# pedantic
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(STD) -fno-builtin-gamma # pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -19,9 +19,9 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing -fno-builtin-gamma
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -fno-builtin-gamma -Wno-write-strings
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -Wno-write-strings
+OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -Wpedantic -fno-builtin-gamma
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \

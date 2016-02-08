@@ -31,13 +31,8 @@
 
 int cap_qscore_main(int argc, char *argv[])
 {
-	cap_settings settings = {
-		.minFM = 0,
-		.minPV = 0,
-		.minFrac = 0.0,
-		.cap = 93,
-		.dnd = 0
-	};
+	cap_settings settings = {0};
+	settings.cap = 93;
 	int c;
 	samFile *in, *out;
 	bam_hdr_t *header;
@@ -45,13 +40,8 @@ int cap_qscore_main(int argc, char *argv[])
 	sam_global_args ga;
 	memset(&ga, 0, sizeof(ga));
 
-	static const struct option lopts[] = {
-		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
-		{ NULL, 0, NULL, 0 }
-	};
-
 	int level;
-	while ((c = getopt_long(argc, argv, "t:f:m:l:c:dh?", lopts, NULL)) >= 0) {
+	while ((c = getopt(argc, argv, "t:f:m:l:c:dh?")) >= 0) {
 		switch (c) {
 		case 'l': level = atoi(optarg) % 10; wmode[2] = level + '0'; break;
 		case 'm': settings.minFM = strtoul(optarg, NULL, 10); break;
@@ -64,8 +54,6 @@ int cap_qscore_main(int argc, char *argv[])
 			}
 			settings.cap = (char)atoi(optarg); break;
 		case 'd': settings.dnd = 1; break;
-		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
-			/* else fall-through */
 		case 'h': // fall-through
 		case '?': return cap_qscore_usage(argv);
 		}
