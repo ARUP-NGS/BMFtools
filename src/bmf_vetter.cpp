@@ -220,18 +220,21 @@ int vet_core(aux_t *aux) {
 	bcf1_t *vrec = bcf_init();
 	// Unpack all shared data -- up through INFO, but not including FORMAT
 	vrec->max_unpack = BCF_UN_FMT;
+	vrec->rid = -1;
 	hts_itr_t *vcf_iter = NULL;
 	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
 	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
-		hash_label:
 		if(!kh_exist(aux->bed, ki)) continue;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 			int tid, start, stop, pos = -1;
 
 			// Handle coordinates
+			while(vrec->rid >= 0 && ((uint32_t)vrec->rid > kh_key(aux->bed, ki) || !kh_exist(aux->bed, ki)))
+				++ki;
 			tid = kh_key(aux->bed, ki);
+			// rid is set to -1 before use. This won't be triggered.
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
@@ -245,18 +248,14 @@ int vet_core(aux_t *aux) {
 					continue; // Only handle simple SNVs
 				}
 				if(vrec->rid > tid) {
-					// No variants on this contig.
-					// Increment ki to go to the next contig.
-					++ki;
-					goto hash_label;
+					break;
 				}
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-				if(!plp) {
+				if(!plp)
 					LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
-				}
 				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
