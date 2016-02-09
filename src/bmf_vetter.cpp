@@ -231,8 +231,9 @@ int vet_core(aux_t *aux) {
 			int tid, start, stop, pos = -1;
 
 			// Handle coordinates
-			while(vrec->rid >= 0 && ((uint32_t)vrec->rid > kh_key(aux->bed, ki) || !kh_exist(aux->bed, ki)))
-				++ki;
+			if(vrec->rid >= 0)
+				while((uint32_t)vrec->rid > kh_key(aux->bed, ki) || !kh_exist(aux->bed, ki))
+					++ki;
 			tid = kh_key(aux->bed, ki);
 			// rid is set to -1 before use. This won't be triggered.
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
@@ -338,35 +339,31 @@ int vetter_main(int argc, char *argv[])
 	if(optind + 1 >= argc)
 		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	strcpy(vcf_wmode, output_bcf ? "wb": "w");
-	if(!outvcf) // Default to emitting to stdout.
-		outvcf = strdup("-");
-	if(strcmp(outvcf, "-") == 0) {
+	if(!outvcf) outvcf = strdup("-");
+	if(strcmp(outvcf, "-") == 0)
 		LOG_INFO("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
-	}
 	// Open bam
 	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
-	if(!aux.fp) {LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);}
+	if(!aux.fp) LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);
 	aux.header = sam_header_read(aux.fp);
 
 	// Open input vcf
-	if(!aux.header || aux.header->n_targets == 0) {LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);}
+	if(!aux.header || aux.header->n_targets == 0) {
+		LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
+	}
 	// Open bed file
 	// if no bed provided, do whole genome.
-	if(!bed) {
+	if(bed)
+		aux.bed = parse_bed_hash(bed, aux.header, padding);
+	else
 		LOG_ERROR("No bed file provided. Required. Abort!\n");
-		//bed = strdup("FullGenomeAnalysis");
-		//LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
-		//aux.bed = build_ref_hash(aux.header);
-	} else aux.bed = parse_bed_hash(bed, aux.header, padding);
 	//check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
 	aux.vcf_fp = vcf_open(argv[optind], "r");
-	if(!aux.vcf_fp) {
-		LOG_ERROR("BLAH");
-	}
+	if(!aux.vcf_fp)
+		LOG_ERROR("Could not open input vcf (%s).\n", argv[optind]);
 	aux.vcf_header = bcf_hdr_read(aux.vcf_fp);
-	if(!aux.vcf_header) {
-		LOG_ERROR("BLAH");
-	}
+	if(!aux.vcf_header)
+		LOG_ERROR("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
 	// Add lines to header
 	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i)
@@ -385,9 +382,8 @@ int vetter_main(int argc, char *argv[])
 
 	// Open output vcf
 	aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);
-	if(!aux.vcf_ofp) {
+	if(!aux.vcf_ofp)
 		LOG_ERROR("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
-	}
 	bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
 	// Open out vcf

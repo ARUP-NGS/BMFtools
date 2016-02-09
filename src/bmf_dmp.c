@@ -243,8 +243,10 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	}
 	ksprintf(&ks1, " > %s", ffq_r1);
 	ksprintf(&ks2, " > %s", ffq_r2);
-	if(settings->gzip_output)
-		kputs(".gz", &ks1), kputs(".gz", &ks2);
+	if(settings->gzip_output) {
+		kputs(".gz", &ks1);
+		kputs(".gz", &ks2);
+	}
 	FILE *c1_popen = popen(ks1.s, "w");
 	FILE *c2_popen = popen(ks2.s, "w");
 	if(pclose(c2_popen) || pclose(c1_popen)) {
