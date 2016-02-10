@@ -98,8 +98,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		qname = bam_get_qname(b);
 		k = kh_get(names, hash, qname);
 		if(k == kh_end(hash)) {
-			kh_put(names, hash, qname, &khr);
-			k = kh_get(names, hash, qname);
+			k = kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
@@ -138,7 +137,8 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		b = plp[i].b;
 		FA1 = (uint32_t *)array_tag(b, "FA");
 		PV1 = (uint32_t *)array_tag(b, "PV");
-		if(FA1[plp[i].qpos] < aux->minFA || (float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR ||
+		if(FA1[plp[i].qpos] < aux->minFA ||
+			(float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR ||
 			PV1[plp[i].qpos] < aux->minPV)
 			continue;
 		seq = bam_get_seq(b);
@@ -177,6 +177,7 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 			if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
 		}
 	} else {
+#if 0
 		if((ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) < 0) return ret;
 		while(vrec->rid < tid) {
 			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
@@ -185,6 +186,8 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 			if(vrec->rid != tid) return ret;
 			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
 		}
+#endif
+		LOG_ERROR("Indexed vcf or bcf required. Abort!\n");
 	}
 	return ret;
 }
@@ -199,18 +202,15 @@ int vet_core(aux_t *aux) {
 	switch(hts_get_format(aux->vcf_fp)->format) {
 	case vcf:
 		vcf_idx = tbx_index_load(aux->vcf_fp->fn);
-		if(!vcf_idx) {
-			LOG_WARNING("Could not load TBI index for %s. Defaulting to all variants.\n", aux->vcf_fp->fn);
-		}
+		if(!vcf_idx) LOG_ERROR("Could not load TBI index for %s. Indexed vcf required!\n", aux->vcf_fp->fn);
 		break;
 	case bcf:
 		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
-		if(!bcf_idx) {
-			LOG_ERROR("Could not load CSI index: %s\n", aux->vcf_fp->fn);
-		}
+		if(!bcf_idx) LOG_ERROR("Could not load CSI index: %s\n", aux->vcf_fp->fn);
 		break;
 	default:
 		LOG_ERROR("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
+		break; // This never happens -- LOG_ERROR exits.
 	}
 	/*
 	if(!(vcf_idx || bcf_idx)) {
@@ -231,9 +231,6 @@ int vet_core(aux_t *aux) {
 			int tid, start, stop, pos = -1;
 
 			// Handle coordinates
-			if(vrec->rid >= 0)
-				while((uint32_t)vrec->rid > kh_key(aux->bed, ki) || !kh_exist(aux->bed, ki))
-					++ki;
 			tid = kh_key(aux->bed, ki);
 			// rid is set to -1 before use. This won't be triggered.
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
@@ -247,9 +244,6 @@ int vet_core(aux_t *aux) {
 				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
-				}
-				if(vrec->rid > tid) {
-					break;
 				}
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
@@ -358,11 +352,9 @@ int vetter_main(int argc, char *argv[])
 	else
 		LOG_ERROR("No bed file provided. Required. Abort!\n");
 	//check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
-	aux.vcf_fp = vcf_open(argv[optind], "r");
-	if(!aux.vcf_fp)
+	if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL)
 		LOG_ERROR("Could not open input vcf (%s).\n", argv[optind]);
-	aux.vcf_header = bcf_hdr_read(aux.vcf_fp);
-	if(!aux.vcf_header)
+	if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL)
 		LOG_ERROR("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
 	// Add lines to header
