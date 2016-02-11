@@ -33,24 +33,9 @@ static int read_bam(void *data, bam1_t *b)
 	return ret;
 }
 
-/*
- * #define VETTER_OPTIONS \
-	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
-	{"min-family-size",		 required_argument, NULL, 's'}, \
-	{"min-fraction-agreed",		 required_argument, NULL, 'f'}, \
-	{"min-mapping-quality",		 required_argument, NULL, 'm'}, \
-	{"min-phred-quality",		 required_argument, NULL, 'p'}, \
-	{"in-vcf",		 required_argument, NULL, 'v'}, \
-	{"out-vcf",		 required_argument, NULL, 'o'}, \
-	{"bedpath",		 required_argument, NULL, 'b'}, \
-	{"ref",		 required_argument, NULL, 'r'}, \
-	{0, 0, 0, 0}
- */
-int file_has_ext(char *fn, const char *ext);
 void vetter_usage(int retcode)
 {
-	char buf[2000];
-	sprintf(buf,
+	const char *buf =
 			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
@@ -63,23 +48,16 @@ void vetter_usage(int retcode)
 			"-p, --padding\tNumber of bases outside of bed region to pad.\n"
 			"-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
 			"-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-			"-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
-			);
+			"-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n";
 	vetter_error(buf, retcode);
 }
-
-enum vcf_access_mode{
-	VCF_UN,
-	VCF_BGZIP,
-	BCF
-};
 
 /*
  * allele here is an unsigned char from seq_nt16_table, meaning that we have converted the variant
  * allele from a character into a bam_seqi format (4 bits per base)
  */
 int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, aux_t *aux, int n_plp,
-				int pos) {
+				int pos, int *n_disagreed, int *n_overlap, int *n_duplex, int *n_uniobs) {
 	int duplex = 0, overlap = 0, count = 0, i, khr, s, s2;
 	khiter_t k;
 	uint32_t *FA1, *PV1, *FA2, *PV2;
@@ -101,6 +79,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			k = kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
+			++*n_overlap;
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
 			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
@@ -119,6 +98,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 				PV1[kh_val(hash, k)->qpos] = PV2[plp[i].qpos];
 				FA1[kh_val(hash, k)->qpos] = FA2[plp[i].qpos];
 			} else if(s2 != HTS_N) {
+				++*n_disagreed;
 				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
 				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
 				PV1[kh_val(hash, k)->qpos] = 0u;
@@ -137,15 +117,16 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		b = plp[i].b;
 		FA1 = (uint32_t *)array_tag(b, "FA");
 		PV1 = (uint32_t *)array_tag(b, "PV");
-		if(FA1[plp[i].qpos] < aux->minFA ||
-			(float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR ||
-			PV1[plp[i].qpos] < aux->minPV)
+		if(FA1[plp[i].qpos] < aux->minFA || PV1[plp[i].qpos] < aux->minPV ||
+			(float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
 			continue;
+		}
 		seq = bam_get_seq(b);
 		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
 			++count;
-			if((drdata = bam_aux_get(b, "DR")) != NULL &&
-				bam_aux2i(drdata)) ++duplex; // Has DR tag and its value is nonzero.
+			if((drdata = bam_aux_get(b, "DR")) != NULL && bam_aux2i(drdata)) {
+				++duplex; // Has DR tag and its value is nonzero.
+			}
 			if((tmptag = bam_aux_get(b, "KR")) != NULL) {
 				++overlap;
 				bam_aux_del(b, tmptag);
@@ -153,6 +134,9 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 		}
 	}
 	kh_destroy(names, hash);
+	*n_duplex = duplex;
+	*n_overlap = overlap;
+	*n_uniobs = count;
 	return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
 
@@ -167,10 +151,7 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 {
 	int ret;
 	if(vcf_iter) {
-		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
-		LOG_DEBUG("Accessing vcf_iter at %p. tid: %i. start: %i. vrec->pos: %i.\n", (void *)vcf_iter, tid, start, vrec->pos);
 		if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
-		LOG_DEBUG("pos: %i.\n", vrec->pos);
 		while(vrec->pos < start)
 		{
 			/* Zoom ahead until you're at the correct position */
@@ -223,6 +204,8 @@ int vet_core(aux_t *aux) {
 	vrec->rid = -1;
 	hts_itr_t *vcf_iter = NULL;
 	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
+	int32_t *uniobs_values = (int32_t *)malloc(sizeof(int32_t) * 5);
+	int32_t *duplex_values = (int32_t *)malloc(sizeof(int32_t) * 5);
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
 	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
@@ -249,8 +232,7 @@ int vet_core(aux_t *aux) {
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-				if(!plp)
-					LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
+				if(!plp) LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
 				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
@@ -262,10 +244,18 @@ int vet_core(aux_t *aux) {
 				}
 				// Check each variant
 
-				for(unsigned i = 0; i < vrec->n_allele; ++i)
-					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos);
+				for(unsigned i = 0; i < vrec->n_allele; ++i) {
+					int n_disagreed = 0, n_overlap = 0;
+					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed, &n_overlap, &duplex_values[i], &uniobs_values[i]);
+					if(i == 0) {
+						bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
+						bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlap, 1);
+					}
+				}
 				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
 				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values, vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -330,12 +320,12 @@ int vetter_main(int argc, char *argv[])
 
 
 
-	if(optind + 1 >= argc)
-		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
+	if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	strcpy(vcf_wmode, output_bcf ? "wb": "w");
 	if(!outvcf) outvcf = strdup("-");
-	if(strcmp(outvcf, "-") == 0)
+	if(strcmp(outvcf, "-") == 0) {
 		LOG_INFO("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
+	}
 	// Open bam
 	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if(!aux.fp) LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);
@@ -347,20 +337,18 @@ int vetter_main(int argc, char *argv[])
 	}
 	// Open bed file
 	// if no bed provided, do whole genome.
-	if(bed)
-		aux.bed = parse_bed_hash(bed, aux.header, padding);
-	else
-		LOG_ERROR("No bed file provided. Required. Abort!\n");
-	//check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
-	if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL)
-		LOG_ERROR("Could not open input vcf (%s).\n", argv[optind]);
-	if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL)
-		LOG_ERROR("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
+	if(bed) aux.bed = parse_bed_hash(bed, aux.header, padding);
+	else LOG_ERROR("No bed file provided. Required. Abort!\n");
+
+	if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL) LOG_ERROR("Could not open input vcf (%s).\n", argv[optind]);
+	if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL) LOG_ERROR("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
 	// Add lines to header
-	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i)
-		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]))
+	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
+		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) {
 			fprintf(stderr, "[E:%s:%d] Could not add header line '%s'. Abort!\n", __func__, __LINE__, bmf_header_lines[i]), exit(EXIT_FAILURE);
+		}
+	}
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
 		kstring_t tmpstr = {0};
@@ -374,15 +362,15 @@ int vetter_main(int argc, char *argv[])
 
 	// Open output vcf
 	aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);
-	if(!aux.vcf_ofp)
-		LOG_ERROR("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
+	if(!aux.vcf_ofp) LOG_ERROR("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
 	bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
 	// Open out vcf
 	int ret = vet_core(&aux);
-	if(ret)
+	if(ret) {
 		fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
 				__func__, __LINE__, ret);
+	}
 	sam_close(aux.fp);
 	bam_hdr_destroy(aux.header);
 	vcf_close(aux.vcf_fp);
