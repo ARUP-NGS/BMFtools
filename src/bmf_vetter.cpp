@@ -16,7 +16,8 @@ static int read_bam(void *data, bam1_t *b)
 	int ret;
 	for(;;)
 	{
-		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
+		if(!aux->iter) LOG_ERROR("Need to access bam with index.\n");
+		ret = sam_itr_next(aux->fp, aux->iter, b);
 		if ( ret<0 ) break;
 		// Skip unmapped, secondary, qcfail, duplicates.
 		// Skip improper if option set
@@ -235,9 +236,16 @@ int vet_core(aux_t *aux) {
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-				if(!plp) LOG_ERROR("Could not make pileup for region %s:%i-%i.\n", aux->header->target_name[tid], start, stop);
 				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
+				}
+				if(!plp && n_plp == -1)
+					if(n_plp == -1) {
+						LOG_ERROR("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n", aux->header->target_name[tid], start, stop, n_plp, pos, tid);
+					}
+					else if(n_plp == 0){
+						LOG_WARNING("No reads at position. Skip this variant?\n");
+					}
 				}
 				LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
 				if(pos != vrec->pos || tid != vrec->rid) {
@@ -316,6 +324,7 @@ int vetter_main(int argc, char *argv[])
 		}
 	}
 
+	if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	// Check for required tags.
 	if(aux.minAF) check_bam_tag_exit(argv[optind + 1], "AF");
 	check_bam_tag_exit(argv[optind + 1], "FA");
@@ -326,7 +335,6 @@ int vetter_main(int argc, char *argv[])
 
 
 
-	if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	strcpy(vcf_wmode, output_bcf ? "wb": "w");
 	if(!outvcf) outvcf = strdup("-");
 	if(strcmp(outvcf, "-") == 0) {
