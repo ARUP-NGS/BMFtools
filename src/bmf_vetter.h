@@ -16,6 +16,12 @@
 #include "dlib/misc_util.h"
 #include "dlib/vcf_util.h"
 
+#include <vector>
+#include <set>
+#include <algorithm>
+
+int vetter_main(int, char **);
+
 KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
 static int vet_func(void *data, bam1_t *b);
@@ -87,10 +93,10 @@ struct __bam_plp_t {
 	{0, 0, 0, 0}
 
 const char *bmf_header_lines[] =  {
-		"##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">"
-		"##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">"
-		"##INFO=<ID=BMF_DUPLEX,Number=A,Type=Integer,Description=\"Number of duplex reads supporting variant at position.\">"
-		"##FORMAT=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">"
+		"##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
+		"##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">",
+		"##INFO=<ID=BMF_DUPLEX,Number=A,Type=Integer,Description=\"Number of duplex reads supporting variant at position.\">",
+		"##FORMAT=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">",
 		"##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs combined into single observations at position.\">"
 };
 

@@ -64,6 +64,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 	char *qname;
 	bam1_t *b;
 	uint8_t *seq, *seq2, *tmptag, *drdata;
+	*n_overlap = *n_disagreed = 0;
 	// Build overlap hash
 	khash_t(names) *hash = kh_init(names);
 	const int sk = 1;
@@ -135,7 +136,6 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 	}
 	kh_destroy(names, hash);
 	*n_duplex = duplex;
-	*n_overlap = overlap;
 	*n_uniobs = count;
 	return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
@@ -149,27 +149,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 
 int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 {
-	int ret;
-	if(vcf_iter) {
-		if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
-		while(vrec->pos < start)
-		{
-			/* Zoom ahead until you're at the correct position */
-			if((ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) < 0) return ret;
-		}
-	} else {
-#if 0
-		if((ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) < 0) return ret;
-		while(vrec->rid < tid) {
-			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
-		}
-		while(vrec->pos < start) {
-			if(vrec->rid != tid) return ret;
-			ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec);
-		}
-#endif
-		LOG_ERROR("Indexed vcf or bcf required. Abort!\n");
-	}
+	int ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
 	return ret;
 }
 
@@ -208,8 +188,17 @@ int vet_core(aux_t *aux) {
 	int32_t *duplex_values = (int32_t *)malloc(sizeof(int32_t) * 5);
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
+	std::set<std::pair<khint_t, khiter_t>> keyset;
 	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
-		if(!kh_exist(aux->bed, ki)) continue;
+		if(kh_exist(aux->bed, ki)) keyset.insert(std::pair<khint_t, khiter_t>(kh_key(aux->bed, ki), ki));
+	}
+	std::vector<std::pair<khint_t, khiter_t>> keys = std::vector<std::pair<khint_t, khiter_t>>(keyset.begin(), keyset.end());
+	keyset.clear();
+	std::sort(keys.begin(), keys.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
+		return p1.first < p2.first;
+	});
+	for(auto key: keys) {
+		khiter_t ki = key.second;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 			int tid, start, stop, pos = -1;
 
@@ -223,12 +212,25 @@ int vet_core(aux_t *aux) {
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
 			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_itr_queryi(bcf_idx, tid, start, stop);
 			LOG_DEBUG("vcf_iter: %p. vcf_idx: %p. bcf_idx: %p.\n", (void *)vcf_iter, (void *)vcf_idx, (void *)bcf_idx);
+			if(!vcf_iter) {
+				LOG_ERROR("COuld not access vcf index.\n");
+			}
 
-			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec, start, tid)) >= 0) {
-				if(!bcf_is_snp(vrec) || !vcf_bed_test(vrec, aux->bed)) {
+			int n_disagreed[2] = {-1, 0};
+			int n_overlapped[2] = {-1, 0};
+			while((vcf_iter_ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) >= 0) {
+				if(!bcf_is_snp(vrec)) {
+					LOG_DEBUG("Variant isn't a snp. Skip!\n");
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
+				if(!vcf_bed_test(vrec, aux->bed)) {
+					LOG_DEBUG("Outside of bed region.\n");
+					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
+					continue; // Only handle simple SNVs
+				}
+				memset(uniobs_values, 0, 5 * sizeof(int32_t));
+				LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
@@ -246,11 +248,12 @@ int vet_core(aux_t *aux) {
 				// Check each variant
 
 				for(unsigned i = 0; i < vrec->n_allele; ++i) {
-					int n_disagreed = 0, n_overlap = 0;
-					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed, &n_overlap, &duplex_values[i], &uniobs_values[i]);
-					if(i == 0) {
-						bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
-						bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlap, 1);
+					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed[1], &n_overlapped[1], &duplex_values[i], &uniobs_values[i]);
+					if(i == vrec->n_allele - 1) {
+						LOG_DEBUG("Adding disc_overlap.\n");
+						bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 2);
+						LOG_DEBUG("Adding n_overlap.\n");
+						bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 2);
 					}
 				}
 				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
@@ -269,6 +272,8 @@ int vet_core(aux_t *aux) {
 	if(vcf_idx) tbx_destroy(vcf_idx);
 	if(aux->iter) hts_itr_destroy(aux->iter);
 	free(pass_values);
+	free(uniobs_values);
+	free(duplex_values);
 	hts_idx_destroy(idx);
 	bcf_destroy(vrec);
 	return EXIT_SUCCESS;
@@ -346,9 +351,8 @@ int vetter_main(int argc, char *argv[])
 
 	// Add lines to header
 	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
-		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) {
-			fprintf(stderr, "[E:%s:%d] Could not add header line '%s'. Abort!\n", __func__, __LINE__, bmf_header_lines[i]), exit(EXIT_FAILURE);
-		}
+		LOG_DEBUG("Adding header line %s.\n", bmf_header_lines[i]);
+		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) LOG_ERROR("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
 	}
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
