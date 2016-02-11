@@ -132,7 +132,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			b = plp[i].b;
 
 			seq = bam_get_seq(b);
-			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[alleles[j][0]]) { // Match!
+			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)alleles[j][0]]) { // Match!
 				++counts[j];
 				if((drdata = bam_aux_get(b, "DR")) != NULL && bam_aux2i(drdata)) {
 					++duplex; // Has DR tag and its value is nonzero.
@@ -263,14 +263,13 @@ std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
 	for(khiter_t ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
 		if(kh_exist(h, ki)) keyset.push_back(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
 	}
-	std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
+	__gnu_parallel::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
 		return p1.first < p2.first;
 	});
 	return keyset;
 }
 
 int vet_core(aux_t *aux) {
-	khiter_t ki;
 	int n_plp, vcf_iter_ret;
 	const bam_pileup1_t *plp;
 	tbx_t *vcf_idx = NULL;

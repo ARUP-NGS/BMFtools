@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <vector>
-#include <algorithm>
+#include <parallel/algorithm>
 #include "htslib/kstring.h"
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"

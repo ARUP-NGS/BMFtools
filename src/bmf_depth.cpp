@@ -89,11 +89,20 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 			if(kh_exist(aux[i]->depth_hash, k))
 				keyset.insert(kh_key(aux[i]->depth_hash, k));
 	std::vector<int>keys(keyset.begin(), keyset.end());
-	std::sort(keys.begin(), keys.end());
+	__gnu_parallel::sort(keys.begin(), keys.end());
 	keyset.clear();
 	std::vector<std::vector<uint64_t>> csums;
 	for(i = 0; i < n_samples; ++i) {
 		csums.push_back(std::vector<uint64_t>(keys.size()));
+#if 0
+		std::partial_sum(keys.rbegin(), keys.rend(), csums[csums.size() - 1].begin(), [&](auto key)->uint64_t {
+			khiter_t k;
+			if((k = kh_get(depth, aux[i]->depth_hash, key)) == kh_end(aux[i]->depth_hash))
+				return 0uL;
+			else
+				return (uint64_t)kh_val(aux[i]->depth_hash, k);
+		});
+#endif
 
 		for(j = keys.size() - 1; j != (unsigned)-1; --j) {
 			if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))

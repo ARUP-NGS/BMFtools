@@ -18,7 +18,7 @@
 
 #include <vector>
 #include <set>
-#include <algorithm>
+#include <parallel/algorithm>
 
 int vetter_main(int, char **);
 
