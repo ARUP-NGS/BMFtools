@@ -154,6 +154,19 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 	return ret;
 }
 
+std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
+	khiter_t ki;
+	std::set<std::pair<khint_t, khiter_t>> keyset;
+	for(ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
+		if(kh_exist(h, ki)) keyset.insert(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
+	}
+	std::vector<std::pair<khint_t, khiter_t>> sorted_keys = std::vector<std::pair<khint_t, khiter_t>>(keyset.begin(), keyset.end());
+	std::sort(sorted_keys.begin(), sorted_keys.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
+		return p1.first < p2.first;
+	});
+	return sorted_keys;
+}
+
 int vet_core(aux_t *aux) {
 	khiter_t ki;
 	int n_plp, vcf_iter_ret;
@@ -189,15 +202,8 @@ int vet_core(aux_t *aux) {
 	int32_t *duplex_values = (int32_t *)malloc(sizeof(int32_t) * 5);
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
-	std::set<std::pair<khint_t, khiter_t>> keyset;
-	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
-		if(kh_exist(aux->bed, ki)) keyset.insert(std::pair<khint_t, khiter_t>(kh_key(aux->bed, ki), ki));
-	}
-	std::vector<std::pair<khint_t, khiter_t>> keys = std::vector<std::pair<khint_t, khiter_t>>(keyset.begin(), keyset.end());
-	keyset.clear();
-	std::sort(keys.begin(), keys.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
-		return p1.first < p2.first;
-	});
+
+	std::vector<std::pair<khint_t, khiter_t>> keys = make_sorted_keys(aux->bed);
 	for(auto key: keys) {
 		khiter_t ki = key.second;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
@@ -239,7 +245,7 @@ int vet_core(aux_t *aux) {
 				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
-				if(!plp && n_plp == -1)
+				if(!plp) {
 					if(n_plp == -1) {
 						LOG_ERROR("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n", aux->header->target_name[tid], start, stop, n_plp, pos, tid);
 					}
