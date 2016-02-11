@@ -53,6 +53,106 @@ void vetter_usage(int retcode)
 	vetter_error(buf, retcode);
 }
 
+inline int arr_qpos(const bam_pileup1_t *plp)
+{
+	return (plp->b->core.flag & BAM_FREVERSE) ? plp->b->core.l_qseq - 1 - plp->qpos: plp->qpos;
+}
+
+/*
+ * 1. What do I want for FORMAT?
+ *   # UniObs passing
+ * 2. What do I want for INFO?
+ *
+ */
+void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, int n_allele, char **alleles,
+		int *n_overlaps, int *counts) {
+	int duplex = 0, overlap = 0, i, khr, s, s2;
+	int n_disagreed = 0;
+	khiter_t k;
+	uint32_t *FA1, *PV1, *FA2, *PV2;
+	char *qname;
+	bam1_t *b;
+	uint8_t *seq, *seq2, *tmptag, *drdata;
+	// Build overlap hash
+	khash_t(names) *hash = kh_init(names);
+	const int sk = 1;
+	// Set the r1/r2 flags for the reads to ignore to 0
+	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
+	for(i = 0; i < n_plp; ++i) {
+		if(plp[i].is_del || plp[i].is_refskip) continue;
+		const int32_t arr_qpos1 = arr_qpos(&plp[i]);
+		FA1 = (uint32_t *)array_tag(b, "FA");
+		PV1 = (uint32_t *)array_tag(b, "PV");
+		if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
+			(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
+			LOG_DEBUG("Note: PV1[plp[i].qpos] value (%u) is greater than minPV now. (%u)\n", PV1[arr_qpos1], aux->minPV);
+			continue;
+		}
+		b = plp[i].b;
+		// Skip any reads failed for FA < minFA or FR < minFR
+		qname = bam_get_qname(b);
+		k = kh_get(names, hash, qname);
+		if(k == kh_end(hash)) {
+			k = kh_put(names, hash, qname, &khr);
+			kh_val(hash, k) = &plp[i];
+		} else {
+			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
+			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
+			++overlap;
+			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
+			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
+			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
+			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
+			seq = bam_get_seq(kh_val(hash, k)->b);
+			s = bam_seqi(seq, kh_val(hash, k)->qpos);
+			PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
+			FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
+			seq2 = bam_get_seq(plp[i].b);
+			s2 = bam_seqi(seq2, plp[i].qpos);
+			if(s == s2) {
+				PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
+				FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
+			} else if(s == HTS_N) {
+				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
+				PV1[arr_qpos1] = PV2[arr_qpos2];
+				FA1[arr_qpos1] = FA2[arr_qpos2];
+			} else if(s2 != HTS_N) {
+				++n_disagreed;
+				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
+				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
+				PV1[arr_qpos1] = 0u;
+				FA1[arr_qpos1] = 0u;
+			}
+		}
+	}
+	for(int j = 0; j < n_allele; ++j) {
+		for(i = 0; i < n_plp; ++i) {
+			if(plp[i].is_del || plp[i].is_refskip) continue;
+			if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) continue;
+			b = plp[i].b;
+
+			seq = bam_get_seq(b);
+			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[alleles[j][0]]) { // Match!
+				++counts[j];
+				if((drdata = bam_aux_get(b, "DR")) != NULL && bam_aux2i(drdata)) {
+					++duplex; // Has DR tag and its value is nonzero.
+				}
+				if((tmptag = bam_aux_get(b, "KR")) != NULL) {
+					++n_overlaps[j];
+					bam_aux_del(b, tmptag);
+				}
+			}
+		}
+	}
+	for(int i = 0; i < n_plp; ++i) {
+		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
+	}
+	kh_destroy(names, hash);
+	//*n_duplex = duplex;
+	//*n_uniobs = count;
+	//return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
+}
+
 /*
  * allele here is an unsigned char from seq_nt16_table, meaning that we have converted the variant
  * allele from a character into a bam_seqi format (4 bits per base)
@@ -81,6 +181,8 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			k = kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
+			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
+			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
 			++*n_overlap;
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
@@ -93,18 +195,18 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			seq2 = bam_get_seq(plp[i].b);
 			s2 = bam_seqi(seq2, plp[i].qpos);
 			if(s == s2) {
-				PV1[kh_val(hash, k)->qpos] = agreed_pvalues(PV1[kh_val(hash, k)->qpos], PV2[plp[i].qpos]);
-				FA1[kh_val(hash, k)->qpos] = FA1[kh_val(hash, k)->qpos] + FA2[plp[i].qpos];
+				PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
+				FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
 			} else if(s == HTS_N) {
 				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
-				PV1[kh_val(hash, k)->qpos] = PV2[plp[i].qpos];
-				FA1[kh_val(hash, k)->qpos] = FA2[plp[i].qpos];
+				PV1[arr_qpos1] = PV2[arr_qpos2];
+				FA1[arr_qpos1] = FA2[arr_qpos2];
 			} else if(s2 != HTS_N) {
 				++*n_disagreed;
 				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
 				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
-				PV1[kh_val(hash, k)->qpos] = 0u;
-				FA1[kh_val(hash, k)->qpos] = 0u;
+				PV1[arr_qpos1] = 0u;
+				FA1[arr_qpos1] = 0u;
 			}
 		}
 	}
@@ -117,10 +219,12 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			continue;
 		}
 		b = plp[i].b;
+		const int32_t arr_qpos1 = arr_qpos(&plp[i]);
 		FA1 = (uint32_t *)array_tag(b, "FA");
 		PV1 = (uint32_t *)array_tag(b, "PV");
-		if(FA1[plp[i].qpos] < aux->minFA || PV1[plp[i].qpos] < aux->minPV ||
-			(float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
+		if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
+			(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
+			LOG_DEBUG("Note: PV1[arr_qpos1] value (%u) is greater than minPV now. (%u)\n", PV1[arr_qpos1], aux->minPV);
 			continue;
 		}
 		seq = bam_get_seq(b);
@@ -155,16 +259,14 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
 }
 
 std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
-	khiter_t ki;
-	std::set<std::pair<khint_t, khiter_t>> keyset;
-	for(ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
-		if(kh_exist(h, ki)) keyset.insert(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
+	std::vector<std::pair<khint_t, khiter_t>> keyset;
+	for(khiter_t ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
+		if(kh_exist(h, ki)) keyset.push_back(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
 	}
-	std::vector<std::pair<khint_t, khiter_t>> sorted_keys = std::vector<std::pair<khint_t, khiter_t>>(keyset.begin(), keyset.end());
-	std::sort(sorted_keys.begin(), sorted_keys.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
+	std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
 		return p1.first < p2.first;
 	});
-	return sorted_keys;
+	return keyset;
 }
 
 int vet_core(aux_t *aux) {
@@ -217,10 +319,11 @@ int vet_core(aux_t *aux) {
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_itr_queryi(bcf_idx, tid, start, stop);
+			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_itr_queryi(bcf_idx, tid, start, stop);
 			LOG_DEBUG("vcf_iter: %p. vcf_idx: %p. bcf_idx: %p.\n", (void *)vcf_iter, (void *)vcf_idx, (void *)bcf_idx);
 			if(!vcf_iter) {
-				LOG_ERROR("COuld not access vcf index.\n");
+				LOG_WARNING("Could not access vcf index. Continuing to next region.\n");
+				continue;
 			}
 
 			int n_disagreed[2] = {-1, 0};
