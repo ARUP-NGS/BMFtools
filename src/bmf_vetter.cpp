@@ -247,7 +247,7 @@ int vet_core(aux_t *aux) {
 				}
 				// Check each variant
 
-				for(unsigned i = 0; i < vrec->n_allele; ++i) {
+				for(int i = 0; i < vrec->n_allele; ++i) {
 					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed[1], &n_overlapped[1], &duplex_values[i], &uniobs_values[i]);
 					if(i == vrec->n_allele - 1) {
 						LOG_DEBUG("Adding disc_overlap.\n");
