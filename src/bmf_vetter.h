@@ -73,23 +73,23 @@ struct __bam_plp_t {
 		}*/
 #define VETTER_OPTIONS \
 	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
-	{"min-family-size",		  optional_argument, NULL, 's'}, \
-	{"min-fraction-agreed",		 optional_argument, NULL, 'f'}, \
-	{"min-mapping-quality",		 optional_argument, NULL, 'm'}, \
-	{"min-phred-quality",		 optional_argument, NULL, 'v'}, \
-	{"min-count",		 optional_argument, NULL, 'c'}, \
-	{"min-duplex",		 optional_argument, NULL, 'D'}, \
-	{"min-overlap",		 optional_argument, NULL, 'O'}, \
-	{"out-vcf",		 optional_argument, NULL, 'o'}, \
+	{"min-family-size",		  required_argument, NULL, 's'}, \
+	{"min-fraction-agreed",		 required_argument, NULL, 'f'}, \
+	{"min-mapping-quality",		 required_argument, NULL, 'm'}, \
+	{"min-phred-quality",		 required_argument, NULL, 'v'}, \
+	{"min-count",		 required_argument, NULL, 'c'}, \
+	{"min-duplex",		 required_argument, NULL, 'D'}, \
+	{"min-overlap",		 required_argument, NULL, 'O'}, \
+	{"out-vcf",		 required_argument, NULL, 'o'}, \
 	{"bedpath",		 required_argument, NULL, 'b'}, \
 	{"ref",		 required_argument, NULL, 'r'}, \
-	{"padding",		 optional_argument, NULL, 'p'}, \
-	{"skip-secondary", optional_argument, NULL, '2'},\
-	{"skip-supplementary", optional_argument, NULL, 'S'},\
-	{"skip-qcfail", optional_argument, NULL, 'q'},\
-	{"skip-improper", optional_argument, NULL, 'P'},\
-	{"max-depth", optional_argument, NULL, 'd'},\
-	{"emit-bcf", optional_argument, NULL, 'B'},\
+	{"padding",		 required_argument, NULL, 'p'}, \
+	{"skip-secondary", no_argument, NULL, '2'},\
+	{"skip-supplementary", no_argument, NULL, 'S'},\
+	{"skip-qcfail", no_argument, NULL, 'q'},\
+	{"skip-improper", no_argument, NULL, 'P'},\
+	{"max-depth", required_argument, NULL, 'd'},\
+	{"emit-bcf", no_argument, NULL, 'B'},\
 	{0, 0, 0, 0}
 
 const char *bmf_header_lines[] =  {

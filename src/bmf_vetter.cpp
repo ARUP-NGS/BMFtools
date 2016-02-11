@@ -242,7 +242,7 @@ int vet_core(aux_t *aux) {
 				if (aux->iter) hts_itr_destroy(aux->iter);
 				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-				while ((tid < vrec->rid || pos < vrec->pos) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
+				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					/* Zoom ahead until you're at the correct position */
 				}
 				if(!plp) {
@@ -255,23 +255,23 @@ int vet_core(aux_t *aux) {
 				}
 				LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
 				if(pos != vrec->pos || tid != vrec->rid) {
-					LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n", aux->header->target_name[tid], vrec->pos + 1);
+					LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
+					LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n", aux->header->target_name[vrec->rid], vrec->pos + 1);
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue;
 				}
 				// Check each variant
 
+				// Set i to 1 to skip reference base verification.
 				for(int i = 0; i < vrec->n_allele; ++i) {
 					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed[1], &n_overlapped[1], &duplex_values[i], &uniobs_values[i]);
-					if(i == vrec->n_allele - 1) {
-						LOG_DEBUG("Adding disc_overlap.\n");
-						bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 2);
-						LOG_DEBUG("Adding n_overlap.\n");
-						bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 2);
-					}
 				}
+				LOG_DEBUG("Adding disc_overlap.\n");
+				bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 2);
+				LOG_DEBUG("Adding n_overlap.\n");
+				bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 2);
 				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
-				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[1]), vrec->n_allele - 1, BCF_HT_INT);
 				bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values, vrec->n_allele, BCF_HT_INT);
 				bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values, vrec->n_allele, BCF_HT_INT);
 
