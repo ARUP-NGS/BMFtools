@@ -49,6 +49,19 @@ typedef struct obserr {
 	uint64_t err;
 } obserr_t;
 
+class RegionErr {
+	std::string name;
+	obserr_t counts;
+public:
+	RegionErr(region_set_t set, int i) {
+		counts = {0, 0};
+		kstring_t tmp = {0, 0, NULL};
+		ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
+		name = std::string(tmp.s);
+		free(tmp.s);
+	}
+};
+
 typedef struct cycle_err {
 	int32_t minMQ;
 	int32_t rlen;
@@ -63,20 +76,22 @@ typedef struct cycle_err {
 } cycle_err_t;
 
 class RegionExpedition {
-	khash_t(bed) *bed;
 	uint32_t padding;
-	std::vector<obserr_t> region_counts;
 	std::string bedpath;
-	faidx_t *fai;
 public:
+	khash_t(bed) *bed;
+	faidx_t *fai; // Does not own fai!
+	std::vector<RegionErr> region_counts;
 	samFile *fp;
 	bam_hdr_t *hdr;
 	hts_itr_t *iter;
+	hts_idx_t *bam_index;
 	int32_t minMQ;
 	int32_t minFM;
 	int32_t requireFP;
+	int32_t max_depth;
 	RegionExpedition(char *bampath, char *_bedpath, faidx_t *_fai, int32_t _minMQ=0, uint32_t _padding=DEFAULT_PADDING,
-			int32_t _minFM=0, int32_t _requireFP=0) {
+			int32_t _minFM=0, int32_t _requireFP=0, int _max_depth=262144) {
 		fp = sam_open(bampath, "r");
 		hdr = sam_hdr_read(fp);
 		if(!fp || !hdr) LOG_ERROR("Could not open input sam file %s. Abort!\n", bampath);
@@ -85,14 +100,20 @@ public:
 		bedpath = std::string(_bedpath);
 		minMQ = _minMQ;
 		minFM = _minFM;
+		max_depth = _max_depth;
 		requireFP = _requireFP;
 		fai = _fai;
-		region_counts = std::vector<obserr_t>();
+		region_counts = std::vector<RegionErr>();
 		iter = NULL;
+		bam_index= sam_index_load(fp, fp->fn);
+		if(!bam_index) LOG_ERROR("Could not read bam index for sam file %s. Abort!\n", fp->fn);
 	}
 	~RegionExpedition() {
 		if(bed) bed_destroy_hash((void *)bed);
 		if(iter) hts_itr_destroy(iter);
+		if(bam_index) hts_idx_destroy(bam_index);
+		if(hdr) bam_hdr_destroy(hdr);
+		if(fp) sam_close(fp);
 	}
 	char *get_bampath() {
 		return fp ? fp->fn: NULL;

@@ -319,7 +319,7 @@ int depth_main(int argc, char *argv[])
 		bam_mplp_set_maxcnt(mplp, max_depth);
 		memset(counts, 0, sizeof(uint64_t) * n);
 		arr_ind = 0;
-		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
+		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) >= 0) {
 			if (pos >= start && pos < stop) {
 				for (i = 0; i < n; ++i) {
 					++aux[i]->n_analyzed;

@@ -315,7 +315,7 @@ int vet_core(aux_t *aux) {
 				LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
 				LOG_DEBUG("Finished pileup.\n");
-				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
+				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0)) {
 					LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
 					/* Zoom ahead until you're at the correct position */
 				}

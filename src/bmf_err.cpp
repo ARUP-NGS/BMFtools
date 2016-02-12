@@ -1172,9 +1172,8 @@ int err_fm_main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 }
 
-static int read_bam(void *data, bam1_t *b)
+static int read_bam(RegionExpedition *navy, bam1_t *b)
 {
-	RegionExpedition *navy = (RegionExpedition *)data;
 	int ret;
 	uint8_t *fmdata, *fpdata;
 	for(;;)
@@ -1192,8 +1191,30 @@ static int read_bam(void *data, bam1_t *b)
 	return ret;
 }
 
-void err_region_core(RegionExpedition& Holloway) {
-	return;
+void region_loop(RegionErr& counter, bam1_t *b)
+{
+	// Add actual error code!
+}
+
+void err_region_core(RegionExpedition *Holloway) {
+	// Make region_counts classes. These can now be filled from the bam.
+	bam1_t *b = bam_init1();
+	for(khiter_t k = kh_begin(Holloway->bed); k != kh_end(Holloway->bed); ++k) {
+		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
+			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
+			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
+			const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
+			if(Holloway->iter) hts_itr_destroy(Holloway->iter);
+			Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
+											start, stop);
+			while(read_bam(Holloway, b) >= 0) {
+				if(b->core.pos < start) continue;
+				if(b->core.pos > stop) break;
+				region_loop(Holloway->region_counts[i], b);
+			}
+		}
+	}
+	bam_destroy1(b);
 }
 
 void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
@@ -1243,7 +1264,7 @@ int err_region_main(int argc, char *argv[])
 	}
 
 	RegionExpedition Holloway = RegionExpedition(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
-	err_region_core(Holloway);
+	err_region_core(&Holloway);
 	write_region_rates(ofp, Holloway), fclose(ofp);
 	fai_destroy(fai);
 	cond_free(bedpath);
