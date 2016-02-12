@@ -213,7 +213,7 @@ std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
 #ifdef __GNUC__
 	__gnu_parallel::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
 #else
-	__std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
+	std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
 #endif
 		return p1.first < p2.first;
 	});
