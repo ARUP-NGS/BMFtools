@@ -51,12 +51,6 @@ typedef struct __linkbuf_t {
 	struct __linkbuf_t *next;
 } lbnode_t;
 
-typedef struct {
-	int cnt, n, max;
-	lbnode_t **buf;
-} mempool_t;
-
-KHASH_MAP_INIT_STR(olap_hash, lbnode_t *)
 typedef khash_t(olap_hash) olap_hash_t;
 struct __bam_plp_t {
 	mempool_t *mp;
@@ -128,6 +122,7 @@ typedef struct {
 	int minDuplex;
 	int minOverlap;
 	int skip_improper;
+	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
 	uint32_t skip_flag; // Skip reads with any bits set to true
 } aux_t;
 
