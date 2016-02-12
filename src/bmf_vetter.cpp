@@ -59,16 +59,16 @@ inline int arr_qpos(const bam_pileup1_t *plp)
 }
 
 /*
- * 1. What do I want for FORMAT?
+ * :param: [bcf1_t *] vrec - Variant record to test.
  *   # UniObs passing
  * 2. What do I want for INFO?
  *
  */
-void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, int n_allele, char **alleles,
+void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass_values,
 		std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-		int *n_all_overlaps, int *n_all_duplex, int *n_all_disagreed) {
-	int overlap = 0, khr, s, s2;
-	int n_disagreed = 0;
+		int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
+	int khr, s, s2;
+	n_all_disagreed = n_all_overlaps = 0;
 	khiter_t k;
 	uint32_t *FA1, *PV1, *FA2, *PV2;
 	char *qname;
@@ -89,7 +89,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			k = kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
-			++overlap;
+			++n_all_overlaps;
 			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
 			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
@@ -110,7 +110,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 				PV1[arr_qpos1] = PV2[arr_qpos2];
 				FA1[arr_qpos1] = FA2[arr_qpos2];
 			} else if(s2 != HTS_N) {
-				++n_disagreed;
+				++n_all_disagreed;
 				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
 				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
 				PV1[arr_qpos1] = 0u;
@@ -118,7 +118,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			}
 		}
 	}
-	for(int j = 0; j < n_allele; ++j) {
+	for(int j = 0; j < vrec->n_allele; ++j) {
 		for(int i = 0; i < n_plp; ++i) {
 			if(plp[i].is_del || plp[i].is_refskip) continue;
 			if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
@@ -130,7 +130,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
 			FA1 = (uint32_t *)bam_aux_get(b, "FA");
 			PV1 = (uint32_t *)bam_aux_get(b, "PV");
-			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)alleles[j][0]]) { // Match!
+			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
 				if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
 						(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
 					++n_failed[j];
@@ -147,14 +147,14 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 				}
 			}
 		}
+		pass_values[j] = n_obs[j] >= aux->minCount && n_duplex[j] >= aux->minDuplex && n_overlaps[j] >= aux->minOverlap;
+
 	}
 	for(int i = 0; i < n_plp; ++i) {
 		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
 	}
 	kh_destroy(names, hash);
-	*n_all_overlaps = overlap;
-	*n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + n_allele, 0);
-	*n_all_disagreed = n_disagreed;
+	n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
 	//return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
 
@@ -303,9 +303,12 @@ int vet_core(aux_t *aux) {
 	vrec->max_unpack = BCF_UN_FMT;
 	vrec->rid = -1;
 	hts_itr_t *vcf_iter = NULL;
-	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
-	int32_t *uniobs_values = (int32_t *)malloc(sizeof(int32_t) * 5);
-	int32_t *duplex_values = (int32_t *)malloc(sizeof(int32_t) * 5);
+
+	std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES, 0);
+	std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES, 0);
+	std::vector<int32_t> duplex_values(DEFAULT_MAX_ALLELES, 0);
+	std::vector<int32_t> overlap_values(DEFAULT_MAX_ALLELES, 0);
+	std::vector<int32_t> fail_values(DEFAULT_MAX_ALLELES, 0);
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
 
@@ -330,8 +333,9 @@ int vet_core(aux_t *aux) {
 				continue;
 			}
 
-			int n_disagreed[2] = {-1, 0};
-			int n_overlapped[2] = {-1, 0};
+			int n_disagreed = 0;
+			int n_overlapped = 0;
+			int n_duplex = 0;
 			while((vcf_iter_ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) >= 0) {
 				if(!bcf_is_snp(vrec)) {
 					LOG_DEBUG("Variant isn't a snp. Skip!\n");
@@ -343,7 +347,6 @@ int vet_core(aux_t *aux) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
-				memset(uniobs_values, 0, 5 * sizeof(int32_t));
 				LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
@@ -370,17 +373,26 @@ int vet_core(aux_t *aux) {
 				// Check each variant
 
 				// Set i to 1 to skip reference base verification.
-				for(int i = 0; i < vrec->n_allele; ++i) {
-					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)(vrec->d.allele[i][0])], aux, n_plp, pos, &n_disagreed[1], &n_overlapped[1], &duplex_values[i], &uniobs_values[i]);
-				}
+				/*bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass+values,
+						std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
+						int *n_all_overlaps, int *n_all_duplex, int *n_all_disagreed) std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
+		std::vector<int>& n_pass,*/
+				// Reset vectors for each pass.
+				std::fill(uniobs_values.begin(), uniobs_values.end(), 0);
+				std::fill(duplex_values.begin(), duplex_values.end(), 0);
+				std::fill(overlap_values.begin(), overlap_values.end(), 0);
+				bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
+							fail_values, n_overlapped, n_duplex, n_disagreed);
 				LOG_DEBUG("Adding disc_overlap.\n");
-				bcf_update_format_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 2);
+				bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
 				LOG_DEBUG("Adding n_overlap.\n");
-				bcf_update_format_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 2);
+				bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
+				bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
 				LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
-				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[1]), vrec->n_allele - 1, BCF_HT_INT);
-				bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values, vrec->n_allele, BCF_HT_INT);
-				bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values, vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
+				bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -392,9 +404,6 @@ int vet_core(aux_t *aux) {
 	if(bcf_idx) hts_idx_destroy(bcf_idx);
 	if(vcf_idx) tbx_destroy(vcf_idx);
 	if(aux->iter) hts_itr_destroy(aux->iter);
-	free(pass_values);
-	free(uniobs_values);
-	free(duplex_values);
 	hts_idx_destroy(idx);
 	bcf_destroy(vrec);
 	return EXIT_SUCCESS;
