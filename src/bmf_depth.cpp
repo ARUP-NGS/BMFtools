@@ -50,6 +50,13 @@ typedef struct {
 	uint64_t n_analyzed;
 } vaux_t;
 
+static inline char *restrdup(char *dest, char *src)
+{
+	dest = (char *)realloc(dest, sizeof(char) * (strlen(src) + 1));
+	strcpy(dest, src);
+	return dest;
+}
+
 void depth_usage(int retcode)
 {
 	fprintf(stderr, "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n");
@@ -77,23 +84,32 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	khiter_t k;
 	std::set<int> keyset;
 	fprintf(fp, "##bedpath=%s\n", bedpath);
+	fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
+	fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
 	fprintf(fp, "#Depth");
-	for(i = 0; i < n_samples; ++i) {
-		fprintf(fp, "\t%s:#Bases with coverage >=", aux[i]->fp->fn);
-		fprintf(fp, "\t%s:%%Bases in bed interval set >=", aux[i]->fp->fn);
-	}
+	for(i = 0; i < n_samples; ++i)
+		fprintf(fp, "\t%s:#Bases", aux[i]->fp->fn),
+		fprintf(fp, "\t%s:%%Bases", aux[i]->fp->fn);
 	fputc('\n', fp);
-	for(i = 0; i < n_samples; ++i) {
+	for(i = 0; i < n_samples; ++i)
 		for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
 			if(kh_exist(aux[i]->depth_hash, k))
 				keyset.insert(kh_key(aux[i]->depth_hash, k));
-	}
 	std::vector<int>keys(keyset.begin(), keyset.end());
-	std::sort(keys.begin(), keys.end());
+	__gnu_parallel::sort(keys.begin(), keys.end());
 	keyset.clear();
 	std::vector<std::vector<uint64_t>> csums;
 	for(i = 0; i < n_samples; ++i) {
 		csums.push_back(std::vector<uint64_t>(keys.size()));
+#if 0
+		std::partial_sum(keys.rbegin(), keys.rend(), csums[csums.size() - 1].begin(), [&](auto key)->uint64_t {
+			khiter_t k;
+			if((k = kh_get(depth, aux[i]->depth_hash, key)) == kh_end(aux[i]->depth_hash))
+				return 0uL;
+			else
+				return (uint64_t)kh_val(aux[i]->depth_hash, k);
+		});
+#endif
 
 		for(j = keys.size() - 1; j != (unsigned)-1; --j) {
 			if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))

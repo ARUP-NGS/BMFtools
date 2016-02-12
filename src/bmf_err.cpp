@@ -256,9 +256,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) {
+		if(tid_to_study < 0)
 			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-		}
 	}
 	khash_t(obs) *hash;
 	uint8_t *seq, *drdata, *fpdata;
@@ -297,9 +296,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
-			if(!ref) {
+			if(!ref)
 				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
-			}
 			last_tid = b->core.tid;
 		}
 		pos = b->core.pos;
@@ -317,8 +315,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
 				for(ind = 0; ind < length; ++ind) {
-						if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
-							continue;
+					if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
+						continue;
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -354,12 +352,10 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	bam1_t *b = bam_init1();
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) {
+	if (!hdr)
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
-	}
-	if(sam_read1(fp, hdr, b) == -1) {
+	if(sam_read1(fp, hdr, b) == -1)
 		LOG_ERROR("Could not read bam record from bam %s. Abort!\n", fname);
-	}
 	const int32_t rlen = b->core.l_qseq;
 	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
 	int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
@@ -394,9 +390,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if(!f->r2) f->r2 = readerr_init(f->l);
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) {
+	if (!hdr)
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
-	}
 	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
 	unsigned ind;
 	bam1_t *b = bam_init1();
@@ -439,9 +434,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(++f->nread % 1000000 == 0) {
-			LOG_INFO("Records read: %lu.\n", f->nread);
-		}
+		if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
@@ -543,10 +536,8 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if(!f->r1) f->r1 = readerr_init(f->l);
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) {
-		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
-		exit(EXIT_FAILURE);
-	}
+	if (!hdr)
+		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	int len;
 	int32_t last_tid = -1;
 	bam1_t *b = bam_init1();
@@ -560,9 +551,8 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) {
+		if(tid_to_study < 0)
 			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-		}
 	}
 	int c;
 	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
@@ -1051,38 +1041,41 @@ int err_cycle_main(int argc, char *argv[])
 
 	FILE *ofp = NULL;
 	int padding = -1, minMQ = 0, flag = 0, c;
-	std::string bedpath(""), outpath(""), refcontig("");
+	char *bedpath = NULL, *outpath = NULL, *refcontig = NULL;
 	while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
-		case 'o': outpath = optarg; break;
-		case 'r': refcontig = optarg; break;
-		case 'b': bedpath = optarg; break;
+		case 'o': outpath = strdup(optarg); break;
+		case 'r': refcontig = strdup(optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'P': flag |= REQUIRE_PROPER; break;
 		case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
-	if(padding < 0) {
-		LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	if(padding < 0 && bedpath) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-	if(!*outpath.c_str()) {
-		outpath = "-";
+	if(!outpath) {
+		outpath = strdup("-");
 		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
 	}
-	ofp = open_ofp((char *)outpath.c_str());
+	ofp = open_ofp(outpath);
 
 	if (argc != optind+2)
 		return err_cycle_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, (char *)bedpath.c_str(), (char *)refcontig.c_str(), padding, minMQ, flag);
+	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ, flag);
 	err_cycle_report(ofp, ce); fclose(ofp);
 	cycle_destroy(ce);
 	fai_destroy(fai);
+	cond_free(refcontig);
+	cond_free(bedpath);
+	cond_free(outpath);
 	return EXIT_SUCCESS;
 }
 
@@ -1125,7 +1118,7 @@ int err_fm_main(int argc, char *argv[])
 		}
 	}
 
-	if(padding < 0) {
+	if(bedpath && padding < 0) {
 		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 

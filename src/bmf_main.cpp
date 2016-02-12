@@ -16,8 +16,8 @@ extern int dmp_main(int argc, char *argv[]);
 #ifdef __cplusplus
 }
 #endif
-extern int famstats_main(int argc, char *argv[]);
 extern int vetter_main(int argc, char *argv[]);
+extern int famstats_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
