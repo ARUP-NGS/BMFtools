@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 		sam_read1(fp, hdr, b);
 	}
 
-	int32_t ucs = get_unclipped_start(b);
+	const int32_t ucs = get_unclipped_start(b);
 	LOG_INFO("ucs: %i.\n", ucs);
 	assert(ucs == 11167320);
 	bam_destroy1(b);

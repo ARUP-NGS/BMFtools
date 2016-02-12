@@ -127,8 +127,8 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			}
 
 			seq = bam_get_seq(plp[i].b);
-			FA1 = (uint32_t *)bam_aux_get(plp[i].b, "FA");
-			PV1 = (uint32_t *)bam_aux_get(plp[i].b, "PV");
+			FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
+			PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
 #if !NDEBUG
 			fprintf(stderr, "Read name: %s.\n", bam_get_qname(plp[i].b));
 			for(int k1 = 0; k1 < plp[i].b->core.l_qseq; ++k1) {
@@ -138,6 +138,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			for(int k1 = 0; k1 < plp[i].b->core.l_qseq; ++k1) {
 				fprintf(stderr, ",%u", FA1[k1]);
 			}
+			fputc('\n', stderr);
 #endif
 			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
 				const int32_t arr_qpos1 = arr_qpos(&plp[i]);
@@ -186,7 +187,6 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 	// Set the r1/r2 flags for the reads to ignore to 0
 	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
 	for(i = 0; i < n_plp; ++i) {
-		bam1_t *b;
 		if(plp[i].is_del || plp[i].is_refskip) continue;
 		// Skip any reads failed for FA < minFA or FR < minFR
 		qname = bam_get_qname(plp[i].b);
