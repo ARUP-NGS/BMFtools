@@ -18,7 +18,11 @@
 
 #include <vector>
 #include <set>
-#include <parallel/algorithm>
+#ifdef __GNUC__
+#	include <parallel/algorithm>
+#else
+#	include <algorithm>
+#endif
 
 int vetter_main(int, char **);
 
