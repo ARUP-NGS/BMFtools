@@ -65,8 +65,9 @@ inline int arr_qpos(const bam_pileup1_t *plp)
  *
  */
 void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, int n_allele, char **alleles,
-		int *n_overlaps, int *counts) {
-	int duplex = 0, overlap = 0, i, khr, s, s2;
+		std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
+		int *n_all_overlaps, int *n_all_duplex, int *n_all_disagreed) {
+	int overlap = 0, khr, s, s2;
 	int n_disagreed = 0;
 	khiter_t k;
 	uint32_t *FA1, *PV1, *FA2, *PV2;
@@ -78,16 +79,8 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 	const int sk = 1;
 	// Set the r1/r2 flags for the reads to ignore to 0
 	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-	for(i = 0; i < n_plp; ++i) {
+	for(int i = 0; i < n_plp; ++i) {
 		if(plp[i].is_del || plp[i].is_refskip) continue;
-		const int32_t arr_qpos1 = arr_qpos(&plp[i]);
-		FA1 = (uint32_t *)array_tag(b, "FA");
-		PV1 = (uint32_t *)array_tag(b, "PV");
-		if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-			(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
-			LOG_DEBUG("Note: PV1[plp[i].qpos] value (%u) is greater than minPV now. (%u)\n", PV1[arr_qpos1], aux->minPV);
-			continue;
-		}
 		b = plp[i].b;
 		// Skip any reads failed for FA < minFA or FR < minFR
 		qname = bam_get_qname(b);
@@ -96,9 +89,9 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			k = kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
+			++overlap;
 			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
 			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
-			++overlap;
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
 			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
@@ -126,16 +119,27 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 		}
 	}
 	for(int j = 0; j < n_allele; ++j) {
-		for(i = 0; i < n_plp; ++i) {
+		for(int i = 0; i < n_plp; ++i) {
 			if(plp[i].is_del || plp[i].is_refskip) continue;
-			if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) continue;
+			if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
+				continue;
+			}
 			b = plp[i].b;
 
 			seq = bam_get_seq(b);
+			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
+			FA1 = (uint32_t *)bam_aux_get(b, "FA");
+			PV1 = (uint32_t *)bam_aux_get(b, "PV");
 			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)alleles[j][0]]) { // Match!
-				++counts[j];
+				if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
+						(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR) {
+					++n_failed[j];
+					//LOG_DEBUG("Note: PV1[plp[i].qpos] value (%u) is greater than minPV now. (%u)\n", PV1[arr_qpos1], aux->minPV);
+					continue;
+				}
+				++n_obs[j];
 				if((drdata = bam_aux_get(b, "DR")) != NULL && bam_aux2i(drdata)) {
-					++duplex; // Has DR tag and its value is nonzero.
+					++n_duplex[j]; // Has DR tag and its value is nonzero.
 				}
 				if((tmptag = bam_aux_get(b, "KR")) != NULL) {
 					++n_overlaps[j];
@@ -148,8 +152,9 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
 	}
 	kh_destroy(names, hash);
-	//*n_duplex = duplex;
-	//*n_uniobs = count;
+	*n_all_overlaps = overlap;
+	*n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + n_allele, 0);
+	*n_all_disagreed = n_disagreed;
 	//return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
 
