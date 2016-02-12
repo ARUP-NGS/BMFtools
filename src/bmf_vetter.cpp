@@ -40,6 +40,7 @@ void vetter_usage(int retcode)
 			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
+			"-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
 			"-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
 			"-2, --skip-secondary\tSkip secondary alignments.\n"
 			"-S, --skip-supplementary\tSkip supplementary alignments.\n"
@@ -68,6 +69,8 @@ inline int arr_qpos(const bam_pileup1_t *plp)
  *   # UniObs passing
  * 2. What do I want for INFO?
  *
+ * Add 'fm' tag to note which families of reads have already had their fm adjusted.
+ * Separate from the upper-case tag!
  */
 void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass_values,
 		std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
@@ -95,10 +98,14 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 			++n_all_overlaps;
 			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
 			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-			uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
-			const int FM_sum = bam_aux2i(FM1) + bam_aux2i(bam_aux_get(plp[i].b, "FM"));
-			bam_aux_del(kh_val(hash, k)->b, FM1);
-			bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
+			if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == NULL) {
+				uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
+				const int FM_sum = bam_aux2i(FM1) + bam_aux2i(bam_aux_get(plp[i].b, "FM"));
+				bam_aux_del(kh_val(hash, k)->b, FM1);
+				bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
+				bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
+				bam_aux_append(plp[i].b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
+			}
 			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
 			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
 			seq = bam_get_seq(kh_val(hash, k)->b);
@@ -152,14 +159,20 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 #endif
 			if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
 				const int32_t arr_qpos1 = arr_qpos(&plp[i]);
-				if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
+				if(bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFM ||
+						FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
 						(double)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFR) {
 					++n_failed[j];
+#if 0
+					if(vrec->d.allele[j][0] == 'T') {
+					LOG_DEBUG("Note: FM value %i could be less than than minFM now. (%u)\n", bam_aux2i(bam_aux_get(plp[i].b, "FM")), aux->minFM);
+					LOG_DEBUG("Note: PV1[%i] value (%u) has to be less than than minPV now. (%u)\n", arr_qpos1, PV1[arr_qpos1], aux->minPV);
+					LOG_DEBUG("Note: FA1[%i] value (%u) has to be less than than minPV now. (%u)\n", arr_qpos1, FA1[arr_qpos1], aux->minFA);
+					LOG_DEBUG("Note: frac agreed at index[%i] value (%f) has to be less than than minFR now. (%f)\n", arr_qpos1, (double)FA1[arr_qpos1] /  bam_aux2i(bam_aux_get(plp[i].b, "FM")), aux->minFR);
+					}
+#endif
 					continue;
 				}
-				//LOG_DEBUG("Note: PV1[%i] value (%u) has to be greater than minPV now. (%u)\n", arr_qpos1, PV1[arr_qpos1], aux->minPV);
-				//LOG_DEBUG("Note: FA1[%i] value (%u) has to be greater than minPV now. (%u)\n", arr_qpos1, FA1[arr_qpos1], aux->minFA);
-				LOG_DEBUG("Note: frac agreed at index[%i] value (%f) has to be greater than minFR now. (%f)\n", arr_qpos1, (double)FA1[arr_qpos1] /  bam_aux2i(bam_aux_get(plp[i].b, "FM")), aux->minFR);
 				++n_obs[j];
 				if((drdata = bam_aux_get(plp[i].b, "DR")) != NULL && bam_aux2i(drdata)) {
 					++n_duplex[j]; // Has DR tag and its value is nonzero.
@@ -183,99 +196,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 }
 
 /*
- * allele here is an unsigned char from seq_nt16_table, meaning that we have converted the variant
- * allele from a character into a bam_seqi format (4 bits per base)
- */
-int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, aux_t *aux, int n_plp,
-				int pos, int *n_disagreed, int *n_overlap, int *n_duplex, int *n_uniobs) {
-	int duplex = 0, overlap = 0, count = 0, i, khr, s, s2;
-	khiter_t k;
-	uint32_t *FA1, *PV1, *FA2, *PV2;
-	char *qname;
-	uint8_t *seq, *seq2, *tmptag, *drdata;
-	*n_overlap = *n_disagreed = 0;
-	// Build overlap hash
-	khash_t(names) *hash = kh_init(names);
-	const int sk = 1;
-	// Set the r1/r2 flags for the reads to ignore to 0
-	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-	for(i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		// Skip any reads failed for FA < minFA or FR < minFR
-		qname = bam_get_qname(plp[i].b);
-		k = kh_get(names, hash, qname);
-		if(k == kh_end(hash)) {
-			k = kh_put(names, hash, qname, &khr);
-			kh_val(hash, k) = &plp[i];
-		} else {
-			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
-			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
-			++*n_overlap;
-			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
-			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
-			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
-			seq = bam_get_seq(kh_val(hash, k)->b);
-			s = bam_seqi(seq, kh_val(hash, k)->qpos);
-			PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
-			FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
-			seq2 = bam_get_seq(plp[i].b);
-			s2 = bam_seqi(seq2, plp[i].qpos);
-			if(s == s2) {
-				PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
-				FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
-			} else if(s == HTS_N) {
-				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
-				PV1[arr_qpos1] = PV2[arr_qpos2];
-				FA1[arr_qpos1] = FA2[arr_qpos2];
-			} else if(s2 != HTS_N) {
-				++*n_disagreed;
-				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
-				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
-				PV1[arr_qpos1] = 0u;
-				FA1[arr_qpos1] = 0u;
-			}
-		}
-	}
-	for(i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
-			// If it has the SK tag, get rid of it, but skip in the pileup.
-			// That way, each position isn't affecting the results of neighboring calls.
-			bam_aux_del(plp[i].b, tmptag);
-			continue;
-		}
-		const int32_t arr_qpos1 = arr_qpos(&plp[i]);
-		FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
-		PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
-		if(FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-			(float)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFR) {
-			LOG_DEBUG("Note: PV1[arr_qpos1] value (%u) is greater than minPV now. (%u)\n", PV1[arr_qpos1], aux->minPV);
-			continue;
-		}
-		seq = bam_get_seq(plp[i].b);
-		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
-			++count;
-			if((drdata = bam_aux_get(plp[i].b, "DR")) != NULL && bam_aux2i(drdata)) {
-				++duplex; // Has DR tag and its value is nonzero.
-			}
-			if((tmptag = bam_aux_get(plp[i].b, "KR")) != NULL) {
-				++overlap;
-				bam_aux_del(plp[i].b, tmptag);
-			}
-		}
-	}
-	kh_destroy(names, hash);
-	*n_duplex = duplex;
-	*n_uniobs = count;
-	return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
-}
-
-/*
- * TODO: Add new tags
- *     1. Number of duplex reads supporting each variant allele.
- *     2. Number of passing reads for each allele.
- *     3. Number of unique observations (subtracting overlapping reads) for each allele.
+ * TODONE
  */
 
 int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
@@ -440,6 +361,7 @@ int vetter_main(int argc, char *argv[])
 	// Defaults to outputting textual (vcf)
 	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	aux_t aux = {0};
+	aux.minCount = 1;
 	aux.max_depth = (1 << 18); // Default max depth
 	if(argc < 3) vetter_usage(EXIT_FAILURE);
 
