@@ -202,8 +202,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 
 int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
-	int ret;
-	return (ret = vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec));
+	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
 std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
