@@ -17,6 +17,7 @@ int main() {
 	sam_read1(fp, h, b);
 	uint32_t *PV = array_tag(b, "PV");
 	assert(PV);
+	assert(PV[-1] == 137);
 	sam_write1(ofp, h, b);
 	for(int i = 0; i < b->core.l_qseq; ++i) {
 		fprintf(stderr, ",%u", PV[i]);
