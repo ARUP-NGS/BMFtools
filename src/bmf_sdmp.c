@@ -294,8 +294,8 @@ int sdmp_main(int argc, char *argv[])
 	parallel_hash_dmp_core(&settings, params, &hash_dmp_core);
 	// Make sure that both files are empty.
 	char ffq_r1[200], ffq_r2[200];
-	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
-	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
+	sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq": "%s.R1.fq.gz", settings.ffq_prefix);
+	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq": "%s.R2.fq.gz", settings.ffq_prefix);
 	if(settings.to_stdout)
 		call_stdout(&settings, params, ffq_r1, ffq_r2);
 	else if(settings.panthera)

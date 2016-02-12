@@ -6,6 +6,7 @@
 int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
 int err_cycle_main(int argc, char *argv[]);
+int err_region_main(int argc, char *argv[]);
 
 uint64_t get_max_obs(khash_t(obs) *hash)
 {
@@ -69,6 +70,20 @@ int err_fm_usage(FILE *fp, int retcode)
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			"-P:\t\tOnly include proper pairs.\n"
 			"-F:\t\tRequire that the FP tag be present and nonzero.\n"
+			);
+	exit(retcode);
+	return retcode; // This never happens.
+}
+
+int err_region_usage(FILE *fp, int retcode)
+{
+	fprintf(fp,
+			"Usage: bmftools err region -b <bedpath.bed> -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+			"Flags:\n"
+			"-h/-?\t\tThis helpful help menu!\n"
+			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-a\t\tSet minimum mapping quality for inclusion.\n"
+			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			);
 	exit(retcode);
 	return retcode; // This never happens.
@@ -928,6 +943,8 @@ int err_main(int argc, char *argv[])
 		return err_fm_main(argc - 1, argv + 1);
 	if(strcmp(argv[1], "cycle") == 0)
 		return err_cycle_main(argc - 1, argv + 1);
+	if(strcmp(argv[1], "region") == 0)
+		return err_region_main(argc - 1, argv + 1);
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 	return EXIT_FAILURE;
 }
@@ -1152,5 +1169,84 @@ int err_fm_main(int argc, char *argv[])
 	err_fm_report(ofp, f); fclose(ofp);
 	fai_destroy(fai);
 	fm_destroy(f);
+	return EXIT_SUCCESS;
+}
+
+static int read_bam(void *data, bam1_t *b)
+{
+	RegionExpedition *navy = (RegionExpedition *)data;
+	int ret;
+	uint8_t *fmdata, *fpdata;
+	for(;;)
+	{
+		ret = sam_itr_next(navy->fp, navy->iter, b);
+		if ( ret<0 ) break;
+		fmdata = bam_aux_get(b, "FM");
+		fpdata = bam_aux_get(b, "FP");
+		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+			(int)b->core.qual < navy->minMQ || (fmdata && bam_aux2i(fmdata) < navy->minFM) ||
+			(navy->requireFP && fpdata && bam_aux2i(fpdata) == 0))
+				continue;
+		break;
+	}
+	return ret;
+}
+
+void err_region_core(RegionExpedition& Holloway) {
+	return;
+}
+
+void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
+	return;
+}
+
+int err_region_main(int argc, char *argv[])
+{
+	if(argc < 2) return err_region_usage(stderr, EXIT_FAILURE);
+
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_region_usage(stderr, EXIT_SUCCESS);
+
+	FILE *ofp = NULL;
+	int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
+	char *bedpath = NULL, *outpath = NULL;
+	while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
+		switch (c) {
+		case 'q': requireFP = 1; break;
+		case 'a': minMQ = atoi(optarg); break;
+		case 'f': minFM = atoi(optarg); break;
+		case 'o': outpath = strdup(optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
+		case '?': case 'h': return err_region_usage(stderr, EXIT_SUCCESS);
+		}
+	}
+
+	if(padding < 0 && bedpath) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	}
+
+	if(!outpath) {
+		outpath = strdup("-");
+		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
+	}
+	if(!bedpath) {
+		LOG_ERROR("Bed file required for bmftools err region.\n");
+	}
+	ofp = open_ofp(outpath);
+
+	if (argc != optind+2)
+		return err_region_usage(stderr, EXIT_FAILURE);
+
+	faidx_t *fai = fai_load(argv[optind]);
+	if(!fai) {
+		LOG_ERROR("Could not load fasta index for %s. Abort!\n", argv[optind]);
+	}
+
+	RegionExpedition Holloway = RegionExpedition(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
+	err_region_core(Holloway);
+	write_region_rates(ofp, Holloway), fclose(ofp);
+	fai_destroy(fai);
+	cond_free(bedpath);
+	cond_free(outpath);
 	return EXIT_SUCCESS;
 }

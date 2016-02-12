@@ -10,6 +10,7 @@
 #include "dlib/logging_util.h"
 #include "lib/kingfisher.h"
 #include <string>
+#include <vector>
 
 
 typedef struct readerr {
@@ -60,6 +61,43 @@ typedef struct cycle_err {
 	int flag;
 	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
 } cycle_err_t;
+
+class RegionExpedition {
+	khash_t(bed) *bed;
+	uint32_t padding;
+	std::vector<obserr_t> region_counts;
+	std::string bedpath;
+	faidx_t *fai;
+public:
+	samFile *fp;
+	bam_hdr_t *hdr;
+	hts_itr_t *iter;
+	int32_t minMQ;
+	int32_t minFM;
+	int32_t requireFP;
+	RegionExpedition(char *bampath, char *_bedpath, faidx_t *_fai, int32_t _minMQ=0, uint32_t _padding=DEFAULT_PADDING,
+			int32_t _minFM=0, int32_t _requireFP=0) {
+		fp = sam_open(bampath, "r");
+		hdr = sam_hdr_read(fp);
+		if(!fp || !hdr) LOG_ERROR("Could not open input sam file %s. Abort!\n", bampath);
+		padding = _padding;
+		bed = parse_bed_hash(_bedpath, hdr, _padding);
+		bedpath = std::string(_bedpath);
+		minMQ = _minMQ;
+		minFM = _minFM;
+		requireFP = _requireFP;
+		fai = _fai;
+		region_counts = std::vector<obserr_t>();
+		iter = NULL;
+	}
+	~RegionExpedition() {
+		if(bed) bed_destroy_hash((void *)bed);
+		if(iter) hts_itr_destroy(iter);
+	}
+	char *get_bampath() {
+		return fp ? fp->fn: NULL;
+	}
+};
 
 cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
 void cycle_destroy(cycle_err_t *c);
