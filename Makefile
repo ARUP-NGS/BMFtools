@@ -29,7 +29,7 @@ SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdm
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
 		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c
 
-TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c
+TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
 TEST_OBJS = $(TEST_SOURCES:.c=.dbo)
 
@@ -80,6 +80,8 @@ bmftools: $(OBJS) libhts.a
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
+tag_test: $(OBJS) $(TEST_OBJS) libhts.a
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) test/tag/array_tag_test.dbo libhts.a -o ./tag_test && ./tag_test
 target_test: $(OBJS) $(TEST_OBJS) libhts.a
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.dbo libhts.a -o ./target_test && ./target_test
 hashdmp_test: $(BINS)
@@ -89,7 +91,7 @@ marksplit_test: $(BINS)
 err_test: $(BINS)
 	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
 
-tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS)
+tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.o
 	@echo "Passed all tests!"
 
 python:
