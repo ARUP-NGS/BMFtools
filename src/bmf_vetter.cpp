@@ -304,7 +304,7 @@ int vet_core(aux_t *aux) {
 				LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
-				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, vrec->pos);
+				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, vrec->pos + 1000);
 				LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
 				LOG_DEBUG("Finished pileup.\n");
