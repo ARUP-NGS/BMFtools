@@ -40,7 +40,6 @@ void vetter_usage(int retcode)
 			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
-			"-V, --vet-all-variants\tFlag. If set, all variants in *UNINDEXED* variant files are tested.\n"
 			"-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
 			"-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
 			"-2, --skip-secondary\tSkip secondary alignments.\n"
@@ -300,14 +299,24 @@ int vet_core(aux_t *aux) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
+				/*
+				while(vrec->pos > stop) {
+					if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
+						LOG_ERROR("Record in bed region, but past region of interest on contig and no available contig is present?\n");
+					}
+					start = get_start(kh_val(aux->bed, ki).intervals[j]);
+					stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
+				}
+				*/
 				LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
-				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, vrec->pos + 1000);
+				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos + 500);
 				LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
 				LOG_DEBUG("Finished pileup.\n");
 				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
+					LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
 					/* Zoom ahead until you're at the correct position */
 				}
 				if(!plp) {
@@ -325,16 +334,10 @@ int vet_core(aux_t *aux) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue;
 				}
-				// Check each variant
-
-				// Set i to 1 to skip reference base verification.
-				/*bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass+values,
-						std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-						int *n_all_overlaps, int *n_all_duplex, int *n_all_disagreed) std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-		std::vector<int>& n_pass,*/
 				// Reset vectors for each pass.
 				std::fill(uniobs_values.begin(), uniobs_values.end(), 0);
 				std::fill(duplex_values.begin(), duplex_values.end(), 0);
+				std::fill(fail_values.begin(), fail_values.end(), 0);
 				std::fill(overlap_values.begin(), overlap_values.end(), 0);
 				bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
 							fail_values, n_overlapped, n_duplex, n_disagreed);
@@ -398,7 +401,7 @@ int vetter_main(int argc, char *argv[])
 		case 'b': bed = strdup(optarg); break;
 		case 'o': outvcf = strdup(optarg); break;
 		case 'O': aux.minOverlap = atoi(optarg); break;
-		case 'V': aux.vet_all = 1; break;
+		//case 'V': aux.vet_all = 1; break;
 		case 'h': case '?': vetter_usage(EXIT_SUCCESS);
 		}
 	}
