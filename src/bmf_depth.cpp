@@ -50,6 +50,13 @@ typedef struct {
 	uint64_t n_analyzed;
 } vaux_t;
 
+static inline char *restrdup(char *dest, char *src)
+{
+	dest = (char *)realloc(dest, sizeof(char) * (strlen(src) + 1));
+	strcpy(dest, src);
+	return dest;
+}
+
 void depth_usage(int retcode)
 {
 	fprintf(stderr, "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n");
