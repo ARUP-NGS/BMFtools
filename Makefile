@@ -106,4 +106,4 @@ update_dlib:
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
-		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o
+		rm -f include/*.*o && rm -f lib/*.*o && rm -f $(find ./test -name '*o')
