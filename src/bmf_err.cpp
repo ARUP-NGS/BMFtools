@@ -937,7 +937,7 @@ void cycle_destroy(cycle_err_t *c)
 
 int err_usage(FILE *fp, int retcode)
 {
-	fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle.\n");
+	fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle, region.\n");
 	exit(retcode);
 	return retcode; // This neverhappens
 }
