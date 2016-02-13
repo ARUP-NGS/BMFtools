@@ -66,6 +66,10 @@ public:
 		name = std::string(tmp.s);
 		free(tmp.s);
 	}
+	inline void write_report(FILE *fp) {
+		fprintf(fp, "%s\t%f\t%lu\t%lu\n", name.c_str(), (double)counts.err / counts.obs,
+				counts.err, counts.obs);
+	}
 };
 
 typedef struct cycle_err {

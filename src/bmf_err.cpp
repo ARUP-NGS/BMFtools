@@ -1250,7 +1250,8 @@ void err_region_core(RegionExpedition *Holloway) {
 }
 
 void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
-	return;
+	fprintf(fp, "#Region name\t%%Error Rate\t#Errors\t#Obs\n");
+	for(RegionErr& re: Holloway.region_counts) re.write_report(fp);
 }
 
 int err_region_main(int argc, char *argv[])
