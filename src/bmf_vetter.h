@@ -133,5 +133,6 @@ extern void *bed_read(const char *fn);
 
 
 extern void bed_destroy(void *);
+extern std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h);
 
 #endif /* BMF_VETTER_H */

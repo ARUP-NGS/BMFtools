@@ -1240,16 +1240,17 @@ void err_region_core(RegionExpedition *Holloway) {
 	char *ref = NULL;
 	int len;
 	bam1_t *b = bam_init1();
-	for(khiter_t k = kh_begin(Holloway->bed); k != kh_end(Holloway->bed); ++k) {
+	auto sorted_keys = make_sorted_keys(Holloway->bed);
+	for(std::pair<khint_t, khiter_t>& pair: sorted_keys) {
+		const khiter_t k = pair.second;
+		if(!kh_exist(Holloway->bed, k)) continue;
 		if(ref) free(ref);
 		LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
 		ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
 		LOG_DEBUG("Fetched! Length: %i\n", len);
 		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
 			LOG_DEBUG("Loop started.\n");
-			RegionErr tmp = RegionErr(kh_val(Holloway->bed, k), i);
-			LOG_DEBUG("Made my tmp object. Name: %s.\n", tmp.name.c_str());
-			Holloway->region_counts.push_back(tmp);
+			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
 			LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
 			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
 			const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
@@ -1257,17 +1258,8 @@ void err_region_core(RegionExpedition *Holloway) {
 			if(Holloway->iter) hts_itr_destroy(Holloway->iter);
 			Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
 											start, stop);
-#if !NDEBUG
-			{
-				size_t n_records = 0;
-				++n_records;
-			}
-#endif
-			LOG_DEBUG("Pointer to iter: %p.\n", (void *)Holloway->iter);
 			while(read_bam(Holloway, b) >= 0) {
-				if(b->core.tid != kh_key(Holloway->bed, k)) {
-					LOG_ERROR("OMGZ WTF!!!! tid: %i. Key: %i.\n", b->core.tid, kh_key(Holloway->bed, k));
-				}
+				assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
 				if(bam_endpos(b) < start) {
 					LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
 					continue;
@@ -1276,8 +1268,7 @@ void err_region_core(RegionExpedition *Holloway) {
 					LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
 					break;
 				}
-				LOG_DEBUG("Incrementing region counts using record on contig %s!\n", Holloway->hdr->target_name[kh_key(Holloway->bed, k)]);
-				region_loop(Holloway->region_counts[i], ref, b);
+				region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
 			}
 		}
 	}

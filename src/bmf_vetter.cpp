@@ -204,20 +204,6 @@ int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
-std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
-	std::vector<std::pair<khint_t, khiter_t>> keyset;
-	for(khiter_t ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
-		if(kh_exist(h, ki)) keyset.push_back(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
-	}
-#ifdef __GNUC__
-	__gnu_parallel::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
-#else
-	std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
-#endif
-		return p1.first < p2.first;
-	});
-	return keyset;
-}
 
 int vet_core(aux_t *aux) {
 	int n_plp, vcf_iter_ret;
