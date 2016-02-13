@@ -324,8 +324,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
 		}
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			length = bam_cigar_oplen(*cigar);
-			switch(bam_cigar_op(*cigar++)) {
+			length = bam_cigar_oplen(cigar[i]);
+			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -465,8 +465,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		if(f->minPV) {
 			pv_array = (uint32_t *)array_tag(b, "PV");
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-				length = bam_cigar_oplen(*cigar);
-				switch(bam_cigar_op(*cigar++)) {
+				length = bam_cigar_oplen(cigar[i]);
+				switch(bam_cigar_op(cigar[i])) {
 				case BAM_CMATCH:
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
@@ -502,8 +502,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		} else {
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-				length = bam_cigar_oplen(*cigar);
-				switch(bam_cigar_op(*cigar++)) {
+				length = bam_cigar_oplen(cigar[i]);
+				switch(bam_cigar_op(cigar[i])) {
 				case BAM_CMATCH:
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
@@ -597,8 +597,8 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			int s; // seq value, base 
-			const uint32_t len = bam_cigar_oplen(*cigar);
-			switch(bam_cigar_op(*cigar++)) {
+			const uint32_t len = bam_cigar_oplen(cigar[i]);
+			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -1194,11 +1194,11 @@ static int read_bam(RegionExpedition *navy, bam1_t *b)
 inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
 {
 	int i, rc, fc, length, ind, s;
-	uint32_t *cigar = bam_get_cigar(b);
+	uint32_t *const cigar = bam_get_cigar(b);
 	uint8_t *seq = bam_get_seq(b);
 	for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-		length = bam_cigar_oplen(*cigar);
-		switch(bam_cigar_op(*cigar++)) {
+		length = bam_cigar_oplen(cigar[i]);
+		switch(bam_cigar_op(cigar[i])) {
 		case BAM_CMATCH:
 		case BAM_CEQUAL:
 		case BAM_CDIFF:
