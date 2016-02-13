@@ -8,6 +8,16 @@ int err_fm_main(int argc, char *argv[]);
 int err_cycle_main(int argc, char *argv[]);
 int err_region_main(int argc, char *argv[]);
 
+RegionErr::RegionErr(region_set_t set, int i) {
+	LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
+	counts = {0, 0};
+	kstring_t tmp = {0, 0, NULL};
+	LOG_DEBUG("Contig name: %s. Strlen: %lu.\n", set.contig_name, strlen(set.contig_name));
+	ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
+	name = std::string(tmp.s);
+	free(tmp.s);
+}
+
 uint64_t get_max_obs(khash_t(obs) *hash)
 {
 	uint64_t ret = 0;
@@ -1178,12 +1188,13 @@ static int read_bam(RegionExpedition *navy, bam1_t *b)
 	uint8_t *fmdata, *fpdata;
 	for(;;)
 	{
-		ret = sam_itr_next(navy->fp, navy->iter, b);
-		if ( ret<0 ) break;
+
+		if((ret = sam_itr_next(navy->fp, navy->iter, b)) < 0) break;
+		if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+				(int)b->core.qual < navy->minMQ) continue;
 		fmdata = bam_aux_get(b, "FM");
 		fpdata = bam_aux_get(b, "FP");
-		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-			(int)b->core.qual < navy->minMQ || (fmdata && bam_aux2i(fmdata) < navy->minFM) ||
+		if ((fmdata && bam_aux2i(fmdata) < navy->minFM) ||
 			(navy->requireFP && fpdata && bam_aux2i(fpdata) == 0))
 				continue;
 		break;
@@ -1231,17 +1242,41 @@ void err_region_core(RegionExpedition *Holloway) {
 	bam1_t *b = bam_init1();
 	for(khiter_t k = kh_begin(Holloway->bed); k != kh_end(Holloway->bed); ++k) {
 		if(ref) free(ref);
+		LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
 		ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
+		LOG_DEBUG("Fetched! Length: %i\n", len);
 		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
-			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
+			LOG_DEBUG("Loop started.\n");
+			RegionErr tmp = RegionErr(kh_val(Holloway->bed, k), i);
+			LOG_DEBUG("Made my tmp object. Name: %s.\n", tmp.name.c_str());
+			Holloway->region_counts.push_back(tmp);
+			LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
 			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
 			const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
+			LOG_DEBUG("Iterating through bam region with start %i and stop %i.\n", start, stop);
 			if(Holloway->iter) hts_itr_destroy(Holloway->iter);
 			Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
 											start, stop);
+#if !NDEBUG
+			{
+				size_t n_records = 0;
+				++n_records;
+			}
+#endif
+			LOG_DEBUG("Pointer to iter: %p.\n", (void *)Holloway->iter);
 			while(read_bam(Holloway, b) >= 0) {
-				if(b->core.pos < start) continue;
-				if(b->core.pos > stop) break;
+				if(b->core.tid != kh_key(Holloway->bed, k)) {
+					LOG_ERROR("OMGZ WTF!!!! tid: %i. Key: %i.\n", b->core.tid, kh_key(Holloway->bed, k));
+				}
+				if(bam_endpos(b) < start) {
+					LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
+					continue;
+				}
+				if(b->core.pos >= stop) {
+					LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
+					break;
+				}
+				LOG_DEBUG("Incrementing region counts using record on contig %s!\n", Holloway->hdr->target_name[kh_key(Holloway->bed, k)]);
 				region_loop(Holloway->region_counts[i], ref, b);
 			}
 		}

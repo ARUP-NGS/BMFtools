@@ -30,12 +30,6 @@ DEALINGS IN THE SOFTWARE. */
 
 #include "bmf_depth.h"
 
-#ifdef __cplusplus
-#define NO_ID_STR ((char *)"L'Innommable")
-#else
-#define NO_ID_STR ("L'Innommable")
-#endif
-
 
 typedef struct {
 	htsFile *fp;

@@ -59,15 +59,9 @@ public:
 	inline void inc_obs() {
 		++counts.obs;
 	}
-	RegionErr(region_set_t set, int i) {
-		counts = {0, 0};
-		kstring_t tmp = {0, 0, NULL};
-		ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
-		name = std::string(tmp.s);
-		free(tmp.s);
-	}
+	RegionErr(region_set_t set, int i);
 	inline void write_report(FILE *fp) {
-		fprintf(fp, "%s\t%f\t%lu\t%lu\n", name.c_str(), (double)counts.err / counts.obs,
+		fprintf(fp, "%s\t%f\t%lu\t%lu\n", name.c_str(), ((double)counts.err * 100.) / counts.obs,
 				counts.err, counts.obs);
 	}
 };
