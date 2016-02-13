@@ -18,11 +18,8 @@ int main() {
 	uint32_t *PV = array_tag(b, "PV");
 	assert(PV);
 	assert(PV[-1] == 137);
-	sam_write1(ofp, h, b);
-	for(int i = 0; i < b->core.l_qseq; ++i) {
-		fprintf(stderr, ",%u", PV[i]);
-		assert(PV[i] = arr[i]);
-	}
+	//sam_write1(ofp, h, b);
+	for(int i = 0; i < b->core.l_qseq; ++i) assert(PV[i] = arr[i]);
 	bam_destroy1(b);
 	bam_hdr_destroy(h);
 	sam_close(fp);
