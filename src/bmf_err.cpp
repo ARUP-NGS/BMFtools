@@ -1260,11 +1260,10 @@ void err_region_core(RegionExpedition *Holloway) {
 											start, stop);
 			while(read_bam(Holloway, b) >= 0) {
 				assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
-				if(bam_endpos(b) < start) {
+				if(bam_getend(b) <= start) {
 					LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
 					continue;
-				}
-				if(b->core.pos >= stop) {
+				} else if(b->core.pos >= stop) {
 					LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
 					break;
 				}
