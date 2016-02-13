@@ -50,9 +50,15 @@ typedef struct obserr {
 } obserr_t;
 
 class RegionErr {
-	std::string name;
 	obserr_t counts;
 public:
+	std::string name;
+	inline void inc_err() {
+		++counts.err;
+	}
+	inline void inc_obs() {
+		++counts.obs;
+	}
 	RegionErr(region_set_t set, int i) {
 		counts = {0, 0};
 		kstring_t tmp = {0, 0, NULL};

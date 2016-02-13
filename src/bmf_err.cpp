@@ -1191,15 +1191,47 @@ static int read_bam(RegionExpedition *navy, bam1_t *b)
 	return ret;
 }
 
-void region_loop(RegionErr& counter, bam1_t *b)
+inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
 {
+	int i, rc, fc, length, ind, s;
+	uint32_t *cigar = bam_get_cigar(b);
+	uint8_t *seq = bam_get_seq(b);
+	for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+		length = bam_cigar_oplen(*cigar);
+		switch(bam_cigar_op(*cigar++)) {
+		case BAM_CMATCH:
+		case BAM_CEQUAL:
+		case BAM_CDIFF:
+			for(ind = 0; ind < length; ++ind) {
+				s = bam_seqi(seq, ind + rc);
+				if(s == HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
+				counter.inc_obs();
+				if(seq_nt16_table[(int8_t)ref[b->core.pos + fc + ind]] != s) counter.inc_err();
+			}
+			rc += length; fc += length;
+			break;
+		case BAM_CSOFT_CLIP:
+		case BAM_CHARD_CLIP:
+		case BAM_CINS:
+			rc += length;
+			break;
+		case BAM_CREF_SKIP:
+		case BAM_CDEL:
+			fc += length;
+			break;
+		}
+	}
 	// Add actual error code!
 }
 
 void err_region_core(RegionExpedition *Holloway) {
 	// Make region_counts classes. These can now be filled from the bam.
+	char *ref = NULL;
+	int len;
 	bam1_t *b = bam_init1();
 	for(khiter_t k = kh_begin(Holloway->bed); k != kh_end(Holloway->bed); ++k) {
+		if(ref) free(ref);
+		ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
 		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
 			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
 			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
@@ -1210,7 +1242,7 @@ void err_region_core(RegionExpedition *Holloway) {
 			while(read_bam(Holloway, b) >= 0) {
 				if(b->core.pos < start) continue;
 				if(b->core.pos > stop) break;
-				region_loop(Holloway->region_counts[i], b);
+				region_loop(Holloway->region_counts[i], ref, b);
 			}
 		}
 	}
