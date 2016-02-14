@@ -248,9 +248,8 @@ int vet_core(aux_t *aux) {
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
 
-	std::vector<std::pair<khint_t, khiter_t>> keys = make_sorted_keys(aux->bed);
-	for(auto key: keys) {
-		khiter_t ki = key.second;
+	std::vector<khiter_t> keys = make_sorted_keys(aux->bed);
+	for(khiter_t& ki: keys) {
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 			int tid, start, stop, pos = -1;
 

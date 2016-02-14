@@ -1241,8 +1241,7 @@ void err_region_core(RegionExpedition *Holloway) {
 	int len;
 	bam1_t *b = bam_init1();
 	auto sorted_keys = make_sorted_keys(Holloway->bed);
-	for(std::pair<khint_t, khiter_t>& pair: sorted_keys) {
-		const khiter_t k = pair.second;
+	for(khiter_t& k: sorted_keys) {
 		if(!kh_exist(Holloway->bed, k)) continue;
 		if(ref) free(ref);
 		LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
