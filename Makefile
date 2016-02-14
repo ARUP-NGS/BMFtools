@@ -91,7 +91,7 @@ marksplit_test: $(BINS)
 err_test: $(BINS)
 	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
 
-tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.o
+tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
 
 python:

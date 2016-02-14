@@ -257,6 +257,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
+				LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
 				stack->a[i] = NULL;
@@ -297,6 +298,9 @@ static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
 			stack->a[0] = bam_dup1(b);
 		}
 	}
+	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+	write_stack(stack, settings);
+	stack->n = 1;
 	bam_destroy1(b);
 }
 

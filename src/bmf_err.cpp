@@ -270,9 +270,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 {
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) {
-		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
-	}
+	if (!hdr) LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
@@ -427,9 +425,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) {
-			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-		}
+		if(tid_to_study < 0) LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 	}
 	uint8_t *fdata, *rdata, *pdata, *seq, *qual;
 	uint32_t *cigar, *pv_array, length;
@@ -461,13 +457,11 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 
 		if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
 		if(b->core.tid != last_tid) {
+			last_tid = b->core.tid;
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			if(!ref) {
-				LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
-			}
-			last_tid = b->core.tid;
+			if(ref == NULL) LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 		}
 		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		pos = b->core.pos;
@@ -591,21 +585,20 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(UNLIKELY(++f->nread % 1000000 == 0)) {
+		if(UNLIKELY(++f->nread % 1000000 == 0))
 			LOG_INFO("Records read: %lu.\n", f->nread);
-		}
+
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_INFO("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			last_tid = b->core.tid;
 		}
+
 		// rc -> readcount
 		// fc -> reference base  count
-		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			int s; // seq value, base 
 			const uint32_t len = bam_cigar_oplen(cigar[i]);
 			switch(bam_cigar_op(cigar[i])) {
