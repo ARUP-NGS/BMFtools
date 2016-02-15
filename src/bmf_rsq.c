@@ -7,7 +7,7 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 		if(!stack->a) LOG_ERROR("Failed to reallocate memory for %lu bam1_t * objects. Abort!\n", stack->max);
 	} else if(n < stack->n){
-		for(uint64_t i = stack->n;i > n;) bam_destroy1(stack->a[--i]);
+		for(uint64_t i = stack->n;i > n;) free(stack->a[--i]->data);
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 	}
@@ -27,25 +27,25 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
 	kputs("\tFA:B:I", &ks);
 	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-	seq = bam_get_seq(b);
-	for (i = 0; i < b->core.l_qseq; ++i) kputc(bam_seqi(seq, i), &ks);
 	ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i", bam_aux2i(bam_aux_get(b, (char *)"FM")),
 			bam_aux2i(bam_aux_get(b, (char *)"FP")),
 			bam_aux2i(bam_aux_get(b, (char *)"NC")));
 	if((rvdata = bam_aux_get(b, (char *)"RV")) != NULL)
 		ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
 	kputc('\n', &ks);
+	seq = bam_get_seq(b);
 	seqbuf = (char *)malloc(b->core.l_qseq + 1);
+	for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
+	seqbuf[i] = '\0';
 	if (b->core.flag & BAM_FREVERSE) { // reverse complement
 		for(i = 0; i < b->core.l_qseq>>1; ++i) {
-			t = seq_comp_table[(int8_t)seqbuf[b->core.l_qseq - 1 - i]];
-			seqbuf[b->core.l_qseq - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
-			seqbuf[i] = t;
+			t = seqbuf[b->core.l_qseq - i - 1];
+			seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
+			seqbuf[i] = nuc_cmpl(t);
 		}
-		if(b->core.l_qseq&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
+		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
-	for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
-	seqbuf[i] = '\0'; // i == b->core.l_qseq
+	assert(strlen(seqbuf) == b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
 	qual = (char *)bam_get_qual(b);
@@ -247,7 +247,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) && read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
-				LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
+				//LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
 				stack->a[i] = NULL;
@@ -404,5 +404,6 @@ int rsq_main(int argc, char *argv[])
 	sam_close(settings->in); sam_close(settings->out);
 	if(settings->fqh)
 		fclose(settings->fqh);
+	LOG_INFO("Successfully completed bmftools rsq.\n");
 	return EXIT_SUCCESS;
 }
