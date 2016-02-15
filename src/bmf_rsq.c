@@ -212,13 +212,7 @@ void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 				if(bam_aux2i(data) == 0)
 					sam_write1(settings->out, settings->hdr, stack->a[i]);
 				else
-#if !NDEBUG
-				{ fprintf(stderr, "About to write a record to the fastq!");
-#endif
 					bam2ffq(stack->a[i], settings->fqh);
-#if !NDEBUG
-				}
-#endif
 			}
 			else {
 #if !NDEBUG
