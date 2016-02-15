@@ -15,6 +15,57 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 	}
 }
 
+void bam2ffq(bam1_t *b, FILE *fp)
+{
+	char *qual, *seqbuf;
+	int i;
+	uint8_t *seq, *rvdata;
+	uint32_t *pv, *fa;
+	int8_t t;
+	kstring_t ks = {0, 0, NULL};
+	ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
+	pv = (uint32_t *)array_tag(b, (char *)"PV");
+	fa = (uint32_t *)array_tag(b, (char *)"FA");
+	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
+	kputs("\tFA:B:I", &ks);
+	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
+	seq = bam_get_seq(b);
+	for (i = 0; i < b->core.l_qseq; ++i) kputc(bam_seqi(seq, i), &ks);
+	ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i", bam_aux2i(bam_aux_get(b, (char *)"FM")),
+			bam_aux2i(bam_aux_get(b, (char *)"FP")),
+			bam_aux2i(bam_aux_get(b, (char *)"NC")));
+	if((rvdata = bam_aux_get(b, (char *)"RV")) != NULL)
+		ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
+	kputc('\n', &ks);
+	seqbuf = (char *)malloc(b->core.l_qseq + 1);
+	if (b->core.flag & BAM_FREVERSE) { // reverse complement
+		for(i = 0; i < b->core.l_qseq>>1; ++i) {
+			t = seq_comp_table[(int8_t)seqbuf[b->core.l_qseq - 1 - i]];
+			seqbuf[b->core.l_qseq - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
+			seqbuf[i] = t;
+		}
+		if(b->core.l_qseq&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
+	}
+	for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
+	seqbuf[i] = '\0'; // i == b->core.l_qseq
+	kputs(seqbuf, &ks);
+	kputs("\n+\n", &ks);
+	qual = (char *)bam_get_qual(b);
+	for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
+	if (b->core.flag & BAM_FREVERSE) { // reverse
+		for (i = 0; i < b->core.l_qseq>>1; ++i) {
+			t = seqbuf[b->core.l_qseq - 1 - i];
+			seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
+			seqbuf[i] = t;
+		}
+	}
+	kputs(seqbuf, &ks); kputc('\n', &ks);
+	free(seqbuf);
+	fputs(ks.s, fp);
+	free(ks.s);
+	return;
+}
+
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
@@ -151,59 +202,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
 }
 
-void bam2ffq(bam1_t *b, FILE *fp)
-{
-	int i;
-	int qlen = b->core.l_qseq;
-	char seqbuf[SEQBUF_SIZE];
-	uint8_t *seq = bam_get_seq(b);
-	for (i = 0; i < qlen; ++i)
-		seqbuf[i] = bam_seqi(seq, i);
-	if (b->core.flag & BAM_FREVERSE) { // reverse complement
-		for (i = 0; i < qlen>>1; ++i) {
-			int8_t t = seq_comp_table[(int8_t)seqbuf[qlen - 1 - i]];
-			seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
-			seqbuf[i] = t;
-		}
-		if (qlen&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
-	}
-	for (i = 0; i < qlen; ++i)
-		seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
-	seqbuf[qlen] = '\0';
-#if !NDEBUG
-	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
-#endif
-	char comment[3000] = "";
-	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
-	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
-	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:B:I");
-	strcat(comment, "\t");
-	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:B:I");
-	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
-	const uint8_t *rvdata = bam_aux_get(b, (char *)"RV");
-	if(rvdata)
-		append_int_tag(comment, (char *)"RV", bam_aux2i(rvdata));
-	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
-	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
-#if !NDEBUG
-	fprintf(stderr, "comment string: %s.\n", comment);
-#endif
-	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
-	char *qual = (char *)bam_get_qual(b);
-	for(i = 0; i < qlen; ++i)
-		seqbuf[i] = 33 + qual[i];
-	if (b->core.flag & BAM_FREVERSE) { // reverse
-		for (i = 0; i < qlen>>1; ++i) {
-			const int8_t t = seqbuf[qlen - 1 - i];
-			seqbuf[qlen - 1 - i] = seqbuf[i];
-			seqbuf[i] = t;
-		}
-	}
-	fprintf(fp, "%s\n", seqbuf);
-	return;
-}
-
-
 
 void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
@@ -256,7 +254,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 {
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
-			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
+			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) && read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
 				LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
@@ -359,6 +357,7 @@ int rsq_main(int argc, char *argv[])
 	settings->cmpkey = POSITION;
 	settings->is_se = 0;
 	settings->realign_unchanged = 0;
+	settings->read_hd_threshold = -1;
 
 	char fqname[200] = "";
 
@@ -375,6 +374,10 @@ int rsq_main(int argc, char *argv[])
 	}
 	if (optind + 2 > argc)
 		return pr_usage();
+	if(settings->read_hd_threshold < 0) {
+		settings->read_hd_threshold = READ_HD_LIMIT;
+		LOG_INFO("Unset read HD threshold. Setting to default (%i).\n", settings->read_hd_threshold);
+	}
 
 	if(strcmp(fqname, "") == 0) {
 		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");

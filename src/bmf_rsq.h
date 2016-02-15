@@ -97,28 +97,38 @@ typedef struct pr_settings {
 	int mmlim; // Mismatch failure threshold.
 	int realign_unchanged; // Set to true to realign unchanged reads.
 	int is_se; // Is single-end
+	int read_hd_threshold;
 	bam_hdr_t *hdr; // BAM header
 	stack_fn fn;
 } pr_settings_t;
 
+int bam_rsq(int argc, char *argv[]);
+void bam2ffq(bam1_t *b, FILE *fp);
+void write_stack(tmp_stack_t *stack, pr_settings_t *settings);
 
+
+#define READ_HD_LIMIT 10
+#ifdef __cplusplus
+CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)
+#else
 CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
+#endif
 {
 	const uint8_t *const bseq = bam_get_seq(b);
 	const uint8_t *const pseq = bam_get_seq(p);
+	uint8_t bc, pc;
 	int hd = 0;
 	for(int i = 0; i < b->core.l_qseq; ++i) {
-		const uint8_t bc = bam_seqi(bseq, i);
-		const uint8_t pc = bam_seqi(pseq, i);
+		bc = bam_seqi(bseq, i);
+		pc = bam_seqi(pseq, i);
 		if(bc != pc && bc != HTS_N && pc != HTS_N)
 			if(++hd > lim)
 				return 0;
 	}
+	return hd;
 }
 
 int bam_rsq(int argc, char *argv[]);
-void bam2ffq(bam1_t *b, FILE *fp);
-void write_stack(tmp_stack_t *stack, pr_settings_t *settings);
 
 
 
