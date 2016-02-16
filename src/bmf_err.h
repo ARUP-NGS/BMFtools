@@ -10,6 +10,7 @@
 #include "dlib/logging_util.h"
 #include "lib/kingfisher.h"
 #include <string>
+#include <vector>
 
 
 typedef struct readerr {
@@ -48,6 +49,25 @@ typedef struct obserr {
 	uint64_t err;
 } obserr_t;
 
+class RegionErr {
+	obserr_t counts;
+public:
+	std::string name;
+	inline void inc_err() {
+		++counts.err;
+	}
+	inline void inc_obs() {
+		++counts.obs;
+	}
+	RegionErr(region_set_t set, int i);
+	inline void write_report(FILE *fp) {
+		if(counts.obs)
+			fprintf(fp, "%s\t%f\t%lu\t%lu\n", name.c_str(), ((double)counts.err * 100.) / counts.obs,
+					counts.err, counts.obs);
+		else fprintf(fp, "%s\t-nan\t0\t0\n", name.c_str());
+	}
+};
+
 typedef struct cycle_err {
 	int32_t minMQ;
 	int32_t rlen;
@@ -60,6 +80,51 @@ typedef struct cycle_err {
 	int flag;
 	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
 } cycle_err_t;
+
+class RegionExpedition {
+	uint32_t padding;
+	std::string bedpath;
+public:
+	khash_t(bed) *bed;
+	faidx_t *fai; // Does not own fai!
+	std::vector<RegionErr> region_counts;
+	samFile *fp;
+	bam_hdr_t *hdr;
+	hts_itr_t *iter;
+	hts_idx_t *bam_index;
+	int32_t minMQ;
+	int32_t minFM;
+	int32_t requireFP;
+	int32_t max_depth;
+	RegionExpedition(char *bampath, char *_bedpath, faidx_t *_fai, int32_t _minMQ=0, uint32_t _padding=DEFAULT_PADDING,
+			int32_t _minFM=0, int32_t _requireFP=0, int _max_depth=262144) {
+		fp = sam_open(bampath, "r");
+		hdr = sam_hdr_read(fp);
+		if(!fp || !hdr) LOG_ERROR("Could not open input sam file %s. Abort!\n", bampath);
+		padding = _padding;
+		bed = parse_bed_hash(_bedpath, hdr, _padding);
+		bedpath = std::string(_bedpath);
+		minMQ = _minMQ;
+		minFM = _minFM;
+		max_depth = _max_depth;
+		requireFP = _requireFP;
+		fai = _fai;
+		region_counts = std::vector<RegionErr>();
+		iter = NULL;
+		bam_index= sam_index_load(fp, fp->fn);
+		if(!bam_index) LOG_ERROR("Could not read bam index for sam file %s. Abort!\n", fp->fn);
+	}
+	~RegionExpedition() {
+		if(bed) bed_destroy_hash((void *)bed);
+		if(iter) hts_itr_destroy(iter);
+		if(bam_index) hts_idx_destroy(bam_index);
+		if(hdr) bam_hdr_destroy(hdr);
+		if(fp) sam_close(fp);
+	}
+	char *get_bampath() {
+		return fp ? fp->fn: NULL;
+	}
+};
 
 cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
 void cycle_destroy(cycle_err_t *c);
@@ -157,8 +222,8 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		obsarr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;\
 		LOG_DEBUG("obsarr pointer: %p.\n", (void *)obsarr);\
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {\
-			length = bam_cigar_oplen(*cigar);\
-			switch(bam_cigar_op(*cigar++)) {\
+			length = bam_cigar_oplen(cigar[i]);\
+			switch(bam_cigar_op(cigar[i])) {\
 			case BAM_CMATCH:\
 			case BAM_CEQUAL:\
 			case BAM_CDIFF:\

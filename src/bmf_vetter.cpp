@@ -199,26 +199,11 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
  * TODONE
  */
 
-int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start, int tid)
+int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
-	int ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
-	return ret;
+	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
-std::vector<std::pair<khint_t, khiter_t>> make_sorted_keys(khash_t(bed) *h) {
-	std::vector<std::pair<khint_t, khiter_t>> keyset;
-	for(khiter_t ki = kh_begin(aux->bed); ki != kh_end(h); ++ki) {
-		if(kh_exist(h, ki)) keyset.push_back(std::pair<khint_t, khiter_t>(kh_key(h, ki), ki));
-	}
-#ifdef __GNUC__
-	__gnu_parallel::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
-#else
-	__std::sort(keyset.begin(), keyset.end(), [](std::pair<khint_t, khiter_t> p1, std::pair<khint_t, khiter_t> p2) {
-#endif
-		return p1.first < p2.first;
-	});
-	return keyset;
-}
 
 int vet_core(aux_t *aux) {
 	int n_plp, vcf_iter_ret;
@@ -229,7 +214,12 @@ int vet_core(aux_t *aux) {
 	switch(hts_get_format(aux->vcf_fp)->format) {
 	case vcf:
 		vcf_idx = tbx_index_load(aux->vcf_fp->fn);
-		if(!vcf_idx) LOG_ERROR("Could not load TBI index for %s. Indexed vcf required!\n", aux->vcf_fp->fn);
+		if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
+		LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
+		if(vcf_idx) {
+			tbx_destroy(vcf_idx);
+			vcf_idx = NULL;
+		}
 		break;
 	case bcf:
 		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
@@ -258,9 +248,8 @@ int vet_core(aux_t *aux) {
 	bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 	bam_plp_set_maxcnt(pileup, max_depth);
 
-	std::vector<std::pair<khint_t, khiter_t>> keys = make_sorted_keys(aux->bed);
-	for(auto key: keys) {
-		khiter_t ki = key.second;
+	std::vector<khiter_t> keys = make_sorted_keys(aux->bed);
+	for(khiter_t& ki: keys) {
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 			int tid, start, stop, pos = -1;
 
@@ -272,38 +261,52 @@ int vet_core(aux_t *aux) {
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_itr_queryi(bcf_idx, tid, start, stop);
+			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+#if 0
 			LOG_DEBUG("vcf_iter: %p. vcf_idx: %p. bcf_idx: %p.\n", (void *)vcf_iter, (void *)vcf_idx, (void *)bcf_idx);
 			if(!vcf_iter) {
-				LOG_WARNING("Could not access vcf index. Continuing to next region.\n");
+				LOG_WARNING("Could not access vcf index. \n");
 				continue;
 			}
+#endif
 
 			int n_disagreed = 0;
 			int n_overlapped = 0;
 			int n_duplex = 0;
-			while((vcf_iter_ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) >= 0) {
+			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec)) >= 0) {
 				if(!bcf_is_snp(vrec)) {
 					LOG_DEBUG("Variant isn't a snp. Skip!\n");
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
-				if(!vcf_bed_test(vrec, aux->bed)) {
+				if(!vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
 					LOG_DEBUG("Outside of bed region.\n");
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue; // Only handle simple SNVs
 				}
+				/*
+				while(vrec->pos > stop) {
+					if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
+						LOG_ERROR("Record in bed region, but past region of interest on contig and no available contig is present?\n");
+					}
+					start = get_start(kh_val(aux->bed, ki).intervals[j]);
+					stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
+				}
+				*/
 				LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				if (aux->iter) hts_itr_destroy(aux->iter);
-				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, stop);
+				aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos + 500);
+				LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
 				plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
+				LOG_DEBUG("Finished pileup.\n");
+				while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0)) {
+					LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
 					/* Zoom ahead until you're at the correct position */
 				}
 				if(!plp) {
 					if(n_plp == -1) {
-						LOG_ERROR("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n", aux->header->target_name[tid], start, stop, n_plp, pos, tid);
+						LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n", aux->header->target_name[tid], start, stop, n_plp, pos, tid);
 					}
 					else if(n_plp == 0){
 						LOG_WARNING("No reads at position. Skip this variant?\n");
@@ -316,16 +319,10 @@ int vet_core(aux_t *aux) {
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 					continue;
 				}
-				// Check each variant
-
-				// Set i to 1 to skip reference base verification.
-				/*bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass+values,
-						std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-						int *n_all_overlaps, int *n_all_duplex, int *n_all_disagreed) std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-		std::vector<int>& n_pass,*/
 				// Reset vectors for each pass.
 				std::fill(uniobs_values.begin(), uniobs_values.end(), 0);
 				std::fill(duplex_values.begin(), duplex_values.end(), 0);
+				std::fill(fail_values.begin(), fail_values.end(), 0);
 				std::fill(overlap_values.begin(), overlap_values.end(), 0);
 				bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
 							fail_values, n_overlapped, n_duplex, n_disagreed);
@@ -369,7 +366,7 @@ int vetter_main(int argc, char *argv[])
 	aux.max_depth = (1 << 18); // Default max depth
 	if(argc < 3) vetter_usage(EXIT_FAILURE);
 
-	while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'B': output_bcf = 1; break;
 		case 'a': aux.minFA = atoi(optarg); break;
@@ -389,6 +386,7 @@ int vetter_main(int argc, char *argv[])
 		case 'b': bed = strdup(optarg); break;
 		case 'o': outvcf = strdup(optarg); break;
 		case 'O': aux.minOverlap = atoi(optarg); break;
+		//case 'V': aux.vet_all = 1; break;
 		case 'h': case '?': vetter_usage(EXIT_SUCCESS);
 		}
 	}

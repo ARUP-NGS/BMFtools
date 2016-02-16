@@ -6,6 +6,17 @@
 int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
 int err_cycle_main(int argc, char *argv[]);
+int err_region_main(int argc, char *argv[]);
+
+RegionErr::RegionErr(region_set_t set, int i) {
+	LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
+	counts = {0, 0};
+	kstring_t tmp = {0, 0, NULL};
+	LOG_DEBUG("Contig name: %s. Strlen: %lu.\n", set.contig_name, strlen(set.contig_name));
+	ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
+	name = std::string(tmp.s);
+	free(tmp.s);
+}
 
 uint64_t get_max_obs(khash_t(obs) *hash)
 {
@@ -69,6 +80,20 @@ int err_fm_usage(FILE *fp, int retcode)
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			"-P:\t\tOnly include proper pairs.\n"
 			"-F:\t\tRequire that the FP tag be present and nonzero.\n"
+			);
+	exit(retcode);
+	return retcode; // This never happens.
+}
+
+int err_region_usage(FILE *fp, int retcode)
+{
+	fprintf(fp,
+			"Usage: bmftools err region -b <bedpath.bed> -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+			"Flags:\n"
+			"-h/-?\t\tThis helpful help menu!\n"
+			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-a\t\tSet minimum mapping quality for inclusion.\n"
+			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			);
 	exit(retcode);
 	return retcode; // This never happens.
@@ -245,9 +270,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 {
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) {
-		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
-	}
+	if (!hdr) LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
@@ -309,8 +332,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
 		}
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			length = bam_cigar_oplen(*cigar);
-			switch(bam_cigar_op(*cigar++)) {
+			length = bam_cigar_oplen(cigar[i]);
+			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -402,9 +425,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) {
-			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-		}
+		if(tid_to_study < 0) LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 	}
 	uint8_t *fdata, *rdata, *pdata, *seq, *qual;
 	uint32_t *cigar, *pv_array, length;
@@ -436,13 +457,11 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 
 		if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
 		if(b->core.tid != last_tid) {
+			last_tid = b->core.tid;
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			if(!ref) {
-				LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
-			}
-			last_tid = b->core.tid;
+			if(ref == NULL) LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 		}
 		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		pos = b->core.pos;
@@ -450,8 +469,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		if(f->minPV) {
 			pv_array = (uint32_t *)array_tag(b, "PV");
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-				length = bam_cigar_oplen(*cigar);
-				switch(bam_cigar_op(*cigar++)) {
+				length = bam_cigar_oplen(cigar[i]);
+				switch(bam_cigar_op(cigar[i])) {
 				case BAM_CMATCH:
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
@@ -487,8 +506,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		} else {
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-				length = bam_cigar_oplen(*cigar);
-				switch(bam_cigar_op(*cigar++)) {
+				length = bam_cigar_oplen(cigar[i]);
+				switch(bam_cigar_op(cigar[i])) {
 				case BAM_CMATCH:
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
@@ -566,24 +585,23 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(UNLIKELY(++f->nread % 1000000 == 0)) {
+		if(UNLIKELY(++f->nread % 1000000 == 0))
 			LOG_INFO("Records read: %lu.\n", f->nread);
-		}
+
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_INFO("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			last_tid = b->core.tid;
 		}
+
 		// rc -> readcount
 		// fc -> reference base  count
-		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			int s; // seq value, base 
-			const uint32_t len = bam_cigar_oplen(*cigar);
-			switch(bam_cigar_op(*cigar++)) {
+			const uint32_t len = bam_cigar_oplen(cigar[i]);
+			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -912,7 +930,7 @@ void cycle_destroy(cycle_err_t *c)
 
 int err_usage(FILE *fp, int retcode)
 {
-	fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle.\n");
+	fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle, region.\n");
 	exit(retcode);
 	return retcode; // This neverhappens
 }
@@ -928,6 +946,8 @@ int err_main(int argc, char *argv[])
 		return err_fm_main(argc - 1, argv + 1);
 	if(strcmp(argv[1], "cycle") == 0)
 		return err_cycle_main(argc - 1, argv + 1);
+	if(strcmp(argv[1], "region") == 0)
+		return err_region_main(argc - 1, argv + 1);
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 	return EXIT_FAILURE;
 }
@@ -1152,5 +1172,152 @@ int err_fm_main(int argc, char *argv[])
 	err_fm_report(ofp, f); fclose(ofp);
 	fai_destroy(fai);
 	fm_destroy(f);
+	return EXIT_SUCCESS;
+}
+
+static int read_bam(RegionExpedition *navy, bam1_t *b)
+{
+	int ret;
+	uint8_t *fmdata, *fpdata;
+	for(;;)
+	{
+
+		if((ret = sam_itr_next(navy->fp, navy->iter, b)) < 0) break;
+		if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+				(int)b->core.qual < navy->minMQ) continue;
+		fmdata = bam_aux_get(b, "FM");
+		fpdata = bam_aux_get(b, "FP");
+		if ((fmdata && bam_aux2i(fmdata) < navy->minFM) ||
+			(navy->requireFP && fpdata && bam_aux2i(fpdata) == 0))
+				continue;
+		break;
+	}
+	return ret;
+}
+
+inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
+{
+	int i, rc, fc, length, ind, s;
+	uint32_t *const cigar = bam_get_cigar(b);
+	uint8_t *seq = bam_get_seq(b);
+	for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+		length = bam_cigar_oplen(cigar[i]);
+		switch(bam_cigar_op(cigar[i])) {
+		case BAM_CMATCH:
+		case BAM_CEQUAL:
+		case BAM_CDIFF:
+			for(ind = 0; ind < length; ++ind) {
+				s = bam_seqi(seq, ind + rc);
+				if(s == HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
+				counter.inc_obs();
+				if(seq_nt16_table[(int8_t)ref[b->core.pos + fc + ind]] != s) counter.inc_err();
+			}
+			rc += length; fc += length;
+			break;
+		case BAM_CSOFT_CLIP:
+		case BAM_CHARD_CLIP:
+		case BAM_CINS:
+			rc += length;
+			break;
+		case BAM_CREF_SKIP:
+		case BAM_CDEL:
+			fc += length;
+			break;
+		}
+	}
+	// Add actual error code!
+}
+
+void err_region_core(RegionExpedition *Holloway) {
+	// Make region_counts classes. These can now be filled from the bam.
+	char *ref = NULL;
+	int len;
+	bam1_t *b = bam_init1();
+	auto sorted_keys = make_sorted_keys(Holloway->bed);
+	for(khiter_t& k: sorted_keys) {
+		if(!kh_exist(Holloway->bed, k)) continue;
+		if(ref) free(ref);
+		LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
+		ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
+		LOG_DEBUG("Fetched! Length: %i\n", len);
+		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
+			LOG_DEBUG("Loop started.\n");
+			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
+			LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
+			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
+			const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
+			LOG_DEBUG("Iterating through bam region with start %i and stop %i.\n", start, stop);
+			if(Holloway->iter) hts_itr_destroy(Holloway->iter);
+			Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
+											start, stop);
+			while(read_bam(Holloway, b) >= 0) {
+				assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
+				if(bam_getend(b) <= start) {
+					LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
+					continue;
+				} else if(b->core.pos >= stop) {
+					LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
+					break;
+				}
+				region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
+			}
+		}
+	}
+	bam_destroy1(b);
+}
+
+void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
+	fprintf(fp, "#Region name\t%%Error Rate\t#Errors\t#Obs\n");
+	for(RegionErr& re: Holloway.region_counts) re.write_report(fp);
+}
+
+int err_region_main(int argc, char *argv[])
+{
+	if(argc < 2) return err_region_usage(stderr, EXIT_FAILURE);
+
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_region_usage(stderr, EXIT_SUCCESS);
+
+	FILE *ofp = NULL;
+	int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
+	char *bedpath = NULL, *outpath = NULL;
+	while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
+		switch (c) {
+		case 'q': requireFP = 1; break;
+		case 'a': minMQ = atoi(optarg); break;
+		case 'f': minFM = atoi(optarg); break;
+		case 'o': outpath = strdup(optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
+		case '?': case 'h': return err_region_usage(stderr, EXIT_SUCCESS);
+		}
+	}
+
+	if(padding < 0 && bedpath) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	}
+
+	if(!outpath) {
+		outpath = strdup("-");
+		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
+	}
+	if(!bedpath) {
+		LOG_ERROR("Bed file required for bmftools err region.\n");
+	}
+	ofp = open_ofp(outpath);
+
+	if (argc != optind+2)
+		return err_region_usage(stderr, EXIT_FAILURE);
+
+	faidx_t *fai = fai_load(argv[optind]);
+	if(!fai) {
+		LOG_ERROR("Could not load fasta index for %s. Abort!\n", argv[optind]);
+	}
+
+	RegionExpedition Holloway = RegionExpedition(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
+	err_region_core(&Holloway);
+	write_region_rates(ofp, Holloway), fclose(ofp);
+	fai_destroy(fai);
+	cond_free(bedpath);
+	cond_free(outpath);
 	return EXIT_SUCCESS;
 }
