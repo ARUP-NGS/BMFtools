@@ -309,12 +309,8 @@ int depth_main(int argc, char *argv[])
 		if(start < 0) start = 0;
 		region_len = stop - start;
 		for(i = 0; i < n; ++i) {
-			if(aux[i]->dmp_counts)
-				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->dmp_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
-			if(aux[i]->raw_counts)
-				aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->raw_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
+			aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
+			aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
 		}
 		if(*p == '\t') {
 			q = ++p;
