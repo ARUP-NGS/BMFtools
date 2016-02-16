@@ -94,9 +94,11 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	keyset.clear();
 	std::vector<std::vector<uint64_t>> csums;
 
+	/*
 	for(i = 0; i < n_samples; ++i) {
 		LOG_DEBUG("About to fill cumulative sums.\n");
-		csums.push_back(std::vector<uint64_t>());
+		csums.push_back(std::vector<uint64_t>(keys.size(), 0));
+		assert(csums.size() - 1 == i);
 		std::partial_sum(keys.rbegin(), keys.rend(), csums[i].begin(), [aux, i](const uint64_t& a, const int& key) {
 			khiter_t k;
 			if((k = kh_get(depth, aux[i]->depth_hash, key)) != kh_end(aux[i]->depth_hash)) {
@@ -105,12 +107,9 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 				return a;
 			}
 		});
-#if !NDEBUG
-		for(auto &sum: csums[i]) fprintf(stderr, ",%lu", sum);
-		fputc('\n', stderr);
-#endif
+		LOG_DEBUG("Length of csums[i]: %lu.\n", csums[i].size());
 	}
-	/*
+	*/
 	for(i = 0; i < n_samples; ++i) {
 		csums.push_back(std::vector<uint64_t>(keys.size()));
 		for(j = keys.size() - 1; j != (unsigned)-1; --j) {
@@ -120,8 +119,11 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 			if(j != (unsigned)keys.size() - 1)
 				csums[i][j] += csums[i][j + 1];
 		}
+#if !NDEBUG
+		for(auto &sum: csums[i]) fprintf(stderr, ",%lu", sum);
+		fputc('\n', stderr);
+#endif
 	}
-	*/
 	for(j = 0; j < keys.size(); ++j) {
 		fprintf(fp, "%i", keys[j]);
 		for(i = 0; i < n_samples; ++i)
