@@ -88,6 +88,11 @@ CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
 			ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
 }
 
+static inline int32_t int_tag_zero(uint8_t *data)
+{
+	return data ? bam_aux2i(data): 0;
+}
+
 
 typedef struct pr_settings {
 	FILE *fqh;
