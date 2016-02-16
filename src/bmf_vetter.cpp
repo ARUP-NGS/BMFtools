@@ -187,23 +187,16 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 		LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
 
 	}
-	for(int i = 0; i < n_plp; ++i) {
+	for(int i = 0; i < n_plp; ++i)
 		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
-	}
 	kh_destroy(names, hash);
 	n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
-	//return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
-
-/*
- * TODONE
- */
 
 int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
 	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
-
 
 int vet_core(aux_t *aux) {
 	int n_plp, vcf_iter_ret;

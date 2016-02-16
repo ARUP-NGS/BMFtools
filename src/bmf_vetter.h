@@ -37,7 +37,7 @@ extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt
 extern void bam_plp_init_overlaps(bam_plp_t);
 
 
-#define DEFAULT_MAX_ALLELES 10uL
+#define DEFAULT_MAX_ALLELES 20uL
 
 /*
 typedef struct {
@@ -128,8 +128,6 @@ typedef struct {
 
 #define SKIP_IMPROPER 4096
 #define BAM_FETCH_BUFFER 150
-
-extern void *bed_read(const char *fn);
 
 
 extern void bed_destroy(void *);
