@@ -17,7 +17,7 @@ namespace {
 void stack_usage(int retcode)
 {
 	const char *buf =
-			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
+			"Usage:\nbmftools stack -o <out.vcf [stdout]> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
 			"-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
@@ -65,16 +65,14 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	std::unordered_map<std::string, BMF::UniqueObservation> obs;
 	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
 	const int sk = 1;
-	// Set the r1/r2 flags for the reads to ignore to 0
-	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-	for(int i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		// Skip any reads failed for FA < minFA or FR < minFR
-		qname = std::string(bam_get_qname(plp[i].b));
+	std::for_each(plp, plp + n_plp, [&found,&obs,&qname](const bam_pileup1_t& plp) {
+		if(plp.is_del || plp.is_refskip) return;
+		qname = std::string(bam_get_qname(plp.b));
 		if((found = obs.find(qname)) == obs.end())
-			obs[qname] = BMF::UniqueObservation(plp[i]);
-		else found->second.add_obs(plp[i]);
-	}
+			obs[qname] = BMF::UniqueObservation(plp);
+		else found->second.add_obs(plp);
+		return;
+	});
 	// Build vcfline struct
 	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos, obs.size());
 	vcfline.to_bcf(ret);
@@ -114,6 +112,7 @@ int stack_main(int argc, char *argv[]) {
 	char *outvcf = NULL;
 	std::string bedpath = "";
 	int output_bcf = 0;
+	if(argc < 2) stack_usage(EXIT_FAILURE);
 	while ((c = getopt(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
 		switch (c) {
 		case 'B': output_bcf = 1; break;
@@ -155,5 +154,11 @@ int stack_main(int argc, char *argv[]) {
 	for(auto line: vcf_header_lines)
 		if(bcf_hdr_append(aux.vh, line))
 			LOG_ERROR("Could not add line %s to header. Abort!\n", line);
+	// Add lines to the header for the bed file?
+	if(!outvcf) {
+		outvcf = (char *)"-";
+	}
+	aux.ofp = vcf_open(outvcf, output_bcf ? "wb": "w");
+	bcf_hdr_write(aux.ofp, aux.vh);
 	return stack_core(&aux);
 }

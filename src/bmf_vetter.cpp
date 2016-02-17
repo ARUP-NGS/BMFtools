@@ -22,7 +22,7 @@ typedef struct {
 	int skip_improper;
 	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
 	uint32_t skip_flag; // Skip reads with any bits set to true
-} aux_t;
+} vetter_aux_t;
 
 int max_depth = (1 << 18); // 262144
 
@@ -36,7 +36,7 @@ void vetter_error(const char *message, int retcode)
 
 static int read_bam(void *data, bam1_t *b)
 {
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	vetter_aux_t *aux = (vetter_aux_t*)data; // data in fact is a pointer to an auxiliary structure
 	int ret;
 	for(;;)
 	{
@@ -87,7 +87,7 @@ void vetter_usage(int retcode)
  * Add 'fm' tag to note which families of reads have already had their fm adjusted.
  * Separate from the upper-case tag!
  */
-void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass_values,
+void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
 		std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
 		int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
 	int khr, s, s2;
@@ -208,12 +208,12 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 	n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
 }
 
-int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
+int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
 	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
-int vet_core(aux_t *aux) {
+int vet_core(vetter_aux_t *aux) {
 	int n_plp, vcf_iter_ret;
 	const bam_pileup1_t *plp;
 	tbx_t *vcf_idx = NULL;
@@ -369,7 +369,7 @@ int vetter_main(int argc, char *argv[])
 	int padding = 0, output_bcf = 0;
 	// Defaults to outputting textual (vcf)
 	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
-	aux_t aux = {0};
+	vetter_aux_t aux = {0};
 	aux.minCount = 1;
 	aux.max_depth = (1 << 18); // Default max depth
 	if(argc < 3) vetter_usage(EXIT_FAILURE);
