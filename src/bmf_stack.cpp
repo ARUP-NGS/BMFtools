@@ -143,6 +143,7 @@ void process_pileup(const bam_pileup1_t *plp, int n_plp) {
 		seq = bam_get_seq(plp[i].b);
 		FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
 		PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
+		/*
 		if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
 			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
 			if(0) {
@@ -154,9 +155,17 @@ void process_pileup(const bam_pileup1_t *plp, int n_plp) {
 				bam_aux_del(plp[i].b, tmptag);
 			}
 		}
+		*/
 	}
+	std::for_each(plp, &plp[n_plp], [&](const bam_pileup1_t &plp) {
+		if((tmptag = bam_aux_get(plp.b, "SK")) != NULL)
+			bam_aux_del(plp.b, tmptag);
+	});
+	/*
+	 * What's better? The lambda function looks pretty cool, which is nice.
 	for(int i = 0; i < n_plp; ++i)
 		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
+	*/
 	kh_destroy(names, hash);
 }
 
