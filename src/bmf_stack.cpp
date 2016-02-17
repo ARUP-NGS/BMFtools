@@ -11,6 +11,7 @@ namespace {
 	};
 }
 
+
 typedef struct {
 	samFile *fp;
 	hts_itr_t *iter;
@@ -55,6 +56,7 @@ void stack_usage(int retcode)
 	exit(retcode);
 }
 
+
 static int read_bam(void *data, bam1_t *b)
 {
 	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
@@ -79,94 +81,29 @@ static int read_bam(void *data, bam1_t *b)
 	return ret;
 }
 
-void process_pileup(const bam_pileup1_t *plp, int n_plp) {
+void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, vcfFile *outfp, bcf_hdr_t *hdr) {
 	int khr, s, s2;
 	khiter_t k;
 	uint32_t *FA1, *PV1, *FA2, *PV2;
-	char *qname;
-	uint8_t *seq, *seq2, *tmptag, *drdata;
+	std::string qname;
+	uint8_t *seq, *seq2, *tmptag;
 	// Build overlap hash
-	khash_t(names) *hash = kh_init(names);
+	std::unordered_map<std::string, BMF::UniqueObservation> obs;
+	std::unordered_map<std::string, BMF::UniqueObservation>::const_iterator found;
 	const int sk = 1;
 	// Set the r1/r2 flags for the reads to ignore to 0
 	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
 	for(int i = 0; i < n_plp; ++i) {
 		if(plp[i].is_del || plp[i].is_refskip) continue;
 		// Skip any reads failed for FA < minFA or FR < minFR
-		qname = bam_get_qname(plp[i].b);
-		k = kh_get(names, hash, qname);
-		if(k == kh_end(hash)) {
-			k = kh_put(names, hash, qname, &khr);
-			kh_val(hash, k) = &plp[i];
-		} else {
-			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
-			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-			if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == NULL) {
-				uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
-				const int FM_sum = bam_aux2i(FM1) + bam_aux2i(bam_aux_get(plp[i].b, "FM"));
-				bam_aux_del(kh_val(hash, k)->b, FM1);
-				bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
-				bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
-				bam_aux_append(plp[i].b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
-			}
-			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
-			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
-			seq = bam_get_seq(kh_val(hash, k)->b);
-			s = bam_seqi(seq, kh_val(hash, k)->qpos);
-			PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
-			FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
-			seq2 = bam_get_seq(plp[i].b);
-			s2 = bam_seqi(seq2, plp[i].qpos);
-			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
-			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
-			if(s == s2) {
-				PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
-				FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
-			} else if(s == HTS_N) {
-				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
-				PV1[arr_qpos1] = PV2[arr_qpos2];
-				FA1[arr_qpos1] = FA2[arr_qpos2];
-			} else if(s2 != HTS_N) {
-				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
-				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
-				PV1[arr_qpos1] = 0u;
-				FA1[arr_qpos1] = 0u;
-			}
-		}
+		qname = std::string(bam_get_qname(plp[i].b));
+		if((found = obs.find(qname)) == obs.end())
+			obs[qname] = BMF::UniqueObservation(plp[i]);
+		else ((BMF::UniqueObservation)(found->second)).add_obs(plp[i]);
 	}
-	for(int i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
-			continue;
-		}
-
-		seq = bam_get_seq(plp[i].b);
-		FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
-		PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
-		/*
-		if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
-			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
-			if(0) {
-				continue;
-			}
-			if((drdata = bam_aux_get(plp[i].b, "DR")) != NULL && bam_aux2i(drdata)) {
-			}
-			if((tmptag = bam_aux_get(plp[i].b, "KR")) != NULL) {
-				bam_aux_del(plp[i].b, tmptag);
-			}
-		}
-		*/
-	}
-	std::for_each(plp, &plp[n_plp], [&](const bam_pileup1_t &plp) {
-		if((tmptag = bam_aux_get(plp.b, "SK")) != NULL)
-			bam_aux_del(plp.b, tmptag);
-	});
-	/*
-	 * What's better? The lambda function looks pretty cool, which is nice.
-	for(int i = 0; i < n_plp; ++i)
-		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
-	*/
-	kh_destroy(names, hash);
+	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos, obs.size());
+	vcfline.to_bcf(ret);
+	bcf_write(outfp, hdr, ret);
 }
 
 int stack_main(int argc, char *argv[]) {
