@@ -81,9 +81,7 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
 	fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
 	fprintf(fp, "#Depth");
-	for(i = 0; i < n_samples; ++i)
-		fprintf(fp, "\t%s:#Bases", aux[i]->fp->fn),
-		fprintf(fp, "\t%s:%%Bases", aux[i]->fp->fn);
+	for(i = 0; i < n_samples; ++i) fprintf(fp, "\t%s:#Bases\t%s:%%Bases", aux[i]->fp->fn, aux[i]->fp->fn);
 	fputc('\n', fp);
 	for(i = 0; i < n_samples; ++i)
 		for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
@@ -93,23 +91,6 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	__gnu_parallel::sort(keys.begin(), keys.end());
 	keyset.clear();
 	std::vector<std::vector<uint64_t>> csums;
-
-	/*
-	for(i = 0; i < n_samples; ++i) {
-		LOG_DEBUG("About to fill cumulative sums.\n");
-		csums.push_back(std::vector<uint64_t>(keys.size(), 0));
-		assert(csums.size() - 1 == i);
-		std::partial_sum(keys.rbegin(), keys.rend(), csums[i].begin(), [aux, i](const uint64_t& a, const int& key) {
-			khiter_t k;
-			if((k = kh_get(depth, aux[i]->depth_hash, key)) != kh_end(aux[i]->depth_hash)) {
-				return a + kh_val(aux[i]->depth_hash, k);
-			} else {
-				return a;
-			}
-		});
-		LOG_DEBUG("Length of csums[i]: %lu.\n", csums[i].size());
-	}
-	*/
 	for(i = 0; i < n_samples; ++i) {
 		csums.push_back(std::vector<uint64_t>(keys.size()));
 		for(j = keys.size() - 1; j != (unsigned)-1; --j) {
@@ -119,10 +100,6 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 			if(j != (unsigned)keys.size() - 1)
 				csums[i][j] += csums[i][j + 1];
 		}
-#if !NDEBUG
-		for(auto &sum: csums[i]) fprintf(stderr, ",%lu", sum);
-		fputc('\n', stderr);
-#endif
 	}
 	for(j = 0; j < keys.size(); ++j) {
 		fprintf(fp, "%i", keys[j]);
@@ -149,8 +126,7 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
 double u64_mean(uint64_t *arr, size_t l)
 {
 	uint64_t ret = 0;
-	for(unsigned i = 0; i < l; ++i)
-		ret += arr[i];
+	for(unsigned i = 0; i < l; ++i) ret += arr[i];
 	return (double)ret / l;
 }
 
@@ -371,6 +347,7 @@ int depth_main(int argc, char *argv[])
 			qsort(raw_sort_array, region_len, sizeof(uint64_t), &u64cmp);
 			memcpy(dmp_sort_array, aux[i]->dmp_counts, region_len * sizeof(uint64_t));
 			qsort(dmp_sort_array, region_len, sizeof(uint64_t), &u64cmp);
+			raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
 			raw_mean = u64_mean(aux[i]->raw_counts, region_len);
 			raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
 			dmp_mean = u64_mean(aux[i]->dmp_counts, region_len);

@@ -54,15 +54,6 @@ void vetter_usage(int retcode)
 	vetter_error(buf, retcode);
 }
 
-inline int arr_qpos(const bam_pileup1_t *plp)
-{
-	/*
-	LOG_DEBUG("qpos: %i.\n", plp->qpos);
-	LOG_DEBUG("l_qseq: %i.\n", plp->b->core.l_qseq);
-	LOG_DEBUG("Arr qpos: %i.\n", (plp->b->core.flag & BAM_FREVERSE) ? plp->b->core.l_qseq - 1 - plp->qpos: plp->qpos);
-	*/
-	return (plp->b->core.flag & BAM_FREVERSE) ? plp->b->core.l_qseq - 1 - plp->qpos: plp->qpos;
-}
 
 /*
  * :param: [bcf1_t *] vrec - Variant record to test.
