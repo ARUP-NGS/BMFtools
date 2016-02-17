@@ -1,5 +1,29 @@
 #include "bmf_vetter.h"
 
+
+typedef struct {
+	samFile *fp;
+	hts_itr_t *iter;
+	bam_hdr_t *header;
+	vcfFile *vcf_fp;
+	vcfFile *vcf_ofp;
+	bcf_hdr_t *vcf_header;
+	khash_t(bed) *bed;
+	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int max_depth;
+	int minFM;
+	uint32_t minFA;
+	uint32_t minPV;
+	uint32_t minMQ;
+	int minCount;
+	int minDuplex;
+	int minOverlap;
+	int skip_improper;
+	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
+	uint32_t skip_flag; // Skip reads with any bits set to true
+} aux_t;
+
 int max_depth = (1 << 18); // 262144
 
 
