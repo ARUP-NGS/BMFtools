@@ -76,7 +76,7 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	int i;
 	unsigned j;
 	khiter_t k;
-	std::set<int> keyset;
+	std::unordered_set<int> keyset;
 	fprintf(fp, "##bedpath=%s\n", bedpath);
 	fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
 	fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
