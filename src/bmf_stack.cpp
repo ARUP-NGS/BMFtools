@@ -75,7 +75,7 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	});
 	// Build vcfline struct
 	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos, obs.size());
-	vcfline.to_bcf(ret, aux->get_ref_base(tid, pos));
+	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
 	bcf_write(aux->ofp, aux->vh, ret);
 	bcf_clear(ret);
 }

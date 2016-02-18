@@ -13,23 +13,24 @@ namespace BMF {
 		templates.reserve(5);
 		for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
 	}
-	void VCFPos::to_bcf(bcf1_t *vrec, char refbase) {
+	void VCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
 		size_t n_alleles = templates.size();
 		vrec->rid = tid;
 		vrec->pos = pos;
 		vrec->qual = 0;
-		kstring_t ks = {0, 0, NULL};
-		ks_resize(&ks, 20uL);
-		kputc(refbase, &ks); kputc(',', &ks);
+		kstring_t allele_str = {0, 0, NULL};
+		ks_resize(&allele_str, 20uL);
+		kputc(refbase, &allele_str);
 		auto match = templates.find(refbase);
 		if(match == templates.end()) {
 			// No reference calls? Add appropriate info fields.
 		}
 		for(auto& pair: templates) {
-			if(pair.first == refbase)
-				continue;
+			if(pair.first != refbase)
+				 kputc(',', &allele_str), kputc((int)pair.first, &allele_str);
 			// Update records
 		}
+		bcf_update_alleles_str(hdr, vrec, allele_str.s);
 	}
 
 	void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
