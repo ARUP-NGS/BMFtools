@@ -15,6 +15,7 @@ public:
 	bam_hdr_t *bh;
 	vcfFile *ofp;
 	bcf_hdr_t *vh;
+	faidx_t *fai;
 	khash_t(bed) *bed;
 	float minFR; // Minimum fraction of family members agreed on base
 	float minAF; // Minimum aligned fraction
@@ -27,10 +28,22 @@ public:
 	int minDuplex;
 	int minOverlap;
 	int skip_improper;
+	int last_tid;
+	char *ref_seq;
 	uint32_t skip_flag; // Skip reads with any bits set to true
 	aux_t() {
 		memset(this, 0, sizeof(*this));
 		max_depth = DEFAULT_MAX_DEPTH;
+		last_tid = -1;
+	}
+	char get_ref_base(int tid, int pos) {
+		int len;
+		if(tid != last_tid) {
+			if(ref_seq) free(ref_seq);
+			ref_seq = fai_fetch(fai, bh->target_name[tid], &len);
+			last_tid = tid;
+		}
+		return ref_seq[pos];
 	}
 	~aux_t() {
 		if(fp) sam_close(fp);
@@ -39,6 +52,7 @@ public:
 		if(bh) bam_hdr_destroy(bh);
 		if(ofp) vcf_close(ofp);
 		if(bed) bed_destroy_hash((void *)bed);
+		if(ref_seq) free(ref_seq);
 	}
 };
 

@@ -59,7 +59,7 @@ static int read_bam(aux_t *data, bam1_t *b)
 	return ret;
 }
 
-void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, vcfFile *outfp, bcf_hdr_t *hdr) {
+void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, aux_t *aux) {
 	std::string qname;
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> obs;
@@ -75,8 +75,9 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	});
 	// Build vcfline struct
 	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos, obs.size());
-	vcfline.to_bcf(ret);
-	bcf_write(outfp, hdr, ret);
+	vcfline.to_bcf(ret, aux->get_ref_base(tid, pos));
+	bcf_write(aux->ofp, aux->vh, ret);
+	bcf_clear(ret);
 }
 
 int stack_core(aux_t *aux)
@@ -97,7 +98,7 @@ int stack_core(aux_t *aux)
 			while((stack = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0) {
 				if(pos < start && tid == bamtid) continue;
 				if(pos >= stop) break;
-				process_pileup(v, stack, n_plp, pos, tid, aux->ofp, aux->vh);
+				process_pileup(v, stack, n_plp, pos, tid, aux);
 			}
 		}
 	}
@@ -109,11 +110,11 @@ int stack_main(int argc, char *argv[]) {
 	int c;
 	unsigned padding = (unsigned)-1;
 	aux_t aux = aux_t();
-	char *outvcf = NULL;
+	char *outvcf = NULL, *refpath = NULL;
 	std::string bedpath = "";
 	int output_bcf = 0;
 	if(argc < 2) stack_usage(EXIT_FAILURE);
-	while ((c = getopt(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
+	while ((c = getopt(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
 		switch (c) {
 		case 'B': output_bcf = 1; break;
 		case 'a': aux.minFA = atoi(optarg); break;
@@ -125,6 +126,7 @@ int stack_main(int argc, char *argv[]) {
 		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
 		case 'S': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
 		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
+		case 'R': refpath = optarg; break;
 		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
 		case 'P': aux.skip_improper = 1; break;
 		case 'p': padding = atoi(optarg); break;
@@ -142,6 +144,11 @@ int stack_main(int argc, char *argv[]) {
 		LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
 		padding = DEFAULT_PADDING;
 	}
+	if(!refpath) {
+		LOG_ERROR("refpath required. Abort!\n");
+	}
+	aux.fai = fai_load(refpath);
+	if(!aux.fai) LOG_ERROR("failed to open fai. Abort!\n");
 	aux.fp = sam_open(argv[optind], "r");
 	aux.bh = sam_hdr_read(aux.fp);
 	if(!aux.fp || !aux.bh) {
@@ -155,9 +162,8 @@ int stack_main(int argc, char *argv[]) {
 		if(bcf_hdr_append(aux.vh, line))
 			LOG_ERROR("Could not add line %s to header. Abort!\n", line);
 	// Add lines to the header for the bed file?
-	if(!outvcf) {
+	if(!outvcf)
 		outvcf = (char *)"-";
-	}
 	aux.ofp = vcf_open(outvcf, output_bcf ? "wb": "w");
 	bcf_hdr_write(aux.ofp, aux.vh);
 	return stack_core(&aux);
