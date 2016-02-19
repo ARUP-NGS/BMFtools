@@ -51,6 +51,10 @@ namespace BMF {
 		double get_FA() {
 			return (double)agreed / size;
 		}
+		int get_overlap() {return is_overlap;}
+		int get_duplex() {
+			return is_duplex1 + is_duplex2;
+		}
 		UniqueObservation() {
 			memset(this, 0, sizeof(*this));
 		}

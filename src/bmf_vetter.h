@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include "include/igamc_cephes.h"
+#include "include/bam.h"
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"

@@ -14,23 +14,41 @@ namespace BMF {
 		for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
 	}
 	void VCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
-		size_t n_alleles = templates.size();
+		int count_index = 0;
 		vrec->rid = tid;
 		vrec->pos = pos;
 		vrec->qual = 0;
 		kstring_t allele_str = {0, 0, NULL};
 		ks_resize(&allele_str, 20uL);
 		kputc(refbase, &allele_str);
+		std::vector<int> counts(templates.size(), 0);
+		std::vector<int> duplex_counts(templates.size(), 0);
+		std::vector<int> overlap_counts(templates.size(), 0);
 		auto match = templates.find(refbase);
 		if(match == templates.end()) {
+			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
 			// No reference calls? Add appropriate info fields.
+		} else {
+			counts[0] = match->second.size();
+			for(auto uni: templates[refbase]) {
+				duplex_counts[0] += uni->get_duplex();
+				overlap_counts[0] += uni->get_overlap();
+			}
 		}
 		for(auto& pair: templates) {
 			if(pair.first != refbase)
 				 kputc(',', &allele_str), kputc((int)pair.first, &allele_str);
+			counts[++count_index] = pair.second.size();
+			for(auto uni: templates[pair.first]) {
+				duplex_counts[count_index] += uni->get_duplex();
+				overlap_counts[count_index] += uni->get_overlap();
+			}
 			// Update records
 		}
 		bcf_update_alleles_str(hdr, vrec, allele_str.s);
+		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], count_index, 'i');
 	}
 
 	void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
