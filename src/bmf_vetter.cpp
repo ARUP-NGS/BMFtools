@@ -394,7 +394,7 @@ int vetter_main(int argc, char *argv[])
 	// Open bam
 	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if(!aux.fp) LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);
-	aux.header = sam_header_read(aux.fp);
+	aux.header = sam_hdr_read(aux.fp);
 
 	// Open input vcf
 	if(!aux.header || aux.header->n_targets == 0) {

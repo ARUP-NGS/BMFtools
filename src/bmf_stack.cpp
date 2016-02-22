@@ -143,6 +143,8 @@ void process_pileup(const bam_pileup1_t *plp, int n_plp) {
 		seq = bam_get_seq(plp[i].b);
 		FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
 		PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
+		bcf1_t *vrec = NULL;
+		int j = 0;
 		if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
 			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
 			if(0) {

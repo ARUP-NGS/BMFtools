@@ -1,5 +1,7 @@
 #include "bmf_hashdmp.h"
 
+size_t buf_set_size = 50000;
+
 #ifndef ifn_stream
 #define ifn_stream(fname) ((fname) ? (fname): "stream")
 #endif
@@ -69,20 +71,30 @@ int hash_dmp_main(int argc, char *argv[])
 
 void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t *hrev, gzFile out_handle, tmpvars_t *tmp)
 {
+	kstring_t ks = {0, 0, NULL};
+	size_t buf_record_count = 0;
+
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
+		if(buf_record_count++ == buf_set_size) {
+			buf_record_count = 0;
+			gzputs(out_handle, (const char *)ks.s);
+			ks.l = 0;
+		}
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(crev) {
-			zstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+			zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
 			destroy_kf(cfor->value), destroy_kf(crev->value);
 			HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 			free(crev); free(cfor);
 		} else {
-			kdmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
+			dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
 		}
 	}
+	if(buf_record_count) gzputs(out_handle, (const char *)ks.s);
+	free(ks.s);
 }
 
 void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *tmp_hkr, char *infname, uint64_t *count, uint64_t *fcount, tmpvars_t *tmp, int blen) {
@@ -117,17 +129,26 @@ void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *
 void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
 		uint64_t *non_duplex_fm)
 {
+	size_t buf_record_count = 0;
 	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
+	kstring_t ks = {0, 0, NULL};
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		if(++(*count) % 1000000 == 0) {
-			LOG_DEBUG("Number of records written: %lu.\n", *count);
+		LOG_DEBUG("buf_record_count: %lu.\n", buf_record_count);
+		if(buf_record_count++ == buf_set_size) {
+			buf_record_count = 0;
+			gzputs(out_handle, (const char *)ks.s);
+			ks.l = 0;
 		}
+		if(++(*count) % 1000000 == 0) LOG_DEBUG("Number of records written: %lu.\n", *count);
 		if(current_entry->value->length > 1 && non_duplex_fm) ++*non_duplex_fm;
-		kdmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
+		dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
 	}
+	LOG_DEBUG("buf_record_count before gzputs: %lu.\n", buf_record_count);
+	if(buf_record_count) gzputs(out_handle, (const char *)ks.s);
+	free(ks.s);
 }
 
 
@@ -269,23 +290,32 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
 	uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
+	size_t buf_record_count = 0;
+	kstring_t ks = {0, 0, NULL};
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
+		if(buf_record_count++ == buf_set_size) {
+			buf_record_count = 0;
+			gzputs(out_handle, (const char *)ks.s);
+			ks.l = 0;
+		}
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
 			++non_duplex;
 			if(cfor->value->length > 1) ++non_duplex_fm;
-			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
+			dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
 			continue;
 		}
 		++duplex;
-		zstranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+		zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);
 	}
+	gzputs(out_handle, (const char *)ks.s);
+	free(ks.s);
 	LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);
 	//duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
 	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp, &non_duplex, &non_duplex_fm);
