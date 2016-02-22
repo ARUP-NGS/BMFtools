@@ -231,12 +231,15 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 {
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
-			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) && read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
-				//LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-				update_bam1(stack->a[j], stack->a[i]);
-				bam_destroy1(stack->a[i]);
-				stack->a[i] = NULL;
-				break;
+			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
+				if(read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
+					LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
+					update_bam1(stack->a[j], stack->a[i]);
+					bam_destroy1(stack->a[i]);
+					stack->a[i] = NULL;
+					break;
+				}
+				LOG_DEBUG("Not flattening record with qname %s into record with qname %s because hd fail with %i.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]), settings->read_hd_threshold);
 				// "break" in case there are multiple within hamming distance.
 				// Otherwise, I'll end up having memory mistakes.
 				// Besides, that read set will get merged into the later read in the set.
