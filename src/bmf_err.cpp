@@ -651,32 +651,20 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			int s; // seq value, base 
 			const uint32_t len = bam_cigar_oplen(cigar[i]);
 			switch(bam_cigar_op(cigar[i])) {
-			case BAM_CMATCH:
-			case BAM_CEQUAL:
-			case BAM_CDIFF:
+			case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-#if !NDEBUG
-					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-						exit(EXIT_FAILURE);
-					}
-#endif
 					++rerr->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++rerr->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
 				rc += len; fc += len;
 				break;
-			case BAM_CSOFT_CLIP:
-			case BAM_CHARD_CLIP:
-			case BAM_CINS:
+			case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
 				rc += len;
 				break;
-			case BAM_CREF_SKIP:
-			case BAM_CDEL:
+			case BAM_CREF_SKIP: case BAM_CDEL:
 				fc += len;
 				break;
 			}
