@@ -276,62 +276,6 @@ void clean_homing_sequence(char *sequence) {
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
-mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
-{
-	LOG_DEBUG("Opening fastq file '%s'.\n", settings->input_r1_path);
-	if(!isfile(settings->input_r1_path)) {
-		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
-	}
-
-	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
-
-	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
-	*splitter = init_splitter(settings);
-	gzFile fp = gzopen(settings->input_r1_path, "r");
-	kseq_t *seq = kseq_init(fp);
-	int l;
-	size_t count = 0;
-	int pass_fail = 1;
-	if((l = kseq_read(seq)) < 0) {
-		free_marksplit_settings(*settings);
-		splitter_destroy(splitter);
-		LOG_ERROR("Could not open fastq for reading. Abort!\n");
-	}
-	LOG_DEBUG("Read length (inferred): %lu.\n", seq->seq.l);
-	check_rescaler(settings, seq->seq.l * 4 * 2 * nqscores);
-	tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, settings->blen);
-	const int default_nlen = settings->blen + settings->offset + settings->homing_sequence_length;
-	int n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
-	mseq_t *rseq = mseq_rescale_init(seq, settings->rescaler, tmp, 0);
-	rseq->barcode[settings->blen] = '\0';
-	pass_fail &= test_hp(rseq->barcode, settings->hp_threshold); // Fail if test_hp is 0.
-	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
-	// Get first barcode.
-	update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
-	uint64_t bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
-	mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
-	while (LIKELY((l = kseq_read(seq)) >= 0)) {
-		if(UNLIKELY(++count % settings->notification_interval == 0)) {
-			LOG_INFO("Number of records processed: %lu.\n", count);
-		}
-		// Iterate through second fastq file.
-		n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
-		update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
-		memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
-		pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
-		mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
-	}
-	for(int i = 0; i < splitter->n_handles; ++i) fclose(splitter->tmp_out_handles_r1[i]);
-	tm_destroy(tmp);
-	mseq_destroy(rseq);
-	kseq_destroy(seq);
-	gzclose(fp);
-	return splitter;
-}
- */
-
-/*
- * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
@@ -395,7 +339,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
 	uint64_t count = 0;
-	while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)) {
+	while (LIKELY(((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0))) {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Sets pass_fail
