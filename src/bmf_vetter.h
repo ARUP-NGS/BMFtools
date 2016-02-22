@@ -31,43 +31,7 @@ KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
 
-// Setup needed for pileup engine
-#ifndef BAM_PLP_DEC
-#define BAM_PLP_DEC
-extern void bam_plp_init_overlaps(bam_plp_t);
-
-
-#define DEFAULT_MAX_ALLELES 10uL
-
-/*
-typedef struct {
-	int k, x, y, end;
-} cstate_t;
-
-typedef struct __linkbuf_t {
-	bam1_t b;
-	int32_t beg, end;
-	cstate_t s;
-	struct __linkbuf_t *next;
-} lbnode_t;
-
-typedef khash_t(olap_hash) olap_hash_t;
-struct __bam_plp_t {
-	mempool_t *mp;
-	lbnode_t *head, *tail, *dummy;
-	int32_t tid, pos, max_tid, max_pos;
-	int is_eof, max_plp, error, maxcnt;
-	uint64_t id;
-	bam_pileup1_t *plp;
-	// for the "auto" interface only
-	bam1_t *b;
-	bam_plp_auto_f func;
-	void *data;
-	olap_hash_t *overlaps;
-};
-**/
-
-#endif /* BAM_PLP_DEC */
+#define DEFAULT_MAX_ALLELES 20uL
 
 // Need to expand for new options, but I'll wait until I'm finished first.
 /*
@@ -125,11 +89,6 @@ typedef struct {
 	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
 	uint32_t skip_flag; // Skip reads with any bits set to true
 } aux_t;
-
-#define SKIP_IMPROPER 4096
-#define BAM_FETCH_BUFFER 150
-
-extern void *bed_read(const char *fn);
 
 
 extern void bed_destroy(void *);

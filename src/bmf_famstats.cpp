@@ -36,27 +36,19 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * size);
 	unsigned i;
 	fprintf(fp, "#Family size\tNumber of families\n");
-	LOG_DEBUG("Copy FMs over into fm_t array. Size: %lu. fm size: %u. rc size: %u.\n", size, stats->fm->n_occupied, stats->rc->n_occupied);
-	for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
-		if(!kh_exist(stats->fm, stats->ki)) continue;
-		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
-		LOG_DEBUG("Value of i after incrementing but not using: %i.\n", i);
-	}
-	LOG_DEBUG("Qsorting fm_t array.\n");
+	for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)
+		if(kh_exist(stats->fm, stats->ki))
+			fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
 	qsort(fms, stats->fm->n_occupied, sizeof(fm_t), fm_cmp);
-	for(i = 0; i < stats->fm->n_occupied; ++i) fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+	for(i = 0; i < stats->fm->n_occupied; ++i)
+		fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
 	fprintf(fp, "#RV'd in family\tNumber of families\n");
-	LOG_DEBUG("Copy RVs over into fm_t array. Size: %lu.\n", size);
-	for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
-		if(!kh_exist(stats->rc, stats->ki)) continue;
-		LOG_DEBUG("Accessing index %i of fms.\n", i);
-		fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
-	}
-	LOG_DEBUG("Qsorting fm_t array.\n");
+	for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki)
+		if(kh_exist(stats->rc, stats->ki))
+			fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
 	qsort(fms, stats->rc->n_occupied, sizeof(fm_t), fm_cmp);
-	LOG_DEBUG("Done qsorting fm_t array.\n");
-	for(i = 0; i < stats->rc->n_occupied; ++i) fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+	for(i = 0; i < stats->rc->n_occupied; ++i)
+		fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
 	free(fms);
 }
 
@@ -118,12 +110,12 @@ int famstats_target_main(int argc, char *argv[])
 
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
-		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+		LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
+		LOG_EXIT("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	bed = parse_bed_hash(bedpath, header, padding);
 	uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
@@ -233,9 +225,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	s->data = NULL;
 	b = bam_init1();
 	ret = sam_read1(fp, h, b);
-	if(ret < 0) {
-		LOG_ERROR("Could not read from input bam %s. Abort!\n", fp->fn);
-	}
+	if(ret < 0) LOG_EXIT("Could not read from input bam %s. Abort!\n", fp->fn);
 	++count;
 	famstats_fm_loop(s, b, settings);
 	check_bam_tag(b, "FP");
@@ -305,12 +295,12 @@ int famstats_fm_main(int argc, char *argv[])
 
 	fp = sam_open(argv[optind], "r");
 	if (!fp) {
-		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+		LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
+		LOG_EXIT("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	s = famstat_core(fp, header, settings);
 	print_stats(s, stdout);
@@ -361,7 +351,7 @@ int famstats_frac_main(int argc, char *argv[])
 	}
 
 	if(!minFM) {
-		LOG_ERROR("minFM not set. famstats_frac_main meaningless without it. Result: 1.0.\n");
+		LOG_EXIT("minFM not set. famstats_frac_main meaningless without it. Result: 1.0.\n");
 	}
 	LOG_INFO("Running frac main minFM %i.\n", minFM);
 
@@ -371,18 +361,18 @@ int famstats_frac_main(int argc, char *argv[])
 	}
 	fp = sam_open(argv[optind], "r");
 	if (!fp) {
-		LOG_ERROR("Cannot open input file \"%s\".\n", argv[optind]);
+		LOG_EXIT("Cannot open input file \"%s\".\n", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		LOG_ERROR("Failed to read header for \"%s\".\n", argv[optind]);
+		LOG_EXIT("Failed to read header for \"%s\".\n", argv[optind]);
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
 	// Check to see if the required tags are present before starting.
 	if((c = sam_read1(fp, header, b)) < 0) {
-		LOG_ERROR("Could not read initial record from input file '%s'. Abort!\n", argv[optind]);
+		LOG_EXIT("Could not read initial record from input file '%s'. Abort!\n", argv[optind]);
 	}
 	check_bam_tag(b, "FP");
 	check_bam_tag(b, "RV");

@@ -270,7 +270,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 {
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (!hdr) LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+	if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
 	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
@@ -280,7 +280,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			}
 		}
 		if(tid_to_study < 0)
-			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+			LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 	}
 	khash_t(obs) *hash;
 	uint8_t *seq, *drdata, *fpdata;
@@ -320,7 +320,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
 			if(!ref)
-				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+				LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
 		}
 		pos = b->core.pos;
@@ -376,9 +376,9 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (!hdr)
-		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+		LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
 	if(sam_read1(fp, hdr, b) == -1)
-		LOG_ERROR("Could not read bam record from bam %s. Abort!\n", fname);
+		LOG_EXIT("Could not read bam record from bam %s. Abort!\n", fname);
 	const int32_t rlen = b->core.l_qseq;
 	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
 	int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
@@ -390,7 +390,7 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 			}
 		}
 		if(tid_to_study < 0) {
-			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
+			LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
 		}
 	}
 	uint8_t *seq, *fpdata;
@@ -414,7 +414,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (!hdr)
-		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+		LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
 	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
 	unsigned ind;
 	bam1_t *b = bam_init1();
@@ -425,7 +425,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+		if(tid_to_study < 0) LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 	}
 	uint8_t *fdata, *rdata, *pdata, *seq, *qual;
 	uint32_t *cigar, *pv_array, length;
@@ -461,7 +461,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			if(ref == NULL) LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+			if(ref == NULL) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 		}
 		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		pos = b->core.pos;
@@ -482,7 +482,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 #if !NDEBUG
 						if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-							LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+							LOG_EXIT("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
 									(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						}
 #endif
@@ -518,7 +518,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 #if !NDEBUG
 						if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-							LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+							LOG_EXIT("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
 									(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						}
 #endif
@@ -556,7 +556,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (!hdr)
-		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+		LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
 	int len;
 	int32_t last_tid = -1;
 	bam1_t *b = bam_init1();
@@ -571,7 +571,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 		if(tid_to_study < 0)
-			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+			LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 	}
 	int c;
 	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
@@ -948,7 +948,7 @@ int err_main(int argc, char *argv[])
 		return err_cycle_main(argc - 1, argv + 1);
 	if(strcmp(argv[1], "region") == 0)
 		return err_region_main(argc - 1, argv + 1);
-	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
+	LOG_EXIT("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 	return EXIT_FAILURE;
 }
 
@@ -1010,10 +1010,10 @@ int err_main_main(int argc, char *argv[])
 	faidx_t *fai = fai_load(argv[optind]);
 
 	if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
-		LOG_ERROR((char *)"Cannot open input file \"%s\"", argv[optind]);
+		LOG_EXIT((char *)"Cannot open input file \"%s\"", argv[optind]);
 	}
 	if ((header = sam_hdr_read(fp)) == NULL) {
-		LOG_ERROR((char *)"Failed to read header for \"%s\"", argv[optind]);
+		LOG_EXIT((char *)"Failed to read header for \"%s\"", argv[optind]);
 	}
 
 	if(minPV) check_bam_tag_exit(argv[optind + 1], "PV");
@@ -1143,7 +1143,7 @@ int err_fm_main(int argc, char *argv[])
 	}
 
 	if(!*outpath) {
-		LOG_ERROR("Required -o parameter unset. Abort!\n");
+		LOG_EXIT("Required -o parameter unset. Abort!\n");
 	}
 	ofp = open_ofp(outpath);
 
@@ -1154,7 +1154,7 @@ int err_fm_main(int argc, char *argv[])
 
 	fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if (fp == NULL) {
-		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+		LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
 	}
 	check_bam_tag_exit(argv[optind + 1], "FM");
 	check_bam_tag_exit(argv[optind + 1], "FP");
@@ -1163,7 +1163,7 @@ int err_fm_main(int argc, char *argv[])
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
+		LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
 	}
 	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ, minPV);
 	// Get read length from the first 
@@ -1301,7 +1301,7 @@ int err_region_main(int argc, char *argv[])
 		LOG_WARNING("Output path not set. Defaulting to stdout.\n");
 	}
 	if(!bedpath) {
-		LOG_ERROR("Bed file required for bmftools err region.\n");
+		LOG_EXIT("Bed file required for bmftools err region.\n");
 	}
 	ofp = open_ofp(outpath);
 
@@ -1310,7 +1310,7 @@ int err_region_main(int argc, char *argv[])
 
 	faidx_t *fai = fai_load(argv[optind]);
 	if(!fai) {
-		LOG_ERROR("Could not load fasta index for %s. Abort!\n", argv[optind]);
+		LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
 	}
 
 	RegionExpedition Holloway = RegionExpedition(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);

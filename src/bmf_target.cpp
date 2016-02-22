@@ -16,10 +16,10 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
 	samFile *fp = NULL;
 	bam_hdr_t *header = NULL;
 	if ((fp = sam_open(bampath, "r")) == NULL) {
-		LOG_ERROR("Cannot open input file \"%s\"", bampath);
+		LOG_EXIT("Cannot open input file \"%s\"", bampath);
 	}
 	if ((header = sam_hdr_read(fp)) == NULL) {
-		LOG_ERROR("Failed to read header for \"%s\"\n", bampath);
+		LOG_EXIT("Failed to read header for \"%s\"\n", bampath);
 	}
 	khash_t(bed) *bed = parse_bed_hash(bedpath, header, padding);
 	target_counts_t counts;

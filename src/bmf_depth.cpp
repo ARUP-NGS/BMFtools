@@ -76,14 +76,12 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 	int i;
 	unsigned j;
 	khiter_t k;
-	std::set<int> keyset;
+	std::unordered_set<int> keyset;
 	fprintf(fp, "##bedpath=%s\n", bedpath);
 	fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
 	fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
 	fprintf(fp, "#Depth");
-	for(i = 0; i < n_samples; ++i)
-		fprintf(fp, "\t%s:#Bases", aux[i]->fp->fn),
-		fprintf(fp, "\t%s:%%Bases", aux[i]->fp->fn);
+	for(i = 0; i < n_samples; ++i) fprintf(fp, "\t%s:#Bases\t%s:%%Bases", aux[i]->fp->fn, aux[i]->fp->fn);
 	fputc('\n', fp);
 	for(i = 0; i < n_samples; ++i)
 		for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
@@ -128,8 +126,7 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
 double u64_mean(uint64_t *arr, size_t l)
 {
 	uint64_t ret = 0;
-	for(unsigned i = 0; i < l; ++i)
-		ret += arr[i];
+	for(unsigned i = 0; i < l; ++i) ret += arr[i];
 	return (double)ret / l;
 }
 
@@ -237,7 +234,7 @@ int depth_main(int argc, char *argv[])
 		}
 	}
 	if(!bedpath) {
-		LOG_ERROR("Bed path required. Abort!\n");
+		LOG_EXIT("Bed path required. Abort!\n");
 	}
 	counts = (uint64_t *)calloc(n, sizeof(uint64_t));
 	n_cols = count_lines(bedpath);
@@ -245,7 +242,7 @@ int depth_main(int argc, char *argv[])
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
-		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
+		LOG_EXIT("Could not open bedfile %s. Abort!\n", bedpath);
 	}
 	ks = ks_init(fp);
 	n_plp = (int *)calloc(n, sizeof(int));
@@ -290,12 +287,8 @@ int depth_main(int argc, char *argv[])
 		if(start < 0) start = 0;
 		region_len = stop - start;
 		for(i = 0; i < n; ++i) {
-			if(aux[i]->dmp_counts)
-				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->dmp_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
-			if(aux[i]->raw_counts)
-				aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-			else aux[i]->raw_counts = (uint64_t *)calloc(region_len, sizeof(uint64_t));
+			aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
+			aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
 		}
 		if(*p == '\t') {
 			q = ++p;
@@ -313,7 +306,7 @@ int depth_main(int argc, char *argv[])
 		bam_mplp_set_maxcnt(mplp, max_depth);
 		memset(counts, 0, sizeof(uint64_t) * n);
 		arr_ind = 0;
-		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) >= 0) {
+		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= start && pos < stop) {
 				for (i = 0; i < n; ++i) {
 					++aux[i]->n_analyzed;
@@ -354,6 +347,7 @@ int depth_main(int argc, char *argv[])
 			qsort(raw_sort_array, region_len, sizeof(uint64_t), &u64cmp);
 			memcpy(dmp_sort_array, aux[i]->dmp_counts, region_len * sizeof(uint64_t));
 			qsort(dmp_sort_array, region_len, sizeof(uint64_t), &u64cmp);
+			raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
 			raw_mean = u64_mean(aux[i]->raw_counts, region_len);
 			raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
 			dmp_mean = u64_mean(aux[i]->dmp_counts, region_len);

@@ -52,23 +52,23 @@ int mark_unclipped_main(int argc, char *argv[])
 	in = sam_open_format(argv[optind], "r", &ga.in);
 	header = sam_hdr_read(in);
 	if (header == NULL || header->n_targets == 0) {
-		LOG_ERROR("input SAM '%s' does not have header. Abort!\n", argv[optind]);
+		LOG_EXIT("input SAM '%s' does not have header. Abort!\n", argv[optind]);
 	}
 
 	sam_open_mode(wmode+1, argv[optind+1], NULL);
 	out = sam_open_format(argv[optind+1], wmode, &ga.out);
 	if (in == 0 || out == 0) {
-		LOG_ERROR("fail to read/write input files ('%s', '%s')\n", argv[optind], argv[optind + 1]);
+		LOG_EXIT("fail to read/write input files ('%s', '%s')\n", argv[optind], argv[optind + 1]);
 	}
 	sam_hdr_write(out, header);
 
 	add_unclipped(in, header, out);
 	bam_hdr_destroy(header);
 	if(sam_close(in)) {
-		LOG_ERROR("Failed to close input file. Abort mission!\n");
+		LOG_EXIT("Failed to close input file. Abort mission!\n");
 	}
 	if(sam_close(out)) {
-		LOG_ERROR("Failed to close output file. Abort mission!\n");
+		LOG_EXIT("Failed to close output file. Abort mission!\n");
 	}
 	return EXIT_SUCCESS;
 }

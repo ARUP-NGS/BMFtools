@@ -23,6 +23,7 @@ extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
 extern int target_main(int argc, char *argv[]);
 extern int depth_main(int argc, char *argv[]);
+extern int stack_main(int argc, char *argv[]);
 
 static int bmftools_usage(int rc)
 {
@@ -76,6 +77,8 @@ int main(int argc, char *argv[])
 		return target_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "depth") == 0)
 		return depth_main(argc - 1, argv + 1);
+	else if(strcmp(argv[1], "stack") == 0)
+		return stack_main(argc - 1, argv + 1);
 	fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
 	return EXIT_FAILURE;
 }
