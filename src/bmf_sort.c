@@ -1269,7 +1269,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 			sprintf(outfname, "%s.%s.bam", out, hout->target_name[i - 1]);
 			outfps[i] = sam_open_format(outfname, mode, out_fmt);
 			if(!outfps[i]) {
-				LOG_ERROR("Could not open output bam %s. Abort!\n", outfname);
+				LOG_EXIT("Could not open output bam %s. Abort!\n", outfname);
 			}
 			sam_hdr_write(outfps[i], hout);
 			hts_set_threads(outfps[i], n_threads);
@@ -1278,7 +1278,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	else {
 		outfps[0] = sam_open_format(out, mode, out_fmt);
 		if(!*outfps) {
-			LOG_ERROR("Could not open output bam %s. Abort!\n", outfname);
+			LOG_EXIT("Could not open output bam %s. Abort!\n", outfname);
 		}
 		sam_hdr_write(outfps[0], hout);
 		hts_set_threads(outfps[0], n_threads);
@@ -1591,7 +1591,7 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open_format(tmpbuf, mode, fmt);
 		if(!fps[i]) {
-			LOG_ERROR("Couldn't open file %s. Abort!\n", tmpbuf);
+			LOG_EXIT("Couldn't open file %s. Abort!\n", tmpbuf);
 		}
 		sam_hdr_write(fps[i], h);
 	}

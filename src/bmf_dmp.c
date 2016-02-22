@@ -40,7 +40,7 @@ void print_crms_usage(char *executable)
 void print_crms_opt_err(char *arg, char *optarg, char optopt)
 {
 	print_crms_usage(arg);
-	LOG_ERROR("Unrecognized option %s for flag %c. Abort!\n", optarg, optopt);
+	LOG_EXIT("Unrecognized option %s for flag %c. Abort!\n", optarg, optopt);
 }
 
 void make_outfname(marksplit_settings_t *settings)
@@ -139,7 +139,7 @@ void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *para
 		ksprintf(&ks, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 		FILE *g2_popen = popen(ks.s, "w");
 		if(pclose(g2_popen) || pclose(g1_popen)){
-			LOG_ERROR("Background system call failed.\n");
+			LOG_EXIT("Background system call failed.\n");
 		}
 	}
 	free(ks.s);
@@ -156,7 +156,7 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	ksprintf(&ks, "/bin/cat ");
 	for(int i = 0; i < settings->n_handles; ++i) {
 		if(!isfile(params->outfnames_r1[i])) {
-			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
+			LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
 		ksprintf(&ks, " %s", params->outfnames_r1[i]);
 	}
@@ -171,11 +171,11 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
-				LOG_ERROR("Rescaler's got a negative number in pp_split_inline."
+				LOG_EXIT("Rescaler's got a negative number in pp_split_inline."
 						" %i. Index: %i.\n", settings->rescaler[i], i);
 			}
 			else if(settings->rescaler[i] == 0) {
-				LOG_ERROR("Rescaler's got a zero in pp_split_inline."
+				LOG_EXIT("Rescaler's got a zero in pp_split_inline."
 						" %i. Index: %i.\n", settings->rescaler[i], i);
 			}
 		}
@@ -233,10 +233,10 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	ksprintf(&ks2, ks1.s);
 	for(int i = 0; i < settings->n_handles; ++i) {
 		if(!isfile(params->outfnames_r1[i])) {
-			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
+			LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
 		if(!isfile(params->outfnames_r2[i])) {
-			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
+			LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
 		}
 		ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
 		ksprintf(&ks2, "%s ", params->outfnames_r2[i]);
@@ -250,7 +250,7 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	FILE *c1_popen = popen(ks1.s, "w");
 	FILE *c2_popen = popen(ks2.s, "w");
 	if(pclose(c2_popen) || pclose(c1_popen)) {
-		LOG_ERROR("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
+		LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
 	}
 	free(ks1.s), free(ks2.s);
 }
@@ -267,7 +267,7 @@ void clean_homing_sequence(char *sequence) {
 		case 'c': // Fall-through
 		case 't': *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
 		default:
-			LOG_ERROR("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
+			LOG_EXIT("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
 					*sequence);
 		}
 		++sequence;
@@ -285,11 +285,11 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 #endif
 	LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
-		LOG_ERROR("Hey, it looks like you're trying to use the same path for both r1 and r2. "
+		LOG_EXIT("Hey, it looks like you're trying to use the same path for both r1 and r2. "
 				"At least try to fool me by making a symbolic link.\n");
 	}
 	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
-		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
+		LOG_EXIT("Could not open read paths: at least one is not a file.\n");
 	}
 	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
@@ -302,7 +302,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			free_marksplit_settings(*settings);
 			splitter_destroy(splitter);
-			LOG_ERROR("Could not open fastqs for reading. Abort!\n");
+			LOG_EXIT("Could not open fastqs for reading. Abort!\n");
 	}
 	LOG_DEBUG("Read length (inferred): %lu.\n", seq1->seq.l);
 	check_rescaler(settings, seq1->seq.l * 4 * 2 * nqscores);
