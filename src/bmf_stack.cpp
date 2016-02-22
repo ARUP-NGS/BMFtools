@@ -41,7 +41,7 @@ static int read_bam(aux_t *data, bam1_t *b)
 	int ret;
 	for(;;)
 	{
-		if(!data->iter) LOG_ERROR("Need to access bam with index.\n");
+		if(!data->iter) LOG_EXIT("Need to access bam with index.\n");
 		ret = sam_itr_next(data->fp, data->iter, b);
 		if ( ret<0 ) break;
 		// Skip unmapped, secondary, qcfail, duplicates.
@@ -138,20 +138,20 @@ int stack_main(int argc, char *argv[]) {
 		case 'h': case '?': stack_usage(EXIT_SUCCESS);
 		}
 	}
-	if(optind >= argc) LOG_ERROR("Insufficient arguments. Input bam required!\n");
+	if(optind >= argc) LOG_EXIT("Insufficient arguments. Input bam required!\n");
 	if(padding < 0) {
 		LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
 		padding = DEFAULT_PADDING;
 	}
 	if(!refpath) {
-		LOG_ERROR("refpath required. Abort!\n");
+		LOG_EXIT("refpath required. Abort!\n");
 	}
 	aux.fai = fai_load(refpath);
-	if(!aux.fai) LOG_ERROR("failed to open fai. Abort!\n");
+	if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
 	aux.fp = sam_open(argv[optind], "r");
 	aux.bh = sam_hdr_read(aux.fp);
 	if(!aux.fp || !aux.bh) {
-		LOG_ERROR("Could not open input files. Abort!\n");
+		LOG_EXIT("Could not open input files. Abort!\n");
 	}
 	aux.bam_index = bam_index_load(aux.fp->fn);
 	// TODO: Make BCF header
@@ -159,7 +159,7 @@ int stack_main(int argc, char *argv[]) {
 	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.bh, padding): build_ref_hash(aux.bh);
 	for(auto line: vcf_header_lines)
 		if(bcf_hdr_append(aux.vh, line))
-			LOG_ERROR("Could not add line %s to header. Abort!\n", line);
+			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
 	// Add lines to the header for the bed file?
 	if(!outvcf)
 		outvcf = (char *)"-";

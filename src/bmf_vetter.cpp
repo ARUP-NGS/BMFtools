@@ -40,7 +40,7 @@ static int read_bam(void *data, bam1_t *b)
 	int ret;
 	for(;;)
 	{
-		if(!aux->iter) LOG_ERROR("Need to access bam with index.\n");
+		if(!aux->iter) LOG_EXIT("Need to access bam with index.\n");
 		ret = sam_itr_next(aux->fp, aux->iter, b);
 		if ( ret<0 ) break;
 		// Skip unmapped, secondary, qcfail, duplicates.
@@ -231,15 +231,15 @@ int vet_core(vetter_aux_t *aux) {
 		break;
 	case bcf:
 		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
-		if(!bcf_idx) LOG_ERROR("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+		if(!bcf_idx) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
 		break;
 	default:
-		LOG_ERROR("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
-		break; // This never happens -- LOG_ERROR exits.
+		LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
+		break; // This never happens -- LOG_EXIT exits.
 	}
 	/*
 	if(!(vcf_idx || bcf_idx)) {
-		LOG_ERROR("Require an indexed variant file. Abort!\n");
+		LOG_EXIT("Require an indexed variant file. Abort!\n");
 	}
 	*/
 	bcf1_t *vrec = bcf_init();
@@ -295,7 +295,7 @@ int vet_core(vetter_aux_t *aux) {
 				/*
 				while(vrec->pos > stop) {
 					if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
-						LOG_ERROR("Record in bed region, but past region of interest on contig and no available contig is present?\n");
+						LOG_EXIT("Record in bed region, but past region of interest on contig and no available contig is present?\n");
 					}
 					start = get_start(kh_val(aux->bed, ki).intervals[j]);
 					stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
@@ -417,25 +417,25 @@ int vetter_main(int argc, char *argv[])
 	}
 	// Open bam
 	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
-	if(!aux.fp) LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);
-	aux.header = sam_header_read(aux.fp);
+	if(!aux.fp) LOG_EXIT("Could not open input bam %s. Abort!\n", argv[optind + 1]);
+	aux.header = sam_hdr_read(aux.fp);
 
 	// Open input vcf
 	if(!aux.header || aux.header->n_targets == 0) {
-		LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
+		LOG_EXIT("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
 	}
 	// Open bed file
 	// if no bed provided, do whole genome.
 	if(bed) aux.bed = parse_bed_hash(bed, aux.header, padding);
-	else LOG_ERROR("No bed file provided. Required. Abort!\n");
+	else LOG_EXIT("No bed file provided. Required. Abort!\n");
 
-	if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL) LOG_ERROR("Could not open input vcf (%s).\n", argv[optind]);
-	if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL) LOG_ERROR("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
+	if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
+	if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
 	// Add lines to header
 	for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
 		LOG_DEBUG("Adding header line %s.\n", bmf_header_lines[i]);
-		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) LOG_ERROR("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
+		if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
 	}
 	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
 	{ // New block so tmpstr is cleared
@@ -450,7 +450,7 @@ int vetter_main(int argc, char *argv[])
 
 	// Open output vcf
 	aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);
-	if(!aux.vcf_ofp) LOG_ERROR("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
+	if(!aux.vcf_ofp) LOG_EXIT("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
 	bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
 	// Open out vcf

@@ -100,7 +100,7 @@ public:
 			int32_t _minFM=0, int32_t _requireFP=0, int _max_depth=262144) {
 		fp = sam_open(bampath, "r");
 		hdr = sam_hdr_read(fp);
-		if(!fp || !hdr) LOG_ERROR("Could not open input sam file %s. Abort!\n", bampath);
+		if(!fp || !hdr) LOG_EXIT("Could not open input sam file %s. Abort!\n", bampath);
 		padding = _padding;
 		bed = parse_bed_hash(_bedpath, hdr, _padding);
 		bedpath = std::string(_bedpath);
@@ -112,7 +112,7 @@ public:
 		region_counts = std::vector<RegionErr>();
 		iter = NULL;
 		bam_index= sam_index_load(fp, fp->fn);
-		if(!bam_index) LOG_ERROR("Could not read bam index for sam file %s. Abort!\n", fp->fn);
+		if(!bam_index) LOG_EXIT("Could not read bam index for sam file %s. Abort!\n", fp->fn);
 	}
 	~RegionExpedition() {
 		if(bed) bed_destroy_hash((void *)bed);
@@ -213,7 +213,7 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);\
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);\
 			if(!ref) {\
-				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);\
+				LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);\
 			}\
 			last_tid = b->core.tid;\
 		}\

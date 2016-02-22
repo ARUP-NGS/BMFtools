@@ -234,7 +234,7 @@ int depth_main(int argc, char *argv[])
 		}
 	}
 	if(!bedpath) {
-		LOG_ERROR("Bed path required. Abort!\n");
+		LOG_EXIT("Bed path required. Abort!\n");
 	}
 	counts = (uint64_t *)calloc(n, sizeof(uint64_t));
 	n_cols = count_lines(bedpath);
@@ -242,7 +242,7 @@ int depth_main(int argc, char *argv[])
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
-		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
+		LOG_EXIT("Could not open bedfile %s. Abort!\n", bedpath);
 	}
 	ks = ks_init(fp);
 	n_plp = (int *)calloc(n, sizeof(int));
