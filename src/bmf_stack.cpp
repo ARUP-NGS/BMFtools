@@ -61,7 +61,7 @@ static int read_bam(void *data, bam1_t *b)
 	int ret;
 	for(;;)
 	{
-		if(!aux->iter) LOG_ERROR("Need to access bam with index.\n");
+		if(!aux->iter) LOG_EXIT("Need to access bam with index.\n");
 		ret = sam_itr_next(aux->fp, aux->iter, b);
 		if ( ret<0 ) break;
 		// Skip unmapped, secondary, qcfail, duplicates.

@@ -10,6 +10,7 @@
 #include "dlib/bed_util.h"
 #include "dlib/compiler_util.h"
 #include "dlib/misc_util.h"
+#include "dlib/logging_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)

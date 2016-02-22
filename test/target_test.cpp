@@ -10,7 +10,7 @@ extern target_counts_t target_core(char *bedpath, char *bampath,
 #define assert(x) \
 	do {\
 		if(!(x)) {\
-			LOG_ERROR((char *)"Assert failed! Assertion: '%s'.", #x);\
+			LOG_EXIT((char *)"Assert failed! Assertion: '%s'.", #x);\
 		}\
 	} while(0)
 #endif

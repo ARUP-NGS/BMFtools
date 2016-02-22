@@ -7,7 +7,6 @@ typedef struct rsq_settings {
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmlim; // Mismatch failure threshold.
-	int realign_unchanged; // Set to true to realign unchanged reads.
 	int is_se; // Is single-end
 	int read_hd_threshold;
 	bam_hdr_t *hdr; // BAM header
@@ -18,7 +17,7 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-		if(!stack->a) LOG_ERROR("Failed to reallocate memory for %lu bam1_t * objects. Abort!\n", stack->max);
+		if(!stack->a) LOG_EXIT("Failed to reallocate memory for %lu bam1_t * objects. Abort!\n", stack->max);
 	} else if(n < stack->n){
 		for(uint64_t i = stack->n;i > n;) free(stack->a[--i]->data);
 		stack->max = n;
@@ -250,11 +249,11 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
-		LOG_ERROR("Failed to read first record in bam file. Abort!\n");
+		LOG_EXIT("Failed to read first record in bam file. Abort!\n");
 	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
 		sam_write1(settings->out, settings->hdr, b);
 		if(sam_read1(settings->in, settings->hdr, b))
-			LOG_ERROR("Could not read first primary alignment in bam (%s). Abort!\n", settings->in->fn);
+			LOG_EXIT("Could not read first primary alignment in bam (%s). Abort!\n", settings->in->fn);
 	}
 	stack_insert(stack, b);
 	while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
@@ -297,7 +296,7 @@ void bam_rsq_bookends(rsq_settings_t *settings)
 	memset(&stack, 0, sizeof(tmp_stack_t));
 	resize_stack(&stack, STACK_START);
 	if(!stack.a)
-		LOG_ERROR("Failed to start array of bam1_t structs...\n");
+		LOG_EXIT("Failed to start array of bam1_t structs...\n");
 	rsq_core(settings, &stack); // Core
 	free(stack.a);
 }
@@ -361,11 +360,11 @@ int rsq_main(int argc, char *argv[])
 	settings.hdr = sam_hdr_read(settings.in);
 
 	if (settings.hdr == NULL || settings.hdr->n_targets == 0)
-		LOG_ERROR("input SAM does not have header. Abort!\n");
+		LOG_EXIT("input SAM does not have header. Abort!\n");
 
 	settings.out = sam_open(argv[optind+1], wmode);
 	if (settings.in == 0 || settings.out == 0)
-		LOG_ERROR("fail to read/write input files\n");
+		LOG_EXIT("fail to read/write input files\n");
 	sam_hdr_write(settings.out, settings.hdr);
 
 	bam_rsq_bookends(&settings);
