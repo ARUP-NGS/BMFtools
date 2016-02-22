@@ -14,6 +14,9 @@ namespace BMF {
 		for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
 	}
 	void VCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
+		std::vector<int> counts;
+		std::vector<int> duplex_counts;
+		std::vector<int> overlap_counts;
 		int count_index = 0;
 		vrec->rid = tid;
 		vrec->pos = pos;
@@ -21,14 +24,17 @@ namespace BMF {
 		kstring_t allele_str = {0, 0, NULL};
 		ks_resize(&allele_str, 20uL);
 		kputc(refbase, &allele_str);
-		std::vector<int> counts(templates.size(), 0);
-		std::vector<int> duplex_counts(templates.size(), 0);
-		std::vector<int> overlap_counts(templates.size(), 0);
 		auto match = templates.find(refbase);
 		if(match == templates.end()) {
+			counts = std::vector<int>(templates.size() + 1, 0);
+			duplex_counts = std::vector<int>(templates.size() + 1, 0);
+			overlap_counts = std::vector<int>(templates.size() + 1, 0);
 			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
 			// No reference calls? Add appropriate info fields.
 		} else {
+			counts = std::vector<int>(templates.size(), 0);
+			duplex_counts = std::vector<int>(templates.size(), 0);
+			overlap_counts = std::vector<int>(templates.size(), 0);
 			counts[0] = match->second.size();
 			for(auto uni: templates[refbase]) {
 				duplex_counts[0] += uni->get_duplex();

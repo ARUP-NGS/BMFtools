@@ -64,7 +64,6 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> obs;
 	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
-	const int sk = 1;
 	std::for_each(plp, plp + n_plp, [&found,&obs,&qname](const bam_pileup1_t& plp) {
 		if(plp.is_del || plp.is_refskip) return;
 		qname = std::string(bam_get_qname(plp.b));
