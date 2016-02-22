@@ -1,6 +1,19 @@
 /*  bam_rsq.c */
 #include "bmf_rsq.h"
 
+typedef struct rsq_settings {
+	FILE *fqh;
+	samFile *in;
+	samFile *out;
+	int cmpkey; // 0 for pos, 1 for unclipped start position
+	int mmlim; // Mismatch failure threshold.
+	int realign_unchanged; // Set to true to realign unchanged reads.
+	int is_se; // Is single-end
+	int read_hd_threshold;
+	bam_hdr_t *hdr; // BAM header
+	stack_fn fn;
+} rsq_settings_t;
+
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
 		stack->max = n;
@@ -187,25 +200,15 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 }
 
 
-void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
+void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 {
 	for(unsigned i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			uint8_t *data;
-			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
-				if(bam_aux2i(data) == 0)
-					sam_write1(settings->out, settings->hdr, stack->a[i]);
-				else
-					bam2ffq(stack->a[i], settings->fqh);
-			}
-			else {
-#if !NDEBUG
-				if(bam_aux_get(stack->a[i], "NC")) {
-					fprintf(stderr, "NC: %i.\n", bam_aux2i(bam_aux_get(stack->a[i], "NC")));
-				}
-#endif
+			if((data = bam_aux_get(stack->a[i], "NC")) != NULL)
+				bam2ffq(stack->a[i], settings->fqh);
+			else
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			}
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
@@ -225,7 +228,7 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 	return hd;
 }
 
-static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *settings)
+static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
@@ -243,7 +246,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	}
 }
 
-static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
+static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
@@ -275,7 +278,7 @@ static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
 	bam_destroy1(b);
 }
 
-void bam_rsq_bookends(pr_settings_t *settings)
+void bam_rsq_bookends(rsq_settings_t *settings)
 {
 	if(settings->is_se) {
 		if(settings->cmpkey)
@@ -299,14 +302,12 @@ void bam_rsq_bookends(pr_settings_t *settings)
 	free(stack.a);
 }
 
-int pr_usage(void)
+int rsq_usage(void)
 {
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
 	fprintf(stderr, "Flags:\n"
-					"-s	  Rescue for SE reads [Not implemented]\n");
-	fprintf(stderr, "-r	  Realign reads with no changed bases. Default: False.\n");
-	fprintf(stderr, "-t	  Mismatch limit. Default: 2\n");
+					"-t	  Mismatch limit. Default: 2\n");
 	fprintf(stderr, "-l	  Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
 	fprintf(stderr, "-u	  Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
 					"Note: This requires pre-processing with bmftools mark_unclipped.\n");
@@ -319,26 +320,25 @@ int rsq_main(int argc, char *argv[])
 	int c;
 	char wmode[4] = {'w', 'b', 0, 0};
 
-	pr_settings_t settings = {0};
+	rsq_settings_t settings = {0};
 	settings.mmlim = 2;
 	settings.cmpkey = POSITION;
 	settings.read_hd_threshold = -1;
 
 	char *fqname = NULL;
 
-	while ((c = getopt(argc, argv, "l:f:t:aur?h")) >= 0) {
+	while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
 		switch (c) {
-		case 'r': settings.realign_unchanged = 1; break;
 		case 'u': settings.cmpkey = UNCLIPPED; break;
 		case 't': settings.mmlim = atoi(optarg); break;
 		case 'f': fqname = optarg; break;
 		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
 		case 'h': /* fall-through */
-		case '?': return pr_usage();
+		case '?': return rsq_usage();
 		}
 	}
 	if (optind + 2 > argc)
-		return pr_usage();
+		return rsq_usage();
 	if(settings.read_hd_threshold < 0) {
 		settings.read_hd_threshold = READ_HD_LIMIT;
 		LOG_INFO("Unset read HD threshold. Setting to default (%i).\n", settings.read_hd_threshold);
@@ -346,7 +346,7 @@ int rsq_main(int argc, char *argv[])
 
 	if(!fqname) {
 		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
-		return pr_usage();
+		return rsq_usage();
 	}
 
 	settings.fqh = fopen(fqname, "w");

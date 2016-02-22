@@ -94,22 +94,8 @@ static inline int32_t int_tag_zero(uint8_t *data)
 }
 
 
-typedef struct pr_settings {
-	FILE *fqh;
-	samFile *in;
-	samFile *out;
-	int cmpkey; // 0 for pos, 1 for unclipped start position
-	int mmlim; // Mismatch failure threshold.
-	int realign_unchanged; // Set to true to realign unchanged reads.
-	int is_se; // Is single-end
-	int read_hd_threshold;
-	bam_hdr_t *hdr; // BAM header
-	stack_fn fn;
-} pr_settings_t;
-
 int bam_rsq(int argc, char *argv[]);
 void bam2ffq(bam1_t *b, FILE *fp);
-void write_stack(tmp_stack_t *stack, pr_settings_t *settings);
 
 
 #define READ_HD_LIMIT 6
