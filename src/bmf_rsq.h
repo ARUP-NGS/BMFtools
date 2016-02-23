@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <zlib.h>
 #include <tgmath.h>
+#include <unordered_map>
 #include "htslib/sam.h"
 #include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library
