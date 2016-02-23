@@ -209,11 +209,9 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end())
 					settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i]));
 				else {
-					if(stack->a[i]->core.flag & BAM_FREAD2) {
-						settings->realign_pairs[qname] += std::string(bam2cppstr(stack->a[i]));
-					} else {
-						settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i])) + settings->realign_pairs[qname];
-					}
+					if(stack->a[i]->core.flag & BAM_FREAD2)
+						settings->realign_pairs[qname] += bam2cppstr(stack->a[i]);
+					else settings->realign_pairs[qname].insert(0, bam2cppstr(stack->a[i]));
 				}
 			} else sam_write1(settings->out, settings->hdr, stack->a[i]);
 			bam_destroy1(stack->a[i]);

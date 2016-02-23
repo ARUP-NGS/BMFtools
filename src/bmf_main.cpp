@@ -41,6 +41,7 @@ static int bmftools_usage(int rc)
 					"cap:			 Modifies the quality string as function of family metadata.\n"
 					"target:			 Calculates on-target rate.\n"
 					"depth:			 Calculates depth of coverage over a set of bed intervals.\n"
+					"stack:			 A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
 			);
 	exit(rc);
 }
