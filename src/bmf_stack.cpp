@@ -68,12 +68,12 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	std::unordered_map<char *, BMF::UniqueObservation> obs;
 	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
 	int flag_failed = 0;
-	int mq_failed = 0;
-	int fm_failed = 0;
+	int af_failed = 0;
 	int fa_failed = 0;
+	int fm_failed = 0;
 	int fp_failed = 0;
 	int fr_failed = 0;
-	int af_failed = 0;
+	int mq_failed = 0;
 	int improper_count = 0;
 	// Capturing found  by reference to avoid making unneeded temporary variables.
 	std::for_each(plp, plp + n_plp, [&](const bam_pileup1_t& plp) {
@@ -117,6 +117,13 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	// Build vcfline struct
 	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos);
 	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
+	bcf_update_info_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FP_FAILED", (void *)&fp_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FM_FAILED", (void *)&fm_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "MQ_FAILED", (void *)&mq_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "AF_FAILED", (void *)&af_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "IMPROPER", (void *)&improper_count, 1);
 	bcf_write(aux->ofp, aux->vh, ret);
 	bcf_clear(ret);
 }
