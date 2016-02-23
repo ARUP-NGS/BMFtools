@@ -38,7 +38,7 @@ D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
 
-ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test
+ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
@@ -90,6 +90,8 @@ marksplit_test: $(BINS)
 	cd test/marksplit && python marksplit_test.py && cd ../..
 err_test: $(BINS)
 	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
+rsq_test: $(BINS)
+	cd test/rsq && python rsq_test.py  && cd ../..
 
 tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
