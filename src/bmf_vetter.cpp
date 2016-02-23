@@ -421,9 +421,8 @@ int vetter_main(int argc, char *argv[])
 	aux.header = sam_hdr_read(aux.fp);
 
 	// Open input vcf
-	if(!aux.header || aux.header->n_targets == 0) {
+	if(!aux.header || aux.header->n_targets == 0)
 		LOG_EXIT("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
-	}
 	// Open bed file
 	// if no bed provided, do whole genome.
 	if(bed) aux.bed = parse_bed_hash(bed, aux.header, padding);
@@ -444,6 +443,8 @@ int vetter_main(int argc, char *argv[])
 		kputs("bmftools ", &tmpstr);
 		for(int i = 0; i < argc; ++i) kputs(argv[i], &tmpstr), kputc(' ', &tmpstr);
 		bcf_hdr_append(aux.vcf_header, tmpstr.s);
+		tmpstr.l = 0;
+		// Add in settings
 		free(tmpstr.s);
 	}
 	bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);

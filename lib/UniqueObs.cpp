@@ -32,9 +32,9 @@ namespace BMF {
 			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
 			// No reference calls? Add appropriate info fields.
 		} else {
-			counts = std::vector<int>(templates.size(), 0);
-			duplex_counts = std::vector<int>(templates.size(), 0);
-			overlap_counts = std::vector<int>(templates.size(), 0);
+			counts = std::vector<int>(templates.size());
+			duplex_counts = std::vector<int>(templates.size());
+			overlap_counts = std::vector<int>(templates.size());
 			counts[0] = match->second.size();
 			for(auto uni: templates[refbase]) {
 				duplex_counts[0] += uni->get_duplex();

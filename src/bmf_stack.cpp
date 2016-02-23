@@ -49,11 +49,14 @@ static int read_bam(stack_aux_t *data, bam1_t *b)
 		// Skip MQ < minMQ
 		// Skip FM < minFM
 		// Skip AF < minAF
+		if (b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP))
+			continue;
+		/*
 		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-			(data->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-			(int)b->core.qual < data->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < data->minFM) ||
+			( ||
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (data->minAF && bam_aux2f(bam_aux_get(b, "AF")) < data->minAF))
 				continue;
+		*/
 		break;
 	}
 	return ret;
@@ -64,14 +67,52 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	// Build overlap hash
 	std::unordered_map<char *, BMF::UniqueObservation> obs;
 	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	int flag_failed = 0;
+	int mq_failed = 0;
+	int fm_failed = 0;
+	int fa_failed = 0;
+	int fp_failed = 0;
+	int fr_failed = 0;
+	int af_failed = 0;
+	int improper_count = 0;
 	// Capturing found  by reference to avoid making unneeded temporary variables.
-	std::for_each(plp, plp + n_plp, [&found,&obs,&qname](const bam_pileup1_t& plp) {
+	std::for_each(plp, plp + n_plp, [&](const bam_pileup1_t& plp) {
 		if(plp.is_del || plp.is_refskip) return;
+		if(aux->skip_flag & plp.b->core.flag) {
+			++flag_failed;
+			return;
+		}
+		if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
+			++improper_count;
+			if(aux->skip_improper) return;
+		}
+		// If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
+		if(plp.b->core.qual < aux->minMQ) {
+			++mq_failed; return;
+		}
+		const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
+		if(FM < aux->minFM) {
+			++fm_failed; return;
+		}
+		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+			++fp_failed; return;
+		}
+		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->minAF) {
+			++af_failed; return;
+		}
+		const int qpos = arr_qpos(&plp);
+		const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
+		if(FA < aux->minFA) {
+			++fa_failed; return;
+		}
+		if((float)FA / FM < aux->minFR) {
+			++fr_failed; return;
+		}
+		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
 		qname = bam_get_qname(plp.b);
 		if((found = obs.find(qname)) == obs.end())
 			obs[qname] = BMF::UniqueObservation(plp);
 		else found->second.add_obs(plp);
-		return;
 	});
 	// Build vcfline struct
 	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos);
@@ -95,7 +136,7 @@ int stack_core(stack_aux_t *aux)
 			const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
 			const int bamtid = (int)kh_key(aux->bed, key);
 			aux->iter = bam_itr_queryi(aux->bam_index, kh_key(aux->bed, key), start, stop);
-			while((stack = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0) {
+			while((stack = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0) {
 				if(pos < start && tid == bamtid) continue;
 				if(pos >= stop) break;
 				process_pileup(v, stack, n_plp, pos, tid, aux);

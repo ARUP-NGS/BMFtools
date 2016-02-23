@@ -23,7 +23,7 @@ public:
 	int minFM;
 	uint32_t minFA;
 	uint32_t minPV;
-	uint32_t minMQ;
+	int minMQ;
 	int minCount;
 	int minDuplex;
 	int minOverlap;
