@@ -36,7 +36,7 @@ void stack_usage(int retcode)
 }
 
 
-static int read_bam(aux_t *data, bam1_t *b)
+static int read_bam(stack_aux_t *data, bam1_t *b)
 {
 	int ret;
 	for(;;)
@@ -59,7 +59,7 @@ static int read_bam(aux_t *data, bam1_t *b)
 	return ret;
 }
 
-void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, aux_t *aux) {
+void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, stack_aux_t *aux) {
 	std::string qname;
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> obs;
@@ -79,7 +79,7 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	bcf_clear(ret);
 }
 
-int stack_core(aux_t *aux)
+int stack_core(stack_aux_t *aux)
 {
 	bam_plp_t pileup = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux);
 	const bam_pileup1_t *stack;
@@ -108,7 +108,7 @@ int stack_core(aux_t *aux)
 int stack_main(int argc, char *argv[]) {
 	int c;
 	unsigned padding = (unsigned)-1;
-	aux_t aux = aux_t();
+	stack_aux_t aux = stack_aux_t();
 	char *outvcf = NULL, *refpath = NULL;
 	std::string bedpath = "";
 	int output_bcf = 0;

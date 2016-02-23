@@ -100,7 +100,7 @@ mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
 		NULL, // tmp_out_handles_r1
 		NULL, // tmp_out_handles_r2
 		settings_ptr->n_nucs, // n_nucs
-		ipow(4, settings_ptr->n_nucs), // n_handles
+		(int)ipow(4, settings_ptr->n_nucs), // n_handles
 		NULL, // infnames_r1
 		NULL  // infnames_r2
 	};
@@ -128,7 +128,7 @@ mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
         NULL, // tmp_out_handles_r1
         NULL, // tmp_out_handles_r2
         settings_ptr->n_nucs, // n_nucs
-		ipow(4, settings_ptr->n_nucs), // n_handles
+		(int)ipow(4, settings_ptr->n_nucs), // n_handles
         NULL, // infnames_r1
         NULL  // infnames_r2
 	};

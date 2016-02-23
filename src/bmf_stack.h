@@ -7,7 +7,7 @@ int stack_main(int argc, char *argv[]);
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
-class aux_t {
+class stack_aux_t {
 public:
 	samFile *fp;
 	hts_itr_t *iter;
@@ -31,7 +31,7 @@ public:
 	int last_tid;
 	char *ref_seq;
 	uint32_t skip_flag; // Skip reads with any bits set to true
-	aux_t() {
+	stack_aux_t() {
 		memset(this, 0, sizeof(*this));
 		max_depth = DEFAULT_MAX_DEPTH;
 		last_tid = -1;
@@ -45,7 +45,7 @@ public:
 		}
 		return ref_seq[pos];
 	}
-	~aux_t() {
+	~stack_aux_t() {
 		if(fp) sam_close(fp);
 		if(iter) hts_itr_destroy(iter);
 		if(bam_index) hts_idx_destroy(bam_index);
