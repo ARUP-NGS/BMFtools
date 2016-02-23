@@ -15,6 +15,14 @@
 #include "include/bam.h"
 #include "include/sam_opts.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+	int sort_main(int argc, char **argv);
+#ifdef __cplusplus
+}
+#endif
+
 enum sort_order {
 	SAMTOOLS,
 	QNAME,

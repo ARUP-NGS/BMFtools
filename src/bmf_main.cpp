@@ -3,15 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "src/bmf_sort.h"
 #include "dlib/logging_util.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern int sort_main(int argc, char *argv[]);
-#ifdef __cplusplus
-}
-#endif
 extern int hash_dmp_main(int argc, char *argv[]);
 extern int sdmp_main(int argc, char *argv[]);
 extern int dmp_main(int argc, char *argv[]);

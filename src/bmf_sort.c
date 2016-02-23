@@ -32,7 +32,13 @@ KHASH_INIT(cset, char*, char, 0, kh_str_hash_func, kh_str_hash_equal)
 KHASH_MAP_INIT_STR(c2i, int)
 
 #define hdrln_free_char(p)
-KLIST_INIT(hdrln, char*, hdrln_free_char)
+#ifdef __cplusplus
+extern "C" {
+#endif
+	KLIST_INIT(hdrln, char*, hdrln_free_char)
+#ifdef __cplusplus
+}
+#endif
 
 static int g_cmpkey = 0;
 
@@ -214,17 +220,15 @@ static void trans_tbl_destroy(trans_tbl_t *tbl) {
  */
 
 static merged_header_t * init_merged_header() {
-	merged_header_t *merged_hdr;
-
-	merged_hdr = calloc(1, sizeof(*merged_hdr));
+	merged_header_t *merged_hdr = (merged_header_t *)calloc(1, sizeof(*merged_hdr));
 	if (merged_hdr == NULL) return NULL;
 
 	merged_hdr->targets_sz   = 16;
-	merged_hdr->target_name = malloc(merged_hdr->targets_sz
+	merged_hdr->target_name = (char **)malloc(merged_hdr->targets_sz
 									 * sizeof(*merged_hdr->target_name));
 	if (NULL == merged_hdr->target_name) goto fail;
 
-	merged_hdr->target_len = malloc(merged_hdr->targets_sz
+	merged_hdr->target_len = (uint32_t *)malloc(merged_hdr->targets_sz
 									* sizeof(*merged_hdr->target_len));
 	if (NULL == merged_hdr->target_len) goto fail;
 
@@ -332,11 +336,11 @@ static inline int grow_target_list(merged_header_t* merged_hdr) {
 	uint32_t  *new_len;
 
 	new_size = merged_hdr->targets_sz * 2;
-	new_names = realloc(merged_hdr->target_name, sizeof(*new_names) * new_size);
+	new_names = (char **)realloc(merged_hdr->target_name, sizeof(*new_names) * new_size);
 	if (!new_names) goto fail;
 	merged_hdr->target_name = new_names;
 
-	new_len = realloc(merged_hdr->target_len, sizeof(*new_len) * new_size);
+	new_len = (uint32_t *)realloc(merged_hdr->target_len, sizeof(*new_len) * new_size);
 	if (!new_len) goto fail;
 	merged_hdr->target_len = new_len;
 
@@ -425,7 +429,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 
 	// Otherwise, find @SQ lines in translate->text for all newly added targets.
 
-	new_sq_matches = malloc((merged_hdr->n_targets - old_n_targets)
+	new_sq_matches = (hdr_match_t *)malloc((merged_hdr->n_targets - old_n_targets)
 							* sizeof(*new_sq_matches));
 	if (new_sq_matches == NULL) goto memfail;
 
@@ -845,9 +849,9 @@ static bam_hdr_t * finish_merged_header(merged_header_t *merged_hdr) {
 	if (hdr == NULL) goto memfail;
 
 	// Try to shrink targets arrays to correct size
-	target_name = realloc(merged_hdr->target_name,
+	target_name = (char **)realloc(merged_hdr->target_name,
 						  merged_hdr->n_targets * sizeof(*target_name));
-	target_len = realloc(merged_hdr->target_len,
+	target_len = (uint32_t *)realloc(merged_hdr->target_len,
 						 merged_hdr->n_targets * sizeof(*target_len));
 
 	// Transfer targets arrays to new header
@@ -858,7 +862,7 @@ static bam_hdr_t * finish_merged_header(merged_header_t *merged_hdr) {
 	merged_hdr->target_len  = NULL;
 
 	// Allocate text
-	text = hdr->text = malloc(txt_sz + 1);
+	text = hdr->text = (char *)malloc(txt_sz + 1);
 	if (!text) goto memfail;
 
 	// Put header text in order @HD, @SQ, @RG, @PG, @CO
@@ -1190,7 +1194,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		int tid, beg, end;
 		const char *name_lim = hts_parse_reg(reg, &beg, &end);
 		if (name_lim) {
-			char *name = malloc(name_lim - reg + 1);
+			char *name = (char *)malloc(name_lim - reg + 1);
 			memcpy(name, reg, name_lim - reg);
 			name[name_lim - reg] = '\0';
 			tid = bam_name2id(hout, name);
