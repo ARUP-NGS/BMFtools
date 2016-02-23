@@ -1,7 +1,7 @@
 #include "bmf_err.h"
 
 
-#define min_obs 10000uL
+static uint64_t min_obs = 10000uL;
 
 int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
@@ -47,7 +47,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"-h/-?\t\tThis helpful help menu!\n"
 			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
 			"-a\t\tSet minimum mapping quality for inclusion.\n"
-			"-$\t\tSet minimum calculated PV tag value for inclusion.\n"
+			"-S\t\tSet minimum calculated PV tag value for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
@@ -58,9 +58,10 @@ int err_main_usage(FILE *fp, int retcode)
 			"-M:\t\tMaximum family size for inclusion. Default: %i.\n"
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
 			"-D:\t\tFlag to only calculate error rates for non-duplex reads.\n"
-			"-p:\t\tSet padding for bed region. Default: 50.\n"
+			"-p:\t\tSet padding for bed region. Default: %i.\n"
 			"-P:\t\tOnly include proper pairs.\n"
-			, INT_MAX);
+			"-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
+			, INT_MAX, DEFAULT_PADDING, min_obs);
 	exit(retcode);
 	return retcode;
 }
@@ -127,14 +128,14 @@ void write_final(FILE *fp, fullerr_t *e)
 				fprintf(fp, ":%i", e->r1->final[bn][qn][cycle]);
 			if(qn != nqscores - 1) fprintf(fp, ",");
 		}
-		fprintf(fp, "|");
+		fputc('|', fp);
 		for(uint32_t qn = 0; qn < nqscores; ++qn) {
 			fprintf(fp, "%i", e->r2->final[0][qn][cycle]);
 			for(uint32_t bn = 1; bn < 4; ++bn)
 				fprintf(fp, ":%i", e->r2->final[bn][qn][cycle]);
 			if(qn != nqscores - 1) fprintf(fp, ",");
 		}
-		fprintf(fp, "\n");
+		fputc('\n', fp);
 	}
 }
 
@@ -288,9 +289,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	khiter_t k;
 	bam1_t *b = bam_init1();
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		if(++f->nread % 1000000 == 0) {
-			LOG_INFO("Records read: %lu.\n", f->nread);
-		}
+		if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		DR = ((drdata = bam_aux_get(b, "DR")) != NULL) ? bam_aux2i(drdata): 0;
@@ -368,6 +367,55 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 }
 
 
+#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen, fpdata)\
+	do {\
+		if(++ce->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", ce->nread);\
+		if((b->core.flag & 772) || \
+			b->core.qual < ce->minMQ || \
+			(ce->refcontig && tid_to_study != b->core.tid) ||\
+			((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) || \
+			((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||\
+			(ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
+			++ce->nskipped;\
+			/* LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b)); */\
+			continue;\
+		}\
+		seq = (uint8_t *)bam_get_seq(b);\
+		cigar = bam_get_cigar(b);\
+		if(b->core.tid != last_tid) {\
+			cond_free(ref);\
+			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);\
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);\
+			if(!ref) {\
+				LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);\
+			}\
+			last_tid = b->core.tid;\
+		}\
+		pos = b->core.pos;\
+		is_rev = b->core.flag & BAM_FREVERSE;\
+		obsarr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;\
+		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {\
+			length = bam_cigar_oplen(cigar[i]);\
+			switch(bam_cigar_op(cigar[i])) {\
+			case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:\
+				for(ind = 0; ind < length; ++ind) {\
+					s = bam_seqi(seq, ind + rc);\
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;\
+					cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;\
+					++obsarr[cycle].obs;\
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++obsarr[cycle].err;\
+				}\
+				rc += length; fc += length;\
+				break;\
+			case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:\
+				rc += length;\
+				break;\
+			case BAM_CREF_SKIP: case BAM_CDEL:\
+				fc += length;\
+				break;\
+			}\
+		}\
+	} while(0)
 
 cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 							char *bedpath, char *refcontig, int padding, unsigned minMQ, int flag)
@@ -389,9 +437,8 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 				tid_to_study = i; break;
 			}
 		}
-		if(tid_to_study < 0) {
+		if(tid_to_study < 0)
 			LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
-		}
 	}
 	uint8_t *seq, *fpdata;
 	uint32_t *cigar;
@@ -406,6 +453,8 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	bam_hdr_destroy(hdr), sam_close(fp);
 	return ce;
 }
+
+#undef cycle_loop
 
 void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
@@ -443,7 +492,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
 			((f->flag & REQUIRE_FP_PASS) && pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
 				++f->nskipped;
-				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+				//LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
 				continue;
 		} // UNMAPPED, SECONDARY, QCFAIL, [removed SUPPLEMENTARY flag for a second],
 		seq = (uint8_t *)bam_get_seq(b);
@@ -602,32 +651,20 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			int s; // seq value, base 
 			const uint32_t len = bam_cigar_oplen(cigar[i]);
 			switch(bam_cigar_op(cigar[i])) {
-			case BAM_CMATCH:
-			case BAM_CEQUAL:
-			case BAM_CDIFF:
+			case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-#if !NDEBUG
-					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-						exit(EXIT_FAILURE);
-					}
-#endif
 					++rerr->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++rerr->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
 				rc += len; fc += len;
 				break;
-			case BAM_CSOFT_CLIP:
-			case BAM_CHARD_CLIP:
-			case BAM_CINS:
+			case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
 				rc += len;
 				break;
-			case BAM_CREF_SKIP:
-			case BAM_CDEL:
+			case BAM_CREF_SKIP: case BAM_CDEL:
 				fc += len;
 				break;
 			}
@@ -724,13 +761,19 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 
 void impute_scores(fullerr_t *f)
 {
-	unsigned j, i;
-	uint64_t l;
-	for(i = 0; i < 4u; ++i)
-		for(l = 0; l < f->l; ++l)
-			for(j = 0; j < nqscores; ++j)
-				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2 > 0 ? f->r1->qdiffs[i][l] + j + 2: 0,
-				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2 > 0 ? f->r2->qdiffs[i][l] + j + 2: 0;
+	for(unsigned i = 0; i < 4u; ++i) {
+		for(uint64_t l = 0; l < f->l; ++l) {
+			// Handle qscores of 2
+			f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l]) : 2;
+			f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l]) : 2;
+			for(unsigned j = 1; j < nqscores; ++j) {
+				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2;
+				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
+				if(f->r1->final[i][j][l] < 2) f->r1->final[i][j][l] = 2;
+				if(f->r2->final[i][j][l] < 2) f->r2->final[i][j][l] = 2;
+			}
+		}
+	}
 }
 
 void fill_qvals(fullerr_t *f)
@@ -751,12 +794,10 @@ void fill_qvals(fullerr_t *f)
 		for(l = 0; l < f->l; ++l) {
 			f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
 			f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-			f->r1->qdiffs[i][l] = pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]);
-			f->r2->qdiffs[i][l] = pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l]);
-			//fprintf(stderr, "qdiffs i, l (measured) is R1:%i R2:%i.\n", f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
-			if(f->r1->qobs[i][l] < min_obs) f->r1->qdiffs[i][l] = 0;
-			if(f->r2->qobs[i][l] < min_obs) f->r2->qdiffs[i][l] = 0;
-			//fprintf(stderr, "qdiffs %i, %lu after checking for %lu %lu > %lu min_obs is R1:%i R2:%i.\n", i, l, f->r1->qobs[i][l], f->r2->qobs[i][l], min_obs, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
+			//LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
+			f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]): 0;
+			f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l]): 0;
+			LOG_DEBUG("qdiffs at %i, %lu: %i, %i\n", i, l, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
 		}
 	}
 }
@@ -774,6 +815,7 @@ void fill_sufficient_obs(fullerr_t *f)
 		}
 	}
 }
+
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
@@ -966,7 +1008,6 @@ int err_main_main(int argc, char *argv[])
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(stderr, EXIT_SUCCESS);
 
 
-
 	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
 	char refcontig[200] = "";
 	char *bedpath = NULL;
@@ -975,7 +1016,7 @@ int err_main_main(int argc, char *argv[])
 	int maxFM = INT_MAX;
 	int flag = 0;
 	uint32_t minPV = 0;
-	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?FdDP")) >= 0) {
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:S:O:h?FdDP")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -986,6 +1027,7 @@ int err_main_main(int argc, char *argv[])
 		case 'M': maxFM = atoi(optarg); break;
 		case 'f': df = open_ofp(optarg); break;
 		case 'o': strcpy(outpath, optarg); break;
+		case 'O': min_obs = strtoull(optarg, NULL, 10); break;
 		case '3': d3 = open_ofp(optarg); break;
 		case 'c': dc = open_ofp(optarg); break;
 		case 'n': dbc = open_ofp(optarg); break;
@@ -993,14 +1035,13 @@ int err_main_main(int argc, char *argv[])
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'g': global_fp = open_ofp(optarg); break;
-		case '$': minPV = strtoul(optarg, NULL, 0); break;
+		case 'S': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
-	if(padding < 0 && bedpath && *bedpath) {
+	if(padding < 0 && bedpath && *bedpath)
 		LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
-	}
 
 	ofp = *outpath ? open_ofp(outpath): NULL;
 
@@ -1009,12 +1050,10 @@ int err_main_main(int argc, char *argv[])
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
-		LOG_EXIT((char *)"Cannot open input file \"%s\"", argv[optind]);
-	}
-	if ((header = sam_hdr_read(fp)) == NULL) {
-		LOG_EXIT((char *)"Failed to read header for \"%s\"", argv[optind]);
-	}
+	if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL)
+		LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
+	if ((header = sam_hdr_read(fp)) == NULL)
+		LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
 
 	if(minPV) check_bam_tag_exit(argv[optind + 1], "PV");
 	if(minFM || maxFM != INT_MAX) check_bam_tag_exit(argv[optind + 1], "FM");
@@ -1034,9 +1073,9 @@ int err_main_main(int argc, char *argv[])
 	fai_destroy(fai);
 	fill_qvals(f);
 	impute_scores(f);
-	fill_sufficient_obs(f);
-	if(ofp)
-		write_final(ofp, f), fclose(ofp);
+	//fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
+	if(*outpath)
+		ofp = fopen(outpath, "w"), write_final(ofp, f), fclose(ofp);
 	if(d3)
 		write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
 	if(df)

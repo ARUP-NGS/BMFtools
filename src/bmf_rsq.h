@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <zlib.h>
 #include <tgmath.h>
+#include <unordered_map>
 #include "htslib/sam.h"
 #include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library
@@ -112,7 +113,6 @@ CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
 	for(int i = 0; i < b->core.l_qseq; ++i) {
 		bc = bam_seqi(bseq, i);
 		pc = bam_seqi(pseq, i);
-		LOG_DEBUG("Hamming distance is currently %i.\n", hd);
 		if(bc != pc && bc != HTS_N && pc != HTS_N && ++hd > lim)
 			return 0;
 	}
