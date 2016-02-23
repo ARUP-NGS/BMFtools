@@ -53,13 +53,11 @@ void make_outfname(marksplit_settings_t *settings)
 	}
 	if(has_period) {
 	settings->ffq_prefix = make_default_outfname(settings->input_r1_path, ".dmp.final");
-		fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
-				__func__, settings->ffq_prefix);
+		LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
 	} else {
 		settings->ffq_prefix = (char *)malloc((RANDSTR_SIZE + 1) * sizeof(char));
 		rand_string(settings->ffq_prefix, RANDSTR_SIZE);
-		fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
-				__func__, settings->ffq_prefix);
+		LOG_INFO("No output final prefix set. Selecting random output name ('%s').\n", settings->ffq_prefix);
 	}
 }
 
@@ -80,8 +78,8 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 {
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
-		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
+		LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",
+				params->infnames_r1[i], params->outfnames_r1[i]);
 		func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
 		if(settings->cleanup) {
 			kstring_t ks = {0, 0, NULL};
@@ -115,9 +113,8 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	ks.l = 0;
 	ksprintf(&ks, "/bin/cat ");
 	for(int i = 0; i < settings->n_handles; ++i) {
-		if(!isfile(params->outfnames_r1[i])) {
+		if(!isfile(params->outfnames_r1[i]))
 			LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
-		}
 		ksprintf(&ks, " %s", params->outfnames_r1[i]);
 	}
 	ksprintf(&ks, " > %s", ffq_r1);
@@ -128,18 +125,10 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
 {
-	if(settings->rescaler) {
-		for(int i = 0; i < arr_size; ++i) {
-			if(settings->rescaler[i] < 0) {
-				LOG_EXIT("Rescaler's got a negative number in pp_split_inline."
-						" %i. Index: %i.\n", settings->rescaler[i], i);
-			}
-			else if(settings->rescaler[i] == 0) {
-				LOG_EXIT("Rescaler's got a zero in pp_split_inline."
-						" %i. Index: %i.\n", settings->rescaler[i], i);
-			}
-		}
-	}
+	if(settings->rescaler)
+		for(int i = 0; i < arr_size; ++i)
+			if(settings->rescaler[i] <= 0)
+				LOG_EXIT("Invalid value in rescaler %i at index %i.\n", settings->rescaler[i], i);
 }
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
@@ -399,9 +388,8 @@ int dmp_main(int argc, char *argv[])
 		// Number of file handles
 		settings.n_handles = ipow(4, settings.n_nucs);
 		if(settings.n_handles * 2 > get_fileno_limit()) {
+			LOG_INFO("Increasing nofile limit from %i to %i.\n", get_fileno_limit(), settings.n_handles * 2);
 			increase_nofile_limit(settings.n_handles * 2);
-			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
-					settings.n_handles * 2);
 		}
 		// Handle filenames
 		settings.input_r1_path = strdup(argv[optind]);
@@ -415,55 +403,41 @@ int dmp_main(int argc, char *argv[])
 		// Number of file handles
 		settings.n_handles = ipow(4, settings.n_nucs);
 		if(settings.n_handles * 4 > get_fileno_limit()) {
+			LOG_INFO("Increasing nofile limit from %i to %i.\n", get_fileno_limit(), settings.n_handles * 4);
 			increase_nofile_limit(settings.n_handles * 4);
-			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
-					settings.n_handles * 4);
 		}
 		// Handle filenames
 		settings.input_r1_path = strdup(argv[optind]);
 		settings.input_r2_path = strdup(argv[optind + 1]);
 	}
 	// Required parameters
-	if(settings.ffq_prefix && !settings.run_hash_dmp) {
-		fprintf(stderr, "[E:%s] Final fastq prefix option provided but run_hash_dmp not selected."
-				"Either eliminate the -f flag or add the -d flag.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
+	if(settings.ffq_prefix && !settings.run_hash_dmp)
+		LOG_EXIT("Final fastq prefix option provided but run_hash_dmp not selected."
+				"Either eliminate the -f flag or add the -d flag.\n");
 
 	// Handle number of threads
 	omp_set_num_threads(settings.threads);
 
 	// Handle homing sequence
-	if(!settings.homing_sequence) {
-		fprintf(stderr, "[E:%s] Homing sequence not provided. Required.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
-#endif
+	if(!settings.homing_sequence)
+		LOG_EXIT("Homing sequence not provided. Required.\n");
 	clean_homing_sequence(settings.homing_sequence);
 
 	// Handle barcode length
-	if(!settings.blen) {
-		fprintf(stderr, "[E:%s] Barcode length not provided. Required. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
+	if(!settings.blen)
+		LOG_EXIT("Barcode length not provided. Required. Abort!\n");
 	// Handle the offset parameter. If false, blen doesn't change.
 	if(settings.is_se) {
 		settings.blen -= settings.offset;
-		if(settings.max_blen > 0 && settings.max_blen < settings.blen) {
-			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
-					__func__, settings.max_blen, settings.blen / 2);
-			exit(EXIT_FAILURE);
-		}
+		if(settings.max_blen > 0 && settings.max_blen < settings.blen)
+			LOG_EXIT("Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					settings.max_blen, settings.blen / 2);
 		if(settings.max_blen < 0) settings.max_blen = settings.blen;
 	} else {
 		settings.blen = (settings.blen - settings.offset) * 2;
-		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
-			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
-					__func__, settings.max_blen, settings.blen / 2);
-			exit(EXIT_FAILURE);
-		}
+		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen)
+			LOG_EXIT("Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					settings.max_blen, settings.blen / 2);
 		settings.blen1_2 = settings.blen / 2;
 		if(settings.max_blen < 0) settings.max_blen = settings.blen1_2;
 	}
@@ -472,8 +446,8 @@ int dmp_main(int argc, char *argv[])
 		// If tmp_basename unset, create a random temporary file prefix.
 		settings.tmp_basename = (char *)malloc(21 * sizeof(char));
 		rand_string(settings.tmp_basename, 20);
-		fprintf(stderr, "[%s] Temporary basename not provided. Defaulting to random: %s.\n",
-				__func__, settings.tmp_basename);
+		LOG_INFO("Temporary basename not provided. Defaulting to random: %s.\n",
+				settings.tmp_basename);
 	}
 
 	// Run core
@@ -483,13 +457,9 @@ int dmp_main(int argc, char *argv[])
 	char ffq_r1[500];
 	char ffq_r2[500];
 	if(!settings.run_hash_dmp) {
-		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
+		LOG_INFO("mark/split complete.\n");
 		goto cleanup;
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
-				__func__);
-#endif
 	if(!settings.ffq_prefix) make_outfname(&settings);
 	params = init_splitterhash(&settings, splitter);
 	// Run cores.
@@ -507,7 +477,7 @@ int dmp_main(int argc, char *argv[])
 	cleanup:
 	free_marksplit_settings(settings);
 	splitter_destroy(splitter);
-	fprintf(stderr, "[%s] Successfully completed bmftools dmp!\n", __func__);
+	LOG_INFO("Successfully completed bmftools dmp!\n");
 	return EXIT_SUCCESS;
 }
 

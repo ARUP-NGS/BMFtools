@@ -32,13 +32,8 @@ KHASH_INIT(cset, char*, char, 0, kh_str_hash_func, kh_str_hash_equal)
 KHASH_MAP_INIT_STR(c2i, int)
 
 #define hdrln_free_char(p)
-#ifdef __cplusplus
-extern "C" {
-#endif
 	KLIST_INIT(hdrln, char*, hdrln_free_char)
-#ifdef __cplusplus
-}
-#endif
+
 
 static int g_cmpkey = 0;
 
