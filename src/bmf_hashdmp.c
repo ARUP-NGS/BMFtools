@@ -133,7 +133,6 @@ void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_h
 	LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
 	kstring_t ks = {0, 0, NULL};
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		LOG_DEBUG("buf_record_count: %lu.\n", buf_record_count);
 		if(buf_record_count++ == buf_set_size) {
 			buf_record_count = 0;
 			gzputs(out_handle, (const char *)ks.s);
@@ -146,7 +145,6 @@ void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, gzFile out_h
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
 	}
-	LOG_DEBUG("buf_record_count before gzputs: %lu.\n", buf_record_count);
 	if(buf_record_count) gzputs(out_handle, (const char *)ks.s);
 	free(ks.s);
 }
@@ -159,6 +157,11 @@ void hash_dmp_core(char *infname, char *outfname, int level)
 	FILE *in_handle = open_ifp(infname);
 	gzFile out_handle = gzopen(outfname, mode);
 	if(!in_handle) {
+		if(isfile(infname)) {
+			LOG_DEBUG("It's a file, but it's empty....\n");
+			gzclose(out_handle);
+			return;
+		}
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
 	}

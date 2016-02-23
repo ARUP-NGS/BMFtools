@@ -7,10 +7,11 @@ typedef struct rsq_settings {
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmlim; // Mismatch failure threshold.
-	int is_se; // Is single-end
 	int read_hd_threshold;
+	int is_se;
 	bam_hdr_t *hdr; // BAM header
 	stack_fn fn;
+	std::unordered_map<char *, std::string> realign_pairs;
 } rsq_settings_t;
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -25,7 +26,7 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 	}
 }
 
-void bam2ffq(bam1_t *b, FILE *fp)
+std::string bam2cppstr(bam1_t *b)
 {
 	char *qual, *seqbuf;
 	int i;
@@ -71,9 +72,9 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	}
 	kputs(seqbuf, &ks); kputc('\n', &ks);
 	free(seqbuf);
-	fputs(ks.s, fp);
+	std::string ret(ks.s);
 	free(ks.s);
-	return;
+	return ret;
 }
 
 static inline void update_bam1(bam1_t *p, bam1_t *b)
@@ -184,15 +185,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pQual[i] = bQual[i];
 				++n_changed;
 			}
-
 			if(pPV[i] < 3) {
 				pFA[i] = 0;
 				pPV[i] = 0;
 				pQual[i] = 2;
 				n_base(pSeq, i);
 				continue;
-			}
-			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+			} else if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
 		}
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
@@ -204,10 +203,13 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 	for(unsigned i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			uint8_t *data;
-			if((data = bam_aux_get(stack->a[i], "NC")) != NULL)
-				bam2ffq(stack->a[i], settings->fqh);
-			else
-				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			char *qname;
+			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
+				qname = bam_get_qname(stack->a[i]);
+				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end())
+					settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i]));
+				else settings->realign_pairs[qname] += std::string(bam2cppstr(stack->a[i]));
+			} else sam_write1(settings->out, settings->hdr, stack->a[i]);
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
@@ -278,6 +280,8 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	write_stack(stack, settings);
 	stack->n = 1;
 	bam_destroy1(b);
+	for(auto& pair: settings->realign_pairs)
+		fprintf(settings->fqh, pair.second.c_str());
 }
 
 void bam_rsq_bookends(rsq_settings_t *settings)
