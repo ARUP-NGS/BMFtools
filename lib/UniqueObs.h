@@ -53,7 +53,7 @@ namespace BMF {
 		}
 		int get_overlap() {return is_overlap;}
 		int get_duplex() {
-			return is_duplex1 + is_duplex2;
+			return is_duplex1 + (is_duplex2 != -1 ? is_duplex2: 0);
 		}
 		UniqueObservation() {
 			memset(this, 0, sizeof(*this));

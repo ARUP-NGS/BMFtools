@@ -106,46 +106,6 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 }
 
 
-void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
-{
-	// Clear output files.
-	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(ks.s);
-	for(int i = 0; i < settings->n_handles; ++i) {
-		ks.l = 0;
-		// Clear files if present
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		CHECK_POPEN(ks.s);
-	}
-	free(ks.s);
-}
-
-void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
-{
-	// Clear output files.
-	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(ks.s);
-	ks.l = 0;
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-	CHECK_CALL(ks.s);
-	for(int i = 0; i < settings->n_handles; ++i) {
-		// Clear files if present
-		ks.l = 0;
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		FILE *g1_popen = popen(ks.s, "w");
-		ks.l = 0;
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-		FILE *g2_popen = popen(ks.s, "w");
-		if(pclose(g2_popen) || pclose(g1_popen)){
-			LOG_EXIT("Background system call failed.\n");
-		}
-	}
-	free(ks.s);
-}
-
-
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
 	kstring_t ks = {0, 0, NULL};
@@ -203,13 +163,6 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	bash_system(final.s);
 	free(str1.s), free(str2.s);
 	free(final.s);
-}
-
-
-void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
-{
-	settings->is_se ? call_clowder_se(settings, params, ffq_r1):
-			call_clowder_pe(settings, params, ffq_r1, ffq_r2);
 }
 
 void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
@@ -330,7 +283,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
 	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-	assert(bin < settings->n_handles);
+	assert(bin < (uint64_t)settings->n_handles);
 	if(switch_reads) {
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
@@ -403,7 +356,6 @@ int dmp_main(int argc, char *argv[])
 	settings.max_blen = -1;
 	settings.gzip_compression = 1;
 	settings.cleanup = 1;
-	settings.panthera = 1;
 	sprintf(settings.mode, "wT");
 
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
@@ -549,10 +501,7 @@ int dmp_main(int argc, char *argv[])
 	// Cat temporary files together.
 	if(settings.to_stdout)
 		call_stdout(&settings, params, ffq_r1, ffq_r2);
-	else if(settings.panthera)
-		call_panthera(&settings, params, ffq_r1, ffq_r2);
-	else
-		call_clowder(&settings, params, ffq_r1, ffq_r2);
+	else call_panthera(&settings, params, ffq_r1, ffq_r2);
 	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
 	cleanup:

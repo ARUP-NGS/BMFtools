@@ -33,7 +33,6 @@ typedef struct marksplit_settings {
 	int notification_interval; // How many sets of records do you want to process between progress reports?
 	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
 	char *tmp_basename;
-	int panthera;
 	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases)
 	char *rescaler_path; // Path to rescaler for
 	int run_hash_dmp;

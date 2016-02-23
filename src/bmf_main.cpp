@@ -9,12 +9,12 @@
 extern "C" {
 #endif
 extern int sort_main(int argc, char *argv[]);
-extern int sdmp_main(int argc, char *argv[]);
 extern int hash_dmp_main(int argc, char *argv[]);
-extern int dmp_main(int argc, char *argv[]);
 #ifdef __cplusplus
 }
 #endif
+extern int sdmp_main(int argc, char *argv[]);
+extern int dmp_main(int argc, char *argv[]);
 extern int rsq_main(int argc, char *argv[]);
 extern int vetter_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
