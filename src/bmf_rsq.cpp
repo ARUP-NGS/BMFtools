@@ -58,7 +58,7 @@ std::string bam2cppstr(bam1_t *b)
 		}
 		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
-	assert(strlen(seqbuf) == b->core.l_qseq);
+	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
 	qual = (char *)bam_get_qual(b);
@@ -237,14 +237,12 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 {
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
-			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
-				if(read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
-					LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-					update_bam1(stack->a[j], stack->a[i]);
-					bam_destroy1(stack->a[i]);
-					stack->a[i] = NULL;
-					break;
-				}
+			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
+					read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
+				update_bam1(stack->a[j], stack->a[i]);
+				bam_destroy1(stack->a[i]);
+				stack->a[i] = NULL;
+				break;
 				// "break" in case there are multiple within hamming distance.
 				// Otherwise, I'll end up having memory mistakes.
 				// Besides, that read set will get merged into the later read in the set.
@@ -311,7 +309,7 @@ void bam_rsq_bookends(rsq_settings_t *settings)
 	free(stack.a);
 }
 
-int rsq_usage(void)
+int rsq_usage(int retcode)
 {
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
@@ -320,7 +318,7 @@ int rsq_usage(void)
 	fprintf(stderr, "-l	  Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
 	fprintf(stderr, "-u	  Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
 					"Note: This requires pre-processing with bmftools mark_unclipped.\n");
-	return 1;
+	return retcode;
 }
 
 
@@ -336,6 +334,8 @@ int rsq_main(int argc, char *argv[])
 
 	char *fqname = NULL;
 
+	if(argc < 3) rsq_usage(EXIT_FAILURE);
+
 	while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
 		switch (c) {
 		case 'u': settings.cmpkey = UNCLIPPED; break;
@@ -343,11 +343,11 @@ int rsq_main(int argc, char *argv[])
 		case 'f': fqname = optarg; break;
 		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
 		case 'h': /* fall-through */
-		case '?': return rsq_usage();
+		case '?': return rsq_usage(EXIT_SUCCESS);
 		}
 	}
 	if (optind + 2 > argc)
-		return rsq_usage();
+		return rsq_usage(EXIT_FAILURE);
 	if(settings.read_hd_threshold < 0) {
 		settings.read_hd_threshold = READ_HD_LIMIT;
 		LOG_INFO("Unset read HD threshold. Setting to default (%i).\n", settings.read_hd_threshold);
@@ -355,15 +355,13 @@ int rsq_main(int argc, char *argv[])
 
 	if(!fqname) {
 		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
-		return rsq_usage();
+		return rsq_usage(EXIT_FAILURE);
 	}
 
 	settings.fqh = fopen(fqname, "w");
 
-	if(!settings.fqh) {
-		fprintf(stderr, "Failed to open output fastq for writing. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+	if(!settings.fqh)
+		LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
 
 	settings.in = sam_open(argv[optind], "r");
