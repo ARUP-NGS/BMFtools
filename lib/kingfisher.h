@@ -62,10 +62,6 @@ typedef struct KingFisher {
 
 extern double igamc(double a, double x);
 
-#ifdef __cpluslus
-extern "C" {
-#endif
-
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
@@ -164,9 +160,5 @@ CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
 	return arr_max_u32(kfp->phred_sums, index);
 }
 
-
-#ifdef __cpluslus
-}
-#endif
 
 #endif /*KINGFISHER_H*/

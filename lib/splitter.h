@@ -43,14 +43,8 @@ typedef struct marksplit_settings {
 	char mode[4];
 } marksplit_settings_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 void free_marksplit_settings_ptr(marksplit_settings_t *settings);
 void free_marksplit_settings(marksplit_settings_t settings);
-#ifdef __cplusplus
-}
-#endif
 
 typedef struct mark_splitter {
 	gzFile *tmp_out_handles_r1;
