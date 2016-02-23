@@ -60,20 +60,21 @@ static int read_bam(stack_aux_t *data, bam1_t *b)
 }
 
 void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, stack_aux_t *aux) {
-	std::string qname;
+	char *qname;
 	// Build overlap hash
-	std::unordered_map<std::string, BMF::UniqueObservation> obs;
-	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
+	std::unordered_map<char *, BMF::UniqueObservation> obs;
+	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	// Capturing found  by reference to avoid making unneeded temporary variables.
 	std::for_each(plp, plp + n_plp, [&found,&obs,&qname](const bam_pileup1_t& plp) {
 		if(plp.is_del || plp.is_refskip) return;
-		qname = std::string(bam_get_qname(plp.b));
+		qname = bam_get_qname(plp.b);
 		if((found = obs.find(qname)) == obs.end())
 			obs[qname] = BMF::UniqueObservation(plp);
 		else found->second.add_obs(plp);
 		return;
 	});
 	// Build vcfline struct
-	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos, obs.size());
+	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos);
 	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
 	bcf_write(aux->ofp, aux->vh, ret);
 	bcf_clear(ret);

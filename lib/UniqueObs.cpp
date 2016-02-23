@@ -6,10 +6,10 @@ namespace BMF {
 	 * 1. Decide which info/format fields for each variant.
 	 * 2. Decide to have a number of fields
 	 */
-	VCFPos::VCFPos(std::unordered_map<std::string, UniqueObservation> obs, int32_t _tid, int32_t _pos, size_t _size):
+	VCFPos::VCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos):
 	pos(_pos),
 	tid(_tid),
-	size(_size){
+	size(obs.size()){
 		templates.reserve(5);
 		for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
 	}

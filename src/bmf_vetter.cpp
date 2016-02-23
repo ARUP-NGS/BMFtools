@@ -48,7 +48,7 @@ static int read_bam(void *data, bam1_t *b)
 		// Skip MQ < minMQ
 		// Skip FM < minFM
 		// Skip AF < minAF
-		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+		if ((b->core.flag & aux->skip_flag) ||
 			(aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
 			(int)b->core.qual < aux->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < aux->minFM) ||
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
@@ -383,10 +383,10 @@ int vetter_main(int argc, char *argv[])
 		case 's': aux.minFM = atoi(optarg); break;
 		case 'm': aux.minMQ = atoi(optarg); break;
 		case 'v': aux.minPV = atoi(optarg); break;
-		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
-		case 'S': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
-		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
-		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
+		case '2': aux.skip_flag |= BAM_FSECONDARY; break;
+		case 'S': aux.skip_flag |= BAM_FSUPPLEMENTARY; break;
+		case 'q': aux.skip_flag |= BAM_FQCFAIL;break;
+		case 'r': aux.skip_flag |= BAM_FDUP; break;
 		case 'P': aux.skip_improper = 1; break;
 		case 'p': padding = atoi(optarg); break;
 		case 'd': aux.max_depth = atoi(optarg); break;

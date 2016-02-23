@@ -88,7 +88,7 @@ namespace BMF {
 		int32_t tid;
 		size_t size;
 	public:
-		VCFPos(std::unordered_map<std::string, UniqueObservation> obs, int32_t _tid, int32_t _pos, size_t _size);
+		VCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos);
 		void to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase);
 	};
 
