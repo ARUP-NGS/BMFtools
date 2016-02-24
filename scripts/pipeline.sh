@@ -32,8 +32,7 @@ bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     samtools sort -O bam -T tmplastsort -@ $SORT_THREADS2 -m $SORTMEM -o $TMPBAM -
 
 # Sort fastq by name, align, sort/convert, merge with temporary bam
-cat $TMPFQ | paste -d'~' - - - - | sort | tr '~' '\n' | \
-    bwa mem -pCYT0 -t${THREADS} $REF - | \
+bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -h $TMPBAM $FINALBAM $TMPBAM -
 

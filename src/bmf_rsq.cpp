@@ -131,16 +131,10 @@ std::string bam2cppstr(bam1_t *b)
 }
 
 inline int switch_names(char *n1, char *n2) {
-	for(;*n1;++n1, ++n2) {
-		if(*n1 != *n2) {
-			if(*n1 == 'N')
-				return 1;
-			if(*n2 == 'N')
-				return 0;
+	for(;*n1;++n1, ++n2)
+		if(*n1 != *n2)
 			return *n1 < *n2;
-		}
-	}
-	return 0; // This never happens.
+	return 0; // This never happens unless a null character appears prematurely.
 }
 
 static inline void update_bam1(bam1_t *p, bam1_t *b)
@@ -162,9 +156,9 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	}
 	int bFM = bam_aux2i(bdata);
 	int pFM = bam_aux2i(pdata);
-	char *pname = bam_get_qname(p), *bname = bam_get_qname(b);
-	if(switch_names(pname, bname)) {
+	if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
 		memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+		assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
 	}
 	pFM += bFM;
 	bam_aux_del(p, pdata);
@@ -309,9 +303,14 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
-	std::sort(stack->a, stack->a + stack->n, [](const bam1_t *a, const bam1_t *b) {
-		if(a) return b ? strcmp(bam_get_qname(a), bam_get_qname(b)) < 0: 0;
-		else return b ? 1: 0;
+	int hd;
+	std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
+		if(a) {
+			return b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0;
+		} else {
+			return b ? 1: 0;
+		}
+		// return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
 		// Returns 0 if comparing two nulls, and returns true that a NULL lt a valued name
 		// Compares strings otherwise.
 	});
@@ -319,7 +318,6 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 		for(unsigned j = i + 1; j < stack->n; ++j) {
 #if 0
 			if(settings->fn == &same_stack_ucs) {
-				LOG_INFO("Testin' ucs stuff.\n");
 				assert(same_stack_ucs(stack->a[i], stack->a[j]));
 				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
 				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
@@ -328,7 +326,6 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 				assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
 				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
 			} else if(settings->fn == &same_stack_pos) {
-				LOG_INFO("Testin' pos stuff.\n");
 				assert(same_stack_pos(stack->a[i], stack->a[j]));
 				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
 				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
@@ -337,8 +334,9 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
 			}
 #endif
-			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
-					read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
+			if((hd = hd_linear(stack->a[i], stack->a[j], settings->mmlim)) != 0) {
+				//if(!read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold) continue;
+				//LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
 				stack->a[i] = NULL;
@@ -379,8 +377,13 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	stack->n = 1;
 	bam_destroy1(b);
 	LOG_DEBUG("Number of singletons left %lu...\n", settings->realign_pairs.size());
-	for(auto& pair: settings->realign_pairs) {
-		fprintf(settings->fqh, pair.second.c_str());
+	std::vector<std::string> sorted_keys = std::vector<std::string>();
+	for(auto& pair: settings->realign_pairs)
+		sorted_keys.push_back(pair.first);
+	std::sort(sorted_keys.begin(), sorted_keys.end());
+	for(std::string& key: sorted_keys) {
+		fprintf(settings->fqh, settings->realign_pairs[key].c_str());
+		settings->realign_pairs.erase(key);
 	}
 }
 
