@@ -252,6 +252,9 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
+	std::sort(stack->a, stack->a + stack->n, [](const bam1_t *a, const bam1_t *b) {
+		return strcmp(bam_get_qname(a), bam_get_qname(b));
+	});
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
