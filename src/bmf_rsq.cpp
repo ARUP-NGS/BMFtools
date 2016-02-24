@@ -58,6 +58,7 @@ std::string bam2cppstr(bam1_t *b)
 		}
 		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
+	seqbuf[b->core.l_qseq] = '\0';
 	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
@@ -260,6 +261,13 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 	});
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
+#if !NDEBUG
+			if(settings->fn == &same_stack_ucs) {
+				LOG_DEBUG("Testing stuffs.\n");
+				assert(bam_aux2i(bam_aux_get(stack->a[i], "SU")) == bam_aux2i(bam_aux_get(stack->a[j], "SU")));
+				assert(bam_aux2i(bam_aux_get(stack->a[i], "MU")) == bam_aux2i(bam_aux_get(stack->a[j], "MU")));
+			}
+#endif
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
 					read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
 				update_bam1(stack->a[j], stack->a[i]);
