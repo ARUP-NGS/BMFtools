@@ -2,7 +2,7 @@
 
 #include "bmf_sort.h"
 
-static uint64_t cmpkey = 2;
+static int cmpkey = BMF;
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
@@ -34,8 +34,6 @@ KHASH_MAP_INIT_STR(c2i, int)
 #define hdrln_free_char(p)
 	KLIST_INIT(hdrln, char*, hdrln_free_char)
 
-
-static int g_cmpkey = 0;
 
 static int strnum_cmp(const char *_a, const char *_b)
 {
@@ -74,7 +72,7 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-	if (g_cmpkey) {
+	if (cmpkey) {
 		int t;
 		if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
 		t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
@@ -1556,10 +1554,44 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 		case BMF:
 			key_a = bmfsort_core_key(a);
 			key_b = bmfsort_core_key(b);
+#if 0
+			if(key_a == key_b) {
+				assert(a->core.tid == b->core.tid);
+				assert(a->core.pos == b->core.pos);
+				assert(bam_is_r1(a) == bam_is_r1(b));
+				assert(bam_is_rev(a) == bam_is_rev(b));
+			}
+			if(bmfsort_mate_key(a) == bmfsort_mate_key(b)) {
+				assert(a->core.mtid == b->core.mtid);
+				assert(a->core.mpos == b->core.mpos);
+				assert(bam_is_mrev(a) == bam_is_mrev(b));
+			}
+#endif
 			return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
 		case UCS:
 			key_a = ucs_sort_core_key(a);
 			key_b = ucs_sort_core_key(b);
+#if 0
+			/*
+			if(key_a == key_b) {
+				su1 = bam_itag(a, "SU");
+				su2 = bam_itag(b, "SU");
+				t1 = (uint64_t)(a->core.tid + 1) << 32;
+				t2 = (uint64_t)(b->core.tid + 1) << 32;
+				LOG_INFO("Testing that the regular key works like it should (%lu, %lu). SU's: %i, %i\n", key_a, key_b, su1, su2);
+				assert(bam_is_rev(a) == bam_is_rev(b));
+				assert(bam_is_r1(a) == bam_is_r1(b));
+				assert(a->core.tid == b->core.tid);
+				assert(bam_itag(a, "SU") == bam_itag(b, "SU"));
+			}
+			if(ucs_sort_mate_key(a) == ucs_sort_mate_key(b)) {
+				LOG_INFO("Testing that the mate key works like it should (%lu, %lu).\n", key_a, key_b);
+				assert(a->core.mtid == b->core.mtid);
+				assert(bam_is_mrev(a) == bam_is_mrev(b));
+				assert(bam_itag(a, "MU") == bam_itag(b, "MU"));
+			}
+			*/
+#endif
 			return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
 	}
 	return 0; // This never happens.
@@ -1582,23 +1614,24 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 	uint64_t li;
 	int i;
 	samFile **fps = (samFile **)calloc(h->n_targets + 1, sizeof(samFile *));
-	char tmpbuf[200];
-	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
-	fps[0] = sam_open_format(tmpbuf, mode, fmt);
+	kstring_t ks = {0, 0, NULL};
+	ksprintf(&ks, "%s.split.unmapped.bam", split_prefix);
+	fps[0] = sam_open_format(ks.s, mode, fmt);
 	sam_hdr_write(fps[0], h);
 	for(i = 1; i < h->n_targets + 1;++i) {
-		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
-		fps[i] = sam_open_format(tmpbuf, mode, fmt);
-		if(!fps[i]) {
-			LOG_EXIT("Couldn't open file %s. Abort!\n", tmpbuf);
-		}
+		ks.l = 0;
+		ksprintf(&ks, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
+		if((fps[i] = sam_open_format(ks.s, mode, fmt)) == NULL)
+			LOG_EXIT("Couldn't open file %s. Abort!\n", ks.s);
 		sam_hdr_write(fps[i], h);
 	}
+	free(ks.s);
 
 	for(li = 0; li < l; ++li) sam_write1(fps[split_index(buf[li])], h, buf[li]);
 
 	for(i = 0; i < h->n_targets + 1;++i)
-		if(fps[i]) sam_close(fps[i]);
+		if(fps[i])
+			sam_close(fps[i]);
 	free(fps);
 }
 
@@ -1685,7 +1718,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core2(). This function is
   NOT thread safe.
  */
-int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
+int bam_sort_core_ext(const char *fn, const char *prefix,
 					  const char *fnout, const char *modeout,
 					  size_t _max_mem, int n_threads,
 					  const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
@@ -1699,7 +1732,6 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 	char **fns;
 
 	if (n_threads < 2) n_threads = 1;
-	g_cmpkey = cmpkey;
 	max_k = k = 0; mem = 0;
 	max_mem = _max_mem * n_threads;
 	buf = NULL;
@@ -1826,7 +1858,6 @@ int sort_main(int argc, char *argv[])
 	size_t max_mem = 768<<20; // 512MB
 	int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1, is_se = 0;
 	int split = 0;
-	int cmpkey = BMF;
 	char modeout[12];
 	char fnout[200] = "-";
 	char tmpprefix[200];
@@ -1844,9 +1875,18 @@ int sort_main(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh$?", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF;
-				  else if(strcmp(optarg, "pos") == 0) cmpkey = SAMTOOLS;
-				  else if(strcmp(optarg, "qname") == 0) cmpkey = QNAME;
-				  else if(strcmp(optarg, "ucs") == 0) cmpkey = UCS;
+				  else if(strcmp(optarg, "pos") == 0) {
+					  LOG_INFO("Pos chosen for cmpkey.\n");
+					  cmpkey = SAMTOOLS;
+				  }
+				  else if(strcmp(optarg, "qname") == 0) {
+					  LOG_INFO("Qname chosen for cmpkey.\n");
+					  cmpkey = QNAME;
+				  }
+				  else if(strcmp(optarg, "ucs") == 0) {
+					  LOG_INFO("Unclipped start position chosen for cmpkey.\n");
+					  cmpkey = UCS;
+				  }
 				  else {
 					  fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
 					  return sort_usage(stderr, EXIT_FAILURE);
@@ -1885,7 +1925,7 @@ int sort_main(int argc, char *argv[])
 	sam_open_mode(modeout+1, fnout, NULL);
 	if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-	if (bam_sort_core_ext(cmpkey, (nargs > 0)? argv[optind] : "-",
+	if (bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
 						  tmpprefix, fnout, modeout, max_mem, n_threads,
 						  &ga.in, &ga.out, split, is_se) < 0)
 		ret = EXIT_FAILURE;
