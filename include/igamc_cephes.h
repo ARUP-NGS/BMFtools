@@ -605,18 +605,7 @@ return( y );
 
 CONST static inline uint32_t pvalue_to_phred(double pvalue)
 {
-#if HIPREC
-	int offset = 0;
-	while(pvalue < 1e-300L && pvalue > 0) {
-#if !NDEBUG
-		fprintf(stderr, "pvalue too low. Increasing size (%g).\n", pvalue);
-#endif
-		offset += 3000, pvalue *= 1e300L;
-	}
-	return (uint32_t)(-10 * log10(pvalue) + 0.5) + offset; // Add 0.5 to round up
-#else
 	return pvalue > 0 ? (uint32_t)(-10 * log10(pvalue) + 0.5): MAX_PV; // Add 0.5 to round up
-#endif
 }
 
 // Converts a chi2 sum into a p value.

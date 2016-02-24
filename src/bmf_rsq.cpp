@@ -150,7 +150,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 */
 	bdata = bam_aux_get(b, "FM");
 	pdata = bam_aux_get(p, "FM");
-	if(!bdata || !pdata) {
+	if(UNLIKELY(!bdata || !pdata)) {
 		fprintf(stderr, "Required FM tag not found. Abort mission!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -282,7 +282,9 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 					}
 					settings->realign_pairs.erase(qname);
 				}
-			} else sam_write1(settings->out, settings->hdr, stack->a[i]);
+			} else {
+				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
 			bam_destroy1(stack->a[i]), stack->a[i] = NULL;
 		}
 	}
@@ -303,7 +305,6 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
-	int hd;
 	std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
 		if(a) {
 			return b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0;
@@ -314,27 +315,9 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 		// Returns 0 if comparing two nulls, and returns true that a NULL lt a valued name
 		// Compares strings otherwise.
 	});
-	for(unsigned i = 0; i < stack->n; ++i) {
-		for(unsigned j = i + 1; j < stack->n; ++j) {
-#if 0
-			if(settings->fn == &same_stack_ucs) {
-				assert(same_stack_ucs(stack->a[i], stack->a[j]));
-				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
-				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
-				assert(bam_itag(stack->a[i], "MU") == bam_itag(stack->a[j], "MU"));
-				assert(bam_itag(stack->a[i], "SU") == bam_itag(stack->a[j], "SU"));
-				assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
-				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
-			} else if(settings->fn == &same_stack_pos) {
-				assert(same_stack_pos(stack->a[i], stack->a[j]));
-				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
-				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
-				assert(stack->a[i]->core.pos == stack->a[i]->core.pos);
-				assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
-				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
-			}
-#endif
-			if((hd = hd_linear(stack->a[i], stack->a[j], settings->mmlim)) != 0) {
+	for(unsigned i = 0; i < stack->n; ++i)
+		for(unsigned j = i + 1; j < stack->n; ++j)
+			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
 				//if(!read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold) continue;
 				//LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
 				update_bam1(stack->a[j], stack->a[i]);
@@ -345,11 +328,9 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 				// Otherwise, I'll end up having memory mistakes.
 				// Besides, that read set will get merged into the later read in the set.
 			}
-		}
-	}
 }
 
-static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
+void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)

@@ -1161,7 +1161,7 @@ int err_fm_main(int argc, char *argv[])
 	char refcontig[200] = "";
 	char *bedpath = NULL;
 	int flag = 0, padding = -1, minMQ = 0, c;
-	uint32_t minPV;
+	uint32_t minPV = 0;
 	while ((c = getopt(argc, argv, "$:p:b:r:o:a:Fh?dP")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
