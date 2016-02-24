@@ -56,6 +56,7 @@ RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry
 
 ## Barcoding methods
 
+Essentially, the process is *molecular* demultiplexing.
 ####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.
 > bmftools sdmp
@@ -63,5 +64,7 @@ Requires read fastqs and an additional fastq containing barcodes.
 
 
 ####Inline (Loeb-like) barcoding
+> bmftools dmp
+(DeMultiPlex) 
 Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the chemistry is much more complicated.
 
