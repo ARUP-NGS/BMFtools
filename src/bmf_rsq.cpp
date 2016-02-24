@@ -11,7 +11,7 @@ typedef struct rsq_settings {
 	int is_se;
 	bam_hdr_t *hdr; // BAM header
 	stack_fn fn;
-	std::unordered_map<char *, std::string> realign_pairs;
+	std::unordered_map<std::string, std::string> realign_pairs;
 } rsq_settings_t;
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -58,6 +58,7 @@ inline void bam2ffq(bam1_t *b, FILE *fp)
 		}
 		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
+	seqbuf[b->core.l_qseq] = '\0';
 	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
@@ -271,25 +272,24 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 	for(unsigned i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			uint8_t *data;
-			char *qname;
+			std::string qname;
 			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
 				qname = bam_get_qname(stack->a[i]);
-				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end())
+				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
 					settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i]));
-				else {
+				} else {
+					assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
 					if(stack->a[i]->core.flag & BAM_FREAD2) {
 						fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
 						bam2ffq(stack->a[i], settings->fqh);
-					}
-					else {
+					} else {
 						bam2ffq(stack->a[i], settings->fqh);
 						fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
 					}
 					settings->realign_pairs.erase(qname);
 				}
 			} else sam_write1(settings->out, settings->hdr, stack->a[i]);
-			bam_destroy1(stack->a[i]);
-			stack->a[i] = NULL;
+			bam_destroy1(stack->a[i]), stack->a[i] = NULL;
 		}
 	}
 }
@@ -378,6 +378,7 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	write_stack(stack, settings);
 	stack->n = 1;
 	bam_destroy1(b);
+	LOG_DEBUG("Number of singletons left %lu...\n", settings->realign_pairs.size());
 	for(auto& pair: settings->realign_pairs) {
 		fprintf(settings->fqh, pair.second.c_str());
 	}
