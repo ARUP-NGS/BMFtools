@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include "include/igamc_cephes.h"
+#include "include/bam.h"
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
@@ -66,30 +67,6 @@ const char *bmf_header_lines[] =  {
 		"##INFO=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">",
 		"##INFO=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs combined into single observations at position.\">"
 };
-
-typedef struct {
-	samFile *fp;
-	hts_itr_t *iter;
-	bam_hdr_t *header;
-	vcfFile *vcf_fp;
-	vcfFile *vcf_ofp;
-	bcf_hdr_t *vcf_header;
-	khash_t(bed) *bed;
-	float minFR; // Minimum fraction of family members agreed on base
-	float minAF; // Minimum aligned fraction
-	int max_depth;
-	int minFM;
-	uint32_t minFA;
-	uint32_t minPV;
-	uint32_t minMQ;
-	int minCount;
-	int minDuplex;
-	int minOverlap;
-	int skip_improper;
-	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
-	uint32_t skip_flag; // Skip reads with any bits set to true
-} aux_t;
-
 
 extern void bed_destroy(void *);
 extern std::vector<khiter_t> make_sorted_keys(khash_t(bed) *h);

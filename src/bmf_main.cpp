@@ -3,18 +3,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "src/bmf_sort.h"
 #include "dlib/logging_util.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern int sort_main(int argc, char *argv[]);
-extern int sdmp_main(int argc, char *argv[]);
 extern int hash_dmp_main(int argc, char *argv[]);
+extern int sdmp_main(int argc, char *argv[]);
 extern int dmp_main(int argc, char *argv[]);
-#ifdef __cplusplus
-}
-#endif
 extern int rsq_main(int argc, char *argv[]);
 extern int vetter_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
@@ -41,6 +35,7 @@ static int bmftools_usage(int rc)
 					"cap:			 Modifies the quality string as function of family metadata.\n"
 					"target:			 Calculates on-target rate.\n"
 					"depth:			 Calculates depth of coverage over a set of bed intervals.\n"
+					"stack:			 A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
 			);
 	exit(rc);
 }

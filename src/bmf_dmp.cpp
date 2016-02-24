@@ -53,13 +53,11 @@ void make_outfname(marksplit_settings_t *settings)
 	}
 	if(has_period) {
 	settings->ffq_prefix = make_default_outfname(settings->input_r1_path, ".dmp.final");
-		fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
-				__func__, settings->ffq_prefix);
+		LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
 	} else {
 		settings->ffq_prefix = (char *)malloc((RANDSTR_SIZE + 1) * sizeof(char));
 		rand_string(settings->ffq_prefix, RANDSTR_SIZE);
-		fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
-				__func__, settings->ffq_prefix);
+		LOG_INFO("No output final prefix set. Selecting random output name ('%s').\n", settings->ffq_prefix);
 	}
 }
 
@@ -80,8 +78,8 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 {
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
-		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
+		LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",
+				params->infnames_r1[i], params->outfnames_r1[i]);
 		func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
 		if(settings->cleanup) {
 			kstring_t ks = {0, 0, NULL};
@@ -106,46 +104,6 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 }
 
 
-void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
-{
-	// Clear output files.
-	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(ks.s);
-	for(int i = 0; i < settings->n_handles; ++i) {
-		ks.l = 0;
-		// Clear files if present
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		CHECK_POPEN(ks.s);
-	}
-	free(ks.s);
-}
-
-void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
-{
-	// Clear output files.
-	kstring_t ks = {0, 0, NULL};
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(ks.s);
-	ks.l = 0;
-	ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-	CHECK_CALL(ks.s);
-	for(int i = 0; i < settings->n_handles; ++i) {
-		// Clear files if present
-		ks.l = 0;
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		FILE *g1_popen = popen(ks.s, "w");
-		ks.l = 0;
-		ksprintf(&ks, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-		FILE *g2_popen = popen(ks.s, "w");
-		if(pclose(g2_popen) || pclose(g1_popen)){
-			LOG_EXIT("Background system call failed.\n");
-		}
-	}
-	free(ks.s);
-}
-
-
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
 	kstring_t ks = {0, 0, NULL};
@@ -155,9 +113,8 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	ks.l = 0;
 	ksprintf(&ks, "/bin/cat ");
 	for(int i = 0; i < settings->n_handles; ++i) {
-		if(!isfile(params->outfnames_r1[i])) {
+		if(!isfile(params->outfnames_r1[i]))
 			LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
-		}
 		ksprintf(&ks, " %s", params->outfnames_r1[i]);
 	}
 	ksprintf(&ks, " > %s", ffq_r1);
@@ -168,18 +125,10 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
 {
-	if(settings->rescaler) {
-		for(int i = 0; i < arr_size; ++i) {
-			if(settings->rescaler[i] < 0) {
-				LOG_EXIT("Rescaler's got a negative number in pp_split_inline."
-						" %i. Index: %i.\n", settings->rescaler[i], i);
-			}
-			else if(settings->rescaler[i] == 0) {
-				LOG_EXIT("Rescaler's got a zero in pp_split_inline."
-						" %i. Index: %i.\n", settings->rescaler[i], i);
-			}
-		}
-	}
+	if(settings->rescaler)
+		for(int i = 0; i < arr_size; ++i)
+			if(settings->rescaler[i] <= 0)
+				LOG_EXIT("Invalid value in rescaler %i at index %i.\n", settings->rescaler[i], i);
 }
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
@@ -203,13 +152,6 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	bash_system(final.s);
 	free(str1.s), free(str2.s);
 	free(final.s);
-}
-
-
-void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
-{
-	settings->is_se ? call_clowder_se(settings, params, ffq_r1):
-			call_clowder_pe(settings, params, ffq_r1, ffq_r2);
 }
 
 void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
@@ -330,7 +272,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
 	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-	assert(bin < settings->n_handles);
+	assert(bin < (uint64_t)settings->n_handles);
 	if(switch_reads) {
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
@@ -403,7 +345,6 @@ int dmp_main(int argc, char *argv[])
 	settings.max_blen = -1;
 	settings.gzip_compression = 1;
 	settings.cleanup = 1;
-	settings.panthera = 1;
 	sprintf(settings.mode, "wT");
 
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
@@ -447,9 +388,8 @@ int dmp_main(int argc, char *argv[])
 		// Number of file handles
 		settings.n_handles = ipow(4, settings.n_nucs);
 		if(settings.n_handles * 2 > get_fileno_limit()) {
+			LOG_INFO("Increasing nofile limit from %i to %i.\n", get_fileno_limit(), settings.n_handles * 2);
 			increase_nofile_limit(settings.n_handles * 2);
-			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
-					settings.n_handles * 2);
 		}
 		// Handle filenames
 		settings.input_r1_path = strdup(argv[optind]);
@@ -463,55 +403,41 @@ int dmp_main(int argc, char *argv[])
 		// Number of file handles
 		settings.n_handles = ipow(4, settings.n_nucs);
 		if(settings.n_handles * 4 > get_fileno_limit()) {
+			LOG_INFO("Increasing nofile limit from %i to %i.\n", get_fileno_limit(), settings.n_handles * 4);
 			increase_nofile_limit(settings.n_handles * 4);
-			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
-					settings.n_handles * 4);
 		}
 		// Handle filenames
 		settings.input_r1_path = strdup(argv[optind]);
 		settings.input_r2_path = strdup(argv[optind + 1]);
 	}
 	// Required parameters
-	if(settings.ffq_prefix && !settings.run_hash_dmp) {
-		fprintf(stderr, "[E:%s] Final fastq prefix option provided but run_hash_dmp not selected."
-				"Either eliminate the -f flag or add the -d flag.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
+	if(settings.ffq_prefix && !settings.run_hash_dmp)
+		LOG_EXIT("Final fastq prefix option provided but run_hash_dmp not selected."
+				"Either eliminate the -f flag or add the -d flag.\n");
 
 	// Handle number of threads
 	omp_set_num_threads(settings.threads);
 
 	// Handle homing sequence
-	if(!settings.homing_sequence) {
-		fprintf(stderr, "[E:%s] Homing sequence not provided. Required.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
-#endif
+	if(!settings.homing_sequence)
+		LOG_EXIT("Homing sequence not provided. Required.\n");
 	clean_homing_sequence(settings.homing_sequence);
 
 	// Handle barcode length
-	if(!settings.blen) {
-		fprintf(stderr, "[E:%s] Barcode length not provided. Required. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
+	if(!settings.blen)
+		LOG_EXIT("Barcode length not provided. Required. Abort!\n");
 	// Handle the offset parameter. If false, blen doesn't change.
 	if(settings.is_se) {
 		settings.blen -= settings.offset;
-		if(settings.max_blen > 0 && settings.max_blen < settings.blen) {
-			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
-					__func__, settings.max_blen, settings.blen / 2);
-			exit(EXIT_FAILURE);
-		}
+		if(settings.max_blen > 0 && settings.max_blen < settings.blen)
+			LOG_EXIT("Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					settings.max_blen, settings.blen / 2);
 		if(settings.max_blen < 0) settings.max_blen = settings.blen;
 	} else {
 		settings.blen = (settings.blen - settings.offset) * 2;
-		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
-			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
-					__func__, settings.max_blen, settings.blen / 2);
-			exit(EXIT_FAILURE);
-		}
+		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen)
+			LOG_EXIT("Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					settings.max_blen, settings.blen / 2);
 		settings.blen1_2 = settings.blen / 2;
 		if(settings.max_blen < 0) settings.max_blen = settings.blen1_2;
 	}
@@ -520,8 +446,8 @@ int dmp_main(int argc, char *argv[])
 		// If tmp_basename unset, create a random temporary file prefix.
 		settings.tmp_basename = (char *)malloc(21 * sizeof(char));
 		rand_string(settings.tmp_basename, 20);
-		fprintf(stderr, "[%s] Temporary basename not provided. Defaulting to random: %s.\n",
-				__func__, settings.tmp_basename);
+		LOG_INFO("Temporary basename not provided. Defaulting to random: %s.\n",
+				settings.tmp_basename);
 	}
 
 	// Run core
@@ -531,13 +457,9 @@ int dmp_main(int argc, char *argv[])
 	char ffq_r1[500];
 	char ffq_r2[500];
 	if(!settings.run_hash_dmp) {
-		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
+		LOG_INFO("mark/split complete.\n");
 		goto cleanup;
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
-				__func__);
-#endif
 	if(!settings.ffq_prefix) make_outfname(&settings);
 	params = init_splitterhash(&settings, splitter);
 	// Run cores.
@@ -549,16 +471,13 @@ int dmp_main(int argc, char *argv[])
 	// Cat temporary files together.
 	if(settings.to_stdout)
 		call_stdout(&settings, params, ffq_r1, ffq_r2);
-	else if(settings.panthera)
-		call_panthera(&settings, params, ffq_r1, ffq_r2);
-	else
-		call_clowder(&settings, params, ffq_r1, ffq_r2);
+	else call_panthera(&settings, params, ffq_r1, ffq_r2);
 	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
 	cleanup:
 	free_marksplit_settings(settings);
 	splitter_destroy(splitter);
-	fprintf(stderr, "[%s] Successfully completed bmftools dmp!\n", __func__);
+	LOG_INFO("Successfully completed bmftools dmp!\n");
 	return EXIT_SUCCESS;
 }
 

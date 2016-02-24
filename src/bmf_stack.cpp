@@ -11,33 +11,13 @@ namespace {
 	};
 }
 
-typedef struct {
-	samFile *fp;
-	hts_itr_t *iter;
-	bam_hdr_t *header;
-	vcfFile *vcf_fp;
-	vcfFile *vcf_ofp;
-	bcf_hdr_t *vcf_header;
-	khash_t(bed) *bed;
-	float minFR; // Minimum fraction of family members agreed on base
-	float minAF; // Minimum aligned fraction
-	int max_depth;
-	int minFM;
-	uint32_t minFA;
-	uint32_t minPV;
-	uint32_t minMQ;
-	int minCount;
-	int minDuplex;
-	int minOverlap;
-	int skip_improper;
-	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
-	uint32_t skip_flag; // Skip reads with any bits set to true
-} aux_t;
+
+
 
 void stack_usage(int retcode)
 {
 	const char *buf =
-			"Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
+			"Usage:\nbmftools stack -o <out.vcf [stdout]> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
 			"-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
@@ -55,113 +35,184 @@ void stack_usage(int retcode)
 	exit(retcode);
 }
 
-static int read_bam(void *data, bam1_t *b)
+
+static int read_bam(stack_aux_t *data, bam1_t *b)
 {
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
 	int ret;
 	for(;;)
 	{
-		if(!aux->iter) LOG_EXIT("Need to access bam with index.\n");
-		ret = sam_itr_next(aux->fp, aux->iter, b);
+		if(!data->iter) LOG_EXIT("Need to access bam with index.\n");
+		ret = sam_itr_next(data->fp, data->iter, b);
 		if ( ret<0 ) break;
 		// Skip unmapped, secondary, qcfail, duplicates.
 		// Skip improper if option set
 		// Skip MQ < minMQ
 		// Skip FM < minFM
 		// Skip AF < minAF
+		if (b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP))
+			continue;
+		/*
 		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-			(aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-			(int)b->core.qual < aux->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < aux->minFM) ||
-			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
+			( ||
+			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (data->minAF && bam_aux2f(bam_aux_get(b, "AF")) < data->minAF))
 				continue;
+		*/
 		break;
 	}
 	return ret;
 }
 
-void process_pileup(const bam_pileup1_t *plp, int n_plp) {
-	int khr, s, s2;
-	khiter_t k;
-	uint32_t *FA1, *PV1, *FA2, *PV2;
+void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, stack_aux_t *aux) {
 	char *qname;
-	uint8_t *seq, *seq2, *tmptag, *drdata;
 	// Build overlap hash
-	khash_t(names) *hash = kh_init(names);
-	const int sk = 1;
-	// Set the r1/r2 flags for the reads to ignore to 0
-	// Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-	for(int i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		// Skip any reads failed for FA < minFA or FR < minFR
-		qname = bam_get_qname(plp[i].b);
-		k = kh_get(names, hash, qname);
-		if(k == kh_end(hash)) {
-			k = kh_put(names, hash, qname, &khr);
-			kh_val(hash, k) = &plp[i];
-		} else {
-			bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
-			bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-			if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == NULL) {
-				uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
-				const int FM_sum = bam_aux2i(FM1) + bam_aux2i(bam_aux_get(plp[i].b, "FM"));
-				bam_aux_del(kh_val(hash, k)->b, FM1);
-				bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
-				bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
-				bam_aux_append(plp[i].b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
-			}
-			PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
-			FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
-			seq = bam_get_seq(kh_val(hash, k)->b);
-			s = bam_seqi(seq, kh_val(hash, k)->qpos);
-			PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
-			FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
-			seq2 = bam_get_seq(plp[i].b);
-			s2 = bam_seqi(seq2, plp[i].qpos);
-			const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
-			const int32_t arr_qpos2 = arr_qpos(&plp[i]);
-			if(s == s2) {
-				PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
-				FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
-			} else if(s == HTS_N) {
-				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
-				PV1[arr_qpos1] = PV2[arr_qpos2];
-				FA1[arr_qpos1] = FA2[arr_qpos2];
-			} else if(s2 != HTS_N) {
-				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
-				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
-				PV1[arr_qpos1] = 0u;
-				FA1[arr_qpos1] = 0u;
-			}
+	std::unordered_map<char *, BMF::UniqueObservation> obs;
+	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	int flag_failed = 0;
+	int af_failed = 0;
+	int fa_failed = 0;
+	int fm_failed = 0;
+	int fp_failed = 0;
+	int fr_failed = 0;
+	int mq_failed = 0;
+	int improper_count = 0;
+	// Capturing found  by reference to avoid making unneeded temporary variables.
+	std::for_each(plp, plp + n_plp, [&](const bam_pileup1_t& plp) {
+		if(plp.is_del || plp.is_refskip) return;
+		if(aux->skip_flag & plp.b->core.flag) {
+			++flag_failed;
+			return;
 		}
-	}
-	for(int i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip) continue;
-		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
-			continue;
+		if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
+			++improper_count;
+			if(aux->skip_improper) return;
 		}
+		// If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
+		if(plp.b->core.qual < aux->minMQ) {
+			++mq_failed; return;
+		}
+		const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
+		if(FM < aux->minFM) {
+			++fm_failed; return;
+		}
+		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+			++fp_failed; return;
+		}
+		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->minAF) {
+			++af_failed; return;
+		}
+		const int qpos = arr_qpos(&plp);
+		const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
+		if(FA < aux->minFA) {
+			++fa_failed; return;
+		}
+		if((float)FA / FM < aux->minFR) {
+			++fr_failed; return;
+		}
+		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
+		qname = bam_get_qname(plp.b);
+		if((found = obs.find(qname)) == obs.end())
+			obs[qname] = BMF::UniqueObservation(plp);
+		else found->second.add_obs(plp);
+	});
+	// Build vcfline struct
+	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos);
+	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
+	bcf_update_info_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FP_FAILED", (void *)&fp_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "FM_FAILED", (void *)&fm_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "MQ_FAILED", (void *)&mq_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "AF_FAILED", (void *)&af_failed, 1);
+	bcf_update_info_int32(aux->vh, ret, "IMPROPER", (void *)&improper_count, 1);
+	bcf_write(aux->ofp, aux->vh, ret);
+	bcf_clear(ret);
+}
 
-		seq = bam_get_seq(plp[i].b);
-		FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
-		PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
-		bcf1_t *vrec = NULL;
-		int j = 0;
-		if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
-			const int32_t arr_qpos1 = arr_qpos(&plp[i]);
-			if(0) {
-				continue;
-			}
-			if((drdata = bam_aux_get(plp[i].b, "DR")) != NULL && bam_aux2i(drdata)) {
-			}
-			if((tmptag = bam_aux_get(plp[i].b, "KR")) != NULL) {
-				bam_aux_del(plp[i].b, tmptag);
+int stack_core(stack_aux_t *aux)
+{
+	bam_plp_t pileup = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux);
+	const bam_pileup1_t *stack;
+	bam_plp_set_maxcnt(pileup, aux->max_depth);
+	std::vector<khiter_t> sorted_keys = make_sorted_keys(aux->bed);
+	int tid, pos, n_plp;
+	bcf1_t *v = bcf_init1();
+	for(auto& key: sorted_keys) {
+		for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
+			if(aux->iter) hts_itr_destroy(aux->iter);
+			const int start = get_start(kh_val(aux->bed, key).intervals[i]);
+			const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
+			const int bamtid = (int)kh_key(aux->bed, key);
+			aux->iter = bam_itr_queryi(aux->bam_index, kh_key(aux->bed, key), start, stop);
+			while((stack = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0) {
+				if(pos < start && tid == bamtid) continue;
+				if(pos >= stop) break;
+				process_pileup(v, stack, n_plp, pos, tid, aux);
 			}
 		}
 	}
-	for(int i = 0; i < n_plp; ++i)
-		if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
-	kh_destroy(names, hash);
+	bcf_destroy(v);
+	return 0;
 }
 
 int stack_main(int argc, char *argv[]) {
-	return 0;
+	int c;
+	unsigned padding = (unsigned)-1;
+	stack_aux_t aux = stack_aux_t();
+	char *outvcf = NULL, *refpath = NULL;
+	std::string bedpath = "";
+	int output_bcf = 0;
+	if(argc < 2) stack_usage(EXIT_FAILURE);
+	while ((c = getopt(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
+		switch (c) {
+		case 'B': output_bcf = 1; break;
+		case 'a': aux.minFA = atoi(optarg); break;
+		case 'c': aux.minCount = atoi(optarg); break;
+		case 'D': aux.minDuplex = atoi(optarg); break;
+		case 's': aux.minFM = atoi(optarg); break;
+		case 'm': aux.minMQ = atoi(optarg); break;
+		case 'v': aux.minPV = atoi(optarg); break;
+		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
+		case 'S': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
+		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
+		case 'R': refpath = optarg; break;
+		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
+		case 'P': aux.skip_improper = 1; break;
+		case 'p': padding = atoi(optarg); break;
+		case 'd': aux.max_depth = atoi(optarg); break;
+		case 'f': aux.minFR = (float)atof(optarg); break;
+		case 'b': bedpath = optarg; break;
+		case 'o': outvcf = optarg; break;
+		case 'O': aux.minOverlap = atoi(optarg); break;
+		//case 'V': aux.vet_all = 1; break;
+		case 'h': case '?': stack_usage(EXIT_SUCCESS);
+		}
+	}
+	if(optind >= argc) LOG_EXIT("Insufficient arguments. Input bam required!\n");
+	if(padding < 0) {
+		LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
+		padding = DEFAULT_PADDING;
+	}
+	if(!refpath) {
+		LOG_EXIT("refpath required. Abort!\n");
+	}
+	aux.fai = fai_load(refpath);
+	if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
+	aux.fp = sam_open(argv[optind], "r");
+	aux.bh = sam_hdr_read(aux.fp);
+	if(!aux.fp || !aux.bh) {
+		LOG_EXIT("Could not open input files. Abort!\n");
+	}
+	aux.bam_index = bam_index_load(aux.fp->fn);
+	// TODO: Make BCF header
+	aux.vh = bcf_hdr_init(output_bcf ? "wb": "w");
+	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.bh, padding): build_ref_hash(aux.bh);
+	for(auto line: vcf_header_lines)
+		if(bcf_hdr_append(aux.vh, line))
+			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+	// Add lines to the header for the bed file?
+	if(!outvcf)
+		outvcf = (char *)"-";
+	aux.ofp = vcf_open(outvcf, output_bcf ? "wb": "w");
+	bcf_hdr_write(aux.ofp, aux.vh);
+	return stack_core(&aux);
 }

@@ -35,23 +35,6 @@ bmftools <--help/-h>
 bmftools <subcommand> <-h>
 ```
 
-## Dependencies
-
-cutadapt is required for adapter trimming.
-
-pigz is required for compression/decompression
-
-### Required external tools:
-
-#### Utilities set
-samtools >= 1.2
-
-#### Aligners
-
-bwa >= 0.7.10 (mem, aln, bwasw)
-
-#### Adapter Trimming
-Cutadapt >= 1.7
 
 ## BMF Tags
 
@@ -71,28 +54,17 @@ NF | Mean number of differences between reads and consensus per read in family |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
 
-## Read Pair Merging Tags
-
-These are only used for merging read pairs.
-
-Tag | Content | Format |
-:----:|:-----|:-----:|
-DG | Discordant positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
-DR | Discordant read positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
-MA | Indices for read positions which agreed during merging. | String. Regex: [0-9,]+ |
-mp | Original Mate Position | Integer |
-om | Original Mapping Quality | Integer |
-op | Original Position | Integer |
-ot | Original Template Langth | Integer |
-PM | Indices for read positions which have been merged | String. Regex: [0-9,]+ |
-
 ## Barcoding methods
 
-####i5/i7 barcoding, nicknamed 'Shades'
-
+Essentially, the process is *molecular* demultiplexing.
+####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.
-Faster than using a homing sequence-specified barcode (informatically). More issues with barcode rescues and errors occurring in the auxiliary fastq. Less complicated sample prep.
+> bmftools sdmp
+(Secondary-index DeMultiPlex)
+
 
 ####Inline (Loeb-like) barcoding
+> bmftools dmp
+(DeMultiPlex) 
+Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the chemistry is much more complicated.
 
-Barcodes are inline in the start of each read. This information is removed, added to a fastq comment, and then used in final hashmap-powered molecular demultiplexing.

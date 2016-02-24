@@ -206,7 +206,6 @@ int sdmp_main(int argc, char *argv[])
 	int c;
 	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?$&")) > -1) {
 		switch(c) {
-			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'i': settings.index_fq_path = strdup(optarg); break;
@@ -298,10 +297,7 @@ int sdmp_main(int argc, char *argv[])
 	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq": "%s.R2.fq.gz", settings.ffq_prefix);
 	if(settings.to_stdout)
 		call_stdout(&settings, params, ffq_r1, ffq_r2);
-	else if(settings.panthera)
-		call_panthera(&settings, params, ffq_r1, ffq_r2);
-	else
-		call_clowder(&settings, params, ffq_r1, ffq_r2);
+	else call_panthera(&settings, params, ffq_r1, ffq_r2);
 	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);

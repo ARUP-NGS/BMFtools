@@ -21,10 +21,6 @@
 		}\
 		cond_free(settings.rescaler)\
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * @func rescale_qscore
  * Returns a rescaled qscore using readnumber, qscore, cycle, base call, and an associated rescaling array.
@@ -207,9 +203,5 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 	free(buffer);
 	return ret;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // ARRAY_PARSER_H

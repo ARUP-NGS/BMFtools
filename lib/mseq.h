@@ -40,11 +40,6 @@ typedef struct tmp_mseq {
 KSEQ_INIT(gzFile, gzread)
 #endif
 
-// Functions
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 CONST static inline char *mem_view(char *comment)
 {
@@ -168,8 +163,5 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 
 tmp_mseq_t *init_tm_ptr(int readlen, int blen);
 void tm_destroy(tmp_mseq_t *var);
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* MSEQ_H */

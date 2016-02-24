@@ -3,11 +3,11 @@
 #include <assert.h>
 
 #include "lib/mseq.h"
+#include "lib/kingfisher.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 #include "include/uthash.h"
-#include "lib/kingfisher.h"
 #ifdef __cplusplus
 }
 #endif
@@ -15,16 +15,10 @@ extern "C" {
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
 void hash_dmp_core(char *infname, char *outfname, int level);
 int hash_dmp_main(int argc, char *argv[]);
-#ifdef __cplusplus
-extern "C" {
-#endif
-	extern void splitterhash_destroy(splitterhash_params_t *params);
-	extern splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-	void stranded_hash_dmp_core(char *infname, char *outfname, int level);
-	tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
-#ifdef __cplusplus
-}
-#endif
+void splitterhash_destroy(splitterhash_params_t *params);
+splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+void stranded_hash_dmp_core(char *infname, char *outfname, int level);
+tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
 typedef struct HashKing {
 	UT_hash_handle hh;

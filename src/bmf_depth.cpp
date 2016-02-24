@@ -108,10 +108,6 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
 		fputc('\n', fp);
 	}
 }
-int u64cmp(const void *a, const void *b)
-{
-	return *((const uint64_t *)a) - *((const uint64_t *)b);
-}
 
 double u64_stdev(uint64_t *arr, size_t l, double mean)
 {
@@ -268,7 +264,8 @@ int depth_main(int argc, char *argv[])
 		int tid, start, stop, pos, region_len, arr_ind;
 		double raw_mean, dmp_mean, raw_stdev, dmp_stdev;
 		bam_mplp_t mplp;
-		uint64_t *raw_sort_array, *dmp_sort_array;
+		std::vector<uint64_t> dmp_sort_array;
+		std::vector<uint64_t> raw_sort_array;
 
 		for (p = q = str.s; *p && *p != '\t'; ++p);
 		if (*p != '\t') goto bed_error;
@@ -322,17 +319,6 @@ int depth_main(int argc, char *argv[])
 			}
 		}
 		/*
-		for(i = 0; i < n; ++i) {
-			fprintf(stderr, "Sample: %s. raw depths: ", argv[i + optind]);
-			for(int k = 0; k < region_len; ++k)
-				fprintf(stderr, ",%lu", aux[i]->raw_counts[k]);
-			fprintf(stderr, "\tdmp depths: ");
-			for(int k = 0; k < region_len; ++k)
-				fprintf(stderr, ",%lu", aux[i]->dmp_counts[k]);
-			fputc('\n', stderr);
-		}
-		*/
-		/*
 		 * At this point, the arrays have counts for depth
 		 * for each position in the region.
 		 * C. Get quartiles.
@@ -340,29 +326,27 @@ int depth_main(int argc, char *argv[])
 		 */
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
-		raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
-		dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
+		dmp_sort_array = std::vector<uint64_t>(region_len);
+		raw_sort_array = std::vector<uint64_t>(region_len);
 		for(i = 0; i < n; ++i) {
-			memcpy(raw_sort_array, aux[i]->raw_counts, region_len * sizeof(uint64_t));
-			qsort(raw_sort_array, region_len, sizeof(uint64_t), &u64cmp);
-			memcpy(dmp_sort_array, aux[i]->dmp_counts, region_len * sizeof(uint64_t));
-			qsort(dmp_sort_array, region_len, sizeof(uint64_t), &u64cmp);
+			memcpy(&raw_sort_array[0], aux[i]->raw_counts, region_len * sizeof(uint64_t));
+			std::sort(raw_sort_array.begin(), raw_sort_array.end());
+			memcpy(&dmp_sort_array[0], aux[i]->dmp_counts, region_len * sizeof(uint64_t));
+			std::sort(dmp_sort_array.begin(), dmp_sort_array.end());
 			raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
-			raw_mean = u64_mean(aux[i]->raw_counts, region_len);
 			raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
-			dmp_mean = u64_mean(aux[i]->dmp_counts, region_len);
+			dmp_mean = (double)std::accumulate(aux[i]->dmp_counts, aux[i]->dmp_counts + region_len, 0) / region_len;
 			dmp_stdev = u64_stdev(aux[i]->dmp_counts, region_len, dmp_mean);
 			kputc('\t', &str);
 			kputl(counts[i], &str);
 			ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
-			write_quantiles(&str, dmp_sort_array, region_len, n_quantiles);
+			write_quantiles(&str, &dmp_sort_array[0], region_len, n_quantiles);
 			kputc('|', &str);
 			kputl((long)(raw_mean * region_len + 0.5), &str); // Total counts
 			ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", raw_mean, raw_stdev, raw_stdev / raw_mean);
-			write_quantiles(&str, raw_sort_array, region_len, n_quantiles);
+			write_quantiles(&str, &raw_sort_array[0], region_len, n_quantiles);
 			kputc('\t', &str);
 		}
-		free(raw_sort_array); free(dmp_sort_array);
 		puts(str.s);
 		bam_mplp_destroy(mplp);
 		++line_num;
