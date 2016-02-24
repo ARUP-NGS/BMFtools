@@ -195,7 +195,6 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
 
 	//LOG_DEBUG("RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", RV, s->allrc_sum, s->realrc_sum);
-
 	if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
 		s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
 	else ++kh_val(s->fm, s->ki);

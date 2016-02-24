@@ -317,11 +317,24 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 	});
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
-#if !NDEBUG
+#if 0
 			if(settings->fn == &same_stack_ucs) {
-				LOG_DEBUG("Testing stuffs.\n");
-				assert(bam_aux2i(bam_aux_get(stack->a[i], "SU")) == bam_aux2i(bam_aux_get(stack->a[j], "SU")));
-				assert(bam_aux2i(bam_aux_get(stack->a[i], "MU")) == bam_aux2i(bam_aux_get(stack->a[j], "MU")));
+				LOG_INFO("Testin' ucs stuff.\n");
+				assert(same_stack_ucs(stack->a[i], stack->a[j]));
+				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
+				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
+				assert(bam_itag(stack->a[i], "MU") == bam_itag(stack->a[j], "MU"));
+				assert(bam_itag(stack->a[i], "SU") == bam_itag(stack->a[j], "SU"));
+				assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
+				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
+			} else if(settings->fn == &same_stack_pos) {
+				LOG_INFO("Testin' pos stuff.\n");
+				assert(same_stack_pos(stack->a[i], stack->a[j]));
+				assert(stack->a[i]->core.tid == stack->a[i]->core.tid);
+				assert(stack->a[i]->core.mtid == stack->a[i]->core.mtid);
+				assert(stack->a[i]->core.pos == stack->a[i]->core.pos);
+				assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
+				assert(bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]));
 			}
 #endif
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
@@ -423,7 +436,10 @@ int rsq_main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
 		switch (c) {
-		case 'u': settings.cmpkey = UNCLIPPED; break;
+		case 'u':
+			settings.cmpkey = UNCLIPPED;
+			LOG_INFO("Unclipped start position chosen for cmpkey.\n");
+			break;
 		case 't': settings.mmlim = atoi(optarg); break;
 		case 'f': fqname = optarg; break;
 		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;

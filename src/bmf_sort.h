@@ -12,6 +12,7 @@
 #include "dlib/io_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/sort_util.h"
+#include "dlib/bam_util.h"
 #include "include/bam.h"
 #include "include/sam_opts.h"
 
