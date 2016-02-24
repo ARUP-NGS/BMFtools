@@ -108,6 +108,7 @@ std::string bam2cppstr(bam1_t *b)
 		}
 		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
+	seqbuf[b->core.l_qseq] = '\0';
 	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
@@ -120,11 +121,25 @@ std::string bam2cppstr(bam1_t *b)
 			seqbuf[i] = t;
 		}
 	}
+	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks); kputc('\n', &ks);
 	free(seqbuf);
 	std::string ret(ks.s);
 	free(ks.s);
 	return ret;
+}
+
+inline int switch_names(char *n1, char *n2) {
+	for(;*n1;++n1, ++n2) {
+		if(*n1 != *n2) {
+			if(*n1 == 'N')
+				return 1;
+			if(*n2 == 'N')
+				return 0;
+			return *n1 < *n2;
+		}
+	}
+	return 0; // This never happens.
 }
 
 static inline void update_bam1(bam1_t *p, bam1_t *b)
@@ -146,7 +161,10 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	}
 	int bFM = bam_aux2i(bdata);
 	int pFM = bam_aux2i(pdata);
-	if(pFM < bFM) memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+	char *pname = bam_get_qname(p), *bname = bam_get_qname(b);
+	if(switch_names(pname, bname)) {
+		memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+	}
 	pFM += bFM;
 	bam_aux_del(p, pdata);
 	bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
@@ -291,8 +309,21 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
+	std::sort(stack->a, stack->a + stack->n, [](const bam1_t *a, const bam1_t *b) {
+		if(a) return b ? strcmp(bam_get_qname(a), bam_get_qname(b)) < 0: 0;
+		else return b ? 1: 0;
+		// Returns 0 if comparing two nulls, and returns true that a NULL lt a valued name
+		// Compares strings otherwise.
+	});
 	for(unsigned i = 0; i < stack->n; ++i) {
 		for(unsigned j = i + 1; j < stack->n; ++j) {
+#if !NDEBUG
+			if(settings->fn == &same_stack_ucs) {
+				LOG_DEBUG("Testing stuffs.\n");
+				assert(bam_aux2i(bam_aux_get(stack->a[i], "SU")) == bam_aux2i(bam_aux_get(stack->a[j], "SU")));
+				assert(bam_aux2i(bam_aux_get(stack->a[i], "MU")) == bam_aux2i(bam_aux_get(stack->a[j], "MU")));
+			}
+#endif
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
 					read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
 				update_bam1(stack->a[j], stack->a[i]);
@@ -323,22 +354,20 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 			sam_write1(settings->out, settings->hdr, b);
 			continue;
 		}
-		if(settings->fn(b, *stack->a)) {
-			stack_insert(stack, b);
-			continue;
-		} else {
+		if(settings->fn(b, *stack->a) == 0) {
 			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 			write_stack(stack, settings);
 			stack->n = 1;
 			stack->a[0] = bam_dup1(b);
-		}
+		} else stack_insert(stack, b);
 	}
 	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 	write_stack(stack, settings);
 	stack->n = 1;
 	bam_destroy1(b);
-	for(auto& pair: settings->realign_pairs)
+	for(auto& pair: settings->realign_pairs) {
 		fprintf(settings->fqh, pair.second.c_str());
+	}
 }
 
 void bam_rsq_bookends(rsq_settings_t *settings)
