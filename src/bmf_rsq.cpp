@@ -16,6 +16,23 @@ typedef struct rsq_settings {
 static const stack_fn fns[4] = {&same_stack_pos, &same_stack_pos_se,
 								&same_stack_ucs, &same_stack_ucs_se};
 
+using namespace std::literals;
+std::string get_SO(bam_hdr_t *hdr) {
+	char *end, *so_start;
+	std::string ret;
+	if (strncmp(hdr->text, "@HD", 3) != 0) goto NA;
+	if ((end = strchr(hdr->text, '\n')) == 0) goto NA;
+	*end = '\0';
+
+	if((so_start = strstr(hdr->text, "SO:")) == NULL) goto NA;
+	ret = std::string(so_start + strlen("SO:"));
+	*end = '\n';
+	return ret;
+
+	NA:
+	LOG_WARNING("Sort order not found. Returning N/A.\n");
+	return "SO:"s;
+}
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
@@ -333,9 +350,16 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 			}
 }
 
+static const char *sos[2] = {"positional_rescue", "unclipped_rescue"};
+
 void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
 	const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
+	std::string SO = get_SO(settings->hdr);
+	if(strcmp(SO.c_str(), sos[settings->cmpkey])) {
+		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n");
+	}
+	SO.clear();
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
 		LOG_EXIT("Failed to read first record in bam file. Abort!\n");

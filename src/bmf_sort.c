@@ -1643,8 +1643,7 @@ static void write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf
 	if (fp == NULL) return;
 	sam_hdr_write(fp, h);
 	if (n_threads > 1) hts_set_threads(fp, n_threads);
-	for (i = 0; i < l; ++i)
-		sam_write1(fp, h, buf[i]);
+	for (i = 0; i < l; ++i) sam_write1(fp, h, buf[i]);
 	sam_close(fp);
 }
 
@@ -1745,8 +1744,13 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
 		fprintf(stderr, "[%s] failed to read header for '%s'\n", __func__, fn);
 		goto err;
 	}
-	if (cmpkey) change_SO(header, "queryname");
-	else change_SO(header, "coordinate");
+	switch(cmpkey) {
+		case SAMTOOLS: change_SO(header, "coordinate"); break;
+		case QNAME: change_SO(header, "queryname"); break;
+		case BMF: change_SO(header, "positional_rescue"); break;
+		case UCS: change_SO(header, "unclipped_rescue"); break;
+		default: LOG_EXIT("Invalid (and impossible) cmpkey. Abort!\n");
+	}
 	// write sub files
 	count = 0;
 	for (;;) {
