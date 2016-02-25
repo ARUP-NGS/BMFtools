@@ -62,6 +62,112 @@ static int read_bam(BamHandle *data, bam1_t *b)
 	return ret;
 }
 
+void process_matched_pileups(stack_aux_t *aux, bcf1_t *ret,
+						int tn_plp, int tpos, int ttid,
+						int nn_plp, int npos, int ntid) {
+	char *qname;
+	// Build overlap hash
+	std::unordered_map<char *, BMF::UniqueObservation> tobs, nobs;
+	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	int flag_failed[2] = {0};
+	int af_failed[2] = {0};
+	int fa_failed[2] = {0};
+	int fm_failed[2] = {0};
+	int fp_failed[2] = {0};
+	int fr_failed[2] = {0};
+	int mq_failed[2] = {0};
+	int improper_count[2] = {0};
+	// Capturing found  by reference to avoid making unneeded temporary variables.
+	std::for_each(aux->tumor->pileups, aux->tumor->pileups + tn_plp, [&](const bam_pileup1_t& plp) {
+		if(plp.is_del || plp.is_refskip) return;
+		if(aux->conf.skip_flag & plp.b->core.flag) {
+			++flag_failed[0];
+			return;
+		}
+		if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
+			++improper_count[0];
+			if(aux->conf.skip_improper) return;
+		}
+		// If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
+		if(plp.b->core.qual < aux->conf.minMQ) {
+			++mq_failed[0]; return;
+		}
+		const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
+		if(FM < aux->conf.minFM) {
+			++fm_failed[0]; return;
+		}
+		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+			++fp_failed[0]; return;
+		}
+		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
+			++af_failed[0]; return;
+		}
+		const int qpos = arr_qpos(&plp);
+		const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
+		if(FA < aux->conf.minFA) {
+			++fa_failed[0]; return;
+		}
+		if((float)FA / FM < aux->conf.minFR) {
+			++fr_failed[0]; return;
+		}
+		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
+		qname = bam_get_qname(plp.b);
+		if((found = tobs.find(qname)) == tobs.end())
+			tobs[qname] = BMF::UniqueObservation(plp);
+		else found->second.add_obs(plp);
+	});
+	std::for_each(aux->normal->pileups, aux->normal->pileups + tn_plp, [&](const bam_pileup1_t& plp) {
+		if(plp.is_del || plp.is_refskip) return;
+		if(aux->conf.skip_flag & plp.b->core.flag) {
+			++flag_failed[1];
+			return;
+		}
+		if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
+			++improper_count[1];
+			if(aux->conf.skip_improper) return;
+		}
+		// If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
+		if(plp.b->core.qual < aux->conf.minMQ) {
+			++mq_failed[1]; return;
+		}
+		const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
+		if(FM < aux->conf.minFM) {
+			++fm_failed[1]; return;
+		}
+		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+			++fp_failed[1]; return;
+		}
+		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
+			++af_failed[1]; return;
+		}
+		const int qpos = arr_qpos(&plp);
+		const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
+		if(FA < aux->conf.minFA) {
+			++fa_failed[1]; return;
+		}
+		if((float)FA / FM < aux->conf.minFR) {
+			++fr_failed[1]; return;
+		}
+		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
+		qname = bam_get_qname(plp.b);
+		if((found = nobs.find(qname)) == nobs.end())
+			nobs[qname] = BMF::UniqueObservation(plp);
+		else found->second.add_obs(plp);
+	});
+	// Build vcfline struct
+	BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
+	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(ttid, tpos));
+	bcf_update_format_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "FP_FAILED", (void *)&fp_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "FM_FAILED", (void *)&fm_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
+	bcf_update_format_int32(aux->vh, ret, "IMPROPER", (void *)&improper_count, 2);
+	bcf_write(aux->ofp, aux->vh, ret);
+	bcf_clear(ret);
+}
+
 void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, stack_aux_t *aux) {
 	char *qname;
 	// Build overlap hash
@@ -115,7 +221,7 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 		else found->second.add_obs(plp);
 	});
 	// Build vcfline struct
-	BMF::VCFPos vcfline = BMF::VCFPos(obs, tid, pos);
+	BMF::SampleVCFPos vcfline = BMF::SampleVCFPos(obs, tid, pos);
 	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
 	bcf_update_info_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
 	bcf_update_info_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 1);

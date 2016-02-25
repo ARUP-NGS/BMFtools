@@ -22,10 +22,10 @@
 
 namespace BMF {
 
-	class VCFPos;
+	class SampleVCFPos;
 
 	class UniqueObservation {
-	friend VCFPos;
+	friend SampleVCFPos;
 	std::string qname;
 	int cycle1;
 	int cycle2; // Masked, from other read, if it was found.
@@ -82,16 +82,30 @@ namespace BMF {
 		void add_obs(const bam_pileup1_t& plp);
 	};
 
-	class VCFPos {
+	class PairVCFPos;
+
+	class SampleVCFPos {
+		friend PairVCFPos;
 		std::unordered_map<char, std::vector<UniqueObservation *>> templates;
+		size_t size;
 		int32_t pos;
 		int32_t tid;
-		size_t size;
 	public:
-		VCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos);
+		SampleVCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos);
 		void to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase);
 	};
 
+	class PairVCFPos {
+		SampleVCFPos tumor;
+		SampleVCFPos normal;
+	public:
+		void to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase);
+		PairVCFPos(std::unordered_map<char *, UniqueObservation> tobs, std::unordered_map<char *, UniqueObservation> nobs,
+					int32_t _tid, int32_t _pos):
+						tumor(tobs, _tid, _pos),
+						normal(nobs, _tid, _pos) {
+		}
+	};
 }
 
 #endif

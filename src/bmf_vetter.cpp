@@ -210,7 +210,13 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
 
 int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
-	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
+	if(vcf_iter) {
+		int ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
+		bcf_subset_format(aux->vcf_header, vrec);
+		return ret;
+	} else {
+		return bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
+	}
 }
 
 int vet_core(vetter_aux_t *aux) {
@@ -331,10 +337,10 @@ int vet_core(vetter_aux_t *aux) {
 					continue;
 				}
 				// Reset vectors for each pass.
-				std::fill(uniobs_values.begin(), uniobs_values.end(), 0);
-				std::fill(duplex_values.begin(), duplex_values.end(), 0);
-				std::fill(fail_values.begin(), fail_values.end(), 0);
-				std::fill(overlap_values.begin(), overlap_values.end(), 0);
+				memset(&uniobs_values[0], 0, sizeof(int32_t) * uniobs_values.size());
+				memset(&duplex_values[0], 0, sizeof(int32_t) * duplex_values.size());
+				memset(&fail_values[0], 0, sizeof(int32_t) * fail_values.size());
+				memset(&overlap_values[0], 0, sizeof(int32_t) * overlap_values.size());
 				bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
 							fail_values, n_overlapped, n_duplex, n_disagreed);
 				LOG_DEBUG("Adding disc_overlap.\n");

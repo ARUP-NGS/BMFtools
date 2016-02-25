@@ -6,14 +6,14 @@ namespace BMF {
 	 * 1. Decide which info/format fields for each variant.
 	 * 2. Decide to have a number of fields
 	 */
-	VCFPos::VCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos):
+	SampleVCFPos::SampleVCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos):
+	size(obs.size()),
 	pos(_pos),
-	tid(_tid),
-	size(obs.size()){
+	tid(_tid) {
 		templates.reserve(5);
 		for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
 	}
-	void VCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
+	void SampleVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
 		std::vector<int> counts;
 		std::vector<int> duplex_counts;
 		std::vector<int> overlap_counts;
@@ -85,5 +85,48 @@ namespace BMF {
 			quality = 0;
 			pvalue = 1.;
 		}
+	}
+	void PairVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
+		std::vector<int> counts;
+		std::vector<int> duplex_counts;
+		std::vector<int> overlap_counts;
+		int count_index = 0;
+		vrec->rid = tumor.tid;
+		vrec->pos = tumor.pos;
+		vrec->qual = 0;
+		kstring_t allele_str = {0, 0, NULL};
+		ks_resize(&allele_str, 20uL);
+		kputc(refbase, &allele_str);
+		auto match = tumor.templates.find(refbase);
+		if(match == tumor.templates.end()) {
+			counts = std::vector<int>(tumor.templates.size() + 1, 0);
+			duplex_counts = std::vector<int>(tumor.templates.size() + 1, 0);
+			overlap_counts = std::vector<int>(tumor.templates.size() + 1, 0);
+			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
+			// No reference calls? Add appropriate info fields.
+		} else {
+			counts = std::vector<int>(tumor.templates.size());
+			duplex_counts = std::vector<int>(tumor.templates.size());
+			overlap_counts = std::vector<int>(tumor.templates.size());
+			counts[0] = match->second.size();
+			for(auto uni: tumor.templates[refbase]) {
+				duplex_counts[0] += uni->get_duplex();
+				overlap_counts[0] += uni->get_overlap();
+			}
+		}
+		for(auto& pair: tumor.templates) {
+			if(pair.first != refbase)
+				 kputc(',', &allele_str), kputc((int)pair.first, &allele_str);
+			counts[++count_index] = pair.second.size();
+			for(auto uni: tumor.templates[pair.first]) {
+				duplex_counts[count_index] += uni->get_duplex();
+				overlap_counts[count_index] += uni->get_overlap();
+			}
+			// Update records
+		}
+		bcf_update_alleles_str(hdr, vrec, allele_str.s);
+		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], count_index, 'i');
 	}
 }
