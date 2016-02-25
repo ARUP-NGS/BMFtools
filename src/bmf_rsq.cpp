@@ -355,11 +355,10 @@ static const char *sos[2] = {"positional_rescue", "unclipped_rescue"};
 void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
 	const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
-	std::string SO = get_SO(settings->hdr);
-	if(strcmp(SO.c_str(), sos[settings->cmpkey])) {
-		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n", SO.c_str(), sos[settings->cmpkey]);
+	if(strcmp(get_SO(settings->hdr).c_str(), sos[settings->cmpkey])) {
+		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+				get_SO(settings->hdr).c_str(), sos[settings->cmpkey]);
 	}
-	SO.clear();
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
 		LOG_EXIT("Failed to read first record in bam file. Abort!\n");
@@ -386,7 +385,7 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	stack->n = 1;
 	bam_destroy1(b);
 	if(settings->realign_pairs.size()) {
-		LOG_WARNING("There shoudn't be any orphaned reads left, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
+		LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
 		// This next block shouldn't ever need to be executed, but let's keep it for good measure.
 		for(auto& pair: settings->realign_pairs) {
 			fprintf(settings->fqh, pair.second.c_str());
@@ -398,8 +397,7 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 void bam_rsq_bookends(rsq_settings_t *settings)
 {
 
-	tmp_stack_t stack;
-	memset(&stack, 0, sizeof(tmp_stack_t));
+	tmp_stack_t stack = {0};
 	resize_stack(&stack, STACK_START);
 	if(!stack.a)
 		LOG_EXIT("Failed to start array of bam1_t structs...\n");

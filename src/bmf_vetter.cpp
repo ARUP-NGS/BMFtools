@@ -223,11 +223,13 @@ int vet_core(vetter_aux_t *aux) {
 	case vcf:
 		vcf_idx = tbx_index_load(aux->vcf_fp->fn);
 		if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
+		/*
 		LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
 		if(vcf_idx) {
 			tbx_destroy(vcf_idx);
 			vcf_idx = NULL;
 		}
+		*/
 		break;
 	case bcf:
 		bcf_idx = bcf_index_load(aux->vcf_fp->fn);
@@ -269,7 +271,8 @@ int vet_core(vetter_aux_t *aux) {
 			LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
 			// Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-			vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+			//vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 #if 0
 			LOG_DEBUG("vcf_iter: %p. vcf_idx: %p. bcf_idx: %p.\n", (void *)vcf_iter, (void *)vcf_idx, (void *)bcf_idx);
 			if(!vcf_iter) {

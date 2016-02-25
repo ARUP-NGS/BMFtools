@@ -7,16 +7,7 @@ int stack_main(int argc, char *argv[]);
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
-class stack_aux_t {
-public:
-	samFile *fp;
-	hts_itr_t *iter;
-	hts_idx_t *bam_index;
-	bam_hdr_t *bh;
-	vcfFile *ofp;
-	bcf_hdr_t *vh;
-	faidx_t *fai;
-	khash_t(bed) *bed;
+struct stack_conf {
 	float minFR; // Minimum fraction of family members agreed on base
 	float minAF; // Minimum aligned fraction
 	int max_depth;
@@ -28,31 +19,43 @@ public:
 	int minDuplex;
 	int minOverlap;
 	int skip_improper;
+	uint32_t skip_flag; // Skip reads with any bits set to true
+};
+
+class stack_aux_t {
+public:
+	BamHandle *tumor;
+	BamHandle *normal;
+	vcfFile *ofp;
+	bcf_hdr_t *vh;
+	faidx_t *fai;
+	khash_t(bed) *bed;
 	int last_tid;
 	char *ref_seq;
-	uint32_t skip_flag; // Skip reads with any bits set to true
-	stack_aux_t() {
+	stack_conf conf;
+	stack_aux_t(char *tumor_path, char *normal_path, stack_conf _conf) {
 		memset(this, 0, sizeof(*this));
-		max_depth = DEFAULT_MAX_DEPTH;
 		last_tid = -1;
+		tumor = new BamHandle(tumor_path);
+		normal = new BamHandle(normal_path);
+		conf = _conf;
+		if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
 	}
 	char get_ref_base(int tid, int pos) {
 		int len;
 		if(tid != last_tid) {
 			if(ref_seq) free(ref_seq);
-			ref_seq = fai_fetch(fai, bh->target_name[tid], &len);
+			ref_seq = fai_fetch(fai, tumor->header->target_name[tid], &len);
 			last_tid = tid;
 		}
 		return ref_seq[pos];
 	}
 	~stack_aux_t() {
-		if(fp) sam_close(fp);
-		if(iter) hts_itr_destroy(iter);
-		if(bam_index) hts_idx_destroy(bam_index);
-		if(bh) bam_hdr_destroy(bh);
 		if(ofp) vcf_close(ofp);
 		if(bed) bed_destroy_hash((void *)bed);
 		if(ref_seq) free(ref_seq);
+		if(tumor) delete tumor;
+		if(normal) delete normal;
 	}
 };
 

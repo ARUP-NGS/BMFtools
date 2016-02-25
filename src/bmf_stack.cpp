@@ -36,7 +36,7 @@ void stack_usage(int retcode)
 }
 
 
-static int read_bam(stack_aux_t *data, bam1_t *b)
+static int read_bam(BamHandle *data, bam1_t *b)
 {
 	int ret;
 	for(;;)
@@ -78,34 +78,34 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	// Capturing found  by reference to avoid making unneeded temporary variables.
 	std::for_each(plp, plp + n_plp, [&](const bam_pileup1_t& plp) {
 		if(plp.is_del || plp.is_refskip) return;
-		if(aux->skip_flag & plp.b->core.flag) {
+		if(aux->conf.skip_flag & plp.b->core.flag) {
 			++flag_failed;
 			return;
 		}
 		if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
 			++improper_count;
-			if(aux->skip_improper) return;
+			if(aux->conf.skip_improper) return;
 		}
 		// If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
-		if(plp.b->core.qual < aux->minMQ) {
+		if(plp.b->core.qual < aux->conf.minMQ) {
 			++mq_failed; return;
 		}
 		const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
-		if(FM < aux->minFM) {
+		if(FM < aux->conf.minFM) {
 			++fm_failed; return;
 		}
 		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
 			++fp_failed; return;
 		}
-		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->minAF) {
+		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
 			++af_failed; return;
 		}
 		const int qpos = arr_qpos(&plp);
 		const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
-		if(FA < aux->minFA) {
+		if(FA < aux->conf.minFA) {
 			++fa_failed; return;
 		}
-		if((float)FA / FM < aux->minFR) {
+		if((float)FA / FM < aux->conf.minFR) {
 			++fr_failed; return;
 		}
 		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
@@ -130,24 +130,32 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 
 int stack_core(stack_aux_t *aux)
 {
-	bam_plp_t pileup = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux);
-	const bam_pileup1_t *stack;
-	bam_plp_set_maxcnt(pileup, aux->max_depth);
+	aux->tumor->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->tumor);
+	aux->normal->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->normal);
+	bam_plp_set_maxcnt(aux->tumor->plp, aux->conf.max_depth);
+	bam_plp_set_maxcnt(aux->normal->plp, aux->conf.max_depth);
 	std::vector<khiter_t> sorted_keys = make_sorted_keys(aux->bed);
-	int tid, pos, n_plp;
+	int ttid, tpos, tn_plp, ntid, npos, nn_plp;
 	bcf1_t *v = bcf_init1();
 	for(auto& key: sorted_keys) {
 		for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
-			if(aux->iter) hts_itr_destroy(aux->iter);
+			if(aux->tumor->iter) hts_itr_destroy(aux->tumor->iter);
+			if(aux->normal->iter) hts_itr_destroy(aux->normal->iter);
 			const int start = get_start(kh_val(aux->bed, key).intervals[i]);
 			const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
 			const int bamtid = (int)kh_key(aux->bed, key);
-			aux->iter = bam_itr_queryi(aux->bam_index, kh_key(aux->bed, key), start, stop);
-			while((stack = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0) {
-				if(pos < start && tid == bamtid) continue;
-				if(pos >= stop) break;
-				process_pileup(v, stack, n_plp, pos, tid, aux);
+			aux->tumor->iter = bam_itr_queryi(aux->tumor->idx, kh_key(aux->bed, key), start, stop);
+			aux->normal->iter = bam_itr_queryi(aux->normal->idx, kh_key(aux->bed, key), start, stop);
+			while((aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ttid, &tpos, &tn_plp)) >= 0) {
+				if(tpos < start && ttid == bamtid) continue;
+				if(tpos >= stop) break;
 			}
+			while((aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp)) >= 0) {
+				if(npos < start && ntid == bamtid) continue;
+				if(npos >= stop) break;
+			}
+			// Both bams should be at the same position now.
+			assert(npos == tpos && ntid == ttid);
 		}
 	}
 	bcf_destroy(v);
@@ -157,37 +165,37 @@ int stack_core(stack_aux_t *aux)
 int stack_main(int argc, char *argv[]) {
 	int c;
 	unsigned padding = (unsigned)-1;
-	stack_aux_t aux = stack_aux_t();
+	if(argc < 2) stack_usage(EXIT_FAILURE);
 	char *outvcf = NULL, *refpath = NULL;
 	std::string bedpath = "";
 	int output_bcf = 0;
-	if(argc < 2) stack_usage(EXIT_FAILURE);
+	struct stack_conf conf = {0};
 	while ((c = getopt(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
 		switch (c) {
 		case 'B': output_bcf = 1; break;
-		case 'a': aux.minFA = atoi(optarg); break;
-		case 'c': aux.minCount = atoi(optarg); break;
-		case 'D': aux.minDuplex = atoi(optarg); break;
-		case 's': aux.minFM = atoi(optarg); break;
-		case 'm': aux.minMQ = atoi(optarg); break;
-		case 'v': aux.minPV = atoi(optarg); break;
-		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
-		case 'S': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
-		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
+		case 'a': conf.minFA = atoi(optarg); break;
+		case 'c': conf.minCount = atoi(optarg); break;
+		case 'D': conf.minDuplex = atoi(optarg); break;
+		case 's': conf.minFM = atoi(optarg); break;
+		case 'm': conf.minMQ = atoi(optarg); break;
+		case 'v': conf.minPV = atoi(optarg); break;
+		case '2': conf.skip_flag |= BAM_FSECONDARY; break;
+		case 'S': conf.skip_flag |= BAM_FSUPPLEMENTARY; break;
+		case 'q': conf.skip_flag |= BAM_FQCFAIL; break;
+		case 'r': conf.skip_flag |= BAM_FDUP; break;
 		case 'R': refpath = optarg; break;
-		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
-		case 'P': aux.skip_improper = 1; break;
+		case 'P': conf.skip_improper = 1; break;
 		case 'p': padding = atoi(optarg); break;
-		case 'd': aux.max_depth = atoi(optarg); break;
-		case 'f': aux.minFR = (float)atof(optarg); break;
+		case 'd': conf.max_depth = atoi(optarg); break;
+		case 'f': conf.minFR = (float)atof(optarg); break;
 		case 'b': bedpath = optarg; break;
 		case 'o': outvcf = optarg; break;
-		case 'O': aux.minOverlap = atoi(optarg); break;
+		case 'O': conf.minOverlap = atoi(optarg); break;
 		//case 'V': aux.vet_all = 1; break;
 		case 'h': case '?': stack_usage(EXIT_SUCCESS);
 		}
 	}
-	if(optind >= argc) LOG_EXIT("Insufficient arguments. Input bam required!\n");
+	if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
 	if(padding < 0) {
 		LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
 		padding = DEFAULT_PADDING;
@@ -195,17 +203,12 @@ int stack_main(int argc, char *argv[]) {
 	if(!refpath) {
 		LOG_EXIT("refpath required. Abort!\n");
 	}
+	stack_aux_t aux = stack_aux_t(argv[optind], argv[optind + 1], conf);
 	aux.fai = fai_load(refpath);
 	if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
-	aux.fp = sam_open(argv[optind], "r");
-	aux.bh = sam_hdr_read(aux.fp);
-	if(!aux.fp || !aux.bh) {
-		LOG_EXIT("Could not open input files. Abort!\n");
-	}
-	aux.bam_index = bam_index_load(aux.fp->fn);
 	// TODO: Make BCF header
 	aux.vh = bcf_hdr_init(output_bcf ? "wb": "w");
-	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.bh, padding): build_ref_hash(aux.bh);
+	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.normal->header, padding): build_ref_hash(aux.normal->header);
 	for(auto line: vcf_header_lines)
 		if(bcf_hdr_append(aux.vh, line))
 			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
