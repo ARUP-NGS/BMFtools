@@ -357,7 +357,7 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
 	std::string SO = get_SO(settings->hdr);
 	if(strcmp(SO.c_str(), sos[settings->cmpkey])) {
-		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n");
+		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n", SO.c_str(), sos[settings->cmpkey]);
 	}
 	SO.clear();
 	bam1_t *b = bam_init1();
