@@ -15,10 +15,6 @@ typedef struct {
 	uint64_t fm; // Number of times observed
 } fm_t;
 
-int fm_cmp(const void *fm1, const void *fm2)
-{
-	return ((fm_t *)fm1)->fm - ((fm_t *)fm2)->fm;
-}
 
 int get_nbins(khash_t(fm) *table)
 {
@@ -39,14 +35,18 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)
 		if(kh_exist(stats->fm, stats->ki))
 			fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
-	qsort(fms, stats->fm->n_occupied, sizeof(fm_t), fm_cmp);
+	std::sort(fms, fms + stats->fm->n_occupied, [](const fm_t a, const fm_t b){
+		return a.fm < b.fm;
+	});
 	for(i = 0; i < stats->fm->n_occupied; ++i)
 		fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
 	fprintf(fp, "#RV'd in family\tNumber of families\n");
 	for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki)
 		if(kh_exist(stats->rc, stats->ki))
 			fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
-	qsort(fms, stats->rc->n_occupied, sizeof(fm_t), fm_cmp);
+	std::sort(fms, fms + stats->rc->n_occupied, [](const fm_t a, const fm_t b){
+		return a.fm < b.fm;
+	});
 	for(i = 0; i < stats->rc->n_occupied; ++i)
 		fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
 	free(fms);
@@ -195,7 +195,6 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
 
 	//LOG_DEBUG("RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", RV, s->allrc_sum, s->realrc_sum);
-
 	if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
 		s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
 	else ++kh_val(s->fm, s->ki);
@@ -382,7 +381,7 @@ int famstats_frac_main(int argc, char *argv[])
 	while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
 		famstats_frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+			LOG_INFO("Number of records processed: %lu.\n", count);
 	}
 	fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
 	bam_destroy1(b);

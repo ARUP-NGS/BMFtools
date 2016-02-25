@@ -3,7 +3,7 @@
 #     d.nephi.baker@gmail.com       #
 ######################################
 
-STD=c++14
+STD=c++1z
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 CFLAGS= -Wunreachable-code -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -fno-builtin-gamma -pedantic
@@ -21,13 +21,14 @@ binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \
 		  src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
-		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c
+		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
+		  lib/UniqueObs.c
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
@@ -38,7 +39,7 @@ D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
 
-ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test
+ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
@@ -90,6 +91,8 @@ marksplit_test: $(BINS)
 	cd test/marksplit && python marksplit_test.py && cd ../..
 err_test: $(BINS)
 	cd test/err && python err_test.py $(GENOME_PATH) && cd ../..
+rsq_test: $(BINS)
+	cd test/rsq && python rsq_test.py  && cd ../..
 
 tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"

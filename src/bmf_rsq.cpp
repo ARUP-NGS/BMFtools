@@ -7,11 +7,32 @@ typedef struct rsq_settings {
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmlim; // Mismatch failure threshold.
-	int is_se; // Is single-end
 	int read_hd_threshold;
+	int is_se;
 	bam_hdr_t *hdr; // BAM header
-	stack_fn fn;
+	std::unordered_map<std::string, std::string> realign_pairs;
 } rsq_settings_t;
+
+static const stack_fn fns[4] = {&same_stack_pos, &same_stack_pos_se,
+								&same_stack_ucs, &same_stack_ucs_se};
+
+using namespace std::literals;
+std::string get_SO(bam_hdr_t *hdr) {
+	char *end, *so_start;
+	std::string ret;
+	if (strncmp(hdr->text, "@HD", 3) != 0) goto NA;
+	if ((end = strchr(hdr->text, '\n')) == 0) goto NA;
+	*end = '\0';
+
+	if((so_start = strstr(hdr->text, "SO:")) == NULL) goto NA;
+	ret = std::string(so_start + strlen("SO:"));
+	*end = '\n';
+	return ret;
+
+	NA:
+	LOG_WARNING("Sort order not found. Returning N/A.\n");
+	return "SO:"s;
+}
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
@@ -25,7 +46,7 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 	}
 }
 
-void bam2ffq(bam1_t *b, FILE *fp)
+inline void bam2ffq(bam1_t *b, FILE *fp)
 {
 	char *qual, *seqbuf;
 	int i;
@@ -57,7 +78,8 @@ void bam2ffq(bam1_t *b, FILE *fp)
 		}
 		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
 	}
-	assert(strlen(seqbuf) == b->core.l_qseq);
+	seqbuf[b->core.l_qseq] = '\0';
+	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
 	kputs(seqbuf, &ks);
 	kputs("\n+\n", &ks);
 	qual = (char *)bam_get_qual(b);
@@ -73,7 +95,66 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	free(seqbuf);
 	fputs(ks.s, fp);
 	free(ks.s);
-	return;
+}
+
+std::string bam2cppstr(bam1_t *b)
+{
+	char *qual, *seqbuf;
+	int i;
+	uint8_t *seq, *rvdata;
+	uint32_t *pv, *fa;
+	int8_t t;
+	kstring_t ks = {0, 0, NULL};
+	ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
+	pv = (uint32_t *)array_tag(b, (char *)"PV");
+	fa = (uint32_t *)array_tag(b, (char *)"FA");
+	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
+	kputs("\tFA:B:I", &ks);
+	for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
+	ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i", bam_aux2i(bam_aux_get(b, (char *)"FM")),
+			bam_aux2i(bam_aux_get(b, (char *)"FP")),
+			bam_aux2i(bam_aux_get(b, (char *)"NC")));
+	if((rvdata = bam_aux_get(b, (char *)"RV")) != NULL)
+		ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
+	kputc('\n', &ks);
+	seq = bam_get_seq(b);
+	seqbuf = (char *)malloc(b->core.l_qseq + 1);
+	for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
+	seqbuf[i] = '\0';
+	if (b->core.flag & BAM_FREVERSE) { // reverse complement
+		for(i = 0; i < b->core.l_qseq>>1; ++i) {
+			t = seqbuf[b->core.l_qseq - i - 1];
+			seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
+			seqbuf[i] = nuc_cmpl(t);
+		}
+		if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
+	}
+	seqbuf[b->core.l_qseq] = '\0';
+	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
+	kputs(seqbuf, &ks);
+	kputs("\n+\n", &ks);
+	qual = (char *)bam_get_qual(b);
+	for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
+	if (b->core.flag & BAM_FREVERSE) { // reverse
+		for (i = 0; i < b->core.l_qseq>>1; ++i) {
+			t = seqbuf[b->core.l_qseq - 1 - i];
+			seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
+			seqbuf[i] = t;
+		}
+	}
+	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
+	kputs(seqbuf, &ks); kputc('\n', &ks);
+	free(seqbuf);
+	std::string ret(ks.s);
+	free(ks.s);
+	return ret;
+}
+
+inline int switch_names(char *n1, char *n2) {
+	for(;*n1;++n1, ++n2)
+		if(*n1 != *n2)
+			return *n1 < *n2;
+	return 0; // This never happens unless a null character appears prematurely.
 }
 
 static inline void update_bam1(bam1_t *p, bam1_t *b)
@@ -89,13 +170,16 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 */
 	bdata = bam_aux_get(b, "FM");
 	pdata = bam_aux_get(p, "FM");
-	if(!bdata || !pdata) {
+	if(UNLIKELY(!bdata || !pdata)) {
 		fprintf(stderr, "Required FM tag not found. Abort mission!\n");
 		exit(EXIT_FAILURE);
 	}
 	int bFM = bam_aux2i(bdata);
 	int pFM = bam_aux2i(pdata);
-	if(pFM < bFM) memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+	if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
+		memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+		assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
+	}
 	pFM += bFM;
 	bam_aux_del(p, pdata);
 	bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
@@ -184,15 +268,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pQual[i] = bQual[i];
 				++n_changed;
 			}
-
 			if(pPV[i] < 3) {
 				pFA[i] = 0;
 				pPV[i] = 0;
 				pQual[i] = 2;
 				n_base(pSeq, i);
 				continue;
-			}
-			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+			} else if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
 		}
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
@@ -204,12 +286,26 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 	for(unsigned i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			uint8_t *data;
-			if((data = bam_aux_get(stack->a[i], "NC")) != NULL)
-				bam2ffq(stack->a[i], settings->fqh);
-			else
+			std::string qname;
+			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
+				qname = bam_get_qname(stack->a[i]);
+				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+					settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i]));
+				} else {
+					assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
+					if(stack->a[i]->core.flag & BAM_FREAD2) {
+						fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+						bam2ffq(stack->a[i], settings->fqh);
+					} else {
+						bam2ffq(stack->a[i], settings->fqh);
+						fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+					}
+					settings->realign_pairs.erase(qname);
+				}
+			} else {
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			bam_destroy1(stack->a[i]);
-			stack->a[i] = NULL;
+			}
+			bam_destroy1(stack->a[i]), stack->a[i] = NULL;
 		}
 	}
 }
@@ -229,27 +325,41 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
-	for(unsigned i = 0; i < stack->n; ++i) {
-		for(unsigned j = i + 1; j < stack->n; ++j) {
+	std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
+		if(a) {
+			return b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0;
+		} else {
+			return b ? 1: 0;
+		}
+		// return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
+		// Returns 0 if comparing two nulls, and returns true that a NULL lt a valued name
+		// Compares strings otherwise.
+	});
+	for(unsigned i = 0; i < stack->n; ++i)
+		for(unsigned j = i + 1; j < stack->n; ++j)
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
-				if(read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold)) {
-					LOG_DEBUG("Flattening record with qname %s into record with qname %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-					update_bam1(stack->a[j], stack->a[i]);
-					bam_destroy1(stack->a[i]);
-					stack->a[i] = NULL;
-					break;
-				}
-				LOG_DEBUG("Not flattening record with qname %s into record with qname %s because hd fail with %i.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]), settings->read_hd_threshold);
+				//if(!read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold) continue;
+				//LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
+				update_bam1(stack->a[j], stack->a[i]);
+				bam_destroy1(stack->a[i]);
+				stack->a[i] = NULL;
+				break;
 				// "break" in case there are multiple within hamming distance.
 				// Otherwise, I'll end up having memory mistakes.
 				// Besides, that read set will get merged into the later read in the set.
 			}
-		}
-	}
 }
 
-static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
+static const char *sos[2] = {"positional_rescue", "unclipped_rescue"};
+
+void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
+	const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
+	std::string SO = get_SO(settings->hdr);
+	if(strcmp(SO.c_str(), sos[settings->cmpkey])) {
+		LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n");
+	}
+	SO.clear();
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
 		LOG_EXIT("Failed to read first record in bam file. Abort!\n");
@@ -264,47 +374,40 @@ static inline void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 			sam_write1(settings->out, settings->hdr, b);
 			continue;
 		}
-		if(settings->fn(b, *stack->a)) {
-			stack_insert(stack, b);
-			continue;
-		} else {
+		if(fn(b, *stack->a) == 0) {
 			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 			write_stack(stack, settings);
 			stack->n = 1;
 			stack->a[0] = bam_dup1(b);
-		}
+		} else stack_insert(stack, b);
 	}
 	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 	write_stack(stack, settings);
 	stack->n = 1;
 	bam_destroy1(b);
+	if(settings->realign_pairs.size()) {
+		LOG_WARNING("There shoudn't be any orphaned reads left, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
+		// This next block shouldn't ever need to be executed, but let's keep it for good measure.
+		for(auto& pair: settings->realign_pairs) {
+			fprintf(settings->fqh, pair.second.c_str());
+			settings->realign_pairs.erase(pair.first);
+		}
+	}
 }
 
 void bam_rsq_bookends(rsq_settings_t *settings)
 {
-	if(settings->is_se) {
-		if(settings->cmpkey)
-			settings->fn = &same_stack_ucs_se;
-		else
-			settings->fn = &same_stack_pos_se;
-	} else {
-		if(settings->cmpkey)
-			settings->fn = &same_stack_ucs;
-		else
-			settings->fn = &same_stack_pos;
-	}
-
 
 	tmp_stack_t stack;
 	memset(&stack, 0, sizeof(tmp_stack_t));
 	resize_stack(&stack, STACK_START);
 	if(!stack.a)
 		LOG_EXIT("Failed to start array of bam1_t structs...\n");
-	rsq_core(settings, &stack); // Core
+	rsq_core(settings, &stack);
 	free(stack.a);
 }
 
-int rsq_usage(void)
+int rsq_usage(int retcode)
 {
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
@@ -313,7 +416,7 @@ int rsq_usage(void)
 	fprintf(stderr, "-l	  Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
 	fprintf(stderr, "-u	  Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
 					"Note: This requires pre-processing with bmftools mark_unclipped.\n");
-	return 1;
+	return retcode;
 }
 
 
@@ -329,18 +432,22 @@ int rsq_main(int argc, char *argv[])
 
 	char *fqname = NULL;
 
+	if(argc < 3) rsq_usage(EXIT_FAILURE);
+
 	while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
 		switch (c) {
-		case 'u': settings.cmpkey = UNCLIPPED; break;
+		case 'u':
+			settings.cmpkey = UNCLIPPED;
+			LOG_INFO("Unclipped start position chosen for cmpkey.\n");
+			break;
 		case 't': settings.mmlim = atoi(optarg); break;
 		case 'f': fqname = optarg; break;
-		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
-		case 'h': /* fall-through */
-		case '?': return rsq_usage();
+		case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
+		case 'h': case '?': return rsq_usage(EXIT_SUCCESS);
 		}
 	}
 	if (optind + 2 > argc)
-		return rsq_usage();
+		return rsq_usage(EXIT_FAILURE);
 	if(settings.read_hd_threshold < 0) {
 		settings.read_hd_threshold = READ_HD_LIMIT;
 		LOG_INFO("Unset read HD threshold. Setting to default (%i).\n", settings.read_hd_threshold);
@@ -348,15 +455,13 @@ int rsq_main(int argc, char *argv[])
 
 	if(!fqname) {
 		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
-		return rsq_usage();
+		return rsq_usage(EXIT_FAILURE);
 	}
 
 	settings.fqh = fopen(fqname, "w");
 
-	if(!settings.fqh) {
-		fprintf(stderr, "Failed to open output fastq for writing. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+	if(!settings.fqh)
+		LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
 
 	settings.in = sam_open(argv[optind], "r");

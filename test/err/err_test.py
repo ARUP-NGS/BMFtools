@@ -11,15 +11,15 @@ def main():
     try:
         genome_path = sys.argv[1]
     except IndexError:
-        raise ValueError("genome path (python err_test.py <genome_path>) required.")
-    print("Genome path: %s." % genome_path)
+        #raise ValueError("genome path (python err_test.py <genome_path>) required.")
+        genome_path = "no_index_provided"
     if(os.path.isfile(genome_path) is False):
         print("WARNING: to test error rates, provide a path to build 37 human"
              " reference. This test passes automatically if not found.")
         return 0
     for ex in executables:
         subprocess.check_call("%s err fm -o err_test.out "
-                              "/mounts/genome/human_g1k_v37.fasta NA12878.on_target.bam" % ex,
+                              "%s NA12878.on_target.bam" % (ex, genome_path),
                               shell=True)
         assert "927785e79d28995c49de2d429e39936f" == hashlib.md5(open("err_test.out", "r").read()).hexdigest()
     return 0

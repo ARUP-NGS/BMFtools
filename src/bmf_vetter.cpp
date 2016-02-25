@@ -1,5 +1,29 @@
 #include "bmf_vetter.h"
 
+
+typedef struct {
+	samFile *fp;
+	hts_itr_t *iter;
+	bam_hdr_t *header;
+	vcfFile *vcf_fp;
+	vcfFile *vcf_ofp;
+	bcf_hdr_t *vcf_header;
+	khash_t(bed) *bed;
+	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int max_depth;
+	int minFM;
+	uint32_t minFA;
+	uint32_t minPV;
+	uint32_t minMQ;
+	int minCount;
+	int minDuplex;
+	int minOverlap;
+	int skip_improper;
+	int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
+	uint32_t skip_flag; // Skip reads with any bits set to true
+} vetter_aux_t;
+
 int max_depth = (1 << 18); // 262144
 
 
@@ -12,7 +36,7 @@ void vetter_error(const char *message, int retcode)
 
 static int read_bam(void *data, bam1_t *b)
 {
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	vetter_aux_t *aux = (vetter_aux_t*)data; // data in fact is a pointer to an auxiliary structure
 	int ret;
 	for(;;)
 	{
@@ -24,7 +48,7 @@ static int read_bam(void *data, bam1_t *b)
 		// Skip MQ < minMQ
 		// Skip FM < minFM
 		// Skip AF < minAF
-		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+		if ((b->core.flag & aux->skip_flag) ||
 			(aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
 			(int)b->core.qual < aux->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < aux->minFM) ||
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
@@ -63,7 +87,7 @@ void vetter_usage(int retcode)
  * Add 'fm' tag to note which families of reads have already had their fm adjusted.
  * Separate from the upper-case tag!
  */
-void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux, std::vector<int>& pass_values,
+void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
 		std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
 		int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
 	int khr, s, s2;
@@ -184,12 +208,12 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, aux_t *aux
 	n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
 }
 
-int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
+int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
 	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec): bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
-int vet_core(aux_t *aux) {
+int vet_core(vetter_aux_t *aux) {
 	int n_plp, vcf_iter_ret;
 	const bam_pileup1_t *plp;
 	tbx_t *vcf_idx = NULL;
@@ -345,7 +369,7 @@ int vetter_main(int argc, char *argv[])
 	int padding = 0, output_bcf = 0;
 	// Defaults to outputting textual (vcf)
 	htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
-	aux_t aux = {0};
+	vetter_aux_t aux = {0};
 	aux.minCount = 1;
 	aux.max_depth = (1 << 18); // Default max depth
 	if(argc < 3) vetter_usage(EXIT_FAILURE);
@@ -359,10 +383,10 @@ int vetter_main(int argc, char *argv[])
 		case 's': aux.minFM = atoi(optarg); break;
 		case 'm': aux.minMQ = atoi(optarg); break;
 		case 'v': aux.minPV = atoi(optarg); break;
-		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
-		case 'S': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
-		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
-		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
+		case '2': aux.skip_flag |= BAM_FSECONDARY; break;
+		case 'S': aux.skip_flag |= BAM_FSUPPLEMENTARY; break;
+		case 'q': aux.skip_flag |= BAM_FQCFAIL;break;
+		case 'r': aux.skip_flag |= BAM_FDUP; break;
 		case 'P': aux.skip_improper = 1; break;
 		case 'p': padding = atoi(optarg); break;
 		case 'd': aux.max_depth = atoi(optarg); break;
@@ -397,9 +421,8 @@ int vetter_main(int argc, char *argv[])
 	aux.header = sam_hdr_read(aux.fp);
 
 	// Open input vcf
-	if(!aux.header || aux.header->n_targets == 0) {
+	if(!aux.header || aux.header->n_targets == 0)
 		LOG_EXIT("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
-	}
 	// Open bed file
 	// if no bed provided, do whole genome.
 	if(bed) aux.bed = parse_bed_hash(bed, aux.header, padding);
@@ -420,6 +443,8 @@ int vetter_main(int argc, char *argv[])
 		kputs("bmftools ", &tmpstr);
 		for(int i = 0; i < argc; ++i) kputs(argv[i], &tmpstr), kputc(' ', &tmpstr);
 		bcf_hdr_append(aux.vcf_header, tmpstr.s);
+		tmpstr.l = 0;
+		// Add in settings
 		free(tmpstr.s);
 	}
 	bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);

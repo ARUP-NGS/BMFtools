@@ -33,7 +33,6 @@ typedef struct marksplit_settings {
 	int notification_interval; // How many sets of records do you want to process between progress reports?
 	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
 	char *tmp_basename;
-	int panthera;
 	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases)
 	char *rescaler_path; // Path to rescaler for
 	int run_hash_dmp;
@@ -44,14 +43,8 @@ typedef struct marksplit_settings {
 	char mode[4];
 } marksplit_settings_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 void free_marksplit_settings_ptr(marksplit_settings_t *settings);
 void free_marksplit_settings(marksplit_settings_t settings);
-#ifdef __cplusplus
-}
-#endif
 
 typedef struct mark_splitter {
 	gzFile *tmp_out_handles_r1;

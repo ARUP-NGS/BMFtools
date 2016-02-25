@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <zlib.h>
 #include <tgmath.h>
+#include <unordered_map>
+#include <algorithm>
 #include "htslib/sam.h"
 #include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library
@@ -75,17 +77,20 @@ CONST static inline int same_stack_pos(bam1_t *b, bam1_t *p)
 CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
 {
 #if !NDEBUG
-	if(!p) {
-		fprintf(stderr, "Later bam record null. Abort!\n");
-		exit(EXIT_FAILURE);
+	if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
+			ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
+		assert(b->core.tid == p->core.tid);
+		assert(b->core.mtid == p->core.mtid);
+		assert(b->core.mtid == p->core.mtid);
+		assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
+		assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
+		return 1;
 	}
-	if(!b) {
-		fprintf(stderr, "First bam record null. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
-#endif
+	return 0;
+#else
 	return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
 			ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
+#endif
 }
 
 static inline int32_t int_tag_zero(uint8_t *data)
@@ -112,7 +117,6 @@ CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
 	for(int i = 0; i < b->core.l_qseq; ++i) {
 		bc = bam_seqi(bseq, i);
 		pc = bam_seqi(pseq, i);
-		LOG_DEBUG("Hamming distance is currently %i.\n", hd);
 		if(bc != pc && bc != HTS_N && pc != HTS_N && ++hd > lim)
 			return 0;
 	}

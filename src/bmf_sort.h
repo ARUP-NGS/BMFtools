@@ -12,8 +12,17 @@
 #include "dlib/io_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/sort_util.h"
+#include "dlib/bam_util.h"
 #include "include/bam.h"
 #include "include/sam_opts.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+	int sort_main(int argc, char **argv);
+#ifdef __cplusplus
+}
+#endif
 
 enum sort_order {
 	SAMTOOLS,
