@@ -10,9 +10,12 @@ typedef struct rsq_settings {
 	int read_hd_threshold;
 	int is_se;
 	bam_hdr_t *hdr; // BAM header
-	stack_fn fn;
 	std::unordered_map<std::string, std::string> realign_pairs;
 } rsq_settings_t;
+
+static const stack_fn fns[4] = {&same_stack_pos, &same_stack_pos_se,
+								&same_stack_ucs, &same_stack_ucs_se};
+
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
@@ -332,6 +335,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 
 void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
+	const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0)
 		LOG_EXIT("Failed to read first record in bam file. Abort!\n");
@@ -346,7 +350,7 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 			sam_write1(settings->out, settings->hdr, b);
 			continue;
 		}
-		if(settings->fn(b, *stack->a) == 0) {
+		if(fn(b, *stack->a) == 0) {
 			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 			write_stack(stack, settings);
 			stack->n = 1;
@@ -357,38 +361,25 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 	write_stack(stack, settings);
 	stack->n = 1;
 	bam_destroy1(b);
-	LOG_DEBUG("Number of singletons left %lu...\n", settings->realign_pairs.size());
-	std::vector<std::string> sorted_keys = std::vector<std::string>();
-	for(auto& pair: settings->realign_pairs)
-		sorted_keys.push_back(pair.first);
-	std::sort(sorted_keys.begin(), sorted_keys.end());
-	for(std::string& key: sorted_keys) {
-		fprintf(settings->fqh, settings->realign_pairs[key].c_str());
-		settings->realign_pairs.erase(key);
+	if(settings->realign_pairs.size()) {
+		LOG_WARNING("There shoudn't be any orphaned reads left, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
+		// This next block shouldn't ever need to be executed, but let's keep it for good measure.
+		for(auto& pair: settings->realign_pairs) {
+			fprintf(settings->fqh, pair.second.c_str());
+			settings->realign_pairs.erase(pair.first);
+		}
 	}
 }
 
 void bam_rsq_bookends(rsq_settings_t *settings)
 {
-	if(settings->is_se) {
-		if(settings->cmpkey)
-			settings->fn = &same_stack_ucs_se;
-		else
-			settings->fn = &same_stack_pos_se;
-	} else {
-		if(settings->cmpkey)
-			settings->fn = &same_stack_ucs;
-		else
-			settings->fn = &same_stack_pos;
-	}
-
 
 	tmp_stack_t stack;
 	memset(&stack, 0, sizeof(tmp_stack_t));
 	resize_stack(&stack, STACK_START);
 	if(!stack.a)
 		LOG_EXIT("Failed to start array of bam1_t structs...\n");
-	rsq_core(settings, &stack); // Core
+	rsq_core(settings, &stack);
 	free(stack.a);
 }
 
@@ -427,9 +418,8 @@ int rsq_main(int argc, char *argv[])
 			break;
 		case 't': settings.mmlim = atoi(optarg); break;
 		case 'f': fqname = optarg; break;
-		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
-		case 'h': /* fall-through */
-		case '?': return rsq_usage(EXIT_SUCCESS);
+		case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
+		case 'h': case '?': return rsq_usage(EXIT_SUCCESS);
 		}
 	}
 	if (optind + 2 > argc)
