@@ -99,12 +99,26 @@ namespace BMF {
 		kputc(refbase, &allele_str);
 		auto match = tumor.templates.find(refbase);
 		if(match == tumor.templates.end()) {
-			counts = std::vector<int>(tumor.templates.size() + 1, 0);
-			duplex_counts = std::vector<int>(tumor.templates.size() + 1, 0);
-			overlap_counts = std::vector<int>(tumor.templates.size() + 1, 0);
-			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
-			// No reference calls? Add appropriate info fields.
+			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1); // No reference bases in tumor sample.
+			if((match = normal.templates.find(refbase)) == normal.templates.end()) {
+				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
+				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
+				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
+			} else {
+				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+			}
 		} else {
+			if((match = normal.templates.find(refbase)) == normal.templates.end()) {
+				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
+			} else {
+				counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
+				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
+				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
+			}
 			counts = std::vector<int>(tumor.templates.size());
 			duplex_counts = std::vector<int>(tumor.templates.size());
 			overlap_counts = std::vector<int>(tumor.templates.size());
