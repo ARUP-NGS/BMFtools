@@ -31,7 +31,7 @@ std::string get_SO(bam_hdr_t *hdr) {
 
 	NA:
 	LOG_WARNING("Sort order not found. Returning N/A.\n");
-	return "SO:"s;
+	return "N/A"s;
 }
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
