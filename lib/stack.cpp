@@ -122,7 +122,7 @@ namespace BMF {
 			}
 		}
 		kstring_t allele_str = {0, 0, NULL};
-		ks_resize(&allele_str, 20uL);
+		ks_resize(&allele_str, 8uL);
 		kputc(refbase, &allele_str);
 		for(unsigned i = 1; i < base_calls.size(); ++i) {
 			kputc(',', &allele_str), kputc(base_calls[i], &allele_str);

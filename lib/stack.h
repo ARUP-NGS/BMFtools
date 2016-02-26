@@ -29,10 +29,10 @@ namespace BMF {
 		float minFR; // Minimum fraction of family members agreed on base
 		float minAF; // Minimum aligned fraction
 		int max_depth;
-		int minFM;
+		uint32_t minFM;
 		uint32_t minFA;
 		uint32_t minPV;
-		int minMQ;
+		uint32_t minMQ;
 		int minCount;
 		int minDuplex;
 		int minOverlap;
@@ -49,21 +49,28 @@ namespace BMF {
 	int cycle1;
 	int cycle2; // Masked, from other read, if it was found.
 	int discordant;
-	uint32_t size;
 	uint32_t quality;
-	uint32_t agreed;
 	uint32_t mq1;
 	uint32_t mq2;
 	uint32_t rv;
 	int is_duplex1;
 	int is_duplex2;
 	int is_overlap;
+	int pass;
 	double pvalue;
 	int flag; // May turn into a flag
 	char base1;
 	char base2; // Masked, from other read
 	char base_call;
 	public:
+		uint32_t agreed;
+		uint32_t size;
+		int is_pass() {
+			return pass;
+		}
+		void set_pass(int _pass) {
+			pass = _pass;
+		}
 		uint32_t get_meanMQ() {
 			return mq2 == (uint32_t)-1 ? mq1: ((mq2 + mq1 + 0.5) / 2);
 		}
@@ -82,20 +89,21 @@ namespace BMF {
 			cycle1(arr_qpos(&plp)),
 			cycle2(-1),
 			discordant(-1),
-			size(bam_aux2i(bam_aux_get(plp.b, "FM"))),
 			quality(((uint32_t *)array_tag(plp.b, "PV"))[cycle1]),
-			agreed(((uint32_t *)array_tag(plp.b, "FA"))[cycle1]),
 			mq1(plp.b->core.qual),
 			mq2((uint32_t)-1),
 			rv((uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"))),
 			is_duplex1(bam_aux2i(bam_aux_get(plp.b, "DR"))),
 			is_duplex2(-1),
 			is_overlap(0),
+			pass(1),
 			pvalue(std::pow(10, quality - 0.1)),
 			flag(plp.b->core.flag),
 			base1(seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)]),
 			base2('\0'),
-			base_call(base1)
+			base_call(base1),
+			agreed(((uint32_t *)array_tag(plp.b, "FA"))[cycle1]),
+			size(bam_aux2i(bam_aux_get(plp.b, "FM")))
 		{
 		}
 		void add_obs(const bam_pileup1_t& plp);

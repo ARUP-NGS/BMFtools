@@ -2,7 +2,7 @@
 #include "src/bmf_target.h" // Provides bed, compiler utils
 #include "bam.h"
 
-extern target_counts_t target_core(char *bedpath, char *bampath,
+extern target_counts_t target_core(const char *bedpath, const char *bampath,
 								uint32_t padding, uint32_t minMQ, uint64_t notification_interval);
 /*
 #ifdef assert

@@ -83,8 +83,8 @@ test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	cd test/ucs && ./ucs_test && cd ./..
 tag_test: $(OBJS) $(TEST_OBJS) libhts.a
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) test/tag/array_tag_test.dbo libhts.a -o ./tag_test && ./tag_test
-target_test: $(OBJS) $(TEST_OBJS) libhts.a
-	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.dbo libhts.a -o ./target_test && ./target_test
+target_test: $(D_OBJS) $(TEST_OBJS) libhts.a
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.dbo src/bmf_target.dbo test/target_test.dbo libhts.a -o ./target_test && ./target_test
 hashdmp_test: $(BINS)
 	cd test/dmp && python hashdmp_test.py && cd ../..
 marksplit_test: $(BINS)
