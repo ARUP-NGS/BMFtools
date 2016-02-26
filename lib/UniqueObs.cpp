@@ -87,60 +87,62 @@ namespace BMF {
 		}
 	}
 	void PairVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
-		std::vector<int> counts;
-		std::vector<int> duplex_counts;
-		std::vector<int> overlap_counts;
-		int count_index = 0;
+		std::vector<char> base_calls;
+		std::unordered_set<char> base_set = std::unordered_set<char>({refbase});
+		for(auto& pair: tumor.templates)
+			base_set.insert(pair.first);
+		for(auto& pair: normal.templates)
+			base_set.insert(pair.first);
+		base_calls = std::vector<char>(base_set.begin(), base_set.end());
+		std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
+			return (a == refbase) ? true : (b == refbase) ? false: a < b;
+		});
+		std::vector<int> counts = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> duplex_counts = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> overlap_counts = std::vector<int>(base_calls.size() * 2);
 		vrec->rid = tumor.tid;
 		vrec->pos = tumor.pos;
 		vrec->qual = 0;
-		kstring_t allele_str = {0, 0, NULL};
-		ks_resize(&allele_str, 20uL);
-		kputc(refbase, &allele_str);
 		auto match = tumor.templates.find(refbase);
-		if(match == tumor.templates.end()) {
-			bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1); // No reference bases in tumor sample.
-			if((match = normal.templates.find(refbase)) == normal.templates.end()) {
-				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
-				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
-				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 2, 0);
-			} else {
-				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-			}
-		} else {
-			if((match = normal.templates.find(refbase)) == normal.templates.end()) {
-				counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size() + 1, 0);
-			} else {
-				counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
-				duplex_counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
-				overlap_counts = std::vector<int>(tumor.templates.size() + normal.templates.size(), 0);
-			}
-			counts = std::vector<int>(tumor.templates.size());
-			duplex_counts = std::vector<int>(tumor.templates.size());
-			overlap_counts = std::vector<int>(tumor.templates.size());
+		if(match != tumor.templates.end()) {
+			// Already 0-initialized if not found.
 			counts[0] = match->second.size();
 			for(auto uni: tumor.templates[refbase]) {
 				duplex_counts[0] += uni->get_duplex();
 				overlap_counts[0] += uni->get_overlap();
 			}
 		}
-		for(auto& pair: tumor.templates) {
-			if(pair.first != refbase)
-				 kputc(',', &allele_str), kputc((int)pair.first, &allele_str);
-			counts[++count_index] = pair.second.size();
-			for(auto uni: tumor.templates[pair.first]) {
-				duplex_counts[count_index] += uni->get_duplex();
-				overlap_counts[count_index] += uni->get_overlap();
+		if((match = normal.templates.find(refbase)) != normal.templates.end()) {
+			counts[base_calls.size()] = match->second.size();
+			for(auto uni: normal.templates[refbase]) {
+				duplex_counts[base_calls.size()] += uni->get_duplex();
+				overlap_counts[base_calls.size()] += uni->get_overlap();
 			}
-			// Update records
+		}
+		kstring_t allele_str = {0, 0, NULL};
+		ks_resize(&allele_str, 20uL);
+		kputc(refbase, &allele_str);
+		for(unsigned i = 1; i < base_calls.size(); ++i) {
+			kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
+			if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
+				counts[i] = match->second.size();
+				for(auto uni: tumor.templates[base_calls[i]]) {
+					duplex_counts[i] += uni->get_duplex();
+					overlap_counts[i] += uni->get_overlap();
+				}
+			}
+			if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
+				counts[i + base_calls.size()] = match->second.size();
+				for(auto uni: normal.templates[base_calls[i]]) {
+					duplex_counts[i + base_calls.size()] += uni->get_duplex();
+					overlap_counts[i + base_calls.size()] += uni->get_overlap();
+				}
+			}
 		}
 		bcf_update_alleles_str(hdr, vrec, allele_str.s);
-		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], counts.size(), 'i');
+		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], counts.size(), 'i');
+		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], counts.size(), 'i');
+		free(allele_str.s);
 	}
 }
