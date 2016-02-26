@@ -210,13 +210,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
 
 int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 {
-	if(vcf_iter) {
-		int ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
-		bcf_subset_format(aux->vcf_header, vrec);
-		return ret;
-	} else {
-		return bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
-	}
+	return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec):bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
 }
 
 int vet_core(vetter_aux_t *aux) {

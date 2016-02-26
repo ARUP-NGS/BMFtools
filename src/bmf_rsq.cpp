@@ -91,10 +91,9 @@ inline void bam2ffq(bam1_t *b, FILE *fp)
 			seqbuf[i] = t;
 		}
 	}
-	kputs(seqbuf, &ks); kputc('\n', &ks);
-	free(seqbuf);
-	fputs(ks.s, fp);
-	free(ks.s);
+	kputs(seqbuf, &ks), free(seqbuf);
+	kputc('\n', &ks);
+	fputs(ks.s, fp), free(ks.s);
 }
 
 std::string bam2cppstr(bam1_t *b)
@@ -143,10 +142,9 @@ std::string bam2cppstr(bam1_t *b)
 		}
 	}
 	assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
-	kputs(seqbuf, &ks); kputc('\n', &ks);
-	free(seqbuf);
-	std::string ret(ks.s);
-	free(ks.s);
+	kputs(seqbuf, &ks), free(seqbuf);
+	kputc('\n', &ks);
+	std::string ret(ks.s), free(ks.s);
 	return ret;
 }
 
@@ -290,7 +288,7 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
 			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
 				qname = bam_get_qname(stack->a[i]);
 				if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-					settings->realign_pairs[qname] = std::string(bam2cppstr(stack->a[i]));
+					settings->realign_pairs[qname] = bam2cppstr(stack->a[i]);
 				} else {
 					assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
 					if(stack->a[i]->core.flag & BAM_FREAD2) {
