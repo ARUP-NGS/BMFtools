@@ -8,7 +8,7 @@
 
 void print_crms_usage(char *executable)
 {
-		fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
+		fprintf(stderr, "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
 						"-S: Flag for single-end mode.\n"
 						"-=: Emit interleaved final output to stdout.\n"

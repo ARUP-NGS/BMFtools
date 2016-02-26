@@ -10,7 +10,7 @@
 
 void sdmp_usage(char *argv[])
 {
-		fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
+		fprintf(stderr, "Usage: bmftools %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
 						"-t: Homopolymer failure threshold. A molecular barcode with"
 						" a homopolymer of length >= this limit is flagged as QC fail."

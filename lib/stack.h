@@ -23,6 +23,18 @@
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
+static const char *stack_vcf_lines[] = {
+		"##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">"
+		"##FORMAT=<ID=ADP,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">"
+		"##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">"
+		"##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">"
+		"##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">"
+		"##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">"
+		"##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"P value for a somatic call for each allele.\">"
+};
+
+
+
 namespace BMF {
 
 	struct stack_conf {
@@ -55,6 +67,8 @@ namespace BMF {
 	uint32_t rv;
 	int is_duplex1;
 	int is_duplex2;
+	int is_reverse1;
+	int is_reverse2;
 	int is_overlap;
 	int pass;
 	double pvalue;
@@ -68,6 +82,9 @@ namespace BMF {
 		int is_pass() {
 			return pass;
 		}
+		int get_reverse() {
+			return is_reverse1 + (is_reverse2 >= 0) ? is_reverse2: 0;
+		}
 		void set_pass(int _pass) {
 			pass = _pass;
 		}
@@ -78,6 +95,7 @@ namespace BMF {
 			return (double)agreed / size;
 		}
 		int get_overlap() {return is_overlap;}
+		uint32_t get_quality() {return quality;}
 		int get_duplex() {
 			return is_duplex1 + (is_duplex2 != -1 ? is_duplex2: 0);
 		}
@@ -95,6 +113,8 @@ namespace BMF {
 			rv((uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"))),
 			is_duplex1(bam_aux2i(bam_aux_get(plp.b, "DR"))),
 			is_duplex2(-1),
+			is_reverse1((plp.b->core.flag & BAM_FREVERSE) != 0),
+			is_reverse2(-1),
 			is_overlap(0),
 			pass(1),
 			pvalue(std::pow(10, quality - 0.1)),
@@ -156,7 +176,7 @@ namespace BMF {
 		int32_t tid;
 	public:
 		void to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase);
-		SampleVCFPos(std::unordered_map<std::string, UniqueObservation> obs, int32_t _tid, int32_t _pos);
+		SampleVCFPos(std::unordered_map<std::string, UniqueObservation>& obs, int32_t _tid, int32_t _pos);
 	};
 
 	class PairVCFPos {
@@ -164,7 +184,8 @@ namespace BMF {
 		SampleVCFPos normal;
 	public:
 		void to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos);
-		PairVCFPos(std::unordered_map<std::string, UniqueObservation> tobs, std::unordered_map<std::string, UniqueObservation> nobs,
+		PairVCFPos(std::unordered_map<std::string, UniqueObservation>& tobs,
+				std::unordered_map<std::string, UniqueObservation>& nobs,
 					int32_t _tid, int32_t _pos):
 						tumor(tobs, _tid, _pos),
 						normal(nobs, _tid, _pos) {

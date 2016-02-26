@@ -148,6 +148,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
 		}
 	}
 	for(int j = 0; j < vrec->n_allele; ++j) {
+		if(strcmp(vrec->d.allele[j], "<*>") == 0) continue;
 		for(int i = 0; i < n_plp; ++i) {
 			if(plp[i].is_del || plp[i].is_refskip) continue;
 			if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
@@ -214,17 +215,17 @@ int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
 }
 
 int vet_core(vetter_aux_t *aux) {
-	int n_plp, vcf_iter_ret;
+	int n_plp;
 	const bam_pileup1_t *plp;
 	tbx_t *vcf_idx = NULL;
 	hts_idx_t *bcf_idx = NULL;
 	hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
 	switch(hts_get_format(aux->vcf_fp)->format) {
 	case vcf:
+		LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
+		/*
 		vcf_idx = tbx_index_load(aux->vcf_fp->fn);
 		if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
-		/*
-		LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
 		if(vcf_idx) {
 			tbx_destroy(vcf_idx);
 			vcf_idx = NULL;
@@ -284,7 +285,7 @@ int vet_core(vetter_aux_t *aux) {
 			int n_disagreed = 0;
 			int n_overlapped = 0;
 			int n_duplex = 0;
-			while((vcf_iter_ret = read_bcf(aux, vcf_iter, vrec)) >= 0) {
+			while(read_bcf(aux, vcf_iter, vrec) >= 0) {
 				if(!bcf_is_snp(vrec)) {
 					LOG_DEBUG("Variant isn't a snp. Skip!\n");
 					bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);

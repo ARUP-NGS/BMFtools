@@ -6,7 +6,7 @@ namespace BMF {
 	 * 1. Decide which info/format fields for each variant.
 	 * 2. Decide to have a number of fields
 	 */
-	SampleVCFPos::SampleVCFPos(std::unordered_map<std::string, UniqueObservation> obs, int32_t _tid, int32_t _pos):
+	SampleVCFPos::SampleVCFPos(std::unordered_map<std::string, UniqueObservation>& obs, int32_t _tid, int32_t _pos):
 	size(obs.size()),
 	pos(_pos),
 	tid(_tid) {
@@ -52,9 +52,9 @@ namespace BMF {
 			// Update records
 		}
 		bcf_update_alleles_str(hdr, vrec, allele_str.s);
-		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADP", (const void *)counts.data(), count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPD", (const void *)duplex_counts.data(), count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADPO", (const void *)overlap_counts.data(), count_index, 'i');
 	}
 
 	void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
@@ -63,12 +63,13 @@ namespace BMF {
 		base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
 		cycle2 = arr_qpos(&plp);
 		mq2 = (uint32_t)plp.b->core.qual;
+		is_reverse2 = (plp.b->core.flag & BAM_FREVERSE) != 0;
 		if(base2 == base1) {
 			is_overlap = 1;
 			discordant = 0;
 			agreed += ((uint32_t *)array_tag(plp.b, "FM"))[cycle2];
-			pvalue = agreed_pvalues(quality, ((uint32_t *)array_tag(plp.b, "PV"))[cycle2]);
-			quality = pvalue_to_phred(pvalue);
+			quality = agreed_pvalues(quality, ((uint32_t *)array_tag(plp.b, "PV"))[cycle2]);
+			pvalue = std::pow(10, -0.1 * quality);
 			rv += bam_aux2i(bam_aux_get(plp.b, "FM"));
 		} else if(base1 == 'N') {
 			discordant = 0;
@@ -76,7 +77,7 @@ namespace BMF {
 			base_call = base2;
 			agreed = ((uint32_t *)array_tag(plp.b, "FM"))[cycle2];
 			quality = ((uint32_t *)array_tag(plp.b, "PV"))[cycle2];
-			pvalue = -10 * std::pow(10, -0.1 * quality);
+			pvalue = std::pow(10, -0.1 * quality);
 			rv = (uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"));
 		} else if(base2 != 'N') {
 			discordant = 1;
@@ -102,6 +103,9 @@ namespace BMF {
 		std::vector<int> duplex_counts = std::vector<int>(base_calls.size() * 2);
 		std::vector<int> overlap_counts = std::vector<int>(base_calls.size() * 2);
 		std::vector<int> allele_passes = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> reverse_counts = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> failed_counts = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> qscore_sums = std::vector<int>(base_calls.size() * 2);
 		vrec->rid = tumor.tid;
 		vrec->pos = tumor.pos;
 		vrec->qual = 0;
@@ -110,15 +114,31 @@ namespace BMF {
 			// Already 0-initialized if not found.
 			counts[0] = match->second.size();
 			for(auto uni: tumor.templates[refbase]) {
+				if(uni->get_quality() < aux->conf.minPV || uni->agreed < aux->conf.minFA
+						|| (float)uni->agreed / uni->size < aux->conf.minFR) {
+					uni->set_pass(0);
+					++failed_counts[0];
+					continue;
+				}
 				duplex_counts[0] += uni->get_duplex();
 				overlap_counts[0] += uni->get_overlap();
+				reverse_counts[0] += uni->get_reverse();
+				qscore_sums[0] += uni->get_quality();
 			}
 		}
 		if((match = normal.templates.find(refbase)) != normal.templates.end()) {
 			counts[base_calls.size()] = match->second.size();
 			for(auto uni: normal.templates[refbase]) {
+				if(uni->get_quality() < aux->conf.minPV || uni->agreed < aux->conf.minFA
+						|| (float)uni->agreed / uni->size < aux->conf.minFR) {
+					uni->set_pass(0);
+					++failed_counts[base_calls.size()];
+					continue;
+				}
 				duplex_counts[base_calls.size()] += uni->get_duplex();
 				overlap_counts[base_calls.size()] += uni->get_overlap();
+				reverse_counts[base_calls.size()] += uni->get_reverse();
+				qscore_sums[base_calls.size()] += uni->get_quality();
 			}
 		}
 		kstring_t allele_str = {0, 0, NULL};
@@ -129,22 +149,57 @@ namespace BMF {
 			if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
 				counts[i] = match->second.size();
 				for(auto uni: tumor.templates[base_calls[i]]) {
+					if(uni->get_quality() < aux->conf.minPV || uni->agreed < aux->conf.minFA
+							|| (float)uni->agreed / uni->size < aux->conf.minFR) {
+						uni->set_pass(0);
+						++failed_counts[i];
+						continue;
+					}
 					duplex_counts[i] += uni->get_duplex();
 					overlap_counts[i] += uni->get_overlap();
+					reverse_counts[i] += uni->get_reverse();
+					qscore_sums[i] += uni->get_quality();
 				}
+				if(duplex_counts[i] >= aux->conf.minDuplex)
+					if(counts[i] >= aux->conf.minCount)
+						if(overlap_counts[i] >= aux->conf.minOverlap)
+							allele_passes[i] = 1;
 			}
 			if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
 				counts[i + base_calls.size()] = match->second.size();
 				for(auto uni: normal.templates[base_calls[i]]) {
+					if(uni->get_quality() < aux->conf.minPV || uni->agreed < aux->conf.minFA
+							|| (float)uni->agreed / uni->size < aux->conf.minFR) {
+						uni->set_pass(0);
+						++failed_counts[i];
+						continue;
+					}
 					duplex_counts[i + base_calls.size()] += uni->get_duplex();
 					overlap_counts[i + base_calls.size()] += uni->get_overlap();
+					reverse_counts[i + base_calls.size()] += uni->get_reverse();
+					qscore_sums[i + base_calls.size()] += uni->get_quality();
 				}
+				if(duplex_counts[i + base_calls.size()] >= aux->conf.minDuplex)
+					if(counts[i + base_calls.size()] >= aux->conf.minCount)
+						if(overlap_counts[i + base_calls.size()] >= aux->conf.minOverlap)
+							allele_passes[i + base_calls.size()] = 1;
 			}
 		}
-		bcf_update_alleles_str(aux->vcf->vh, vrec, allele_str.s);
-		bcf_update_format(aux->vcf->vh, vrec, "ADP", (const void *)&counts[0], counts.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "ADPL", (const void *)&duplex_counts[0], counts.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "ADPO", (const void *)&overlap_counts[0], counts.size(), 'i');
-		free(allele_str.s);
-	}
+		bcf_update_alleles_str(aux->vcf->vh, vrec, allele_str.s), free(allele_str.s);
+		bcf_update_format(aux->vcf->vh, vrec, "ADP", (const void *)counts.data(), counts.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "BMF_PASS", (const void *)allele_passes.data(), allele_passes.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "QSS", (const void *)qscore_sums.data(), qscore_sums.size(), 'i');
+	} /* PairVCFLine::to_bcf */
+} /* namespace BMF */
+
+void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
+	while(n)
+		if(bcf_hdr_append(hdr, lines[--n]))
+			LOG_EXIT("Could not add header line %s. Abort!\n");
+}
+
+void add_stack_lines(bcf_hdr_t *hdr) {
+	add_hdr_lines(hdr, stack_vcf_lines, sizeof(stack_vcf_lines) / sizeof(stack_vcf_lines[0]));
 }

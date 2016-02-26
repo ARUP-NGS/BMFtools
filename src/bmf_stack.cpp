@@ -1,13 +1,13 @@
 #include "bmf_stack.h"
 namespace {
 	const char *vcf_header_lines[] =  {
-			"##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
-			"##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">",
-			"##INFO=<ID=BMF_DUPLEX,Number=A,Type=Integer,Description=\"Number of duplex reads supporting variant at position.\">",
-			"##INFO=<ID=BMF_FAIL,Number=A,Type=Integer,Description=\"Number of unique observations at position failing filters.\">",
-			"##INFO=<ID=DUPLEX_DEPTH,Number=1,Type=Integer,Description=\"Number of duplex reads passing filters at position.\">",
-			"##INFO=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">",
-			"##INFO=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs combined into single observations at position.\">"
+			"##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">"
+			"##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">"
+			"##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">"
+			"##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">"
+			"##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">"
+			"##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">"
+			"##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">"
 	};
 }
 
@@ -63,8 +63,8 @@ static int read_bam(dlib::BamHandle *data, bam1_t *b)
 }
 
 void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
-						int tn_plp, int tpos, int ttid,
-						int nn_plp, int npos, int ntid) {
+						const int& tn_plp, const int& tpos, const int& ttid,
+						const int& nn_plp, const int& npos, const int& ntid) {
 	char *qname;
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
@@ -239,6 +239,7 @@ int stack_core(BMF::stack_aux_t *aux)
 			}
 			// Both bams should be at the same position now.
 			assert(npos == tpos && ntid == ttid);
+			process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
 		}
 	}
 	bcf_destroy(v);
@@ -289,6 +290,9 @@ int stack_main(int argc, char *argv[]) {
 		outvcf = (char *)"-";
 	bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
 	for(auto line: vcf_header_lines)
+		if(bcf_hdr_append(vh, line))
+			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+	for(auto line: stack_vcf_lines)
 		if(bcf_hdr_append(vh, line))
 			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
 	// Add lines to the header for the bed file?
