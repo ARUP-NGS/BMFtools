@@ -156,7 +156,7 @@ namespace BMF {
 		int32_t tid;
 	public:
 		void to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase);
-		SampleVCFPos(std::unordered_map<char *, UniqueObservation> obs, int32_t _tid, int32_t _pos);
+		SampleVCFPos(std::unordered_map<std::string, UniqueObservation> obs, int32_t _tid, int32_t _pos);
 	};
 
 	class PairVCFPos {
@@ -164,7 +164,7 @@ namespace BMF {
 		SampleVCFPos normal;
 	public:
 		void to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos);
-		PairVCFPos(std::unordered_map<char *, UniqueObservation> tobs, std::unordered_map<char *, UniqueObservation> nobs,
+		PairVCFPos(std::unordered_map<std::string, UniqueObservation> tobs, std::unordered_map<std::string, UniqueObservation> nobs,
 					int32_t _tid, int32_t _pos):
 						tumor(tobs, _tid, _pos),
 						normal(nobs, _tid, _pos) {

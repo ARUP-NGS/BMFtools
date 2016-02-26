@@ -67,8 +67,8 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 						int nn_plp, int npos, int ntid) {
 	char *qname;
 	// Build overlap hash
-	std::unordered_map<char *, BMF::UniqueObservation> tobs, nobs;
-	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
+	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
 	int flag_failed[2] = {0};
 	int af_failed[2] = {0};
 	int fa_failed[2] = {0};
@@ -94,8 +94,7 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
 			++af_failed[0]; return;
 		}
-		qname = bam_get_qname(plp.b);
-		if((found = tobs.find(qname)) == tobs.end())
+		if((found = tobs.find(bam_get_qname(plp.b))) == tobs.end())
 			tobs[qname] = BMF::UniqueObservation(plp);
 		else found->second.add_obs(plp);
 	});
@@ -152,8 +151,8 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, BMF::stack_aux_t *aux) {
 	char *qname;
 	// Build overlap hash
-	std::unordered_map<char *, BMF::UniqueObservation> obs;
-	std::unordered_map<char *, BMF::UniqueObservation>::iterator found;
+	std::unordered_map<std::string, BMF::UniqueObservation> obs;
+	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
 	int flag_failed = 0;
 	int af_failed = 0;
 	int fa_failed = 0;

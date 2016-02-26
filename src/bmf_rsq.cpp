@@ -7,7 +7,6 @@ typedef struct rsq_settings {
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmlim; // Mismatch failure threshold.
-	int read_hd_threshold;
 	int is_se;
 	bam_hdr_t *hdr; // BAM header
 	std::unordered_map<std::string, std::string> realign_pairs;
@@ -336,7 +335,6 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
 	for(unsigned i = 0; i < stack->n; ++i)
 		for(unsigned j = i + 1; j < stack->n; ++j)
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
-				//if(!read_pass_hd(stack->a[i], stack->a[j], settings->read_hd_threshold) continue;
 				//LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
@@ -424,7 +422,6 @@ int rsq_main(int argc, char *argv[])
 	rsq_settings_t settings = {0};
 	settings.mmlim = 2;
 	settings.cmpkey = POSITION;
-	settings.read_hd_threshold = -1;
 
 	char *fqname = NULL;
 
@@ -444,10 +441,6 @@ int rsq_main(int argc, char *argv[])
 	}
 	if (optind + 2 > argc)
 		return rsq_usage(EXIT_FAILURE);
-	if(settings.read_hd_threshold < 0) {
-		settings.read_hd_threshold = READ_HD_LIMIT;
-		LOG_INFO("Unset read HD threshold. Setting to default (%i).\n", settings.read_hd_threshold);
-	}
 
 	if(!fqname) {
 		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
