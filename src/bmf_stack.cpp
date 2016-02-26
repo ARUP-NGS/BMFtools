@@ -36,7 +36,7 @@ void stack_usage(int retcode)
 }
 
 
-static int read_bam(BamHandle *data, bam1_t *b)
+static int read_bam(dlib::BamHandle *data, bam1_t *b)
 {
 	int ret;
 	for(;;)
@@ -62,7 +62,7 @@ static int read_bam(BamHandle *data, bam1_t *b)
 	return ret;
 }
 
-void process_matched_pileups(stack_aux_t *aux, bcf1_t *ret,
+void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 						int tn_plp, int tpos, int ttid,
 						int nn_plp, int npos, int ntid) {
 	char *qname;
@@ -156,19 +156,19 @@ void process_matched_pileups(stack_aux_t *aux, bcf1_t *ret,
 	});
 	// Build vcfline struct
 	BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
-	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(ttid, tpos));
-	bcf_update_format_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "FP_FAILED", (void *)&fp_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "FM_FAILED", (void *)&fm_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
-	bcf_update_format_int32(aux->vh, ret, "IMPROPER", (void *)&improper_count, 2);
-	bcf_write(aux->ofp, aux->vh, ret);
+	vcfline.to_bcf(ret, aux, ttid, tpos);
+	bcf_update_format_int32(aux->vcf->vh, ret, "FR_FAILED", (void *)&fr_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "FA_FAILED", (void *)&fa_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "FP_FAILED", (void *)&fp_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "FM_FAILED", (void *)&fm_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "IMPROPER", (void *)&improper_count, 2);
+	aux->vcf->write(ret);
 	bcf_clear(ret);
 }
 
-void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, stack_aux_t *aux) {
+void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, BMF::stack_aux_t *aux) {
 	char *qname;
 	// Build overlap hash
 	std::unordered_map<char *, BMF::UniqueObservation> obs;
@@ -222,19 +222,19 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 	});
 	// Build vcfline struct
 	BMF::SampleVCFPos vcfline = BMF::SampleVCFPos(obs, tid, pos);
-	vcfline.to_bcf(ret, aux->vh, aux->get_ref_base(tid, pos));
-	bcf_update_info_int32(aux->vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "FP_FAILED", (void *)&fp_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "FM_FAILED", (void *)&fm_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "MQ_FAILED", (void *)&mq_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "AF_FAILED", (void *)&af_failed, 1);
-	bcf_update_info_int32(aux->vh, ret, "IMPROPER", (void *)&improper_count, 1);
-	bcf_write(aux->ofp, aux->vh, ret);
+	vcfline.to_bcf(ret, aux->vcf->vh, aux->get_ref_base(tid, pos));
+	bcf_update_info_int32(aux->vcf->vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "FP_FAILED", (void *)&fp_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "FM_FAILED", (void *)&fm_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "MQ_FAILED", (void *)&mq_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "AF_FAILED", (void *)&af_failed, 1);
+	bcf_update_info_int32(aux->vcf->vh, ret, "IMPROPER", (void *)&improper_count, 1);
+	aux->vcf->write(ret);
 	bcf_clear(ret);
 }
 
-int stack_core(stack_aux_t *aux)
+int stack_core(BMF::stack_aux_t *aux)
 {
 	aux->tumor->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->tumor);
 	aux->normal->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->normal);
@@ -274,11 +274,10 @@ int stack_main(int argc, char *argv[]) {
 	if(argc < 2) stack_usage(EXIT_FAILURE);
 	char *outvcf = NULL, *refpath = NULL;
 	std::string bedpath = "";
-	int output_bcf = 0;
-	struct stack_conf conf = {0};
+	struct BMF::stack_conf conf = {0};
 	while ((c = getopt(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
 		switch (c) {
-		case 'B': output_bcf = 1; break;
+		case 'B': conf.output_bcf = 1; break;
 		case 'a': conf.minFA = atoi(optarg); break;
 		case 'c': conf.minCount = atoi(optarg); break;
 		case 'D': conf.minDuplex = atoi(optarg); break;
@@ -309,19 +308,18 @@ int stack_main(int argc, char *argv[]) {
 	if(!refpath) {
 		LOG_EXIT("refpath required. Abort!\n");
 	}
-	stack_aux_t aux = stack_aux_t(argv[optind], argv[optind + 1], conf);
+	if(!outvcf)
+		outvcf = (char *)"-";
+	bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
+	for(auto line: vcf_header_lines)
+		if(bcf_hdr_append(vh, line))
+			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+	// Add lines to the header for the bed file?
+	BMF::stack_aux_t aux = BMF::stack_aux_t(argv[optind], argv[optind + 1], outvcf, vh, conf);
+	bcf_hdr_destroy(vh);
 	aux.fai = fai_load(refpath);
 	if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
 	// TODO: Make BCF header
-	aux.vh = bcf_hdr_init(output_bcf ? "wb": "w");
 	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.normal->header, padding): build_ref_hash(aux.normal->header);
-	for(auto line: vcf_header_lines)
-		if(bcf_hdr_append(aux.vh, line))
-			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
-	// Add lines to the header for the bed file?
-	if(!outvcf)
-		outvcf = (char *)"-";
-	aux.ofp = vcf_open(outvcf, output_bcf ? "wb": "w");
-	bcf_hdr_write(aux.ofp, aux.vh);
 	return stack_core(&aux);
 }

@@ -1,4 +1,4 @@
-#include "UniqueObs.h"
+#include "stack.h"
 
 namespace BMF {
 	/*
@@ -86,7 +86,8 @@ namespace BMF {
 			pvalue = 1.;
 		}
 	}
-	void PairVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
+	void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
+		const char refbase = aux->get_ref_base(ttid, tpos);
 		std::vector<char> base_calls;
 		std::unordered_set<char> base_set = std::unordered_set<char>({refbase});
 		for(auto& pair: tumor.templates)
@@ -100,6 +101,7 @@ namespace BMF {
 		std::vector<int> counts = std::vector<int>(base_calls.size() * 2);
 		std::vector<int> duplex_counts = std::vector<int>(base_calls.size() * 2);
 		std::vector<int> overlap_counts = std::vector<int>(base_calls.size() * 2);
+		std::vector<int> allele_passes = std::vector<int>(base_calls.size() * 2);
 		vrec->rid = tumor.tid;
 		vrec->pos = tumor.pos;
 		vrec->qual = 0;
@@ -139,10 +141,10 @@ namespace BMF {
 				}
 			}
 		}
-		bcf_update_alleles_str(hdr, vrec, allele_str.s);
-		bcf_update_format(hdr, vrec, "ADP", (const void *)&counts[0], counts.size(), 'i');
-		bcf_update_format(hdr, vrec, "ADPL", (const void *)&duplex_counts[0], counts.size(), 'i');
-		bcf_update_format(hdr, vrec, "ADPO", (const void *)&overlap_counts[0], counts.size(), 'i');
+		bcf_update_alleles_str(aux->vcf->vh, vrec, allele_str.s);
+		bcf_update_format(aux->vcf->vh, vrec, "ADP", (const void *)&counts[0], counts.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "ADPL", (const void *)&duplex_counts[0], counts.size(), 'i');
+		bcf_update_format(aux->vcf->vh, vrec, "ADPO", (const void *)&overlap_counts[0], counts.size(), 'i');
 		free(allele_str.s);
 	}
 }

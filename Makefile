@@ -28,7 +28,7 @@ SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdm
 		  src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
 		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
-		  lib/UniqueObs.c
+		  lib/stack.c
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
