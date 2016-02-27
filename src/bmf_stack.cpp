@@ -7,7 +7,8 @@ namespace {
 			"##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
 			"##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
 			"##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
-			"##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">"
+			"##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
+			"##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">"
 	};
 }
 
@@ -78,9 +79,9 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 	int fp_failed[2] = {0};
 	int mq_failed[2] = {0};
 	int improper_count[2] = {0};
+	int olap_count[2] = {0};
 	// Capturing found  by reference to avoid making unneeded temporary variables.
 	std::for_each(aux->tumor->pileups, aux->tumor->pileups + tn_plp, [&](const bam_pileup1_t& plp) {
-		uint8_t *tmpdata;
 		if(plp.is_del || plp.is_refskip) return;
 		if(aux->conf.skip_flag & plp.b->core.flag) {
 			++flag_failed[0];
@@ -93,23 +94,16 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
 			++fp_failed[0]; return;
 		}
-#if !NDEBUG
-		if((tmpdata = bam_aux_get(plp.b, "AF")) != NULL) {
-			if(bam_aux2f(tmpdata) < aux->conf.minAF) {
-				++af_failed[0]; return;
-			}
-		}
-#else
 		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
 			++af_failed[0]; return;
 		}
-#endif
 		//LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
 		qname = std::string(bam_get_qname(plp.b));
 		//LOG_DEBUG("Changed qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
 		if((found = tobs.find(qname)) == tobs.end()) {
-			tobs.emplace(qname, BMF::UniqueObservation(plp));
+			tobs.emplace(qname, plp);
 		} else {
+			++olap_count[0];
 			//LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
 			found->second.add_obs(plp);
 		}
@@ -138,8 +132,9 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		}
 		qname = std::string(bam_get_qname(plp.b));
 		if((found = nobs.find(qname)) == nobs.end()) {
-			nobs.emplace(qname, BMF::UniqueObservation(plp));
+			nobs.emplace(qname, plp);
 		} else {
+			++olap_count[1];
 			found->second.add_obs(plp);
 		}
 	});
@@ -161,6 +156,7 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 	bcf_update_format_int32(aux->vcf->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "IMPROPER", (void *)&improper_count, 2);
+	bcf_update_format_int32(aux->vcf->vh, ret, "OVERLAP", (void *)&olap_count, 2);
 	//LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf->write(ret));
 	aux->vcf->write(ret);
 	bcf_clear(ret);

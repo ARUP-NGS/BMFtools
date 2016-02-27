@@ -58,14 +58,15 @@ namespace BMF {
 	}
 
 	void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
+		LOG_DEBUG("Adding obs in pair. This should increment overlap!\n");
 		LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
 		size += bam_aux2i(bam_aux_get(plp.b, "FM"));
 		base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
 		cycle2 = arr_qpos(&plp);
 		mq2 = (uint32_t)plp.b->core.qual;
-		is_reverse2 = (plp.b->core.flag & BAM_FREVERSE) != 0;
+		is_reverse2 = bam_is_rev(plp.b);
+		is_overlap = 1;
 		if(base2 == base1) {
-			is_overlap = 1;
 			discordant = 0;
 			agreed += ((uint32_t *)array_tag(plp.b, "FA"))[cycle2];
 			quality = agreed_pvalues(quality, ((uint32_t *)array_tag(plp.b, "PV"))[cycle2]);
@@ -124,6 +125,7 @@ namespace BMF {
 				}
 				duplex_counts[0] += uni->get_duplex();
 				overlap_counts[0] += uni->get_overlap();
+				LOG_DEBUG("Overlap counts is now %i.\n", overlap_counts[0]);
 				reverse_counts[0] += uni->get_reverse();
 				qscore_sums[0] += uni->get_quality();
 			}

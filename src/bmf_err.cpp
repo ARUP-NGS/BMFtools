@@ -1281,7 +1281,7 @@ void err_region_core(RegionExpedition *Holloway) {
 		LOG_DEBUG("Fetched! Length: %i\n", len);
 		for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
 			LOG_DEBUG("Loop started.\n");
-			Holloway->region_counts.push_back(RegionErr(kh_val(Holloway->bed, k), i));
+			Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
 			LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
 			const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
 			const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
