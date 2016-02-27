@@ -71,7 +71,7 @@ namespace BMF {
 			agreed += ((uint32_t *)array_tag(plp.b, "FA"))[cycle2];
 			quality = agreed_pvalues(quality, ((uint32_t *)array_tag(plp.b, "PV"))[cycle2]);
 			pvalue = std::pow(10, -0.1 * quality);
-			rv += bam_aux2i(bam_aux_get(plp.b, "FM"));
+			rv += bam_itag(plp.b, "RV");
 		} else if(base1 == 'N') {
 			discordant = 0;
 			// Basically, throw out
@@ -79,7 +79,7 @@ namespace BMF {
 			agreed = ((uint32_t *)array_tag(plp.b, "FA"))[cycle2];
 			quality = ((uint32_t *)array_tag(plp.b, "PV"))[cycle2];
 			pvalue = std::pow(10, -0.1 * quality);
-			rv = (uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"));
+			rv = (uint32_t)bam_itag(plp.b, "RV");
 		} else if(base2 != 'N') {
 			discordant = 1;
 			base_call = 'N';
@@ -125,7 +125,6 @@ namespace BMF {
 				}
 				duplex_counts[0] += uni->get_duplex();
 				overlap_counts[0] += uni->get_overlap();
-				LOG_DEBUG("Overlap counts is now %i.\n", overlap_counts[0]);
 				reverse_counts[0] += uni->get_reverse();
 				qscore_sums[0] += uni->get_quality();
 			}
