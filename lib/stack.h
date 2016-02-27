@@ -24,12 +24,12 @@
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
 static const char *stack_vcf_lines[] = {
-		"##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">"
-		"##FORMAT=<ID=ADP,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">"
-		"##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">"
-		"##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">"
-		"##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">"
-		"##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">"
+		"##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
+		"##FORMAT=<ID=ADP,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">",
+		"##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">",
+		"##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">",
+		"##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
+		"##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">",
 		"##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"P value for a somatic call for each allele.\">"
 };
 

@@ -1,12 +1,12 @@
 #include "bmf_stack.h"
 namespace {
 	const char *vcf_header_lines[] =  {
-			"##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">"
-			"##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">"
-			"##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">"
-			"##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">"
-			"##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">"
-			"##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">"
+			"##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
+			"##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
+			"##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
+			"##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
+			"##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
+			"##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
 			"##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">"
 	};
 }
@@ -110,13 +110,11 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if((found = tobs.find(qname)) == tobs.end()) {
 			tobs.emplace(qname, BMF::UniqueObservation(plp));
 		} else {
-			LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
+			//LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
 			found->second.add_obs(plp);
 		}
 	});
-	LOG_DEBUG("Handling INFO fields.\n");
 	for(auto& pair: tobs) {
-		LOG_DEBUG("Handling INFO fields for key %s.\n", pair.first.c_str());
 		if(pair.second.size < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
 		if(pair.second.agreed < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
 		if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
@@ -163,10 +161,10 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 	bcf_update_format_int32(aux->vcf->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "IMPROPER", (void *)&improper_count, 2);
-	LOG_DEBUG("Writing bcf.\n");
-	LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf->write(ret));
+	//LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf->write(ret));
+	aux->vcf->write(ret);
 	bcf_clear(ret);
-	LOG_DEBUG("Wrote and cleared.\n");
+	LOG_DEBUG("Finished processing matched pileups.\n");
 }
 
 /*
@@ -247,30 +245,47 @@ int stack_core(BMF::stack_aux_t *aux)
 	std::vector<khiter_t> sorted_keys = make_sorted_keys(aux->bed);
 	int ttid, tpos, tn_plp, ntid, npos, nn_plp;
 	bcf1_t *v = bcf_init1();
-	for(auto& key: sorted_keys) {
+	for(unsigned k = 0; k < sorted_keys.size(); ++k) {
+		const khiter_t key = sorted_keys[k];
+		LOG_DEBUG("Now doing key %i from sorted_keys of size %lu.", key, sorted_keys.size());
 		for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
-			LOG_DEBUG("Now iterating through region %i on contig #%i.\n", i, kh_key(aux->bed, key));
-			if(aux->tumor->iter) hts_itr_destroy(aux->tumor->iter);
-			if(aux->normal->iter) hts_itr_destroy(aux->normal->iter);
 			const int start = get_start(kh_val(aux->bed, key).intervals[i]);
 			const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
 			const int bamtid = (int)kh_key(aux->bed, key);
+			LOG_DEBUG("Now iterating through region %i of %i on contig #%i. Start: %i. Stop: %i.\n", i, kh_val(aux->bed, key).n, kh_key(aux->bed, key), start, stop);
+			if(aux->tumor->iter) hts_itr_destroy(aux->tumor->iter);
+			if(aux->normal->iter) hts_itr_destroy(aux->normal->iter);
+			bam_plp_reset(aux->tumor->plp);
+			bam_plp_reset(aux->normal->plp);
 			aux->tumor->iter = bam_itr_queryi(aux->tumor->idx, kh_key(aux->bed, key), start, stop);
 			aux->normal->iter = bam_itr_queryi(aux->normal->idx, kh_key(aux->bed, key), start, stop);
-			while((aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ttid, &tpos, &tn_plp)) >= 0) {
+			LOG_DEBUG("Should be starting pileups at %i, with start/stop %i/%i\n", kh_key(aux->bed, key), start, stop);
+			LOG_DEBUG("hts_itr_t positions: tid/start/stop/maxpos %i/%i/%i\n", aux->tumor->iter->tid, aux->tumor->iter->beg, aux->tumor->iter->end);
+			while((aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ttid, &tpos, &tn_plp)) != 0) {
+				LOG_DEBUG("Tumor pileup going. ttid: %i. bamtid: %i. Tpos: %i. Start: %i. n_plp: %i\n", ttid, bamtid, tpos, start, tn_plp);
 				if(tpos < start && ttid == bamtid) continue;
-				if(tpos >= stop) break;
+				if(tpos >= start) {
+					LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
+					break;
+				}
+				LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
 			}
-			while((aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp)) >= 0) {
+			LOG_DEBUG("tpos after zooming: %i. Start: %i\n", tpos, start);
+			while((aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp)) != 0) {
+				LOG_DEBUG("Normal pileup going. ntid: %i. bamtid: %i. npos: %i. Start: %i. n_plp: %i\n", ntid, bamtid, npos, start, nn_plp);
 				if(npos < start && ntid == bamtid) continue;
-				if(npos >= stop) break;
+				if(npos >= start) break;
 			}
-			// Both bams should be at the same position now.
-			while(npos < stop) {
-				aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp);
-				aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ntid, &npos, &nn_plp);
+			assert(npos == tpos && ntid == ttid);
+			LOG_DEBUG("Processing first matched pileup with t/n n_plps %i/%i.\n", tn_plp, nn_plp);
+			process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+			while((aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ttid, &tpos, &tn_plp)) != 0 &&
+					(aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp)) != 0) {
+				LOG_DEBUG("Piled up at position %i and contig %i. tn_plp %i, nn_plp %i\n", npos, ntid, tn_plp, nn_plp);
+				if(npos >= stop) break;
 				assert(npos == tpos && ntid == ttid);
 				process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+				LOG_DEBUG("Doing pileup at position %i and contig %i. tpos, ttid %i, %i. tn, nn %i %i\n", npos, ntid, tpos, ttid, tn_plp, nn_plp);
 			}
 		}
 	}
@@ -321,12 +336,16 @@ int stack_main(int argc, char *argv[]) {
 	if(!outvcf)
 		outvcf = (char *)"-";
 	bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
-	for(auto line: vcf_header_lines)
+	for(auto line: vcf_header_lines) {
+		LOG_DEBUG("Adding line %s.\n", line);
 		if(bcf_hdr_append(vh, line))
 			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
-	for(auto line: stack_vcf_lines)
+	}
+	for(auto line: stack_vcf_lines) {
+		LOG_DEBUG("Adding line %s.\n", line);
 		if(bcf_hdr_append(vh, line))
 			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+	}
 	int tmp;
 	tmp = bcf_hdr_add_sample(vh, "Tumor");
 	if(tmp) LOG_INFO("Could not add name %s. Code: %i.\n", "Tumor", tmp);

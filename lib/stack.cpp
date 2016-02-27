@@ -95,6 +95,7 @@ namespace BMF {
 			base_set.insert(pair.first);
 		for(auto& pair: normal.templates)
 			base_set.insert(pair.first);
+		base_set.erase('N');
 		base_calls = std::vector<char>(base_set.begin(), base_set.end());
 		std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
 			return (a == refbase) ? true : (b == refbase) ? false: a < b;
