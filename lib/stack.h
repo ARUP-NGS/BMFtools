@@ -145,6 +145,7 @@ namespace BMF {
 			tumor = new dlib::BamHandle(tumor_path);
 			normal = new dlib::BamHandle(normal_path);
 			vcf = new dlib::VcfHandle(vcf_path, vh, _conf.output_bcf ? "wb": "w");
+			bcf_add_bam_contigs(vcf->vh, tumor->header);
 			conf = _conf;
 			if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
 		}

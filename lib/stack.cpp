@@ -52,9 +52,9 @@ namespace BMF {
 			// Update records
 		}
 		bcf_update_alleles_str(hdr, vrec, allele_str.s);
-		bcf_update_format(hdr, vrec, "ADP", (const void *)counts.data(), count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPD", (const void *)duplex_counts.data(), count_index, 'i');
-		bcf_update_format(hdr, vrec, "ADPO", (const void *)overlap_counts.data(), count_index, 'i');
+		bcf_update_format(hdr, vrec, "ADP", (const void *)counts.data(), counts.size(), 'i');
+		bcf_update_format(hdr, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size(), 'i');
+		bcf_update_format(hdr, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size(), 'i');
 	}
 
 	void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
@@ -67,7 +67,7 @@ namespace BMF {
 		if(base2 == base1) {
 			is_overlap = 1;
 			discordant = 0;
-			agreed += ((uint32_t *)array_tag(plp.b, "FM"))[cycle2];
+			agreed += ((uint32_t *)array_tag(plp.b, "FA"))[cycle2];
 			quality = agreed_pvalues(quality, ((uint32_t *)array_tag(plp.b, "PV"))[cycle2]);
 			pvalue = std::pow(10, -0.1 * quality);
 			rv += bam_aux2i(bam_aux_get(plp.b, "FM"));
@@ -75,7 +75,7 @@ namespace BMF {
 			discordant = 0;
 			// Basically, throw out
 			base_call = base2;
-			agreed = ((uint32_t *)array_tag(plp.b, "FM"))[cycle2];
+			agreed = ((uint32_t *)array_tag(plp.b, "FA"))[cycle2];
 			quality = ((uint32_t *)array_tag(plp.b, "PV"))[cycle2];
 			pvalue = std::pow(10, -0.1 * quality);
 			rv = (uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"));
@@ -109,6 +109,7 @@ namespace BMF {
 		vrec->rid = tumor.tid;
 		vrec->pos = tumor.pos;
 		vrec->qual = 0;
+		vrec->n_sample = 2;
 		auto match = tumor.templates.find(refbase);
 		if(match != tumor.templates.end()) {
 			// Already 0-initialized if not found.
@@ -186,11 +187,11 @@ namespace BMF {
 			}
 		}
 		bcf_update_alleles_str(aux->vcf->vh, vrec, allele_str.s), free(allele_str.s);
-		bcf_update_format(aux->vcf->vh, vrec, "ADP", (const void *)counts.data(), counts.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "BMF_PASS", (const void *)allele_passes.data(), allele_passes.size(), 'i');
-		bcf_update_format(aux->vcf->vh, vrec, "QSS", (const void *)qscore_sums.data(), qscore_sums.size(), 'i');
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADP", (const void *)counts.data(), counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "BMF_PASS", (const void *)allele_passes.data(), allele_passes.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "QSS", (const void *)qscore_sums.data(), qscore_sums.size());
 	} /* PairVCFLine::to_bcf */
 } /* namespace BMF */
 

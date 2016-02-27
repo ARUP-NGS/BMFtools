@@ -19,6 +19,7 @@ void stack_usage(int retcode)
 	const char *buf =
 			"Usage:\nbmftools stack -o <out.vcf [stdout]> <in.srt.indexed.bam>\n"
 			"Optional arguments:\n"
+			"-R, --refpath\tPath to fasta reference. REQUIRED.\n"
 			"-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
 			"-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
 			"-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
@@ -65,7 +66,7 @@ static int read_bam(dlib::BamHandle *data, bam1_t *b)
 void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 						const int& tn_plp, const int& tpos, const int& ttid,
 						const int& nn_plp, const int& npos, const int& ntid) {
-	char *qname;
+	std::string qname;
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
 	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
@@ -79,6 +80,7 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 	int improper_count[2] = {0};
 	// Capturing found  by reference to avoid making unneeded temporary variables.
 	std::for_each(aux->tumor->pileups, aux->tumor->pileups + tn_plp, [&](const bam_pileup1_t& plp) {
+		uint8_t *tmpdata;
 		if(plp.is_del || plp.is_refskip) return;
 		if(aux->conf.skip_flag & plp.b->core.flag) {
 			++flag_failed[0];
@@ -91,14 +93,30 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
 			++fp_failed[0]; return;
 		}
+#if !NDEBUG
+		if((tmpdata = bam_aux_get(plp.b, "AF")) != NULL) {
+			if(bam_aux2f(tmpdata) < aux->conf.minAF) {
+				++af_failed[0]; return;
+			}
+		}
+#else
 		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
 			++af_failed[0]; return;
 		}
-		if((found = tobs.find(bam_get_qname(plp.b))) == tobs.end())
-			tobs[qname] = BMF::UniqueObservation(plp);
-		else found->second.add_obs(plp);
+#endif
+		//LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
+		qname = std::string(bam_get_qname(plp.b));
+		//LOG_DEBUG("Changed qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
+		if((found = tobs.find(qname)) == tobs.end()) {
+			tobs.emplace(qname, BMF::UniqueObservation(plp));
+		} else {
+			LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
+			found->second.add_obs(plp);
+		}
 	});
+	LOG_DEBUG("Handling INFO fields.\n");
 	for(auto& pair: tobs) {
+		LOG_DEBUG("Handling INFO fields for key %s.\n", pair.first.c_str());
 		if(pair.second.size < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
 		if(pair.second.agreed < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
 		if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
@@ -120,10 +138,12 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
 			++af_failed[1]; return;
 		}
-		qname = bam_get_qname(plp.b);
-		if((found = nobs.find(qname)) == nobs.end())
-			nobs[qname] = BMF::UniqueObservation(plp);
-		else found->second.add_obs(plp);
+		qname = std::string(bam_get_qname(plp.b));
+		if((found = nobs.find(qname)) == nobs.end()) {
+			nobs.emplace(qname, BMF::UniqueObservation(plp));
+		} else {
+			found->second.add_obs(plp);
+		}
 	});
 	for(auto& pair: nobs) {
 		if(pair.second.size < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
@@ -131,8 +151,10 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 		if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
 		if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
 	}
+	LOG_DEBUG("Making PairVCFPos.\n");
 	// Build vcfline struct
 	BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
+	LOG_DEBUG("Making bcf.\n");
 	vcfline.to_bcf(ret, aux, ttid, tpos);
 	bcf_update_format_int32(aux->vcf->vh, ret, "FR_FAILED", (void *)&fr_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "FA_FAILED", (void *)&fa_failed, 2);
@@ -141,15 +163,17 @@ void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
 	bcf_update_format_int32(aux->vcf->vh, ret, "MQ_FAILED", (void *)&mq_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "AF_FAILED", (void *)&af_failed, 2);
 	bcf_update_format_int32(aux->vcf->vh, ret, "IMPROPER", (void *)&improper_count, 2);
-	aux->vcf->write(ret);
+	LOG_DEBUG("Writing bcf.\n");
+	LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf->write(ret));
 	bcf_clear(ret);
+	LOG_DEBUG("Wrote and cleared.\n");
 }
 
 /*
  * Needs a rewrite after the T/N pair rewrite!
  */
 void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, BMF::stack_aux_t *aux) {
-	char *qname;
+	std::string qname;
 	// Build overlap hash
 	std::unordered_map<std::string, BMF::UniqueObservation> obs;
 	std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
@@ -193,6 +217,7 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 		}
 		// Should I be failing FA/FM/PV before merging overlapping reads? NO.
 		qname = bam_get_qname(plp.b);
+		LOG_DEBUG("Got qname %s.\n", qname.c_str());
 		if((found = obs.find(qname)) == obs.end())
 			obs[qname] = BMF::UniqueObservation(plp);
 		else found->second.add_obs(plp);
@@ -213,6 +238,8 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
 
 int stack_core(BMF::stack_aux_t *aux)
 {
+	if(!aux->tumor->idx || !aux->normal->idx)
+		LOG_EXIT("Could not load bam indices. Abort!\n");
 	aux->tumor->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->tumor);
 	aux->normal->plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)aux->normal);
 	bam_plp_set_maxcnt(aux->tumor->plp, aux->conf.max_depth);
@@ -222,6 +249,7 @@ int stack_core(BMF::stack_aux_t *aux)
 	bcf1_t *v = bcf_init1();
 	for(auto& key: sorted_keys) {
 		for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
+			LOG_DEBUG("Now iterating through region %i on contig #%i.\n", i, kh_key(aux->bed, key));
 			if(aux->tumor->iter) hts_itr_destroy(aux->tumor->iter);
 			if(aux->normal->iter) hts_itr_destroy(aux->normal->iter);
 			const int start = get_start(kh_val(aux->bed, key).intervals[i]);
@@ -238,8 +266,12 @@ int stack_core(BMF::stack_aux_t *aux)
 				if(npos >= stop) break;
 			}
 			// Both bams should be at the same position now.
-			assert(npos == tpos && ntid == ttid);
-			process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+			while(npos < stop) {
+				aux->normal->pileups = bam_plp_auto(aux->normal->plp, &ntid, &npos, &nn_plp);
+				aux->tumor->pileups = bam_plp_auto(aux->tumor->plp, &ntid, &npos, &nn_plp);
+				assert(npos == tpos && ntid == ttid);
+				process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+			}
 		}
 	}
 	bcf_destroy(v);
@@ -295,6 +327,14 @@ int stack_main(int argc, char *argv[]) {
 	for(auto line: stack_vcf_lines)
 		if(bcf_hdr_append(vh, line))
 			LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+	int tmp;
+	tmp = bcf_hdr_add_sample(vh, "Tumor");
+	if(tmp) LOG_INFO("Could not add name %s. Code: %i.\n", "Tumor", tmp);
+	tmp = bcf_hdr_add_sample(vh, "Normal");
+	if(tmp) LOG_INFO("Could not add name %s. Code: %i.\n", "Normal", tmp);
+	bcf_hdr_add_sample(vh, NULL);
+	bcf_hdr_nsamples(vh) = 2;
+	LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
 	// Add lines to the header for the bed file?
 	BMF::stack_aux_t aux = BMF::stack_aux_t(argv[optind], argv[optind + 1], outvcf, vh, conf);
 	bcf_hdr_destroy(vh);
@@ -302,5 +342,8 @@ int stack_main(int argc, char *argv[]) {
 	if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
 	// TODO: Make BCF header
 	aux.bed = *bedpath.c_str() ? parse_bed_hash(bedpath.c_str(), aux.normal->header, padding): build_ref_hash(aux.normal->header);
+	static const char *tags[] = {"FM", "FA", "PV", "FP", "AF", "DR"};
+	for(auto tag: tags)
+		check_bam_tag_exit(aux.normal->fp->fn, tag);
 	return stack_core(&aux);
 }
