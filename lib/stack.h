@@ -28,6 +28,8 @@ static const char *stack_vcf_lines[] = {
 		"##FORMAT=<ID=ADP,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">",
 		"##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">",
 		"##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">",
+		"##FORMAT=<ID=ADPR,Number=R,Type=Integer,Description=\"Total number of original reversed reads supporting allele.\">",
+		"##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
 		"##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
 		"##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">",
 		"##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"P value for a somatic call for each allele.\">"

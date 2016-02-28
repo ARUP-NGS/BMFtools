@@ -163,10 +163,9 @@ namespace BMF {
 					reverse_counts[i] += uni->get_reverse();
 					qscore_sums[i] += uni->get_quality();
 				}
-				if(duplex_counts[i] >= aux->conf.minDuplex)
-					if(counts[i] >= aux->conf.minCount)
-						if(overlap_counts[i] >= aux->conf.minOverlap)
-							allele_passes[i] = 1;
+				allele_passes[i] = (duplex_counts[i] >= aux->conf.minDuplex &&
+														counts[i] >= aux->conf.minCount &&
+														overlap_counts[i] >= aux->conf.minOverlap);
 			}
 			if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
 				counts[i + base_calls.size()] = match->second.size();
@@ -182,18 +181,23 @@ namespace BMF {
 					reverse_counts[i + base_calls.size()] += uni->get_reverse();
 					qscore_sums[i + base_calls.size()] += uni->get_quality();
 				}
-				if(duplex_counts[i + base_calls.size()] >= aux->conf.minDuplex)
-					if(counts[i + base_calls.size()] >= aux->conf.minCount)
-						if(overlap_counts[i + base_calls.size()] >= aux->conf.minOverlap)
-							allele_passes[i + base_calls.size()] = 1;
+				allele_passes[i + base_calls.size()] = (duplex_counts[i + base_calls.size()] >= aux->conf.minDuplex &&
+														counts[i + base_calls.size()] >= aux->conf.minCount &&
+														overlap_counts[i + base_calls.size()] >= aux->conf.minOverlap);
 			}
 		}
+		std::vector<float> rv_fractions = std::vector<float>(reverse_counts.size());
+		for(unsigned i = 0; i < reverse_counts.size(); ++i) {
+			rv_fractions[i] = (float)counts[i] / reverse_counts[i];
+		}
 		bcf_update_alleles_str(aux->vcf->vh, vrec, allele_str.s), free(allele_str.s);
-		bcf_update_format_int32(aux->vcf->vh, vrec, "ADP", (const void *)counts.data(), counts.size());
-		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size());
-		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size());
-		bcf_update_format_int32(aux->vcf->vh, vrec, "BMF_PASS", (const void *)allele_passes.data(), allele_passes.size());
-		bcf_update_format_int32(aux->vcf->vh, vrec, "QSS", (const void *)qscore_sums.data(), qscore_sums.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADP", static_cast<const void *>(counts.data()), counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
+		bcf_update_format_float(aux->vcf->vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
+		bcf_update_format_int32(aux->vcf->vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
 	} /* PairVCFLine::to_bcf */
 } /* namespace BMF */
 
