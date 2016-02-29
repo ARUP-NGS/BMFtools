@@ -1,8 +1,8 @@
 #ifndef MTHERR_C
 #define MTHERR_C
-/*							mtherr.c
+/*                            mtherr.c
  *
- *	Library common error handling routine
+ *    Library common error handling routine
  *
  *
  *
@@ -21,16 +21,16 @@
  * This routine may be called to report one of the following
  * error conditions (in the include file mconf.h).
  *  
- *   Mnemonic		Value		  Significance
+ *   Mnemonic        Value          Significance
  *
- *	DOMAIN			1	   argument domain error
- *	SING			  2	   function singularity
- *	OVERFLOW		  3	   overflow range error
- *	UNDERFLOW		 4	   underflow range error
- *	TLOSS			 5	   total loss of precision
- *	PLOSS			 6	   partial loss of precision
- *	EDOM			 33	   Unix domain error code
- *	ERANGE		   34	   Unix range error code
+ *    DOMAIN            1       argument domain error
+ *    SING              2       function singularity
+ *    OVERFLOW          3       overflow range error
+ *    UNDERFLOW         4       underflow range error
+ *    TLOSS             5       total loss of precision
+ *    PLOSS             6       partial loss of precision
+ *    EDOM             33       Unix domain error code
+ *    ERANGE           34       Unix range error code
  *
  * The default version of the file prints the function name,
  * passed to it by the pointer fctnam, followed by the
@@ -69,9 +69,9 @@ static inline int mtherr (const char *name, int code );
  */
 /*
 static char *ermsg[7] = {
-"unknown",	  * error code 0 *
-"domain",	   * error code 1 *
-"singularity",  * et seq.	  *
+"unknown",      * error code 0 *
+"domain",       * error code 1 *
+"singularity",  * et seq.      *
 "overflow",
 "underflow",
 "total loss of precision",
@@ -94,7 +94,7 @@ merror = code;
  * by the code argument.
  *
 if( (code <= 0) || (code >= 7) )
-	code = 0;
+    code = 0;
 printf( "%s error\n", ermsg[code] );
 
  * Return to calling
