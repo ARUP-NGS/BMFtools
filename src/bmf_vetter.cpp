@@ -452,6 +452,10 @@ int vetter_main(int argc, char *argv[])
         free(tmpstr.s);
     }
     bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);
+    std::string timestring = std::string("", 16uL);
+    string_fmt_time(timestring);
+    bcf_hdr_printf(aux.vcf_header, "##StartTime=\"%s\"", timestring.c_str());
+    bcf_add_bam_contigs(aux.vcf_header, aux.header);
 
     // Open output vcf
     aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);

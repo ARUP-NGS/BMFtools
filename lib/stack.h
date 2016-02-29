@@ -134,6 +134,7 @@ namespace BMF {
 
     class stack_aux_t {
     public:
+        stack_conf conf;
         dlib::BamHandle *tumor;
         dlib::BamHandle *normal;
         dlib::VcfHandle *vcf;
@@ -141,15 +142,17 @@ namespace BMF {
         khash_t(bed) *bed;
         int last_tid;
         char *ref_seq;
-        stack_conf conf;
-        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, BMF::stack_conf _conf) {
-            memset(this, 0, sizeof(*this));
-            last_tid = -1;
-            tumor = new dlib::BamHandle(tumor_path);
-            normal = new dlib::BamHandle(normal_path);
-            vcf = new dlib::VcfHandle(vcf_path, vh, _conf.output_bcf ? "wb": "w");
+        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf conf):
+            conf(conf),
+            tumor(new dlib::BamHandle(tumor_path)),
+            normal(new dlib::BamHandle(normal_path)),
+            vcf(new dlib::VcfHandle(vcf_path, vh, conf.output_bcf ? "wb": "w")),
+            fai(NULL),
+            bed(NULL),
+            last_tid(-1),
+            ref_seq(NULL)
+        {
             bcf_add_bam_contigs(vcf->vh, tumor->header);
-            conf = _conf;
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
         }
         char get_ref_base(int tid, int pos) {

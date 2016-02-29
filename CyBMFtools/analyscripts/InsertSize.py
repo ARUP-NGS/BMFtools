@@ -12,15 +12,15 @@ from scipy.misc import factorial
 '''
 Sample data
 # Insert sizes. Use `grep ^IS | cut -f 2-` to extract this part. The columns are: insert size, pairs total, inward oriented pairs, outward oriented pairs, other pairs
-0	641	0	3	638
-1	0	0	0	0
-2	25	0	11	14
-3	16	0	11	5
-4	9	0	8	1
-5	10	0	7	3
-6	6	0	5	1
-7	5	0	4	1
-8	9	0	9	0
+0    641    0    3    638
+1    0    0    0    0
+2    25    0    11    14
+3    16    0    11    5
+4    9    0    8    1
+5    10    0    7    3
+6    6    0    5    1
+7    5    0    4    1
+8    9    0    9    0
 '''
 
 def poisson(k, lamb):
