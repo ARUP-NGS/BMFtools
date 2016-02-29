@@ -10,7 +10,7 @@ namespace BMF {
     size(obs.size()),
     pos(_pos),
     tid(_tid) {
-        templates.reserve(5);
+        templates.reserve(4);
         for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
     }
     void SampleVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
@@ -90,13 +90,23 @@ namespace BMF {
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         const char refbase = aux->get_ref_base(ttid, tpos);
+        int ambig[2] = {0, 0};
         std::vector<char> base_calls;
         std::unordered_set<char> base_set = std::unordered_set<char>({refbase});
-        for(auto& pair: tumor.templates)
+        for(auto& pair: tumor.templates) {
+            if(pair.first == 'N') {
+               ambig[0] = pair.second.size();
+               continue;
+            }
             base_set.insert(pair.first);
-        for(auto& pair: normal.templates)
+        }
+        for(auto& pair: normal.templates) {
+            if(pair.first == 'N') {
+               ambig[1] = pair.second.size();
+               continue;
+            }
             base_set.insert(pair.first);
-        base_set.erase('N');
+        }
         base_calls = std::vector<char>(base_set.begin(), base_set.end());
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
@@ -127,6 +137,9 @@ namespace BMF {
                 overlap_counts[0] += uni->get_overlap();
                 reverse_counts[0] += uni->get_reverse();
                 qscore_sums[0] += uni->get_quality();
+                allele_passes[0] = (duplex_counts[0] >= aux->conf.minDuplex &&
+                                                        counts[0] >= aux->conf.minCount &&
+                                                        overlap_counts[0] >= aux->conf.minOverlap);
             }
         }
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
@@ -143,6 +156,9 @@ namespace BMF {
                 reverse_counts[base_calls.size()] += uni->get_reverse();
                 qscore_sums[base_calls.size()] += uni->get_quality();
             }
+            allele_passes[base_calls.size()] = (duplex_counts[base_calls.size()] >= aux->conf.minDuplex &&
+                                                counts[base_calls.size()] >= aux->conf.minCount &&
+                                                overlap_counts[base_calls.size()] >= aux->conf.minOverlap);
         }
         kstring_t allele_str = {0, 0, NULL};
         ks_resize(&allele_str, 8uL);
@@ -198,6 +214,7 @@ namespace BMF {
         bcf_update_format_float(aux->vcf->vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf->vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
         bcf_update_format_int32(aux->vcf->vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
+        bcf_update_format_int32(aux->vcf->vh, vrec, "AMBIG", static_cast<const void *>(ambig), sizeof(ambig));
     } /* PairVCFLine::to_bcf */
 } /* namespace BMF */
 
