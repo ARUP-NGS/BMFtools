@@ -5,9 +5,9 @@
 #include <getopt.h>
 
 typedef struct {
-	uint64_t count;
-	uint64_t n_skipped;
-	uint64_t target;
+    uint64_t count;
+    uint64_t n_skipped;
+    uint64_t target;
 } target_counts_t;
 
 

@@ -21,54 +21,54 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level);
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
 typedef struct HashKing {
-	UT_hash_handle hh;
-	char id[MAX_BARCODE_LENGTH + 1];
-	KingFisher_t *value;
+    UT_hash_handle hh;
+    char id[MAX_BARCODE_LENGTH + 1];
+    KingFisher_t *value;
 }hk_t;
 
 
 CONST static inline int infer_barcode_length(char *bs_ptr)
 {
-	char *const current = bs_ptr;
-	for (;;) {
-		switch(*bs_ptr++) {
-		case '|': case '\0':
-			return bs_ptr - current - 1;
-		}
-	}
-	return -1; // This never happens.
+    char *const current = bs_ptr;
+    for (;;) {
+        switch(*bs_ptr++) {
+        case '|': case '\0':
+            return bs_ptr - current - 1;
+        }
+    }
+    return -1; // This never happens.
 }
 
 static inline void cp_view2buf(char *view, char *buf)
 {
-	for(;;) {
-		switch(*view) {
-			case '\0': // Fall-through
-			case '|': *buf++ = '\0'; return;
-			default: *buf++ = *view++;
-		}
-	}
+    for(;;) {
+        switch(*view) {
+            case '\0': // Fall-through
+            case '|': *buf++ = '\0'; return;
+            default: *buf++ = *view++;
+        }
+    }
 }
 
 static inline KingFisher_t *init_kfp(size_t readlen)
 {
-	const size_t r5 = readlen * 5;
-	KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
-	ret->readlen = readlen;
-	ret->max_phreds = (char *)malloc((r5) * sizeof(char));
-	ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
-	ret->phred_sums = (uint32_t *)calloc(r5, sizeof(uint32_t));
-	memset(ret->max_phreds, '#', r5);
-	ret->pass_fail = '1';
-	return ret;
+    const size_t r5 = readlen * 5;
+    KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
+    ret->readlen = readlen;
+    ret->max_phreds = (char *)malloc((r5) * sizeof(char));
+    ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
+    ret->phred_sums = (uint32_t *)calloc(r5, sizeof(uint32_t));
+    memset(ret->max_phreds, '#', r5);
+    ret->pass_fail = '1';
+    return ret;
 }
 
 static inline void destroy_kf(KingFisher_t *kfp)
 {
-	free(kfp->nuc_counts);
-	free(kfp->phred_sums);
-	free(kfp->max_phreds);
-	free(kfp);
+    free(kfp->nuc_counts);
+    free(kfp->phred_sums);
+    free(kfp->max_phreds);
+    free(kfp);
 }
 
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
@@ -76,7 +76,7 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
 static inline void tmpvars_destroy(tmpvars_t *tmp)
 {
-	free(tmp->buffers), free(tmp);
+    free(tmp->buffers), free(tmp);
 }
 
 

@@ -29,33 +29,33 @@ KSEQ_INIT(gzFile, gzread)
 
 
 typedef struct tmpbuffers {
-	char name_buffer[120];
-	char PVBuffer[1000];
-	char FABuffer[1000];
-	char cons_seq_buffer[SEQBUF_SIZE];
-	uint32_t cons_quals[SEQBUF_SIZE];
-	uint16_t agrees[SEQBUF_SIZE];
+    char name_buffer[120];
+    char PVBuffer[1000];
+    char FABuffer[1000];
+    char cons_seq_buffer[SEQBUF_SIZE];
+    uint32_t cons_quals[SEQBUF_SIZE];
+    uint16_t agrees[SEQBUF_SIZE];
 } tmpbuffers_t;
 
 
 typedef struct tmpvars {
-	char *bs_ptr;
-	int blen;
-	int readlen;
-	char key[MAX_BARCODE_LENGTH + 1];
-	int l; // For holding ret value for seq.
-	tmpbuffers_t *buffers;
+    char *bs_ptr;
+    int blen;
+    int readlen;
+    char key[MAX_BARCODE_LENGTH + 1];
+    int l; // For holding ret value for seq.
+    tmpbuffers_t *buffers;
 } tmpvars_t;
 
 
 typedef struct KingFisher {
-	uint16_t *nuc_counts; // Count of nucleotides of this form
-	uint32_t *phred_sums; // Sums of -10log10(p-value)
-	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
-	int length; // Number of reads in family
-	int readlen; // Length of reads
-	char barcode[MAX_BARCODE_LENGTH + 1];
-	char pass_fail;
+    uint16_t *nuc_counts; // Count of nucleotides of this form
+    uint32_t *phred_sums; // Sums of -10log10(p-value)
+    char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
+    int length; // Number of reads in family
+    int readlen; // Length of reads
+    char barcode[MAX_BARCODE_LENGTH + 1];
+    char pass_fail;
 } KingFisher_t;
 
 
@@ -75,23 +75,23 @@ CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
 static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
 {
-	int i;
-	kputsn("FA:B:I", 6, ks);
-	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
-	kputsn("\tPV:B:I", 7, ks);
-	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+    int i;
+    kputsn("FA:B:I", 6, ks);
+    for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+    kputsn("\tPV:B:I", 7, ks);
+    for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
 }
 
 static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks)
 {
-	kputsn("PV:B:I", 6, ks);
-	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+    kputsn("PV:B:I", 6, ks);
+    for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
 }
 
 static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
 {
-	kputsn("FA:B:I", 6, ks);
-	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+    kputsn("FA:B:I", 6, ks);
+    for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
 }
 
 /*
@@ -103,28 +103,28 @@ static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
  */
 static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
 {
-	char tmpbuf[7];
-	memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
-	for(int i = 0; i < readlen; ++i)
-		sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
+    char tmpbuf[7];
+    memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
+    for(int i = 0; i < readlen; ++i)
+        sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
 }
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
-	++kfp->nuc_counts[posdata];
-	kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
+    const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
+    ++kfp->nuc_counts[posdata];
+    kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
+    if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
 }
 
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 {
-	if(!kfp->length++) { // Increment while checking
-		kfp->pass_fail = seq->comment.s[FP_OFFSET];
-		memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
-		kfp->barcode[blen] = '\0';
-	}
-	for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
+    if(!kfp->length++) { // Increment while checking
+        kfp->pass_fail = seq->comment.s[FP_OFFSET];
+        memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
+        kfp->barcode[blen] = '\0';
+    }
+    for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
 }
 
 
@@ -136,28 +136,28 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
  */
 CONST static inline int arr_max_u32(uint32_t *arr, int index)
 {
-	const uint32_t i5 = index * 5;
-	if(arr[i5] > arr[i5 + 1] &&
-		arr[i5] > arr[i5 + 2] &&
-		arr[i5] > arr[i5 + 3] &&
-		arr[i5] > arr[i5 + 4])
-		return 0;
-	else if(arr[i5 + 1] > arr[i5 + 2] &&
-			arr[i5 + 1] > arr[i5 + 3] &&
-			arr[i5 + 1] > arr[i5 + 4])
-		return 1;
-	else if(arr[i5 + 2] > arr[i5 + 3] &&
-			arr[i5 + 2] > arr[i5 + 4])
-		return 2;
-	else if(arr[i5 + 3] > arr[i5 + 4])
-		return 3;
-	return 4; // 'N'
+    const uint32_t i5 = index * 5;
+    if(arr[i5] > arr[i5 + 1] &&
+        arr[i5] > arr[i5 + 2] &&
+        arr[i5] > arr[i5 + 3] &&
+        arr[i5] > arr[i5 + 4])
+        return 0;
+    else if(arr[i5 + 1] > arr[i5 + 2] &&
+            arr[i5 + 1] > arr[i5 + 3] &&
+            arr[i5 + 1] > arr[i5 + 4])
+        return 1;
+    else if(arr[i5 + 2] > arr[i5 + 3] &&
+            arr[i5 + 2] > arr[i5 + 4])
+        return 2;
+    else if(arr[i5 + 3] > arr[i5 + 4])
+        return 3;
+    return 4; // 'N'
 }
 
 
 CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
 {
-	return arr_max_u32(kfp->phred_sums, index);
+    return arr_max_u32(kfp->phred_sums, index);
 }
 
 
