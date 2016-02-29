@@ -13,32 +13,21 @@ int target_usage(FILE *fp, int retcode)
 
 target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval)
 {
-    samFile *fp = NULL;
-    bam_hdr_t *header = NULL;
-    if ((fp = sam_open(bampath, "r")) == NULL) {
-        LOG_EXIT("Cannot open input file \"%s\"", bampath);
-    }
-    if ((header = sam_hdr_read(fp)) == NULL) {
-        LOG_EXIT("Failed to read header for \"%s\"\n", bampath);
-    }
-    khash_t(bed) *bed = parse_bed_hash(bedpath, header, padding);
+	dlib::BamHandle handle(bampath);
+    khash_t(bed) *bed = parse_bed_hash(bedpath, handle.header, padding);
     target_counts_t counts;
     memset(&counts, 0, sizeof(target_counts_t));
-    bam1_t *b = bam_init1();
     int c;
-    while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
-        if((b->core.qual < minMQ) || (b->core.flag & (2820))) { // 2820 is unmapped, secondary, supplementary, qcfail
+    while (LIKELY((c = handle.next()) >= 0)) {
+        if((handle.rec->core.qual < minMQ) || (handle.rec->core.flag & (2820))) { // 2820 is unmapped, secondary, supplementary, qcfail
             ++counts.n_skipped;
             continue;
         }
-        if(bed_test(b, bed)) ++counts.target;
+        if(bed_test(handle.rec, bed)) ++counts.target;
         if(UNLIKELY(++counts.count % notification_interval == 0)) {
             LOG_INFO("Number of records processed: %lu.\n", ++counts.count);
         }
     }
-    bam_destroy1(b);
-    bam_hdr_destroy(header);
-    sam_close(fp);
     bed_destroy_hash(bed);
     return counts;
 }

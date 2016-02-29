@@ -1,6 +1,7 @@
 #ifndef BMF_TARGET_H
 #define BMF_TARGET_H
 #include "dlib/compiler_util.h"
+#include "dlib/bam_util.h"
 #include "dlib/bed_util.h"
 #include <getopt.h>
 
