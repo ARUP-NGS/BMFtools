@@ -33,7 +33,8 @@ static const char *stack_vcf_lines[] = {
         "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
         "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
         "##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">",
-        "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"P value for a somatic call for each allele.\">"
+        "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
+        "##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description=\"Somatic mutation\">"
 };
 
 
@@ -135,31 +136,62 @@ namespace BMF {
     class stack_aux_t {
     public:
         stack_conf conf;
-        dlib::BamHandle *tumor;
-        dlib::BamHandle *normal;
-        dlib::VcfHandle *vcf;
+        dlib::BamHandle tumor;
+        dlib::BamHandle normal;
+        dlib::VcfHandle vcf;
         faidx_t *fai;
         khash_t(bed) *bed;
         int last_tid;
         char *ref_seq;
+        void pair_region_itr(int bamtid, int start, int stop) {
+            bam_plp_reset(tumor.plp);
+            bam_plp_reset(normal.plp);
+            if(tumor.iter) hts_itr_destroy(tumor.iter);
+            if(normal.iter) hts_itr_destroy(normal.iter);
+            tumor.iter = bam_itr_queryi(tumor.idx, bamtid, start, stop);
+            normal.iter = bam_itr_queryi(normal.idx, bamtid, start, stop);
+            int ttid, tpos, tn_plp;
+            int ntid, npos, nn_plp;
+            while((tumor.pileups = bam_plp_auto(tumor.plp, &ttid, &tpos, &tn_plp)) != 0) {
+                LOG_DEBUG("Tumor pileup going. ttid: %i. bamtid: %i. Tpos: %i. Start: %i. n_plp: %i\n", ttid, bamtid, tpos, start, tn_plp);
+                if(tpos < start && ttid == bamtid) continue;
+                if(tpos >= start) {
+                    LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
+                    break;
+                }
+                LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
+            }
+            while((normal.pileups = bam_plp_auto(normal.plp, &ntid, &npos, &nn_plp)) != 0) {
+                if(npos < start && ntid == bamtid) continue;
+                if(npos >= start) break;
+            }
+            assert(npos == tpos && ntid == ttid);
+        }
+        int next_paired_pileup(int *ttid, int *tpos, int *tn_plp, int *ntid, int *npos, int *nn_plp, int stop) {
+            if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0 &&
+                    (normal.pileups = bam_plp_auto(normal.plp, ntid, npos, nn_plp)) != 0) {
+                return *npos < stop;
+            }
+            return 0;
+        }
         stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf conf):
             conf(conf),
-            tumor(new dlib::BamHandle(tumor_path)),
-            normal(new dlib::BamHandle(normal_path)),
-            vcf(new dlib::VcfHandle(vcf_path, vh, conf.output_bcf ? "wb": "w")),
+            tumor(tumor_path),
+            normal(normal_path),
+            vcf(vcf_path, vh, conf.output_bcf ? "wb": "w"),
             fai(NULL),
             bed(NULL),
             last_tid(-1),
             ref_seq(NULL)
         {
-            bcf_add_bam_contigs(vcf->vh, tumor->header);
+            bcf_add_bam_contigs(vcf.vh, tumor.header);
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
         }
         char get_ref_base(int tid, int pos) {
             int len;
             if(tid != last_tid) {
                 if(ref_seq) free(ref_seq);
-                ref_seq = fai_fetch(fai, tumor->header->target_name[tid], &len);
+                ref_seq = fai_fetch(fai, tumor.header->target_name[tid], &len);
                 last_tid = tid;
             }
             return ref_seq[pos];
@@ -167,9 +199,6 @@ namespace BMF {
         ~stack_aux_t() {
             if(bed) bed_destroy_hash((void *)bed);
             if(ref_seq) free(ref_seq);
-            if(tumor) delete tumor;
-            if(normal) delete normal;
-            if(vcf) delete vcf;
         }
     };
 

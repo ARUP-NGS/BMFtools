@@ -3,7 +3,7 @@
 #     d.nephi.baker@gmail.com       #
 ######################################
 
-STD=c++1z
+STD=c++14
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 CFLAGS= -Wunreachable-code -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99 -fno-builtin-gamma -pedantic

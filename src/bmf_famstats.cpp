@@ -1,5 +1,6 @@
 #include "bmf_famstats.h"
 
+const char *tags_to_check[] = {"FP", "RV", "FM", "FA"};
 int RVWarn = 1;
 
 int famstats_frac_usage_exit(FILE *fp, int code) {
@@ -65,8 +66,6 @@ int famstats_target_usage_exit(FILE *fp, int success)
 
 int famstats_target_main(int argc, char *argv[])
 {
-    samFile *fp;
-    bam_hdr_t *header;
     int c;
     khash_t(bed) *bed = NULL;
     char *bedpath = NULL;
@@ -108,37 +107,25 @@ int famstats_target_main(int argc, char *argv[])
         return famstats_target_usage_exit(stderr, EXIT_FAILURE);
     }
 
-    fp = sam_open(argv[optind], "r");
-    if (fp == NULL) {
-        LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
-    }
-
-    header = sam_hdr_read(fp);
-    if (!header) {
-        LOG_EXIT("Failed to read header for \"%s\"\n", argv[optind]);
-    }
-    bed = parse_bed_hash(bedpath, header, padding);
+	dlib::BamHandle handle(argv[optind]);
+    bed = bedpath ? parse_bed_hash(bedpath, handle.header, padding)
+    		      : build_ref_hash(handle.header);
     uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
-    bam1_t *b = bam_init1();
     uint8_t *fpdata = NULL;
     int FM;
-    while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
-        if((b->core.flag & 2816)) {
+    while(LIKELY(handle.next() >= 0)) {
+        if((handle.rec->core.flag & 2816)) {
             ++n_flag_skipped; continue;
-        } else if((fpdata = bam_aux_get(b, "FP")) != NULL && !bam_aux2i(fpdata)) {
+        } else if((fpdata = bam_aux_get(handle.rec, "FP")) != NULL && !bam_aux2i(fpdata)) {
             ++n_fp_skipped; continue;
         }
-        FM = bam_aux2i(bam_aux_get(b, "FM"));
+        FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
         total_fm += FM;
-        if(bed_test(b, bed)) fm_target += FM;
-        if(UNLIKELY(++count % notification_interval == 0)) {
+        if(bed_test(handle.rec, bed)) fm_target += FM;
+        if(UNLIKELY(++count % notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
-        }
     }
     LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
-    bam_destroy1(b);
-    bam_hdr_destroy(header);
-    sam_close(fp);
     bed_destroy_hash(bed);
     cond_free(bedpath);
     fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
@@ -212,7 +199,7 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 }
 
 
-famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings)
+famstats_t *famstats_fm_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings)
 {
     uint64_t count = 0;
     famstats_t *s;
@@ -223,13 +210,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
     s->rc = kh_init(rc);
     s->data = NULL;
     b = bam_init1();
-    ret = sam_read1(fp, h, b);
-    if(ret < 0) LOG_EXIT("Could not read from input bam %s. Abort!\n", fp->fn);
-    ++count;
     famstats_fm_loop(s, b, settings);
-    check_bam_tag(b, "FP");
-    check_bam_tag(b, "RV");
-    check_bam_tag(b, "FM");
     while (LIKELY((ret = sam_read1(fp, h, b)) >= 0)) {
         famstats_fm_loop(s, b, settings);
         if(UNLIKELY(++count % settings->notification_interval == 0))
@@ -261,8 +242,6 @@ static int famstats_fm_usage_exit(FILE *fp, int exit_status)
 
 int famstats_fm_main(int argc, char *argv[])
 {
-    samFile *fp;
-    bam_hdr_t *header;
     famstats_t *s;
     int c;
 
@@ -291,47 +270,32 @@ int famstats_fm_main(int argc, char *argv[])
     }
 
     LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
+    for(const char *tag: tags_to_check) check_bam_tag_exit(argv[optind], tag);
 
-    fp = sam_open(argv[optind], "r");
-    if (!fp) {
-        LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
-    }
-
-    header = sam_hdr_read(fp);
-    if (!header) {
-        LOG_EXIT("Failed to read header for \"%s\"\n", argv[optind]);
-    }
-    s = famstat_core(fp, header, settings);
+    dlib::BamHandle handle(argv[optind]);
+    s = famstats_fm_core(handle.fp, handle.header, settings);
     print_stats(s, stdout);
     kh_destroy(fm, s->fm);
     kh_destroy(rc, s->rc);
     free(s);
     free(settings);
-    bam_hdr_destroy(header);
-    sam_close(fp);
     return EXIT_SUCCESS;
 }
 
 static inline void famstats_frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-    if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
-            bam_aux2i(bam_aux_get(b, "FP")) == 0)
-        return;
-    const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-    *fm_total += FM;
-    if(FM >= minFM) *fm_above += FM;
+	LOG_DEBUG("FP tag? %p. FM tag? %p BamRec? %p..\n", (void *)bam_aux_get(b, "FP"), (void *)bam_aux_get(b, "FM"), (void *)b);
+
 }
 
 
 int famstats_frac_main(int argc, char *argv[])
 {
-    samFile *fp;
-    bam_hdr_t *header;
     int c;
     uint32_t minFM = 0;
     uint64_t notification_interval = 1000000;
 
-    if(argc < 4) famstats_frac_usage_exit(stderr, EXIT_FAILURE);
+    if(argc < 3) famstats_frac_usage_exit(stderr, EXIT_FAILURE);
     if(strcmp(argv[1], "--help") == 0) famstats_frac_usage_exit(stderr, EXIT_SUCCESS);
 
     while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
@@ -358,35 +322,22 @@ int famstats_frac_main(int argc, char *argv[])
         if (argc == optind) famstats_frac_usage_exit(stdout, EXIT_SUCCESS);
         else famstats_frac_usage_exit(stderr, EXIT_FAILURE);
     }
-    fp = sam_open(argv[optind], "r");
-    if (!fp) {
-        LOG_EXIT("Cannot open input file \"%s\".\n", argv[optind]);
-    }
-
-    header = sam_hdr_read(fp);
-    if (!header) {
-        LOG_EXIT("Failed to read header for \"%s\".\n", argv[optind]);
-    }
+    for(const char *tag: tags_to_check) check_bam_tag_exit(argv[optind], tag);
+    dlib::BamHandle handle(argv[optind]);
     uint64_t fm_above = 0, total_fm = 0, count = 0;
-    bam1_t *b = bam_init1();
     // Check to see if the required tags are present before starting.
-    if((c = sam_read1(fp, header, b)) < 0) {
-        LOG_EXIT("Could not read initial record from input file '%s'. Abort!\n", argv[optind]);
-    }
-    check_bam_tag(b, "FP");
-    check_bam_tag(b, "RV");
-    check_bam_tag(b, "FM");
-    check_bam_tag(b, "FA");
-    famstats_frac_loop(b, minFM, &fm_above, &total_fm), ++count;
-    while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
-        famstats_frac_loop(b, minFM, &fm_above, &total_fm);
+    int FM;
+    while (LIKELY(handle.next() >= 0)) {
+        if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+                bam_aux2i(bam_aux_get(handle.rec, "FP")) == 0)
+            continue;
+        FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
+        total_fm += FM;
+        if((unsigned)FM >= minFM) fm_above += FM;
         if(UNLIKELY(!(++count % notification_interval)))
             LOG_INFO("Number of records processed: %lu.\n", count);
     }
     fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
-    bam_destroy1(b);
-    bam_hdr_destroy(header);
-    sam_close(fp);
     return EXIT_SUCCESS;
 }
 
