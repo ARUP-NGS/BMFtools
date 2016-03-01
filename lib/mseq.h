@@ -152,6 +152,8 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
     memcpy(mvar->name, seq->name.s, seq->name.l);
 	mvar->name[seq->name.l] = '\0';
     memcpy(mvar->seq, seq->seq.s + n_len, seq->seq.l - n_len);
+	mvar->seq[seq->seq.l - n_len] = '\0';
+	mvar->qual[seq->qual.l - n_len] = '\0';
     if(rescaler)
         for(unsigned i = n_len; i < seq->seq.l; ++i)
             mvar->qual[i - n_len] = rescale_qscore(is_read2, seq->qual.s[i], i,

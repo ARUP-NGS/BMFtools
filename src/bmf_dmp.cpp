@@ -264,10 +264,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
     }
     pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
     // Get first barcode.
-    rseq1->seq[seq1->seq.l - n_len] = '\0';
-    rseq1->qual[seq1->qual.l - n_len] = '\0';
-    rseq2->seq[seq2->seq.l - n_len] = '\0';
-    rseq2->qual[seq2->qual.l - n_len] = '\0';
     update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
     update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
     uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
