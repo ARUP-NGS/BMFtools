@@ -31,18 +31,19 @@ DEALINGS IN THE SOFTWARE. */
 #include "bmf_depth.h"
 
 
-typedef struct {
+struct vaux_t{
     htsFile *fp;
     bam_hdr_t *header;
     hts_itr_t *iter;
     uint64_t *raw_counts;
     uint64_t *dmp_counts;
+    uint64_t *singleton_counts;
     int minMQ;
     int minFM;
     int requireFP;
     khash_t(depth) *depth_hash;
     uint64_t n_analyzed;
-} vaux_t;
+};
 
 static inline char *restrdup(char *dest, char *src)
 {
@@ -117,6 +118,18 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
         ret += tmp * tmp;
     }
     return sqrt(ret / (l - 1));
+}
+
+static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
+{
+    // Check for FM tag.
+    uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
+    if(!data) return n_plp;
+    int ret = 0;
+    std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
+        if(bam_itag(plp.b, "FM") == 1) ++ret;
+    });
+    return ret;
 }
 
 
@@ -242,14 +255,17 @@ int depth_main(int argc, char *argv[])
     size_t capture_size = 0;
     std::vector<uint64_t> raw_capture_counts = std::vector<uint64_t>((size_t)n);
     std::vector<uint64_t> dmp_capture_counts = std::vector<uint64_t>((size_t)n);
+    std::vector<uint64_t> singleton_capture_counts = std::vector<uint64_t>((size_t)n);
     kstring_t cov_str = {0, 0, NULL};
     while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
         char *p, *q;
         int tid, start, stop, pos, region_len, arr_ind;
-        double raw_mean, dmp_mean, raw_stdev, dmp_stdev;
+        double raw_mean, dmp_mean, singleton_mean;
+        double raw_stdev, dmp_stdev, singleton_stdev;
         bam_mplp_t mplp;
         std::vector<uint64_t> dmp_sort_array;
         std::vector<uint64_t> raw_sort_array;
+        std::vector<uint64_t> singleton_sort_array;
 
         for (p = q = str.s; *p && *p != '\t'; ++p);
         if (*p != '\t') goto bed_error;
@@ -271,6 +287,7 @@ int depth_main(int argc, char *argv[])
         for(i = 0; i < n; ++i) {
             aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
             aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
+            aux[i]->singleton_counts = (uint64_t *)realloc(aux[i]->singleton_counts, sizeof(uint64_t) * region_len);
         }
         if(*p == '\t') {
             q = ++p;
@@ -301,6 +318,8 @@ int depth_main(int argc, char *argv[])
                     raw_capture_counts[i] += n_plp[i];
                     aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
                     dmp_capture_counts[i] += aux[i]->raw_counts[arr_ind];
+                    aux[i]->singleton_counts[arr_ind] = plp_singleton_sum(plp[i], n_plp[i]);
+                    singleton_capture_counts[i] += aux[i]->singleton_counts[arr_ind];
                 }
                 ++arr_ind; // Increment for positions in range.
             }
@@ -315,15 +334,20 @@ int depth_main(int argc, char *argv[])
         kputs(col_names[i], &str);
         dmp_sort_array = std::vector<uint64_t>(region_len);
         raw_sort_array = std::vector<uint64_t>(region_len);
+        singleton_sort_array = std::vector<uint64_t>(region_len);
         for(i = 0; i < n; ++i) {
             memcpy(raw_sort_array.data(), aux[i]->raw_counts, region_len * sizeof(uint64_t));
             std::sort(raw_sort_array.begin(), raw_sort_array.end());
             memcpy(dmp_sort_array.data(), aux[i]->dmp_counts, region_len * sizeof(uint64_t));
             std::sort(dmp_sort_array.begin(), dmp_sort_array.end());
+            memcpy(singleton_sort_array.data(), aux[i]->singleton_counts, region_len * sizeof(uint64_t));
+            std::sort(singleton_sort_array.begin(), singleton_sort_array.end());
             raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
             raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
             dmp_mean = (double)std::accumulate(aux[i]->dmp_counts, aux[i]->dmp_counts + region_len, 0) / region_len;
             dmp_stdev = u64_stdev(aux[i]->dmp_counts, region_len, dmp_mean);
+            singleton_mean = (double)std::accumulate(singleton_sort_array.begin(), singleton_sort_array.end(), 0) / region_len;
+            singleton_stdev = u64_stdev(singleton_sort_array.data(), region_len, singleton_mean);
             kputc('\t', &str);
             kputl(counts[i], &str);
             ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
@@ -332,6 +356,11 @@ int depth_main(int argc, char *argv[])
             kputl((long)(raw_mean * region_len + 0.5), &str); // Total counts
             ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", raw_mean, raw_stdev, raw_stdev / raw_mean);
             write_quantiles(&str, &raw_sort_array[0], region_len, n_quantiles);
+            kputc('|', &str);
+            kputl((long)(singleton_mean * region_len + 0.5), &str); // Total counts
+            ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", singleton_mean, singleton_stdev, singleton_stdev / singleton_mean);
+            kputc('|', &str);
+            ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
             kputc('\t', &str);
         }
         kputs(str.s, &cov_str);
@@ -346,16 +375,19 @@ bed_error:
     for(i = 0; i < n; ++i){
         ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
         ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
+        ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
+        ksprintf(&hdr_str, "##[%s]Mean Singleton Fraction: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / dmp_capture_counts[i]);
     }
+    ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
     for(i = 0; i < n; ++i) {
         // All results from that bam file are listed in that column.
-        ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
         kputc('\t', &hdr_str);
         kputs(argv[i + optind], &hdr_str);
         ksprintf(&hdr_str, "|DMPReads:DMPMeanCov:DMPStdev:DMPCoefVar:%i-tiles", n_quantiles);
         ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
     }
     puts(hdr_str.s);
+    cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
     puts(cov_str.s);
     free(hdr_str.s), free(cov_str.s);
     free(n_plp); free(plp);
