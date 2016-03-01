@@ -15,15 +15,15 @@
 // Struct definitions
 
 
-typedef struct mseq {
+struct mseq_t {
     char name[100];
     char comment[2000];
-    char seq[200];
-    char qual[200];
+    char seq[300];
+    char qual[300];
     char barcode[MAX_BARCODE_LENGTH + 1];
     int l;
     int blen;
-} mseq_t;
+};
 
 typedef struct tmp_mseq {
     char *tmp_seq;
@@ -150,13 +150,15 @@ static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *bar
 static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
     memcpy(mvar->name, seq->name.s, seq->name.l);
-    mvar->name[seq->name.l] = '\0';
-    memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-    mask_mseq(mvar, n_len);
+	mvar->name[seq->name.l] = '\0';
+    memcpy(mvar->seq, seq->seq.s + n_len, seq->seq.l - n_len);
+	mvar->seq[seq->seq.l - n_len] = '\0';
+	mvar->qual[seq->qual.l - n_len] = '\0';
     if(rescaler)
         for(unsigned i = n_len; i < seq->seq.l; ++i)
-            mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
-    else memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
+            mvar->qual[i - n_len] = rescale_qscore(is_read2, seq->qual.s[i], i,
+                                                   seq->seq.s[i], seq->seq.l, rescaler);
+    else memcpy(mvar->qual, seq->qual.s + n_len, seq->qual.l - n_len);
 }
 
 // TMP_MSEQ Utilities

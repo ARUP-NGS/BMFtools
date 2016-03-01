@@ -263,7 +263,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
         memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
     }
     pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
-    mask_mseq(rseq1, n_len); mask_mseq(rseq2, n_len);
     // Get first barcode.
     update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
     update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
