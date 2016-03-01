@@ -200,14 +200,10 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 void clean_homing_sequence(char *sequence) {
     while(*sequence) {
         switch(*sequence) {
-        case 'A': break;
-        case 'C': break;
-        case 'G': break;
-        case 'T': break;
-        case 'a': // Fall-through
-        case 'g': // Fall-through
-        case 'c': // Fall-through
-        case 't': *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
+        case 'A': case 'C':  case 'G':  case 'T':
+        	break;
+        case 'a': case 'g': case 'c': case 't':
+        	*sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
         default:
             LOG_EXIT("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
                     *sequence);
