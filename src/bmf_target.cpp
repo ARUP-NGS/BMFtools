@@ -67,7 +67,7 @@ int target_main(int argc, char *argv[])
     }
 
     if (argc != optind+1)
-        return (argc == optind) ? target_usage(stdout, EXIT_SUCCESS): target_usage(stderr, EXIT_FAILURE);
+        return target_usage(stdout, (argc == optind) ?  EXIT_SUCCESS: EXIT_FAILURE);
 
     target_counts_t counts = target_core(bedpath, argv[optind], padding, minMQ, notification_interval);
 

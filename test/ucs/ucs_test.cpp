@@ -3,8 +3,8 @@
 
 int main(int argc, char **argv)
 {
-	dlib::BamHandle handle("ucs_test.bam");
-	handle.next();
+    dlib::BamHandle handle("ucs_test.bam");
+    handle.next();
 
     while(strcmp(bam_get_qname(handle.rec), "CACAAGTACCCATAATAA")) handle.next();
 

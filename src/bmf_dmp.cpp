@@ -201,9 +201,9 @@ void clean_homing_sequence(char *sequence) {
     while(*sequence) {
         switch(*sequence) {
         case 'A': case 'C':  case 'G':  case 'T':
-        	break;
+            break;
         case 'a': case 'g': case 'c': case 't':
-        	*sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
+            *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
         default:
             LOG_EXIT("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
                     *sequence);

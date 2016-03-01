@@ -385,10 +385,10 @@ bed_error:
         kputs(argv[i + optind], &hdr_str);
         ksprintf(&hdr_str, "|DMPReads:DMPMeanCov:DMPStdev:DMPCoefVar:%i-tiles", n_quantiles);
         ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
+        ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
     }
-    puts(hdr_str.s);
     cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
-    puts(cov_str.s);
+    puts(hdr_str.s), puts(cov_str.s);
     free(hdr_str.s), free(cov_str.s);
     free(n_plp); free(plp);
     ks_destroy(ks);

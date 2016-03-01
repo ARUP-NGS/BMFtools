@@ -35,7 +35,7 @@
  */
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler)
 {
-	if(base == 'N') return '#';
+    if(base == 'N') return '#';
     int index = readnum;
     int mult = 2;
     //fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);

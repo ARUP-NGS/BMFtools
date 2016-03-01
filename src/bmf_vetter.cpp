@@ -406,11 +406,8 @@ int vetter_main(int argc, char *argv[])
     if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
     // Check for required tags.
     if(aux.minAF) check_bam_tag_exit(argv[optind + 1], "AF");
-    check_bam_tag_exit(argv[optind + 1], "FA");
-    check_bam_tag_exit(argv[optind + 1], "FM");
-    check_bam_tag_exit(argv[optind + 1], "FP");
-    check_bam_tag_exit(argv[optind + 1], "PV");
-    check_bam_tag_exit(argv[optind + 1], "RV");
+    for(auto tag : {"FA", "FM", "FP", "PV", "RV"})
+        check_bam_tag_exit(argv[optind + 1], tag);
 
 
 
@@ -464,10 +461,9 @@ int vetter_main(int argc, char *argv[])
 
     // Open out vcf
     int ret = vet_core(&aux);
-    if(ret) {
+    if(ret)
         fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
                 __func__, __LINE__, ret);
-    }
     sam_close(aux.fp);
     bam_hdr_destroy(aux.header);
     vcf_close(aux.vcf_fp);
