@@ -234,19 +234,15 @@ int depth_main(int argc, char *argv[])
     int line_num = 0;
     // Write header
     // stderr ONLY for this development phase.
-    fprintf(stdout, "##NQuintiles=%i\n", n_quantiles);
-    fprintf(stdout, "##minMQ=%i\n", minMQ);
-    fprintf(stdout, "##minFM=%i\n", minFM);
-    fprintf(stdout, "##BMFtools version=%s.\n", VERSION);
-    fprintf(stdout, "#Contig\tStart\tStop\tRegion Name");
-    for(i = 0; i < n; ++i) {
-        // All results from that bam file are listed in that column.
-        putc('\t', stdout);
-        fputs(argv[i + optind], stdout);
-        fprintf(stdout, "|DmpReads:DmpMeanCov:DmpStdev:DmpCoefVar:%i-tiles", n_quantiles);
-        fprintf(stdout, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
-    }
-    putc('\n', stdout);
+    kstring_t hdr_str = {0, 0, NULL};
+    ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
+    ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
+    ksprintf(&hdr_str, "##minFM=%i\n", minFM);
+    ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
+    size_t capture_size = 0;
+    std::vector<uint64_t> raw_capture_counts = std::vector<uint64_t>((size_t)n);
+    std::vector<uint64_t> dmp_capture_counts = std::vector<uint64_t>((size_t)n);
+    kstring_t cov_str = {0, 0, NULL};
     while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
         char *p, *q;
         int tid, start, stop, pos, region_len, arr_ind;
@@ -271,6 +267,7 @@ int depth_main(int argc, char *argv[])
         start -= padding, stop += padding;
         if(start < 0) start = 0;
         region_len = stop - start;
+        capture_size += region_len;
         for(i = 0; i < n; ++i) {
             aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
             aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
@@ -301,7 +298,9 @@ int depth_main(int argc, char *argv[])
                     } else ++kh_val(aux[i]->depth_hash, k);
                     counts[i] += n_plp[i];
                     aux[i]->dmp_counts[arr_ind] = n_plp[i];
+                    raw_capture_counts[i] += n_plp[i];
                     aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
+                    dmp_capture_counts[i] += aux[i]->raw_counts[arr_ind];
                 }
                 ++arr_ind; // Increment for positions in range.
             }
@@ -317,9 +316,9 @@ int depth_main(int argc, char *argv[])
         dmp_sort_array = std::vector<uint64_t>(region_len);
         raw_sort_array = std::vector<uint64_t>(region_len);
         for(i = 0; i < n; ++i) {
-            memcpy(&raw_sort_array[0], aux[i]->raw_counts, region_len * sizeof(uint64_t));
+            memcpy(raw_sort_array.data(), aux[i]->raw_counts, region_len * sizeof(uint64_t));
             std::sort(raw_sort_array.begin(), raw_sort_array.end());
-            memcpy(&dmp_sort_array[0], aux[i]->dmp_counts, region_len * sizeof(uint64_t));
+            memcpy(dmp_sort_array.data(), aux[i]->dmp_counts, region_len * sizeof(uint64_t));
             std::sort(dmp_sort_array.begin(), dmp_sort_array.end());
             raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
             raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
@@ -335,7 +334,8 @@ int depth_main(int argc, char *argv[])
             write_quantiles(&str, &raw_sort_array[0], region_len, n_quantiles);
             kputc('\t', &str);
         }
-        puts(str.s);
+        kputs(str.s, &cov_str);
+        kputc('\n', &cov_str);
         bam_mplp_destroy(mplp);
         ++line_num;
         continue;
@@ -343,6 +343,21 @@ int depth_main(int argc, char *argv[])
 bed_error:
         fprintf(stderr, "Errors in BED line '%s'\n", str.s);
     }
+    for(i = 0; i < n; ++i){
+        ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
+        ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
+    }
+    for(i = 0; i < n; ++i) {
+        // All results from that bam file are listed in that column.
+        ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
+        kputc('\t', &hdr_str);
+        kputs(argv[i + optind], &hdr_str);
+        ksprintf(&hdr_str, "|DMPReads:DMPMeanCov:DMPStdev:DMPCoefVar:%i-tiles", n_quantiles);
+        ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
+    }
+    puts(hdr_str.s);
+    puts(cov_str.s);
+    free(hdr_str.s), free(cov_str.s);
     free(n_plp); free(plp);
     ks_destroy(ks);
     gzclose(fp);
