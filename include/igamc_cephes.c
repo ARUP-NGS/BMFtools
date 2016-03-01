@@ -1,6 +1,6 @@
-/*							igami()
+/*                            igami()
  *
- *	  Inverse of complemented imcomplete gamma integral
+ *      Inverse of complemented imcomplete gamma integral
  *
  *
  *
@@ -20,7 +20,7 @@
  *
  * Starting with the approximate value
  *
- *		 3
+ *         3
  *  x = a t
  *
  *  where
@@ -39,10 +39,10 @@
  *
  * Tested for a ranging from 0.5 to 30 and x from 0 to 0.5.
  *
- *					  Relative error:
- * arithmetic   domain	 # trials	  peak		 rms
- *	DEC	   0,0.5		 3400	   8.8e-16	 1.3e-16
- *	IEEE	  0,0.5		10000	   1.1e-14	 1.0e-15
+ *                      Relative error:
+ * arithmetic   domain     # trials      peak         rms
+ *    DEC       0,0.5         3400       8.8e-16     1.3e-16
+ *    IEEE      0,0.5        10000       1.1e-14     1.0e-15
  *
  */
 
@@ -62,24 +62,24 @@ double MACHEP =  1.38777878078144567553E-17;   /* 2**-56 */
 #endif
 double UFLOWTHRESH =  2.22507385850720138309E-308; /* 2**-1022 */
 #ifdef DENORMAL
-double MAXLOG =  7.09782712893383996732E2;	 /* log(MAXNUM) */
-/* double MINLOG = -7.44440071921381262314E2; */	 /* log(2**-1074) */
-double MINLOG = -7.451332191019412076235E2;	 /* log(2**-1075) */
+double MAXLOG =  7.09782712893383996732E2;     /* log(MAXNUM) */
+/* double MINLOG = -7.44440071921381262314E2; */     /* log(2**-1074) */
+double MINLOG = -7.451332191019412076235E2;     /* log(2**-1075) */
 #else
-double MAXLOG =  7.08396418532264106224E2;	 /* log 2**1022 */
-double MINLOG = -7.08396418532264106224E2;	 /* log 2**-1022 */
+double MAXLOG =  7.08396418532264106224E2;     /* log 2**1022 */
+double MINLOG = -7.08396418532264106224E2;     /* log 2**-1022 */
 #endif
-double MAXNUM =  1.79769313486231570815E308;	/* 2**1024*(1-MACHEP) */
-double PI	 =  3.14159265358979323846;	   /* pi */
-double PIO2   =  1.57079632679489661923;	   /* pi/2 */
-double PIO4   =  7.85398163397448309616E-1;	/* pi/4 */
-double SQRT2  =  1.41421356237309504880;	   /* sqrt(2) */
-double SQRTH  =  7.07106781186547524401E-1;	/* sqrt(2)/2 */
-double LOG2E  =  1.4426950408889634073599;	 /* 1/log(2) */
+double MAXNUM =  1.79769313486231570815E308;    /* 2**1024*(1-MACHEP) */
+double PI     =  3.14159265358979323846;       /* pi */
+double PIO2   =  1.57079632679489661923;       /* pi/2 */
+double PIO4   =  7.85398163397448309616E-1;    /* pi/4 */
+double SQRT2  =  1.41421356237309504880;       /* sqrt(2) */
+double SQRTH  =  7.07106781186547524401E-1;    /* sqrt(2)/2 */
+double LOG2E  =  1.4426950408889634073599;     /* 1/log(2) */
 double SQ2OPI =  7.9788456080286535587989E-1;  /* sqrt( 2/pi ) */
-double LOGE2  =  6.93147180559945309417E-1;	/* log(2) */
-double LOGSQ2 =  3.46573590279972654709E-1;	/* log(2)/2 */
-double THPIO4 =  2.35619449019234492885;	   /* 3*pi/4 */
+double LOGE2  =  6.93147180559945309417E-1;    /* log(2) */
+double LOGSQ2 =  3.46573590279972654709E-1;    /* log(2)/2 */
+double THPIO4 =  2.35619449019234492885;       /* 3*pi/4 */
 double TWOOPI =  6.36619772367581343075535E-1; /* 2/pi */
 #ifdef MINUSZERO
 double NEGZERO = -0.0;
@@ -122,113 +122,113 @@ x = a * y * y * y;
 lgm = lgam(a);
 
 for(i=0; i<10; i++)
-	{
-	if(x > x0 || x < x1)
-		goto ihalve;
-	y = igamc(a,x);
-	if(y < yl || y > yh)
-		goto ihalve;
-	if(y < y0)
-		{
-		x0 = x;
-		yl = y;
-		}
-	else
-		{
-		x1 = x;
-		yh = y;
-		}
+    {
+    if(x > x0 || x < x1)
+        goto ihalve;
+    y = igamc(a,x);
+    if(y < yl || y > yh)
+        goto ihalve;
+    if(y < y0)
+        {
+        x0 = x;
+        yl = y;
+        }
+    else
+        {
+        x1 = x;
+        yh = y;
+        }
 /* compute the derivative of the function at this point */
-	d = (a - 1.0) * log(x0) - x0 - lgm;
-	if(d < -MAXLOG)
-		goto ihalve;
-	d = -exp(d);
+    d = (a - 1.0) * log(x0) - x0 - lgm;
+    if(d < -MAXLOG)
+        goto ihalve;
+    d = -exp(d);
 /* compute the step to the next approximation of x */
-	d = (y - y0)/d;
-	x = x - d;
-	if(i < 3)
-		continue;
-	if(fabs(d/x) < dithresh)
-		goto done;
-	}
+    d = (y - y0)/d;
+    x = x - d;
+    if(i < 3)
+        continue;
+    if(fabs(d/x) < dithresh)
+        goto done;
+    }
 
 /* Resort to interval halving if Newton iteration did not converge. */
 ihalve:
 
 d = 0.0625;
 if(x0 == MAXNUM)
-	{
-	if(x <= 0.0)
-		x = 1.0;
-	while(x0 == MAXNUM)
-		{
-		x = (1.0 + d) * x;
-		y = igamc(a, x);
-		if(y < y0)
-			{
-			x0 = x;
-			yl = y;
-			break;
-			}
-		d = d + d;
-		}
-	}
+    {
+    if(x <= 0.0)
+        x = 1.0;
+    while(x0 == MAXNUM)
+        {
+        x = (1.0 + d) * x;
+        y = igamc(a, x);
+        if(y < y0)
+            {
+            x0 = x;
+            yl = y;
+            break;
+            }
+        d = d + d;
+        }
+    }
 d = 0.5;
 dir = 0;
 
 for(i=0; i<400; i++)
-	{
-	x = x1  +  d * (x0 - x1);
-	y = igamc(a, x);
-	lgm = (x0 - x1)/(x1 + x0);
-	if(fabs(lgm) < dithresh)
-		break;
-	lgm = (y - y0)/y0;
-	if(fabs(lgm) < dithresh)
-		break;
-	if(x <= 0.0)
-		break;
-	if(y > y0)
-		{
-		x1 = x;
-		yh = y;
-		if(dir < 0)
-			{
-			dir = 0;
-			d = 0.5;
-			}
-		else if(dir > 1)
-			d = 0.5 * d + 0.5;
-		else
-			d = (y0 - yl)/(yh - yl);
-		dir += 1;
-		}
-	else
-		{
-		x0 = x;
-		yl = y;
-		if(dir > 0)
-			{
-			dir = 0;
-			d = 0.5;
-			}
-		else if(dir < -1)
-			d = 0.5 * d;
-		else
-			d = (y0 - yl)/(yh - yl);
-		dir -= 1;
-		}
-	}
+    {
+    x = x1  +  d * (x0 - x1);
+    y = igamc(a, x);
+    lgm = (x0 - x1)/(x1 + x0);
+    if(fabs(lgm) < dithresh)
+        break;
+    lgm = (y - y0)/y0;
+    if(fabs(lgm) < dithresh)
+        break;
+    if(x <= 0.0)
+        break;
+    if(y > y0)
+        {
+        x1 = x;
+        yh = y;
+        if(dir < 0)
+            {
+            dir = 0;
+            d = 0.5;
+            }
+        else if(dir > 1)
+            d = 0.5 * d + 0.5;
+        else
+            d = (y0 - yl)/(yh - yl);
+        dir += 1;
+        }
+    else
+        {
+        x0 = x;
+        yl = y;
+        if(dir > 0)
+            {
+            dir = 0;
+            d = 0.5;
+            }
+        else if(dir < -1)
+            d = 0.5 * d;
+        else
+            d = (y0 - yl)/(yh - yl);
+        dir -= 1;
+        }
+    }
 if(x == 0.0)
-	mtherr("igami", UNDERFLOW);
+    mtherr("igami", UNDERFLOW);
 
 done:
 return(x);
 }
 
-/*							igaml.c
+/*                            igaml.c
  *
- *	Incomplete gamma integral
+ *    Incomplete gamma integral
  *
  *
  *
@@ -244,13 +244,13 @@ return(x);
  *
  * The function is defined by
  *
- *						   x
- *							-
- *				   1	   | |  -t  a-1
- *  igam(a,x)  =   -----	 |   e   t   dt.
- *				  -	  | |
- *				 | (a)	-
- *						   0
+ *                           x
+ *                            -
+ *                   1       | |  -t  a-1
+ *  igam(a,x)  =   -----     |   e   t   dt.
+ *                  -      | |
+ *                 | (a)    -
+ *                           0
  *
  *
  * In this implementation both arguments must be positive.
@@ -262,15 +262,15 @@ return(x);
  *
  * ACCURACY:
  *
- *					  Relative error:
- * arithmetic   domain	 # trials	  peak		 rms
- *	DEC	   0,30		 4000	   4.4e-15	 6.3e-16
- *	IEEE	  0,30		10000	   3.6e-14	 5.1e-15
+ *                      Relative error:
+ * arithmetic   domain     # trials      peak         rms
+ *    DEC       0,30         4000       4.4e-15     6.3e-16
+ *    IEEE      0,30        10000       3.6e-14     5.1e-15
  *
  */
-/*							igamc()
+/*                            igamc()
  *
- *	Complemented incomplete gamma integral
+ *    Complemented incomplete gamma integral
  *
  *
  *
@@ -289,13 +289,13 @@ return(x);
  *
  *  igamc(a,x)   =   1 - igam(a,x)
  *
- *							inf.
- *							  -
- *					 1	   | |  -t  a-1
- *			   =   -----	 |   e   t   dt.
- *					-	  | |
- *				   | (a)	-
- *							 x
+ *                            inf.
+ *                              -
+ *                     1       | |  -t  a-1
+ *               =   -----     |   e   t   dt.
+ *                    -      | |
+ *                   | (a)    -
+ *                             x
  *
  *
  * In this implementation both arguments must be positive.
@@ -307,10 +307,10 @@ return(x);
  *
  * ACCURACY:
  *
- *					  Relative error:
- * arithmetic   domain	 # trials	  peak		 rms
- *	DEC	   0,30		 2000	   2.7e-15	 4.0e-16
- *	IEEE	  0,30		60000	   1.4e-12	 6.3e-15
+ *                      Relative error:
+ * arithmetic   domain     # trials      peak         rms
+ *    DEC       0,30         2000       2.7e-15     4.0e-16
+ *    IEEE      0,30        60000       1.4e-12     6.3e-15
  *
  */
 
@@ -327,20 +327,20 @@ double ans, c, yc, ax, y, z, r, t;
 double pk, pkm1, pkm2, qk, qkm1, qkm2;
 
 if((x <= 0.0) || (a <= 0.0))
-	return(1.0);
+    return(1.0);
 
 if((x < 1.0) || (x < a))
-	return(1.0 - igaml(a,x));
+    return(1.0 - igaml(a,x));
 
 ax = a * log(x) - x - lgam(a);
 if(ax < MINLOG)
-	{
+    {
 #if !NDEBUG
-	mtherr("igamc", UNDERFLOW);
+    mtherr("igamc", UNDERFLOW);
 #endif
-	//return(0.0);
-	return(MINLOG);
-	}
+    //return(0.0);
+    return(MINLOG);
+    }
 ax = exp(ax);
 
 /* continued fraction */
@@ -354,33 +354,33 @@ qkm1 = z * x;
 ans = pkm1/qkm1;
 
 do
-	{
-	c += 1.0;
-	y += 1.0;
-	z += 2.0;
-	yc = y * c;
-	pk = pkm1 * z  -  pkm2 * yc;
-	qk = qkm1 * z  -  qkm2 * yc;
-	if(qk != 0.0)
-		{
-		r = pk/qk;
-		t = fabs((ans - r)/r);
-		ans = r;
-		}
-	else
-		t = 1.0;
-	pkm2 = pkm1;
-	pkm1 = pk;
-	qkm2 = qkm1;
-	qkm1 = qk;
-	if(fabs(pk) > BIG)
-		{
-		pkm2 /= BIG;
-		pkm1 /= BIG;
-		qkm2 /= BIG;
-		qkm1 /= BIG;
-		}
-	}
+    {
+    c += 1.0;
+    y += 1.0;
+    z += 2.0;
+    yc = y * c;
+    pk = pkm1 * z  -  pkm2 * yc;
+    qk = qkm1 * z  -  qkm2 * yc;
+    if(qk != 0.0)
+        {
+        r = pk/qk;
+        t = fabs((ans - r)/r);
+        ans = r;
+        }
+    else
+        t = 1.0;
+    pkm2 = pkm1;
+    pkm1 = pk;
+    qkm2 = qkm1;
+    qkm1 = qk;
+    if(fabs(pk) > BIG)
+        {
+        pkm2 /= BIG;
+        pkm1 /= BIG;
+        qkm2 /= BIG;
+        qkm1 /= BIG;
+        }
+    }
 while(t > MACHEP);
 return(ans * ax);
 }
@@ -389,11 +389,11 @@ return(ans * ax);
 
 /* left tail of incomplete gamma function:
  *
- *		  inf.	  k
- *   a  -x   -	   x
- *  x  e	 >   ----------
- *		   -	 -
- *		  k=0   | (a+k+1)
+ *          inf.      k
+ *   a  -x   -       x
+ *  x  e     >   ----------
+ *           -     -
+ *          k=0   | (a+k+1)
  *
  */
 
@@ -402,18 +402,18 @@ double igaml(double a, double x)
 double ans, ax, c, r;
 
 if((x <= 0.0) || (a <= 0.0))
-	return(0.0);
+    return(0.0);
 
 if((x > 1.0) && (x > a))
-	return(1.0 - igamc(a,x));
+    return(1.0 - igamc(a,x));
 
 ax = a * log(x) - x - lgam(a);
 if(ax < MINLOG)
-	{
-	mtherr("igaml", UNDERFLOW);
-	//return(0.0);
-	return(MINLOG);
-	}
+    {
+    mtherr("igaml", UNDERFLOW);
+    //return(0.0);
+    return(MINLOG);
+    }
 ax = exp(ax);
 
 /* power series */
@@ -422,19 +422,19 @@ c = 1.0;
 ans = 1.0;
 
 do
-	{
-	r += 1.0;
-	c *= x/r;
-	ans += c;
-	}
+    {
+    r += 1.0;
+    c *= x/r;
+    ans += c;
+    }
 while(c/ans > MACHEP);
 
 return(ans * ax/a);
 }
 
-/*							ndtri.c
+/*                            ndtri.c
  *
- *	Inverse of Normal distribution function
+ *    Inverse of Normal distribution function
  *
  *
  *
@@ -461,19 +461,19 @@ return(ans * ax/a);
  *
  * ACCURACY:
  *
- *					  Relative error:
- * arithmetic   domain		# trials	  peak		 rms
+ *                      Relative error:
+ * arithmetic   domain        # trials      peak         rms
  *  Arguments uniformly distributed:
- *	IEEE	   0, 1		   5000	   7.8e-19	 9.9e-20
+ *    IEEE       0, 1           5000       7.8e-19     9.9e-20
  *  Arguments exponentially distributed:
- *	IEEE	 exp(-11355),-1  30000	   1.7e-19	 4.3e-20
+ *    IEEE     exp(-11355),-1  30000       1.7e-19     4.3e-20
  *
  *
  * ERROR MESSAGES:
  *
- *   message		 condition	value returned
- * ndtri domain	  x <= 0		-MAXNUM
- * ndtri domain	  x >= 1		 MAXNUM
+ *   message         condition    value returned
+ * ndtri domain      x <= 0        -MAXNUM
+ * ndtri domain      x >= 1         MAXNUM
  *
  */
 
@@ -487,9 +487,9 @@ Copyright 1984, 1995 by Stephen L. Moshier
  * See the header file igamc_cephes.h for the implementation of ndtri.
  */
 
-/*							gamma.c
+/*                            gamma.c
  *
- *	Gamma function
+ *    Gamma function
  *
  *
  *
@@ -519,17 +519,17 @@ Copyright 1984, 1995 by Stephen L. Moshier
  *
  * ACCURACY:
  *
- *					  Relative error:
- * arithmetic   domain	 # trials	  peak		 rms
- *	IEEE	 -40,+40	  10000	   3.6e-19	 7.9e-20
- *	IEEE	-1755,+1755   10000	   4.8e-18	 6.5e-19
+ *                      Relative error:
+ * arithmetic   domain     # trials      peak         rms
+ *    IEEE     -40,+40      10000       3.6e-19     7.9e-20
+ *    IEEE    -1755,+1755   10000       4.8e-18     6.5e-19
  *
  * Accuracy for large arguments is dominated by error in powl().
  *
  */
-/*							lgam()
+/*                            lgam()
  *
- *	Natural logarithm of gamma function
+ *    Natural logarithm of gamma function
  *
  *
  *
@@ -564,16 +564,16 @@ Copyright 1984, 1995 by Stephen L. Moshier
  * ACCURACY:
  *
  *
- * arithmetic	  domain		# trials	 peak		 rms
- *	IEEE		 -40, 40		100000	 2.2e-19	 4.6e-20
- *	IEEE	10^-2000,10^+2000	20000	 1.6e-19	 3.3e-20
+ * arithmetic      domain        # trials     peak         rms
+ *    IEEE         -40, 40        100000     2.2e-19     4.6e-20
+ *    IEEE    10^-2000,10^+2000    20000     1.6e-19     3.3e-20
  * The error criterion was relative when the function magnitude
  * was greater than one but absolute when it was less than one.
  *
  */
 
-/*							gamma.c	*/
-/*	gamma function	*/
+/*                            gamma.c    */
+/*    gamma function    */
 
 /*
 Copyright 1994 by Stephen L. Moshier
@@ -615,91 +615,91 @@ int i;
 sgngam = 1;
 #ifdef NANS
 if( isnan(x) )
-	return(x);
+    return(x);
 #endif
 #ifdef INFINITIES
 #ifdef NANS
 if( x == INFINITY )
-	return(x);
+    return(x);
 if( x == -INFINITY )
-	return(NAN);
+    return(NAN);
 #else
 if( !isfinite(x) )
-	return(x);
+    return(x);
 #endif
 #endif
 q = fabs(x);
 
 if( q > 33.0 )
-	{
-	if( x < 0.0 )
-		{
-		p = floor(q);
-		if( p == q )
-			{
+    {
+    if( x < 0.0 )
+        {
+        p = floor(q);
+        if( p == q )
+            {
 #ifdef NANS
 gamnan:
-			mtherr( "gamma", DOMAIN );
-			return (NAN);
+            mtherr( "gamma", DOMAIN );
+            return (NAN);
 #else
-			goto goverf;
+            goto goverf;
 #endif
-			}
-		i = p;
-		if( (i & 1) == 0 )
-			sgngam = -1;
-		z = q - p;
-		if( z > 0.5 )
-			{
-			p += 1.0;
-			z = q - p;
-			}
-		z = q * sin( PI * z );
-		if( z == 0.0 )
-			{
+            }
+        i = p;
+        if( (i & 1) == 0 )
+            sgngam = -1;
+        z = q - p;
+        if( z > 0.5 )
+            {
+            p += 1.0;
+            z = q - p;
+            }
+        z = q * sin( PI * z );
+        if( z == 0.0 )
+            {
 #ifdef INFINITIES
-			return( sgngam * INFINITY);
+            return( sgngam * INFINITY);
 #else
 goverf:
-			mtherr( "gamma", OVERFLOW );
-			return( sgngam * MAXNUM);
+            mtherr( "gamma", OVERFLOW );
+            return( sgngam * MAXNUM);
 #endif
-			}
-		z = fabs(z);
-		z = PI/(z * stirf(q) );
-		}
-	else
-		{
-		z = stirf(x);
-		}
-	return( sgngam * z );
-	}
+            }
+        z = fabs(z);
+        z = PI/(z * stirf(q) );
+        }
+    else
+        {
+        z = stirf(x);
+        }
+    return( sgngam * z );
+    }
 
 z = 1.0;
 while( x >= 3.0 )
-	{
-	x -= 1.0;
-	z *= x;
-	}
+    {
+    x -= 1.0;
+    z *= x;
+    }
 
 while( x < 0.0 )
-	{
-	if( x > -1.E-9 )
-		goto small;
-	z /= x;
-	x += 1.0;
-	}
+    {
+    if( x > -1.E-9 )
+        goto small;
+    z /= x;
+    x += 1.0;
+    }
 
 while( x < 2.0 )
-	{
-	if( x < 1.e-9 )
-		goto small;
-	z /= x;
-	x += 1.0;
-	}
+    {
+    if( x < 1.e-9 )
+        goto small;
+    z /= x;
+    x += 1.0;
+    }
 
 if( x == 2.0 )
-	return(z);
+    return(z);
 
 x -= 2.0;
 p = polevl( x, P, 6 );
@@ -708,20 +708,20 @@ return( z * p / q );
 
 small:
 if( x == 0.0 )
-	{
+    {
 #ifdef INFINITIES
 #ifdef NANS
-	  goto gamnan;
+      goto gamnan;
 #else
-	  return( INFINITY );
+      return( INFINITY );
 #endif
 #else
-	mtherr( "gamma", SING );
-	return( MAXNUM );
+    mtherr( "gamma", SING );
+    return( MAXNUM );
 #endif
-	}
+    }
 else
-	return( z/((1.0 + 0.5772156649015329 * x) * x) );
+    return( z/((1.0 + 0.5772156649015329 * x) * x) );
 }
 
 
@@ -770,109 +770,109 @@ static double C[] = {
 
 double lgam(double x)
 {
-	double p, q, u, w, z;
-	int i;
+    double p, q, u, w, z;
+    int i;
 
-	sgngam = 1;
-	#ifdef NANS
-	if( isnan(x) )
-		return(x);
-	#endif
+    sgngam = 1;
+    #ifdef NANS
+    if( isnan(x) )
+        return(x);
+    #endif
 
-	#ifdef INFINITIES
-	if( !isfinite(x) )
-		return(INFINITY);
-	#endif
+    #ifdef INFINITIES
+    if( !isfinite(x) )
+        return(INFINITY);
+    #endif
 
-	if( x < -34.0 )
-		{
-		q = -x;
-		w = lgam(q); /* note this modifies sgngam! */
-		p = floor(q);
-		if( p == q )
-			{
-	lgsing:
-	#ifdef INFINITIES
-			mtherr( "lgam", SING );
-			return (INFINITY);
-	#else
-			goto loverf;
-	#endif
-			}
-		i = p;
-		if( (i & 1) == 0 )
-			sgngam = -1;
-		else
-			sgngam = 1;
-		z = q - p;
-		if( z > 0.5 )
-			{
-			p += 1.0;
-			z = p - q;
-			}
-		z = q * sin( PI * z );
-		if( z == 0.0 )
-			goto lgsing;
-	/*	z = log(PI) - log( z ) - w;*/
-		z = LOGPI - log( z ) - w;
-		return( z );
-		}
+    if( x < -34.0 )
+        {
+        q = -x;
+        w = lgam(q); /* note this modifies sgngam! */
+        p = floor(q);
+        if( p == q )
+            {
+    lgsing:
+    #ifdef INFINITIES
+            mtherr( "lgam", SING );
+            return (INFINITY);
+    #else
+            goto loverf;
+    #endif
+            }
+        i = p;
+        if( (i & 1) == 0 )
+            sgngam = -1;
+        else
+            sgngam = 1;
+        z = q - p;
+        if( z > 0.5 )
+            {
+            p += 1.0;
+            z = p - q;
+            }
+        z = q * sin( PI * z );
+        if( z == 0.0 )
+            goto lgsing;
+    /*    z = log(PI) - log( z ) - w;*/
+        z = LOGPI - log( z ) - w;
+        return( z );
+        }
 
-	if( x < 13.0 )
-		{
-		z = 1.0;
-		p = 0.0;
-		u = x;
-		while( u >= 3.0 )
-			{
-				p -= 1.0;
-				u = x + p;
-				z *= u;
-			}
-		while( u < 2.0 )
-			{
-				if( u == 0.0 )
-					goto lgsing;
-				z /= u;
-				p += 1.0;
-				u = x + p;
-			}
-		if( z < 0.0 )
-			{
-				sgngam = -1;
-				z = -z;
-			}
-		else
-			sgngam = 1;
-		if( u == 2.0 )
-			return( log(z) );
-		p -= 2.0;
-		x = x + p;
-		p = x * polevl( x, B, 5 ) / p1evl( x, C, 6);
-		return( log(z) + p );
-		}
+    if( x < 13.0 )
+        {
+        z = 1.0;
+        p = 0.0;
+        u = x;
+        while( u >= 3.0 )
+            {
+                p -= 1.0;
+                u = x + p;
+                z *= u;
+            }
+        while( u < 2.0 )
+            {
+                if( u == 0.0 )
+                    goto lgsing;
+                z /= u;
+                p += 1.0;
+                u = x + p;
+            }
+        if( z < 0.0 )
+            {
+                sgngam = -1;
+                z = -z;
+            }
+        else
+            sgngam = 1;
+        if( u == 2.0 )
+            return( log(z) );
+        p -= 2.0;
+        x = x + p;
+        p = x * polevl( x, B, 5 ) / p1evl( x, C, 6);
+        return( log(z) + p );
+        }
 
-	if( x > MAXLGM )
-		{
-	#ifdef INFINITIES
-		return( sgngam * INFINITY );
-	#else
-	loverf:
-		mtherr( "lgam", OVERFLOW );
-		return( sgngam * MAXNUM );
-	#endif
-		}
+    if( x > MAXLGM )
+        {
+    #ifdef INFINITIES
+        return( sgngam * INFINITY );
+    #else
+    loverf:
+        mtherr( "lgam", OVERFLOW );
+        return( sgngam * MAXNUM );
+    #endif
+        }
 
-	q = ( x - 0.5 ) * log(x) - x + LS2PI;
-	if( x > 1.0e8 )
-		return( q );
+    q = ( x - 0.5 ) * log(x) - x + LS2PI;
+    if( x > 1.0e8 )
+        return( q );
 
-	p = 1.0/(x*x);
-	if( x >= 1000.0 )
-		q += ((   7.9365079365079365079365e-4 * p
-			- 2.7777777777777777777778e-3) *p
-			+ 0.0833333333333333333333) / x;
-	else
-		q += polevl( p, A, 4 ) / x;
-	return( q );
+    p = 1.0/(x*x);
+    if( x >= 1000.0 )
+        q += ((   7.9365079365079365079365e-4 * p
+            - 2.7777777777777777777778e-3) *p
+            + 0.0833333333333333333333) / x;
+    else
+        q += polevl( p, A, 4 ) / x;
+    return( q );
 }
