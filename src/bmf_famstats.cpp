@@ -107,9 +107,9 @@ int famstats_target_main(int argc, char *argv[])
         return famstats_target_usage_exit(stderr, EXIT_FAILURE);
     }
 
-	dlib::BamHandle handle(argv[optind]);
+    dlib::BamHandle handle(argv[optind]);
     bed = bedpath ? parse_bed_hash(bedpath, handle.header, padding)
-    		      : build_ref_hash(handle.header);
+                  : build_ref_hash(handle.header);
     uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
     uint8_t *fpdata = NULL;
     int FM;
@@ -284,7 +284,7 @@ int famstats_fm_main(int argc, char *argv[])
 
 static inline void famstats_frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-	LOG_DEBUG("FP tag? %p. FM tag? %p BamRec? %p..\n", (void *)bam_aux_get(b, "FP"), (void *)bam_aux_get(b, "FM"), (void *)b);
+    LOG_DEBUG("FP tag? %p. FM tag? %p BamRec? %p..\n", (void *)bam_aux_get(b, "FP"), (void *)bam_aux_get(b, "FM"), (void *)b);
 
 }
 

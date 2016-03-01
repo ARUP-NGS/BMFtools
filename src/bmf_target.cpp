@@ -13,7 +13,7 @@ int target_usage(FILE *fp, int retcode)
 
 target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval)
 {
-	dlib::BamHandle handle(bampath);
+    dlib::BamHandle handle(bampath);
     khash_t(bed) *bed = parse_bed_hash(bedpath, handle.header, padding);
     target_counts_t counts;
     memset(&counts, 0, sizeof(target_counts_t));

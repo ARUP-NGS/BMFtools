@@ -26,10 +26,7 @@ int cap_qscore_main(int argc, char *argv[])
     cap_settings settings = {0};
     settings.cap = 93;
     int c;
-    bam_hdr_t *header;
     char wmode[3] = {'w', 'b', 0};
-    sam_global_args ga;
-    memset(&ga, 0, sizeof(ga));
 
     int level;
     while ((c = getopt(argc, argv, "t:f:m:l:c:dh?")) >= 0) {

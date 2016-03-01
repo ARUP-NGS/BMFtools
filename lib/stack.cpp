@@ -202,8 +202,8 @@ namespace BMF {
                                                         counts[i] >= aux->conf.minCount &&
                                                         overlap_counts[i] >= aux->conf.minOverlap);
                 if(allele_passes[i] && !allele_passes[i + base_calls.size()]) {
-                	bcf_update_info_flag(aux->vcf.vh, vrec, "SOMATIC", NULL, 1);
-                	somatic[i] = 1;
+                    bcf_update_info_flag(aux->vcf.vh, vrec, "SOMATIC", NULL, 1);
+                    somatic[i] = 1;
                 }
             }
         }

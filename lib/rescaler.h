@@ -118,20 +118,8 @@ static inline char ****parse_rescaler(char *qual_rescale_fname)
 
 static void period_to_null(char *instr)
 {
-    /*
-    start:
-    switch(*instr++) {
-    case '\0':
-        return;
-    case '.':
-        *(instr - 1) = '\0';
-        return;
-    }
-    goto start;
-    */
     while(*instr) {
-        if(*(instr) == '.')
-            *(instr) = '\0';
+        if(*(instr) == '.') *(instr) = '\0';
         ++instr;
     }
 }

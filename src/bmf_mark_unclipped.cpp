@@ -36,6 +36,6 @@ int mark_unclipped_main(int argc, char *argv[])
     if (optind + 2 > argc) unclipped_usage(argv);
 
     return dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
-    		                             add_multiple_tags, NULL, wmode);
+                                         add_multiple_tags, NULL, wmode);
     return EXIT_SUCCESS;
 }

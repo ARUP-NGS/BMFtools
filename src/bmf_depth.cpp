@@ -88,7 +88,7 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
             if(kh_exist(aux[i]->depth_hash, k))
                 keyset.insert(kh_key(aux[i]->depth_hash, k));
     std::vector<int>keys(keyset.begin(), keyset.end());
-    __gnu_parallel::sort(keys.begin(), keys.end());
+    std::sort(keys.begin(), keys.end());
     keyset.clear();
     std::vector<std::vector<uint64_t>> csums;
     for(i = 0; i < n_samples; ++i) {
@@ -119,29 +119,17 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
     return sqrt(ret / (l - 1));
 }
 
-double u64_mean(uint64_t *arr, size_t l)
-{
-    uint64_t ret = 0;
-    for(unsigned i = 0; i < l; ++i) ret += arr[i];
-    return (double)ret / l;
-}
 
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
-    int i, ret;
     // Check for FM tag.
     uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
     if(!data) return n_plp;
-    for(i = 1, ret = bam_aux2i(data); i < n_plp; ++i)
-        ret += bam_aux2i(bam_aux_get(stack[i].b, "FM"));
-        //LOG_DEBUG("FM: %i. Current sum: %i.\n", bam_aux2i(bam_aux_get(stack[i].b, "FM")), ret);
-    return ret;
-    /*
     int ret = 0;
-    for(int i = 0; i < n_plp; ++i)
-        ret += bam_aux2i(bam_aux_get(stack[i].b, "FM"));
+    std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
+        ret += bam_aux2i(bam_aux_get(plp.b, "FM"));
+    });
     return ret;
-    */
 }
 
 static int read_bam(void *data, bam1_t *b)
