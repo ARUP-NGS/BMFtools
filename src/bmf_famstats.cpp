@@ -30,13 +30,13 @@ int get_nbins(khash_t(fm) *table)
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
     size_t size = MAX2(stats->fm->n_occupied, stats->rc->n_occupied);
-    fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * size);
+    std::vector<fm_t> fms = std::vector<fm_t>(size);
     unsigned i;
     fprintf(fp, "#Family size\tNumber of families\n");
     for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)
         if(kh_exist(stats->fm, stats->ki))
             fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
-    std::sort(fms, fms + stats->fm->n_occupied, [](const fm_t a, const fm_t b){
+    std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
         return a.fm < b.fm;
     });
     for(i = 0; i < stats->fm->n_occupied; ++i)
@@ -45,12 +45,11 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
     for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki)
         if(kh_exist(stats->rc, stats->ki))
             fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
-    std::sort(fms, fms + stats->rc->n_occupied, [](const fm_t a, const fm_t b){
+    std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
         return a.fm < b.fm;
     });
     for(i = 0; i < stats->rc->n_occupied; ++i)
         fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-    free(fms);
 }
 
 
@@ -74,7 +73,8 @@ int famstats_target_main(int argc, char *argv[])
 
     if(argc < 4) return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
 
-    if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
+    if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+        return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
 
     while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
         switch (c) {
@@ -107,13 +107,16 @@ int famstats_target_main(int argc, char *argv[])
     }
 
     dlib::BamHandle handle(argv[optind]);
-    bed = bedpath ? parse_bed_hash(bedpath, handle.header, padding)
-                  : build_ref_hash(handle.header);
+    // If bedfile provided, use it. If not, calculate by contig. Why? Why not?
+    if(!bedpath) {
+        LOG_WARNING("Can't calculate on-target without a bed file. Abort!\n");
+    }
+    bed = parse_bed_hash(bedpath, handle.header, padding);
     uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
     uint8_t *fpdata = NULL;
     int FM;
     while(LIKELY(handle.next() >= 0)) {
-        if((handle.rec->core.flag & 2816)) {
+        if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FSUPPLEMENTARY))) {
             ++n_flag_skipped; continue;
         } else if((fpdata = bam_aux_get(handle.rec, "FP")) != NULL && !bam_aux2i(fpdata)) {
             ++n_fp_skipped; continue;
@@ -161,33 +164,44 @@ static void print_stats(famstats_t *stats, FILE *fp)
 
 static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
-    //tag_test(data, "FM");
+    //Since R1 and R2
     if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
             b->core.qual < settings->minMQ) {
-
-        ++s->n_flag_fail; return;
+        ++s->n_flag_fail;
+        return;
     }
-    const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-    const int RV = bam_aux2i(bam_aux_get(b, "RV"));
+    const int FM = bam_itag(b, "FM");
+    const int RV = bam_itag(b, "RV");
     if(FM < settings->minFM) {
-        ++s->n_fm_fail; return;
+        ++s->n_fm_fail;
+        return;
     }
-    if(!bam_aux2i(bam_aux_get(b, "FP"))) {
-        ++s->n_fp_fail; return;
+    if(!bam_itag(b, "FP")) {
+        ++s->n_fp_fail;
+        return;
     }
     ++s->n_pass;
 
-    if(FM > 1) ++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
-    ++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
+    if(FM > 1) {
+        ++s->realfm_counts;
+        s->realfm_sum += FM;
+        s->realrc_sum += RV;
+    }
+    ++s->allfm_counts;
+    s->allfm_sum += FM;
+    s->allrc_sum += RV;
 
-    //LOG_DEBUG("RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", RV, s->allrc_sum, s->realrc_sum);
+    // Have we seen this family size before?
     if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
+        // If not, put it into the hash table with a count of 1.
         s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
-    else ++kh_val(s->fm, s->ki);
+    else ++kh_val(s->fm, s->ki); // Otherwise increment counts
+    // Same, but for RV
     if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
         s->ki = kh_put(rc, s->rc, RV, &s->khr), kh_val(s->rc, s->ki) = 1;
     else ++kh_val(s->rc, s->ki);
 
+    // If the Duplex Read tag is present, incrememnt duplex read counts
     uint8_t *dr_data = bam_aux_get(b, "DR");
     if(dr_data && bam_aux2i(dr_data)) {
         s->dr_sum += FM;
@@ -198,24 +212,19 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 }
 
 
-famstats_t *famstats_fm_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings)
+famstats_t *famstats_fm_core(dlib::BamHandle& handle, famstat_settings_t *settings)
 {
     uint64_t count = 0;
-    famstats_t *s;
-    bam1_t *b;
+    famstats_t *s = (famstats_t*)calloc(1, sizeof(famstats_t));
     int ret;
-    s = (famstats_t*)calloc(1, sizeof(famstats_t));
     s->fm = kh_init(fm);
     s->rc = kh_init(rc);
     s->data = NULL;
-    b = bam_init1();
-    famstats_fm_loop(s, b, settings);
-    while (LIKELY((ret = sam_read1(fp, h, b)) >= 0)) {
-        famstats_fm_loop(s, b, settings);
+    while (LIKELY((ret = handle.next()) >= 0)) {
+        famstats_fm_loop(s, handle.rec, settings);
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
     }
-    bam_destroy1(b);
     if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
     return s;
 }
@@ -264,15 +273,17 @@ int famstats_fm_main(int argc, char *argv[])
     }
 
     if (argc != optind+1) {
-        if (argc == optind) famstats_fm_usage_exit(stdout, EXIT_SUCCESS);
-        else famstats_fm_usage_exit(stderr, EXIT_FAILURE);
+        if (argc == optind) {
+            famstats_fm_usage_exit(stdout, EXIT_SUCCESS);
+        } else famstats_fm_usage_exit(stderr, EXIT_FAILURE);
     }
 
     LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
-    for(const char *tag: tags_to_check) check_bam_tag_exit(argv[optind], tag);
+    for(const char *tag: tags_to_check)
+        check_bam_tag_exit(argv[optind], tag);
 
     dlib::BamHandle handle(argv[optind]);
-    s = famstats_fm_core(handle.fp, handle.header, settings);
+    s = famstats_fm_core(handle, settings);
     print_stats(s, stdout);
     kh_destroy(fm, s->fm);
     kh_destroy(rc, s->rc);
@@ -280,13 +291,6 @@ int famstats_fm_main(int argc, char *argv[])
     free(settings);
     return EXIT_SUCCESS;
 }
-
-static inline void famstats_frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
-{
-    LOG_DEBUG("FP tag? %p. FM tag? %p BamRec? %p..\n", (void *)bam_aux_get(b, "FP"), (void *)bam_aux_get(b, "FM"), (void *)b);
-
-}
-
 
 int famstats_frac_main(int argc, char *argv[])
 {
@@ -304,8 +308,7 @@ int famstats_frac_main(int argc, char *argv[])
             break;
         case 'n':
             notification_interval = strtoull(optarg, NULL, 0); break;
-        case '?':
-        case 'h':
+        case '?': case 'h':
             return famstats_frac_usage_exit(stderr, EXIT_SUCCESS);
         default:
             return famstats_frac_usage_exit(stderr, EXIT_FAILURE);
@@ -326,17 +329,21 @@ int famstats_frac_main(int argc, char *argv[])
     uint64_t fm_above = 0, total_fm = 0, count = 0;
     // Check to see if the required tags are present before starting.
     int FM;
-    while (LIKELY(handle.next() >= 0)) {
+    int ret;
+    while (LIKELY((ret = handle.next()) >= 0)) {
+        // Filter reads
         if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
-                bam_aux2i(bam_aux_get(handle.rec, "FP")) == 0)
+                bam_itag(handle.rec, "FP") == 0)
             continue;
-        FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
+        FM = bam_itag(handle.rec, "FM");
         total_fm += FM;
         if((unsigned)FM >= minFM) fm_above += FM;
         if(UNLIKELY(!(++count % notification_interval)))
             LOG_INFO("Number of records processed: %lu.\n", count);
     }
-    fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
+    if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
+    fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n",
+            minFM, (double)fm_above / total_fm);
     return EXIT_SUCCESS;
 }
 

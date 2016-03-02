@@ -5,23 +5,6 @@
 
 #include "bmf_dmp.h"
 
-kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret = {0, 0, NULL};
-    ksprintf(&ret, infname);
-    char *tmp;
-    /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
-     *
-     */
-    if((tmp = strrchr(ret.s, '.')) != NULL){
-        *tmp = '\0';
-    }
-    ret.l = strlen(ret.s);
-    ks_resize(&ret, ret.l + n_rand + 1);
-    kputc('.', &ret);
-    rand_string(ret.s + ret.l, n_rand);
-    return ret;
-}
-
 
 void print_crms_usage(char *executable)
 {
@@ -62,6 +45,27 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
     LOG_EXIT("Unrecognized option %s for flag %c. Abort!\n", optarg, optopt);
 }
 
+
+kstring_t salted_rand_string(char *infname, size_t n_rand) {
+    kstring_t ret = {0, 0, NULL};
+    ksprintf(&ret, infname);
+    char *tmp;
+    /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
+     *
+     */
+    if((tmp = strrchr(ret.s, '.')) != NULL){
+        *tmp = '\0';
+    }
+    ret.l = strlen(ret.s);
+    ks_resize(&ret, ret.l + n_rand + 1);
+    kputc('.', &ret);
+    rand_string(ret.s + ret.l, n_rand);
+    return ret;
+}
+
+/*
+ * Makes an output filename when not provided. Handles cases with and without period in the input fq name.
+ */
 void make_outfname(marksplit_settings_t *settings)
 {
     int has_period = 0;
@@ -71,7 +75,7 @@ void make_outfname(marksplit_settings_t *settings)
         }
     }
     if(has_period) {
-        kstring_t rs = salted_rand_string(settings->index_fq_path, RANDSTR_SIZE);
+        kstring_t rs = salted_rand_string(settings->input_r1_path, RANDSTR_SIZE);
         settings->ffq_prefix = ks_release(&rs);
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
     } else {
@@ -92,7 +96,10 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
     }
 }
 
-
+/*
+ * Executes hash_dmp_fn on each of the temporary files in the splitterhash
+ * and cleans up if not disabled.
+ */
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
 {
     #pragma omp parallel for schedule(dynamic, 1)
@@ -107,7 +114,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
             free(ks.s);
         }
     }
-    if(settings->is_se) return;
+    if(settings->is_se) return; // Don't dmp imaginary files....
     #pragma omp parallel for schedule(dynamic, 1)
     for(int i = 0; i < settings->n_handles; ++i) {
         LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",

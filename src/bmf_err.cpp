@@ -8,10 +8,11 @@ int err_fm_main(int argc, char *argv[]);
 int err_cycle_main(int argc, char *argv[]);
 int err_region_main(int argc, char *argv[]);
 
-RegionErr::RegionErr(region_set_t set, int i) {
+RegionErr::RegionErr(region_set_t set, int i):
+        counts({0})
+    {
     LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
-    counts = {0, 0};
-    kstring_t tmp = {0, 0, NULL};
+    kstring_t tmp{0, 0, NULL};
     LOG_DEBUG("Contig name: %s. Strlen: %lu.\n", set.contig_name, strlen(set.contig_name));
     ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
     name = std::string(tmp.s);
@@ -42,7 +43,7 @@ uint64_t get_max_err(khash_t(obs) *hash)
 int err_main_usage(FILE *fp, int retcode)
 {
     fprintf(fp,
-            "Usage: bmftools err main -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+            "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
             "Flags:\n"
             "-h/-?\t\tThis helpful help menu!\n"
             "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
@@ -61,7 +62,8 @@ int err_main_usage(FILE *fp, int retcode)
             "-p:\t\tSet padding for bed region. Default: %i.\n"
             "-P:\t\tOnly include proper pairs.\n"
             "-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
-            , INT_MAX, DEFAULT_PADDING, min_obs);
+            , INT_MAX, DEFAULT_PADDING, min_obs
+            );
     exit(retcode);
     return retcode;
 }
@@ -73,7 +75,7 @@ int err_fm_usage(FILE *fp, int retcode)
             "Flags:\n"
             "-h/-?\t\tThis helpful help menu!\n"
             "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-            "-$\t\tSet minimum calculated PV tag value for inclusion.\n"
+            "-S\t\tSet minimum calculated PV tag value for inclusion.\n"
             "-a\t\tSet minimum mapping quality for inclusion.\n"
             "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
             "-b:\t\tPath to bed file for restricting analysis.\n"
@@ -89,10 +91,11 @@ int err_fm_usage(FILE *fp, int retcode)
 int err_region_usage(FILE *fp, int retcode)
 {
     fprintf(fp,
-            "Usage: bmftools err region -b <bedpath.bed> -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+            "Usage: bmftools err region <reference.fasta> <input.csrt.bam>\n"
             "Flags:\n"
+            "-b\t\tPath to bed file. REQUIRED."
             "-h/-?\t\tThis helpful help menu!\n"
-            "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+            "-o\t\tPath to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.\n"
             "-a\t\tSet minimum mapping quality for inclusion.\n"
             "-p:\t\tSet padding for bed region. Default: 50.\n"
             );
@@ -104,7 +107,7 @@ int err_region_usage(FILE *fp, int retcode)
 int err_cycle_usage(FILE *fp, int retcode)
 {
     fprintf(fp,
-            "Usage: bmftools err cycle -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+            "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
             "Flags:\n"
             "-h/-?\t\tThis helpful help menu!\n"
             "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
@@ -810,15 +813,6 @@ void fm_destroy(fmerr_t *fm) {
     cond_free(fm->bedpath);
     free(fm);
 }
-/*
-typedef struct cycle_err {
-    int32_t flag; //
-    uint32_t rlen;
-    obserr_t *r1;
-    obserr_t *r2;
-    char *refcontig;
-    char *bedpath;
-} cycle_err_t; */
 
 cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag)
 {
@@ -850,9 +844,19 @@ void cycle_destroy(cycle_err_t *c)
 
 int err_usage(FILE *fp, int retcode)
 {
-    fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle, region.\n");
+    fprintf(stderr, "bmftools err\nSubcommands:\n"
+            "\tmain:\n"
+            "\t\tCalculates error rates by family size, cycle, base call, and quality score.\n"
+            "\t\tProvides a variety of ways of slicing the data.\n"
+            "\tfm:\n"
+            "\t\tCalculates error rates by family size.\n"
+            "\tcycle:\n"
+            "\t\tCalculates error rates by cycle.\n"
+            "\tregion:\n"
+            "\t\tCalculates error rates by bed region.\n"
+            );
     exit(retcode);
-    return retcode; // This neverhappens
+    return retcode; // This never happens
 }
 
 int err_main(int argc, char *argv[])
@@ -1040,7 +1044,7 @@ int err_fm_main(int argc, char *argv[])
     char *bedpath = NULL;
     int flag = 0, padding = -1, minMQ = 0, c;
     uint32_t minPV = 0;
-    while ((c = getopt(argc, argv, "$:p:b:r:o:a:Fh?dP")) >= 0) {
+    while ((c = getopt(argc, argv, "S:p:b:r:o:a:Fh?dP")) >= 0) {
         switch (c) {
         case 'a': minMQ = atoi(optarg); break;
         case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -1049,7 +1053,7 @@ int err_fm_main(int argc, char *argv[])
         case 'b': bedpath = strdup(optarg); break;
         case 'p': padding = atoi(optarg); break;
         case 'P': flag |= REQUIRE_PROPER; break;
-        case '$': minPV = strtoul(optarg, NULL, 0); break;
+        case 'S': minPV = strtoul(optarg, NULL, 0); break;
         case 'F': flag |= REQUIRE_FP_PASS; break;
         case '?': case 'h': return err_fm_usage(stderr, EXIT_SUCCESS);
         }

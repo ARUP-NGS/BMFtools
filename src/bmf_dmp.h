@@ -26,7 +26,6 @@ extern int64_t ipow(int32_t, int32_t);
 
 typedef void (*hash_dmp_fn)(char *, char *, int);
 
-#define METASYNTACTIC_FNAME_BUFLEN 100
 #define RANDSTR_SIZE 20
 #define DEFAULT_N_NUCS 4
 
@@ -117,30 +116,5 @@ static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_sett
     *pass_fail = 0;
     return default_len;
 }
-
-#define GZPUTC(char, handle) gzputc(handle, char)
-#define GZPUTS(char, handle) gzputs(handle, char)
-
-#define write_bc_to_file(fp1, fp2, seq1, seq2, settings)\
-    do {\
-        GZPUTC('@', fp1), GZPUTC('@', fp2);\
-        for(int k = 0; k < settings->blen1_2; ++k)\
-            GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
-            GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
-        for(int k = 0; k < settings->blen1_2; ++k)\
-            GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
-            GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
-        GZPUTS(" ~#!#~|FP=1|BS=Z", fp1), GZPUTS(" ~#!#~|FP=1|BS=Z", fp2);\
-        for(int k = 0; k < settings->blen1_2; ++k)\
-            GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
-            GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
-        for(int k = 0; k < settings->blen1_2; ++k)\
-            GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
-            GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
-        GZPUTC('\n', fp1); GZPUTS(seq1->seq.s, fp1); GZPUTS("\n+\n", fp1);\
-        GZPUTC('\n', fp2); GZPUTS(seq2->seq.s, fp2); GZPUTS("\n+\n", fp2);\
-        GZPUTS(seq1->qual.s, fp1); GZPUTC('\n', fp1);\
-        GZPUTS(seq2->qual.s, fp2); GZPUTC('\n', fp2);\
-    } while(0)
 
 #endif /* BMF_DMP_H */

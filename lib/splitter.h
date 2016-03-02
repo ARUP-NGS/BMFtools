@@ -10,10 +10,6 @@
 #include "lib/binner.h"
 #include "htslib/kstring.h"
 
-#ifndef METASYNTACTIC_FNAME_BUFLEN
-#define METASYNTACTIC_FNAME_BUFLEN 100
-#endif
-
 typedef struct marksplit_settings {
     int blen;
     int blen1_2;
