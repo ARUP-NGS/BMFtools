@@ -24,19 +24,21 @@ static int bmftools_usage(int rc)
 {
     fprintf(stderr, "Usage: bmftools <subcommand>. See subcommand menus for usage.\n");
     fprintf(stderr, "-v/--version:            Print BMFtools version and exit.");
-    fprintf(stderr, "sort:            Sort for bam rescue.\n"
+    fprintf(stderr,
+                    "cap:             Modifies the quality string as function of family metadata.\n"
+                    "depth:           Calculates depth of coverage over a set of bed intervals.\n"
                     "dmp:             Demultiplex inline barcoded experiments.\n"
-                    "sdmp:            Demultiplex secondary-index barcoded experiments.\n"
-                    "hashdmp:         Demultiplex inline barcoded experiments that have already been marked.\n"
-                    "rsq:             Rescue bmf-sorted or ucs-sorted bam alignments.\n"
                     "err:             Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:        Calculate family size statistics for a bam alignment file.\n"
-                    "vet:             Curate variant calls from another variant caller (.vcf) and a bam alignment.\n"
+                    "filter:          Filter or split a bam file by a set of filters.\n"
+                    "hashdmp:         Demultiplex inline barcoded experiments that have already been marked.\n"
                     "mark_unclipped:  Add unclipped start position as annotation for both read and mate.\n"
-                    "cap:             Modifies the quality string as function of family metadata.\n"
-                    "target:             Calculates on-target rate.\n"
-                    "depth:             Calculates depth of coverage over a set of bed intervals.\n"
-                    "stack:             A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
+                    "rsq:             Rescue bmf-sorted or ucs-sorted bam alignments.\n"
+                    "sdmp:            Demultiplex secondary-index barcoded experiments.\n"
+                    "sort:            Sort for bam rescue.\n"
+                    "stack:           A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
+                    "target:          Calculates on-target rate.\n"
+                    "vet:             Curate variant calls from another variant caller (.vcf) and a bam alignment.\n"
             );
     exit(rc);
 }
