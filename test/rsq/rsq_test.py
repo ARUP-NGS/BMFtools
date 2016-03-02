@@ -1,6 +1,11 @@
 import sys
 import subprocess
-import pysam
+try:
+    import pysam
+except ImportError:
+    sys.stderr.write("Could not import pysam. Not running tests.\n")
+    sys.exit(0)
+
 
 def main():
     subprocess.check_call("../../bmftools_db rsq -ftmp.fq rsq_test.bam rsq_test.out.bam", shell=True)

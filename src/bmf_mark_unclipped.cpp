@@ -4,61 +4,38 @@
 #include "dlib/bam_util.h"
 #include "include/sam_opts.h"
 
-static inline void add_multiple_tags(bam1_t *b1, bam1_t *b2)
+static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
 {
-	add_unclipped_mate_starts(b1, b2);
-	add_sc_lens(b1, b2);
-	add_fraction_aligned(b1, b2);
-}
-
-void mark_unclipped_main(samFile *in, bam_hdr_t *hdr, samFile *ofp)
-{
-	abstract_pair_iter(in, hdr, ofp, &add_multiple_tags);
+    add_unclipped_mate_starts(b1, b2);
+    add_sc_lens(b1, b2);
+    add_fraction_aligned(b1, b2);
+    return 0;
 }
 
 static int unclipped_usage(char *argv[]) {
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Usage: bmftools %s <input.namesrt.bam> <output.bam>\n\n", argv[0]);
-	fprintf(stderr, "Opts:\n-l	 Sets bam compression level. (Valid: 1-9).\n");
-	fprintf(stderr, "Set output.bam to \'-\' or \'stdout\' to pipe results.\n");
-	fprintf(stderr, "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Usage: bmftools %s <input.namesrt.bam> <output.bam>\n\n", argv[0]);
+    fprintf(stderr, "Opts:\n-l     Sets bam compression level. (Valid: 1-9).\n");
+    fprintf(stderr, "Set output.bam to \'-\' or \'stdout\' to pipe results.\n");
+    fprintf(stderr, "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n");
 
-	sam_global_opt_help(stderr, "-....");
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }
 
 int mark_unclipped_main(int argc, char *argv[])
 {
-	int c;
-	samFile *in, *out;
-	bam_hdr_t *header;
-	char wmode[4] = {'w', 'b', '\0', '\0'};
-	sam_global_args ga;
-	memset(&ga, 0, sizeof(ga));
+    char wmode[4] = {'w', 'b', '\0', '\0'};
+    int c;
+    while ((c = getopt(argc, argv, "l:?h")) >= 0) {
+        switch (c) {
+        case 'l': wmode[2] = atoi(optarg)%10 + '0'; break;
+        case 'h': case '?': unclipped_usage(argv);
+        }
+    }
 
-	while ((c = getopt(argc, argv, "l:?h")) >= 0) {
-		switch (c) {
-		case 'l': wmode[2] = atoi(optarg)%10 + '0'; break;
-		case 'h': case '?': unclipped_usage(argv);
-		}
-	}
+    if (optind + 2 > argc) unclipped_usage(argv);
 
-	if (optind + 2 > argc) unclipped_usage(argv);
-
-	in = sam_open_format(argv[optind], "r", &ga.in);
-	header = sam_hdr_read(in);
-	if (header == NULL || header->n_targets == 0)
-		LOG_EXIT("input SAM '%s' does not have header. Abort!\n", argv[optind]);
-
-	sam_open_mode(wmode+1, argv[optind+1], NULL);
-	out = sam_open_format(argv[optind+1], wmode, &ga.out);
-	if (in == 0 || out == 0)
-		LOG_EXIT("fail to read/write input files ('%s', '%s')\n", argv[optind], argv[optind + 1]);
-	sam_hdr_write(out, header);
-
-	mark_unclipped_main(in, header, out);
-	bam_hdr_destroy(header);
-	sam_close(in);
-	sam_close(out);
-	return EXIT_SUCCESS;
+    return dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
+                                         add_multiple_tags, NULL, wmode);
+    return EXIT_SUCCESS;
 }

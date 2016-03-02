@@ -45,16 +45,16 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size);
 
 CONST static inline int test_hp(char *barcode, int threshold)
 {
-	assert(*barcode);
-	int run = 0; char last = '\0';
-	while(*barcode) {
-		if(*barcode == 'N') return 0;
-		if(*barcode == last) {
-			if(++run == threshold) return 0;
-		} else last = *barcode, run = 0;
-		barcode++;
-	}
-	return 1;
+    assert(*barcode);
+    int run = 0; char last = '\0';
+    while(*barcode) {
+        if(*barcode == 'N') return 0;
+        if(*barcode == last) {
+            if(++run == threshold) return 0;
+        } else last = *barcode, run = 0;
+        barcode++;
+    }
+    return 1;
 }
 
 
@@ -65,78 +65,78 @@ CONST static inline int test_hp(char *barcode, int threshold)
  */
 
 #define cfree_rescaler(settings) \
-	do {\
-		if(settings.rescaler) {\
-			int readlen##_settings = count_lines(settings.rescaler_path);\
-			for(int i = 0; i < 2; ++i) {\
-				for(int j = 0; j < readlen##_settings; ++j) {\
-					for(int k = 0; k < nqscores; ++k) {\
-						cond_free(settings.rescaler[i][j][k]);\
-					}\
-					cond_free(settings.rescaler[i][j]);\
-				}\
-				cond_free(settings.rescaler[i]);\
-			}\
-			cond_free(settings.rescaler);\
-		}\
-	} while(0)
+    do {\
+        if(settings.rescaler) {\
+            int readlen##_settings = count_lines(settings.rescaler_path);\
+            for(int i = 0; i < 2; ++i) {\
+                for(int j = 0; j < readlen##_settings; ++j) {\
+                    for(int k = 0; k < nqscores; ++k) {\
+                        cond_free(settings.rescaler[i][j][k]);\
+                    }\
+                    cond_free(settings.rescaler[i][j]);\
+                }\
+                cond_free(settings.rescaler[i]);\
+            }\
+            cond_free(settings.rescaler);\
+        }\
+    } while(0)
 
 
 static inline char *make_crms_outfname(char *fname)
 {
-	return make_default_outfname(fname, ".crms.split");
+    return make_default_outfname(fname, ".crms.split");
 }
 
 
 static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
-	for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-		if(memcmp(seq->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
-			*pass_fail = 1;
-			return i + settings_ptr->homing_sequence_length;
-		}
-	}
-	*pass_fail = 0;
-	return default_len;
+    for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+        if(memcmp(seq->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+            *pass_fail = 1;
+            return i + settings_ptr->homing_sequence_length;
+        }
+    }
+    *pass_fail = 0;
+    return default_len;
 }
 
 static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
-	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-		if(!memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length)) {
-			//LOG_DEBUG("Passed this one at %i.\n", i);
-			*pass_fail = 1;
-			return i + settings_ptr->homing_sequence_length;
-		}
-	}
-	//LOG_INFO("Failed this on\n");
-	*pass_fail = 0;
-	return default_len;
+    for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+        if(!memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length)) {
+            //LOG_DEBUG("Passed this one at %i.\n", i);
+            *pass_fail = 1;
+            return i + settings_ptr->homing_sequence_length;
+        }
+    }
+    //LOG_INFO("Failed this on\n");
+    *pass_fail = 0;
+    return default_len;
 }
 
 #define GZPUTC(char, handle) gzputc(handle, char)
 #define GZPUTS(char, handle) gzputs(handle, char)
 
 #define write_bc_to_file(fp1, fp2, seq1, seq2, settings)\
-	do {\
-		GZPUTC('@', fp1), GZPUTC('@', fp2);\
-		for(int k = 0; k < settings->blen1_2; ++k)\
-			GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
-			GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
-		for(int k = 0; k < settings->blen1_2; ++k)\
-			GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
-			GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
-		GZPUTS(" ~#!#~|FP=1|BS=Z", fp1), GZPUTS(" ~#!#~|FP=1|BS=Z", fp2);\
-		for(int k = 0; k < settings->blen1_2; ++k)\
-			GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
-			GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
-		for(int k = 0; k < settings->blen1_2; ++k)\
-			GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
-			GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
-		GZPUTC('\n', fp1); GZPUTS(seq1->seq.s, fp1); GZPUTS("\n+\n", fp1);\
-		GZPUTC('\n', fp2); GZPUTS(seq2->seq.s, fp2); GZPUTS("\n+\n", fp2);\
-		GZPUTS(seq1->qual.s, fp1); GZPUTC('\n', fp1);\
-		GZPUTS(seq2->qual.s, fp2); GZPUTC('\n', fp2);\
-	} while(0)
+    do {\
+        GZPUTC('@', fp1), GZPUTC('@', fp2);\
+        for(int k = 0; k < settings->blen1_2; ++k)\
+            GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
+            GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
+        for(int k = 0; k < settings->blen1_2; ++k)\
+            GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
+            GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
+        GZPUTS(" ~#!#~|FP=1|BS=Z", fp1), GZPUTS(" ~#!#~|FP=1|BS=Z", fp2);\
+        for(int k = 0; k < settings->blen1_2; ++k)\
+            GZPUTC(seq1->seq.s[k + settings->offset], fp1),\
+            GZPUTC(seq1->seq.s[k + settings->offset], fp2);\
+        for(int k = 0; k < settings->blen1_2; ++k)\
+            GZPUTC(seq2->seq.s[k + settings->offset], fp1),\
+            GZPUTC(seq2->seq.s[k + settings->offset], fp2);\
+        GZPUTC('\n', fp1); GZPUTS(seq1->seq.s, fp1); GZPUTS("\n+\n", fp1);\
+        GZPUTC('\n', fp2); GZPUTS(seq2->seq.s, fp2); GZPUTS("\n+\n", fp2);\
+        GZPUTS(seq1->qual.s, fp1); GZPUTC('\n', fp1);\
+        GZPUTS(seq2->qual.s, fp2); GZPUTC('\n', fp2);\
+    } while(0)
 
 #endif /* BMF_DMP_H */

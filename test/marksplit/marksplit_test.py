@@ -1,8 +1,11 @@
 import sys
 import subprocess
 import shlex
-
-import pysam
+try:
+    import pysam
+except ImportError:
+    sys.stderr.write("Could not import pysam. Will not test unit tests.")
+    sys.exit(0)
 import numpy as np
 
 def freq(collection):

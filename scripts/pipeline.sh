@@ -16,7 +16,7 @@ TMP_PREF="tmpfileswtf"
 tmpstr=${1%.fq*}
 FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
 
-time bmftools dmp -zcdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
+time bmftools dmp -zdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
 	-o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
 R1=${FINAL_FQ_PREFIX}.R1.fq.gz
 R2=${FINAL_FQ_PREFIX}.R2.fq.gz

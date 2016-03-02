@@ -15,22 +15,22 @@
 // Struct definitions
 
 
-typedef struct mseq {
-	char name[100];
-	char comment[2000];
-	char seq[200];
-	char qual[200];
-	char barcode[MAX_BARCODE_LENGTH + 1];
-	int l;
-	int blen;
-} mseq_t;
+struct mseq_t {
+    char name[100];
+    char comment[2000];
+    char seq[300];
+    char qual[300];
+    char barcode[MAX_BARCODE_LENGTH + 1];
+    int l;
+    int blen;
+};
 
 typedef struct tmp_mseq {
-	char *tmp_seq;
-	char *tmp_qual;
-	char *tmp_barcode;
-	int readlen;
-	int blen;
+    char *tmp_seq;
+    char *tmp_qual;
+    char *tmp_barcode;
+    int readlen;
+    int blen;
 } tmp_mseq_t;
 
 // KSEQ Utilities
@@ -43,16 +43,16 @@ KSEQ_INIT(gzFile, gzread)
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
 CONST static inline char *mem_view(char *comment)
 {
-	int hits = 0;
-	for(;;) {
-		switch(*comment++) {
-			case '|': case '\0':
-				if(hits)
-					return (char *)comment + 3;
-				else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
-		}
-	}
-	return NULL; // This shouldn't ever happen.
+    int hits = 0;
+    for(;;) {
+        switch(*comment++) {
+            case '|': case '\0':
+                if(hits)
+                    return (char *)comment + 3;
+                else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
+        }
+    }
+    return NULL; // This shouldn't ever happen.
 }
 
 
@@ -65,7 +65,7 @@ CONST static inline char *mem_view(char *comment)
  */
 CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 {
-	return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
+    return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
 }
 
 /*
@@ -78,19 +78,19 @@ CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
  */
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
-	if(switch_test(seq1, seq2, offset)) { // seq1's barcode is lower. No switching.
-		memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
-		memcpy(barcode + blen1_2, seq2->seq.s + offset,
-				blen1_2 * sizeof(char));
-		barcode[blen1_2 * 2] = '\0';
-		return 0;
-	} else {
-		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
-		memcpy(barcode + blen1_2, seq1->seq.s + offset,
-				blen1_2 * sizeof(char));
-		barcode[blen1_2 * 2] = '\0';
-		return 1;
-	}
+    if(switch_test(seq1, seq2, offset)) { // seq1's barcode is lower. No switching.
+        memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+        memcpy(barcode + blen1_2, seq2->seq.s + offset,
+                blen1_2 * sizeof(char));
+        barcode[blen1_2 * 2] = '\0';
+        return 0;
+    } else {
+        memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+        memcpy(barcode + blen1_2, seq1->seq.s + offset,
+                blen1_2 * sizeof(char));
+        barcode[blen1_2 * 2] = '\0';
+        return 1;
+    }
 }
 
 // calls mem_view on the comment field of the kseq_t struct.
@@ -109,10 +109,10 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
  * :param: qualchar [char] character with which to mask quality.
  */
 #define mask_mseq_chars(seqvar, n_len, seqchar, qualchar)\
-	do {\
-		memset(seqvar->seq, seqchar, n_len);\
-		memset(seqvar->qual, qualchar, n_len);\
-	} while(0)
+    do {\
+        memset(seqvar->seq, seqchar, n_len);\
+        memset(seqvar->qual, qualchar, n_len);\
+    } while(0)
 
 /*
  * @func mask_mseq
@@ -127,14 +127,14 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
 static inline void mseq2fq_stranded(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
 {
-	gzprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
-			mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
+    gzprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
+            mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
 }
 
 static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode)
 {
-	gzprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
-			mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
+    gzprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
+            mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
 }
 
 
@@ -149,14 +149,16 @@ static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *bar
  */
 static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-	memcpy(mvar->name, seq->name.s, seq->name.l);
-	mvar->name[seq->name.l] = '\0';
-	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-	mask_mseq(mvar, n_len);
-	if(rescaler)
-		for(unsigned i = n_len; i < seq->seq.l; ++i)
-			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
-	else memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
+    memcpy(mvar->name, seq->name.s, seq->name.l);
+    mvar->name[seq->name.l] = '\0';
+    memcpy(mvar->seq, seq->seq.s + n_len, seq->seq.l - n_len);
+    mvar->seq[seq->seq.l - n_len] = '\0';
+    mvar->qual[seq->qual.l - n_len] = '\0';
+    if(rescaler)
+        for(unsigned i = n_len; i < seq->seq.l; ++i)
+            mvar->qual[i - n_len] = rescale_qscore(is_read2, seq->qual.s[i], i,
+                                                   seq->seq.s[i], seq->seq.l, rescaler);
+    else memcpy(mvar->qual, seq->qual.s + n_len, seq->qual.l - n_len);
 }
 
 // TMP_MSEQ Utilities

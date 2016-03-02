@@ -19,16 +19,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-	int sort_main(int argc, char **argv);
+    int sort_main(int argc, char **argv);
 #ifdef __cplusplus
 }
 #endif
 
 enum sort_order {
-	SAMTOOLS,
-	QNAME,
-	BMF,
-	UCS
+    SAMTOOLS,
+    QNAME,
+    BMF,
+    UCS
 };
 
 

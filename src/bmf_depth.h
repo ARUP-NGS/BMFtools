@@ -9,7 +9,7 @@
 #include <zlib.h>
 #include <vector>
 #include <unordered_set>
-#include <parallel/algorithm>
+#include <algorithm>
 #include "htslib/kstring.h"
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"

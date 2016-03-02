@@ -32,16 +32,16 @@ typedef unsigned int QELT;
 #define NDEC (NBITS*8/27)
 
 typedef struct
-	{
-	QELT r[NQ];
-	QELT i[NQ];
-	}qcmplx;
+    {
+    QELT r[NQ];
+    QELT i[NQ];
+    }qcmplx;
 
 typedef struct
-	{
-	QELT n[NQ]; /* numerator */
-	QELT d[NQ]; /* denominator */
-	}qfract;
+    {
+    QELT n[NQ]; /* numerator */
+    QELT d[NQ]; /* denominator */
+    }qfract;
 
 #ifndef __MCONF_H
 #include "mconf.h"
