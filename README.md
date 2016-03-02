@@ -1,6 +1,6 @@
 #BMFTools
 ###Summary
->BMFTools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
+>BMFtools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
 
 ###What is BMF?
 >BMF is a promiscuous acronym with multiple appropriate meanings. Primarily:
@@ -59,14 +59,16 @@ SC | Soft-clipped length | Integer |
 ## Barcoding methods
 
 Essentially, the process is *molecular* demultiplexing.
+
 ####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.
 > bmftools sdmp
 (Secondary-index DeMultiPlex)
-
+Barcodes are contained in the additional (typically "Read 2" of 3) fastq, with optional "salting" from the tthe start of the insert reads.
 
 ####Inline (Loeb-like) barcoding
+Requires only read fastqs, as the barcodes are inline.
 > bmftools dmp
-(DeMultiPlex) 
-Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the chemistry is much more complicated.
+(DeMultiPlex)
+Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the chemistry is more complicated.
 
