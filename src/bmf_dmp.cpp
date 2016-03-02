@@ -5,6 +5,23 @@
 
 #include "bmf_dmp.h"
 
+kstring_t salted_rand_string(char *infname, size_t n_rand) {
+    kstring_t ret = {0, 0, NULL};
+    ksprintf(&ret, infname);
+    LOG_DEBUG("New random string: %s.\n", ret.s);
+    char *tmp;
+    if((tmp = strrchr(ret.s, '.')) != NULL){
+        *tmp = '\0';
+    }
+    ret.l = strlen(ret.s);
+    LOG_DEBUG("New random string: %s.\n", ret.s);
+    ks_resize(&ret, ret.l + n_rand + 1);
+    kputc('.', &ret);
+    rand_string(ret.s + ret.l, n_rand);
+    LOG_DEBUG("New random string: %s.\n", ret.s);
+    return ret;
+}
+
 
 void print_crms_usage(char *executable)
 {
@@ -52,12 +69,12 @@ void make_outfname(marksplit_settings_t *settings)
         }
     }
     if(has_period) {
-    settings->ffq_prefix = make_default_outfname(settings->input_r1_path, ".dmp.final");
+        kstring_t rs = salted_rand_string(settings->index_fq_path, RANDSTR_SIZE);
+        settings->ffq_prefix = ks_release(&rs);
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
     } else {
-        settings->ffq_prefix = (char *)malloc((RANDSTR_SIZE + 1) * sizeof(char));
-        rand_string(settings->ffq_prefix, RANDSTR_SIZE);
-        LOG_INFO("No output final prefix set. Selecting random output name ('%s').\n", settings->ffq_prefix);
+        char *tmp = (char *)malloc(RANDSTR_SIZE + 1);
+        settings->ffq_prefix = rand_string(tmp, RANDSTR_SIZE);
     }
 }
 
@@ -104,7 +121,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 }
 
 
-void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
+void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
     kstring_t ks = {0, 0, NULL};
     // Clear output files.
@@ -122,7 +139,9 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
     CHECK_POPEN(ks.s);
     free(ks.s);
 }
-
+/*
+ * Make sure that no rescaler values are invalid
+ */
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
 {
     if(settings->rescaler)
@@ -130,6 +149,9 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
             if(settings->rescaler[i] <= 0)
                 LOG_EXIT("Invalid value in rescaler %i at index %i.\n", settings->rescaler[i], i);
 }
+/*
+ * Emits final results to stdout
+ */
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
@@ -154,13 +176,13 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
     free(final.s);
 }
 
-void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+void cat_fastqs(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-    settings->is_se ? call_panthera_se(settings, params, ffq_r1):
-            call_panthera_pe(settings, params, ffq_r1, ffq_r2);
+    settings->is_se ? cat_fastqs_se(settings, params, ffq_r1):
+            cat_fastqs_pe(settings, params, ffq_r1, ffq_r2);
 }
 
-void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
     kstring_t ks1 = {0, 0, NULL};
     kputs("> ", &ks1), kputs(ffq_r1, &ks1);
@@ -197,6 +219,9 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
     free(ks1.s), free(ks2.s);
 }
 
+/*
+ * Check for invalid characters and convert all lower-case to upper case.
+ */
 void clean_homing_sequence(char *sequence) {
     while(*sequence) {
         switch(*sequence) {
@@ -206,7 +231,7 @@ void clean_homing_sequence(char *sequence) {
             *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
         default:
             LOG_EXIT("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
-                    *sequence);
+                     *sequence);
         }
         ++sequence;
     }
@@ -217,10 +242,6 @@ void clean_homing_sequence(char *sequence) {
  */
 mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
-#if WRITE_BARCODE_FQ
-    gzFile bcfp1 = gzopen("tmp.molbc.r1.fq.gz", "wb4");
-    gzFile bcfp2 = gzopen("tmp.molbc.r2.fq.gz", "wb4");
-#endif
     LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
     if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
         LOG_EXIT("Hey, it looks like you're trying to use the same path for both r1 and r2. "
@@ -252,9 +273,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
     rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
     rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
     rseq1->barcode[settings->blen] = '\0';
-#if WRITE_BARCODE_FQ
-    write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
-#endif
     if(switch_reads) {
         memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
         memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -281,9 +299,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
             LOG_INFO("Number of records processed: %lu.\n", count);
         // Sets pass_fail
         n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
-#if WRITE_BARCODE_FQ
-        write_bc_to_file(bcfp1, bcfp2, seq1, seq2, settings);
-#endif
         // Update mseqs
         update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
         update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
@@ -319,9 +334,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
     mseq_destroy(rseq1), mseq_destroy(rseq2);
     kseq_destroy(seq1), kseq_destroy(seq2);
     gzclose(fp1), gzclose(fp2);
-#ifdef WRITE_BARCODE_FQ
-    gzclose(bcfp1), gzclose(bcfp2);
-#endif
     return splitter;
 }
 
@@ -356,7 +368,10 @@ int dmp_main(int argc, char *argv[])
             case 'o': settings.tmp_basename = strdup(optarg); break;
             case 'p': settings.threads = atoi(optarg); break;
             case 'r': settings.rescaler_path = strdup(optarg); break;
-            case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
+            case 's':
+                settings.homing_sequence = strdup(optarg);
+                settings.homing_sequence_length = strlen(settings.homing_sequence);
+                break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'u': settings.notification_interval = atoi(optarg); break;
             case 'v': settings.max_blen = atoi(optarg); break;
@@ -365,8 +380,7 @@ int dmp_main(int argc, char *argv[])
             case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
             case 'S': settings.is_se = 1; break;
             case '=': settings.to_stdout = 1; break;
-            case '?': // Fall-through
-            case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
+            case '?': case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
         }
     }
 
@@ -374,11 +388,13 @@ int dmp_main(int argc, char *argv[])
 
     // Check for proper command-line usage.
     if(settings.is_se) {
-        if(argc < 4) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
-        if(argc != optind + 1) {
-            fprintf(stderr, "[E:%s] Exactly one read fastq required for single-end. See usage.\n", __func__);
+        if(argc < 4) {
             print_crms_usage(argv[0]);
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
+        }
+        if(argc != optind + 1) {
+            print_crms_usage(argv[0]);
+            LOG_EXIT("Exactly one read fastq required for single-end. See usage.\n");
         }
         // Number of file handles
         settings.n_handles = ipow(4, settings.n_nucs);
@@ -439,10 +455,10 @@ int dmp_main(int argc, char *argv[])
 
     if(!settings.tmp_basename) {
         // If tmp_basename unset, create a random temporary file prefix.
-        settings.tmp_basename = (char *)malloc(21 * sizeof(char));
-        rand_string(settings.tmp_basename, 20);
+        kstring_t rs = salted_rand_string(settings.input_r1_path, RANDSTR_SIZE);
+        settings.tmp_basename = ks_release(&rs);
         LOG_INFO("Temporary basename not provided. Defaulting to random: %s.\n",
-                settings.tmp_basename);
+                  settings.tmp_basename);
     }
 
     // Run core
@@ -466,7 +482,7 @@ int dmp_main(int argc, char *argv[])
     // Cat temporary files together.
     if(settings.to_stdout)
         call_stdout(&settings, params, ffq_r1, ffq_r2);
-    else call_panthera(&settings, params, ffq_r1, ffq_r2);
+    else cat_fastqs(&settings, params, ffq_r1, ffq_r2);
     cleanup_hashdmp(&settings, params);
     splitterhash_destroy(params);
     cleanup:

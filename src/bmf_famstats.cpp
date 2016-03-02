@@ -57,8 +57,8 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 int famstats_target_usage_exit(FILE *fp, int success)
 {
     fprintf(fp, "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
-            "-p padding. Number of bases around bed regions to pad. Default: 25.\n"
-            "-h, -?: Return usage.\n");
+            "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
+            "-h, -?: Return usage.\n", DEFAULT_PADDING);
     exit(success);
     return success;
 }

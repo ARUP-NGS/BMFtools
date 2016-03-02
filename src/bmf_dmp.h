@@ -34,15 +34,19 @@ typedef void (*hash_dmp_fn)(char *, char *, int);
 char test_hp_inline(char *barcode, int length, int threshold);
 void clean_homing_sequence(char *);
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
-void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
-void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
-void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1);
+void cat_fastqs(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
+void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
+void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1);
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func);
 void make_outfname(marksplit_settings_t *settings);
 void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params);
 void check_rescaler(marksplit_settings_t *settings, int arr_size);
 
-
+/*
+ * Returns 0 if a barcode is failed.
+ * A barcode is failed by a homopolymer run >= threshold
+ * or if an N is encountered.
+ */
 CONST static inline int test_hp(char *barcode, int threshold)
 {
     assert(*barcode);
