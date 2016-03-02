@@ -48,7 +48,7 @@ typedef struct tmpvars {
 } tmpvars_t;
 
 
-typedef struct KingFisher {
+struct KingFisher {
     uint16_t *nuc_counts; // Count of nucleotides of this form
     uint32_t *phred_sums; // Sums of -10log10(p-value)
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
@@ -56,21 +56,21 @@ typedef struct KingFisher {
     int readlen; // Length of reads
     char barcode[MAX_BARCODE_LENGTH + 1];
     char pass_fail;
-} KingFisher_t;
+};
 
 
 
 extern double igamc(double a, double x);
 
 
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
-static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
+static inline void pushback_kseq(KingFisher *kfp, kseq_t *seq, int blen);
+static inline void pb_pos(KingFisher *kfp, kseq_t *seq, int i);
 static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
-void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
-void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
-void dmp_process_write(KingFisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
-void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
-CONST static inline int kfp_argmax(KingFisher_t *kfp, int index);
+void stranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs);
+void zstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
+void dmp_process_write(KingFisher *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
+void kdmp_process_write(KingFisher *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
+CONST static inline int kfp_argmax(KingFisher *kfp, int index);
 CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
 static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
@@ -109,7 +109,7 @@ static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
         sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
 }
 
-static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
+static inline void pb_pos(KingFisher *kfp, kseq_t *seq, int i) {
     const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
     ++kfp->nuc_counts[posdata];
     kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
@@ -117,7 +117,7 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 }
 
 
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
+static inline void pushback_kseq(KingFisher *kfp, kseq_t *seq, int blen)
 {
     if(!kfp->length++) { // Increment while checking
         kfp->pass_fail = seq->comment.s[FP_OFFSET];
@@ -155,7 +155,7 @@ CONST static inline int arr_max_u32(uint32_t *arr, int index)
 }
 
 
-CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
+CONST static inline int kfp_argmax(KingFisher *kfp, int index)
 {
     return arr_max_u32(kfp->phred_sums, index);
 }

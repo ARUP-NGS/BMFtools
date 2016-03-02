@@ -17,7 +17,7 @@
         }\
     } while(0)
 
-void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev)
+void kdmp_process_write(KingFisher *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev)
 {
     int i, diffs = kfp->length * kfp->readlen;
     for(i = 0; i < kfp->readlen; ++i) {
@@ -39,7 +39,7 @@ void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, in
 }
 
 
-void dmp_process_write(KingFisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
+void dmp_process_write(KingFisher *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
 {
     int i, diffs = kfp->length * kfp->readlen;
     for(i = 0; i < kfp->readlen; ++i) {
@@ -59,7 +59,7 @@ void dmp_process_write(KingFisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int
 
 // kfp forward, kfp reverse
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-void kstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
+void kstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs)
 {
     const int FM = kfpf->length + kfpr->length;
     int i, diffs = FM * kfpf->readlen;
@@ -105,7 +105,7 @@ void kstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handl
 
 // kfp forward, kfp reverse
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
+void zstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
 {
     const int FM = kfpf->length + kfpr->length;
     int i, diffs = FM * kfpf->readlen;
@@ -147,7 +147,7 @@ void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, kstring_t *
 
 // kfp forward, kfp reverse
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
+void stranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs)
 {
     const int FM = kfpf->length + kfpr->length;
     int i, diffs = FM * kfpf->readlen;

@@ -8,6 +8,7 @@
 #include <tgmath.h>
 #include <unordered_map>
 #include <algorithm>
+#include <functional>
 #include "htslib/sam.h"
 #include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library
@@ -17,27 +18,14 @@
 #include "dlib/bam_util.h"
 
 #define STACK_START 128
-#define SEQBUF_SIZE 300
-
-#define seq2buf(buf, seq, len) \
-    do {\
-        uint64_t i_##seq;\
-        for(i_##seq = 0; i_##seq < (len >> 1); ++i_##seq) {\
-            buf[i_##seq] = seq_nt16_str[bam_seqi(seq, i_##seq)];\
-            buf[len - i_##seq - 1] = seq_nt16_str[bam_seqi(seq, len - i_##seq - 1)];\
-        }\
-        if(len&1) buf[i_##seq] = seq_nt16_str[bam_seqi(seq, i_##seq)];\
-        buf[len] = '\0';\
-    } while(0)
 
 
+//typedef bam1_t *bam1_p;
 
-typedef bam1_t *bam1_p;
-
-typedef struct {
+struct tmp_stack_t{
     size_t n, max;
     bam1_t **a;
-} tmp_stack_t;
+};
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
@@ -55,8 +43,6 @@ enum cmpkey {
     POSITION,
     UNCLIPPED
 };
-
-typedef int (*stack_fn)(bam1_t *b, bam1_t *p);
 
 CONST static inline int same_stack_pos_se(bam1_t *b, bam1_t *p)
 {
@@ -94,10 +80,6 @@ CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
 }
 
 
-int bam_rsq(int argc, char *argv[]);
-void bam2ffq(bam1_t *b, FILE *fp);
-
-
 #define READ_HD_LIMIT 6
 #ifdef __cplusplus
 CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)
@@ -117,9 +99,6 @@ CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
     }
     return 1;
 }
-
-int bam_rsq(int argc, char *argv[]);
-
 
 
 #endif /* BMF_RSQ_H */

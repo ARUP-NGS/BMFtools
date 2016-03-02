@@ -12,7 +12,7 @@ extern "C" {
 }
 #endif
 
-KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
+KHASH_MAP_INIT_STR(dmp, KingFisher *)
 void hash_dmp_core(char *infname, char *outfname, int level);
 int hash_dmp_main(int argc, char *argv[]);
 void splitterhash_destroy(splitterhash_params_t *params);
@@ -20,11 +20,11 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 void stranded_hash_dmp_core(char *infname, char *outfname, int level);
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
-typedef struct HashKing {
+struct HashKing {
     UT_hash_handle hh;
     char id[MAX_BARCODE_LENGTH + 1];
-    KingFisher_t *value;
-}hk_t;
+    KingFisher *value;
+};
 
 
 CONST static inline int infer_barcode_length(char *bs_ptr)
@@ -50,10 +50,10 @@ static inline void cp_view2buf(char *view, char *buf)
     }
 }
 
-static inline KingFisher_t *init_kfp(size_t readlen)
+static inline KingFisher *init_kfp(size_t readlen)
 {
     const size_t r5 = readlen * 5;
-    KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
+    KingFisher *ret = (KingFisher *)calloc(1, sizeof(KingFisher));
     ret->readlen = readlen;
     ret->max_phreds = (char *)malloc((r5) * sizeof(char));
     ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
@@ -63,7 +63,7 @@ static inline KingFisher_t *init_kfp(size_t readlen)
     return ret;
 }
 
-static inline void destroy_kf(KingFisher_t *kfp)
+static inline void destroy_kf(KingFisher *kfp)
 {
     free(kfp->nuc_counts);
     free(kfp->phred_sums);

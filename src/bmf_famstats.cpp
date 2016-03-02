@@ -29,8 +29,7 @@ int get_nbins(khash_t(fm) *table)
 
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
-    size_t size = MAX2(stats->fm->n_occupied, stats->rc->n_occupied);
-    std::vector<fm_t> fms = std::vector<fm_t>(size);
+    std::vector<fm_t> fms = std::vector<fm_t>(stats->fm->n_occupied);
     unsigned i;
     fprintf(fp, "#Family size\tNumber of families\n");
     for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)
@@ -42,6 +41,8 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
     for(i = 0; i < stats->fm->n_occupied; ++i)
         fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
     fprintf(fp, "#RV'd in family\tNumber of families\n");
+
+    fms.resize(stats->rc->n_occupied);
     for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki)
         if(kh_exist(stats->rc, stats->ki))
             fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
@@ -114,16 +115,18 @@ int famstats_target_main(int argc, char *argv[])
     bed = parse_bed_hash(bedpath, handle.header, padding);
     uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
     uint8_t *fpdata = NULL;
-    int FM;
     while(LIKELY(handle.next() >= 0)) {
         if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FSUPPLEMENTARY))) {
-            ++n_flag_skipped; continue;
+            ++n_flag_skipped;
+            continue;
         } else if((fpdata = bam_aux_get(handle.rec, "FP")) != NULL && !bam_aux2i(fpdata)) {
-            ++n_fp_skipped; continue;
+            ++n_fp_skipped;
+            continue;
         }
-        FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
+        const int FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
         total_fm += FM;
-        if(bed_test(handle.rec, bed)) fm_target += FM;
+        if(bed_test(handle.rec, bed))
+            fm_target += FM;
         if(UNLIKELY(++count % notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
     }
@@ -266,8 +269,7 @@ int famstats_fm_main(int argc, char *argv[])
             settings->minFM = atoi(optarg); break;
             break;
         case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
-        case '?': // Fall-through!
-        case 'h':
+        case '?': case 'h':
             return famstats_fm_usage_exit(stderr, EXIT_SUCCESS);
         }
     }
@@ -310,8 +312,6 @@ int famstats_frac_main(int argc, char *argv[])
             notification_interval = strtoull(optarg, NULL, 0); break;
         case '?': case 'h':
             return famstats_frac_usage_exit(stderr, EXIT_SUCCESS);
-        default:
-            return famstats_frac_usage_exit(stderr, EXIT_FAILURE);
         }
     }
 

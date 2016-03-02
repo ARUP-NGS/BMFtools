@@ -31,8 +31,8 @@ void sdmp_usage(char *argv[])
                         "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
                         "-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
-                        "-$: Single-end mode. Ignores read 2.\n"
-                        "-&: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
+                        "-S: Single-end mode. Ignores read 2.\n"
+                        "-O: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
                         argv[0], DEFAULT_N_NUCS);
 }
 
@@ -181,13 +181,6 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
     return splitter_ptr;
 }
 
-void print_opt_err(char *argv[], char *optarg)
-{
-    sdmp_usage(argv);
-    fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
-    exit(EXIT_FAILURE);
-}
-
 int sdmp_main(int argc, char *argv[])
 {
     if(argc < 3 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
@@ -204,7 +197,7 @@ int sdmp_main(int argc, char *argv[])
     sprintf(settings.mode, "wT");
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?$&")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?S&")) > -1) {
         switch(c) {
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
@@ -222,13 +215,10 @@ int sdmp_main(int argc, char *argv[])
             case 'w': settings.cleanup = 0; break;
             case 'r':
                 settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
-                /* fprintf(stderr, "Parsed rescaler.\n"); */
                 break;
-            case '$': settings.is_se = 1; break;
-            case '&': settings.to_stdout = 1; break;
-            case '?': // Fall-through
-            case 'h': sdmp_usage(argv); return EXIT_SUCCESS;
-            default: print_opt_err(argv, optarg);
+            case 'S': settings.is_se = 1; break;
+            case 'O': settings.to_stdout = 1; break;
+            case '?': case 'h': sdmp_usage(argv); return EXIT_SUCCESS;
         }
     }
 

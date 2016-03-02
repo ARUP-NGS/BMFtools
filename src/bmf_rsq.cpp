@@ -12,10 +12,9 @@ typedef struct rsq_settings {
     std::unordered_map<std::string, std::string> realign_pairs;
 } rsq_settings_t;
 
-static const stack_fn fns[4] = {&same_stack_pos, &same_stack_pos_se,
-                                &same_stack_ucs, &same_stack_ucs_se};
+static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
+                                                               &same_stack_ucs, &same_stack_ucs_se};
 
-using namespace std::literals;
 std::string get_SO(bam_hdr_t *hdr) {
     char *end, *so_start;
     std::string ret;
@@ -30,7 +29,7 @@ std::string get_SO(bam_hdr_t *hdr) {
 
     NA:
     LOG_WARNING("Sort order not found. Returning N/A.\n");
-    return "N/A"s;
+    return std::string("N/A");
 }
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -289,7 +288,9 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                     settings->realign_pairs[qname] = bam2cppstr(stack->a[i]);
                 } else {
+                    // Make sure the read names/barcodes match.
                     assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
+                    // Write read 1 out first.
                     if(stack->a[i]->core.flag & BAM_FREAD2) {
                         fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                         bam2ffq(stack->a[i], settings->fqh);
@@ -297,6 +298,7 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
                         bam2ffq(stack->a[i], settings->fqh);
                         fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                     }
+                    // Clear entry, as there can only be two.
                     settings->realign_pairs.erase(qname);
                 }
             } else {
@@ -307,7 +309,9 @@ void write_stack(tmp_stack_t *stack, rsq_settings_t *settings)
     }
 }
 
-
+/*
+ * Returns true if hd <= mmlim, 0 otherwise.
+ */
 static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 {
     char *aname = (char *)bam_get_qname(a);
@@ -317,11 +321,12 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
         if(*aname++ != *bname++)
             if(++hd > mmlim)
                 return 0;
-    return hd;
+    return 1;
 }
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *settings)
 {
+    // Sort by read names to make sure that any progressive rescuing ends at the same name.
     std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
         if(a) {
             return b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0;
@@ -350,7 +355,7 @@ static const char *sos[2] = {"positional_rescue", "unclipped_rescue"};
 
 void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
 {
-    const stack_fn fn = fns[settings->is_se | (settings->cmpkey<<1)];
+    std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
     if(strcmp(get_SO(settings->hdr).c_str(), sos[settings->cmpkey])) {
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                 get_SO(settings->hdr).c_str(), sos[settings->cmpkey]);
@@ -358,11 +363,13 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
     bam1_t *b = bam_init1();
     if(sam_read1(settings->in, settings->hdr, b) < 0)
         LOG_EXIT("Failed to read first record in bam file. Abort!\n");
+    // Zoom ahead to first primary alignment in bam.
     while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
         sam_write1(settings->out, settings->hdr, b);
         if(sam_read1(settings->in, settings->hdr, b))
             LOG_EXIT("Could not read first primary alignment in bam (%s). Abort!\n", settings->in->fn);
     }
+    // Start stack
     stack_insert(stack, b);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
@@ -370,19 +377,23 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
             continue;
         }
         if(fn(b, *stack->a) == 0) {
+            // New stack -- flatten what we have and write it out.
             flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
             write_stack(stack, settings);
             stack->n = 1;
             stack->a[0] = bam_dup1(b);
-        } else stack_insert(stack, b);
+        } else {
+            // Keep adding bam records.
+            stack_insert(stack, b);
+        }
     }
     flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
     write_stack(stack, settings);
     stack->n = 1;
     bam_destroy1(b);
+    // Handle any unpaired reads, though there shouldn't be any in real datasets.
     if(settings->realign_pairs.size()) {
         LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
-        // This next block shouldn't ever need to be executed, but let's keep it for good measure.
         for(auto& pair: settings->realign_pairs) {
             fprintf(settings->fqh, pair.second.c_str());
             settings->realign_pairs.erase(pair.first);
@@ -404,12 +415,13 @@ void bam_rsq_bookends(rsq_settings_t *settings)
 int rsq_usage(int retcode)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Flags:\n"
+                    "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
                     "-t      Mismatch limit. Default: 2\n");
     fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
     fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
-                    "Note: This requires pre-processing with bmftools mark_unclipped.\n");
+                    "Note: -u requires pre-processing with bmftools mark_unclipped.\n");
     return retcode;
 }
 
@@ -417,7 +429,7 @@ int rsq_usage(int retcode)
 int rsq_main(int argc, char *argv[])
 {
     int c;
-    char wmode[4] = {'w', 'b', 0, 0};
+    char wmode[4] = "wb";
 
     rsq_settings_t settings = {0};
     settings.mmlim = 2;
@@ -436,7 +448,7 @@ int rsq_main(int argc, char *argv[])
         case 't': settings.mmlim = atoi(optarg); break;
         case 'f': fqname = optarg; break;
         case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
-        case 'h': case '?': return rsq_usage(EXIT_SUCCESS);
+        case '?': case 'h': return rsq_usage(EXIT_SUCCESS);
         }
     }
     if (optind + 2 > argc)

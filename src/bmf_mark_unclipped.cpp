@@ -29,7 +29,7 @@ int mark_unclipped_main(int argc, char *argv[])
     while ((c = getopt(argc, argv, "l:?h")) >= 0) {
         switch (c) {
         case 'l': wmode[2] = atoi(optarg)%10 + '0'; break;
-        case 'h': case '?': unclipped_usage(argv);
+        case '?': case 'h': unclipped_usage(argv);
         }
     }
 

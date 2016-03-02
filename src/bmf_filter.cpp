@@ -20,10 +20,10 @@ int usage(char **argv, int retcode=EXIT_FAILURE) {
 
 struct opts {
     uint32_t minFM:14;
+    uint32_t minMQ:8;
     uint32_t v:1;
     uint32_t skip_flag:16;
     uint32_t require_flag:16;
-    uint32_t minMQ:8;
     float minAF;
     khash_t(bed) *bed;
 };
@@ -64,8 +64,7 @@ int slow_test(bam1_t *b, uint8_t *data, void *options) {
 
 #define TEST(b, data, options) \
         (\
-             (\
-            (((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1)\
+             ((((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1)\
                                                      >= (int)((opts *)options)->minFM) &&\
              b->core.qual >= ((opts *)options)->minMQ &&\
              ((b->core.flag & ((opts *)options)->skip_flag) == 0) &&\
@@ -89,6 +88,7 @@ int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle
 {
     while(in.next() >= 0) (bam_test(in.rec, (void *)param) ? out: refused).write(in.rec);
     /*
+     * Equivalent to:
     while(in.next() >= 0) {
         if(bam_test(in.rec, (void *)param)) {
             out.write(in.rec);
@@ -123,7 +123,7 @@ int filter_main(int argc, char *argv[]) {
         case 'v': param.v = 1; break;
         case 'r': refused_path = optarg; break;
         case 'l': out_mode[2] = atoi(optarg) % 10 + '0'; break;
-        case 'h': case '?': return usage(argv, EXIT_SUCCESS);
+        case '?': case 'h': return usage(argv, EXIT_SUCCESS);
         }
     }
     check_bam_tag_exit(argv[optind], "FM");
