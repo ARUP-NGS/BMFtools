@@ -24,6 +24,7 @@ struct opts {
     uint32_t skip_flag:16;
     uint32_t require_flag:16;
     uint32_t minMQ:8;
+    float minAF;
     khash_t(bed) *bed;
 };
 
@@ -43,6 +44,12 @@ int bam_test(bam1_t *b, void *options) {
 
 #undef TEST
 
+int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle& refused, opts *param)
+{
+    while(in.next() >= 0) (bam_test(in.rec, (void *)param) ? out: refused).write(in.rec);
+    return EXIT_SUCCESS;
+}
+
 int filter_main(int argc, char *argv[]) {
     if(argc < 3)
         return usage(argv);
@@ -54,8 +61,9 @@ int filter_main(int argc, char *argv[]) {
     char *bedpath = NULL;
     int padding = DEFAULT_PADDING;
     std::string refused_path("");
-    while((c = getopt(argc, argv, "r:P:b:m:F:f:l:hv?")) > -1) {
+    while((c = getopt(argc, argv, "a:r:P:b:m:F:f:l:hv?")) > -1) {
         switch(c) {
+        case 'a': param.minAF = atof(optarg); break;
         case 'P': padding = atoi(optarg); break;
         case 'b': bedpath = optarg; break;
         case 'm': param.minMQ = strtoul(optarg, NULL, 0); break;
@@ -78,17 +86,10 @@ int filter_main(int argc, char *argv[]) {
     }
     dlib::BamHandle out(argv[optind] + 1, in.header, out_mode);
     // Core
-    if(!refused_path.size()) {
-        in.for_each(bam_test, out, (void *)&param);
-    } else {
+    if(refused_path.size()) { // refused path is set.
         dlib::BamHandle refused(refused_path.c_str(), in.header, out_mode);
-        while(in.next() >= 0) {
-            if(bam_test(in.rec, (void *)&param))
-                out.write(in.rec);
-            else
-                refused.write(in.rec);
-        }
-    }
+        filter_split_core(in, out, refused, &param);
+    } else in.for_each(bam_test, out, (void *)&param);
     // Clean up.
     if(param.bed) bed_destroy_hash((void *)param.bed);
     return EXIT_SUCCESS;
