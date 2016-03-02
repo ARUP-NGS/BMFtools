@@ -2,7 +2,8 @@
  *  prepares our sophisticated error model for downstream analysis
  *  for BMF-agnostic tools.
 */
-#include "bmf_cap.h"
+#include "dlib/bam_util.h"
+#include "include/sam_opts.h"
 
 static int cap_qscore_usage(char *argv[]) {
     fprintf(stderr, "\ncap_qscore takes a bam and caps quality scores from PV tags "
@@ -20,30 +21,82 @@ static int cap_qscore_usage(char *argv[]) {
     return EXIT_FAILURE;
 }
 
+typedef struct cap_settings {
+    int32_t minFM;
+    uint32_t minPV;
+    double minFrac;
+    int cap;
+    int dnd; // Do not disturb. Use uncapped unless greater than given minPV.
+} cap_settings;
+
+
+static inline int cap_bam_dnd(bam1_t *b, cap_settings *settings) {
+    int i;
+    uint32_t *PV = (uint32_t *)array_tag(b, "PV");
+    uint32_t *FA = (uint32_t *)array_tag(b, "FA");
+    const int FM = bam_itag(b, "FM");
+    if(FM < settings->minFM)
+        return 1;
+    const int l_qseq = b->core.l_qseq;
+    char *qual = (char *)bam_get_qual(b);
+    if(b->core.flag & BAM_FREVERSE)
+        for(i = 0; i < l_qseq; ++i)
+            if(PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac)
+                qual[l_qseq - 1 - i] = settings->cap;
+    else
+        for(i = 0; i < l_qseq; ++i)
+            if(PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac)
+                qual[i] = settings->cap;
+    return 0;
+}
+
+static inline int cap_bam_q(bam1_t *b, cap_settings *settings) {
+    uint32_t *const PV = (uint32_t *)array_tag(b, "PV");
+    uint32_t *const FA = (uint32_t *)array_tag(b, "FA");
+    const int FM = bam_itag(b, "FM");
+    if(FM < (int)settings->minFM)
+        return 1;
+    char *qual = (char *)bam_get_qual(b);
+    int i;
+    const int l_qseq = b->core.l_qseq;
+    // If the thresholds are failed, set the quality to 2 to make them
+    if(b->core.flag & BAM_FREVERSE)
+        for(i = 0; i < l_qseq; ++i)
+            qual[l_qseq - 1 - i] = (PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac) ? settings->cap: 2;
+    else
+        for(i = 0; i < l_qseq; ++i)
+            qual[i] = (PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac) ? settings->cap: 2;
+    return 0;
+}
+
+
 
 int cap_qscore_main(int argc, char *argv[])
 {
     cap_settings settings = {0};
     settings.cap = 93;
     int c;
-    char wmode[3] = {'w', 'b', 0};
+    char wmode[4] = "wb";
 
     int level;
     while ((c = getopt(argc, argv, "t:f:m:l:c:dh?")) >= 0) {
         switch (c) {
-        case 'l': level = atoi(optarg) % 10; wmode[2] = level + '0'; break;
+        // mod 10 to handle a user error of negative or excessively high compression level.
+        case 'l':
+            level = atoi(optarg) % 10; wmode[2] = level + '0';
+            LOG_DEBUG("Emitting bam with compression level %i.\n", level);
+            break;
         case 'm': settings.minFM = strtoul(optarg, NULL, 10); break;
         case 'c': settings.minPV = strtoul(optarg, NULL, 10); break;
         case 'f': settings.minFrac = atof(optarg); break;
         case 't':
-            if(atoi(optarg) > 93) {
-                fprintf(stderr, "Hey, this qscore is too high. 93 max!\n");
-                exit(EXIT_FAILURE);
+            settings.cap = (char)atoi(optarg);
+            if(settings.cap > 93) {
+                LOG_EXIT("Requested cap %i > maximum cap score 93. Abort!\n", settings.cap);
             }
-            settings.cap = (char)atoi(optarg); break;
+            break;
         case 'd': settings.dnd = 1; break;
-        case 'h': // fall-through
-        case '?': return cap_qscore_usage(argv);
+        case 'h': case '?': cap_qscore_usage(argv); return EXIT_SUCCESS;
         }
     }
     if (optind + 2 > argc)

@@ -31,20 +31,22 @@ DEALINGS IN THE SOFTWARE. */
 #include "bmf_depth.h"
 
 
-struct vaux_t{
-    htsFile *fp;
-    bam_hdr_t *header;
-    hts_itr_t *iter;
-    uint64_t *raw_counts;
-    uint64_t *dmp_counts;
-    uint64_t *singleton_counts;
-    int minMQ;
-    int minFM;
-    int requireFP;
+struct depth_aux{
+    htsFile *fp; // Input sam
+    bam_hdr_t *header; // Input sam header
+    hts_itr_t *iter; // bam index iterator
+    std::vector<uint64_t> raw_counts; // Counts for raw observations along region
+    std::vector<uint64_t> dmp_counts; // Counts for dmp observations along region
+    std::vector<uint64_t> singleton_counts; // Counts for singleton observations along region
+    int minFM; // Minimum family size
+    uint32_t minMQ:15; // Minimum mapping quality
+    uint32_t requireFP:1; // Set to true to require
     khash_t(depth) *depth_hash;
     uint64_t n_analyzed;
 };
-
+/*
+ * Effectively strdup for a NULL dest and a realloc/strcpy for pre-allocated dest strings.
+ */
 static inline char *restrdup(char *dest, char *src)
 {
     dest = (char *)realloc(dest, sizeof(char) * (strlen(src) + 1));
@@ -60,10 +62,13 @@ void depth_usage(int retcode)
     fprintf(stderr, "  -m INT        Max depth. Default: %i.\n", DEFAULT_MAX_DEPTH);
     fprintf(stderr, "  -n INT        Set N for quantile reporting. Default: 4 (quartiles)\n");
     fprintf(stderr, "  -p INT        Number of bases around region to pad in coverage calculations. Default: %i\n", (int)DEFAULT_PADDING);
-    fprintf(stderr, "  -s FLAG        Skip reads with an FP tag whose value is 0. (Fail)\n");
+    fprintf(stderr, "  -s FLAG       Skip reads with an FP tag whose value is 0. (Fail)\n");
     exit(retcode);
 }
 
+/*
+ * Writes the quantiles for coverage for a sorted array of 64-bit unsigned integers
+ */
 void write_quantiles(kstring_t *k, uint64_t *sorted_array, size_t region_len, int n_quantiles)
 {
     for(int i = 1; i < n_quantiles; ++i) {
@@ -71,8 +76,10 @@ void write_quantiles(kstring_t *k, uint64_t *sorted_array, size_t region_len, in
         if(i != n_quantiles - 1) kputc(',', k);
     }
 }
-
-void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
+/*
+ * Writes the number and fraction of positions in region covered at >= a given sequencing depth.
+ */
+void write_hist(depth_aux **aux, FILE *fp, int n_samples, char *bedpath)
 {
     int i;
     unsigned j;
@@ -105,7 +112,7 @@ void write_hist(vaux_t **aux, FILE *fp, int n_samples, char *bedpath)
     for(j = 0; j < keys.size(); ++j) {
         fprintf(fp, "%i", keys[j]);
         for(i = 0; i < n_samples; ++i)
-            fprintf(fp, "\t%lu\t%0.4f%%", csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
+            fprintf(fp, "\t%lu\t%0.2f%%", csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
         fputc('\n', fp);
     }
 }
@@ -120,9 +127,13 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
     return sqrt(ret / (l - 1));
 }
 
+/*
+ * Counts the number of singletons in a pileup. Returns the size of the pileup if no FM tag found.
+ */
 static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
+    if(!n_plp) return 0;
     uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
     if(!data) return n_plp;
     int ret = 0;
@@ -132,7 +143,9 @@ static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
     return ret;
 }
 
-
+/*
+ * Calculates the total number of aligned original template molecules at each position.
+ */
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
@@ -145,9 +158,18 @@ static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
     return ret;
 }
 
+/*
+ * Reads from the bam, filtering based on settings in depth_aux.
+ * It fails unmapped/secondary/qcfail/pcr duplicate reads, as well as those
+ * with mapping qualities below minMQ and those with family sizes below minFM.
+ * If requireFP is set, it also fails any with an FP:i:0 tag.
+ * If an FM tag is not found, reads are not filtered by family size.
+ * Similarly, if an FP tag is not found, reads are passed.
+ */
+
 static int read_bam(void *data, bam1_t *b)
 {
-    vaux_t *aux = (vaux_t*)data; // data in fact is a pointer to an auxiliary structure
+    depth_aux *aux = (depth_aux*)data; // data in fact is a pointer to an auxiliary structure
     int ret;
     for(;;)
     {
@@ -169,7 +191,7 @@ int depth_main(int argc, char *argv[])
     kstring_t str;
     kstream_t *ks;
     hts_idx_t **idx;
-    vaux_t **aux;
+    depth_aux **aux;
     char **col_names;
     int *n_plp, dret, i, n, c, minMQ = 0;
     uint64_t *counts;
@@ -207,10 +229,10 @@ int depth_main(int argc, char *argv[])
     memset(&str, 0, sizeof(kstring_t));
     n = argc - optind;
     fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
-    aux = (vaux_t **)calloc(n, sizeof(vaux_t*));
+    aux = (depth_aux **)calloc(n, sizeof(depth_aux*));
     idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
     for (i = 0; i < n; ++i) {
-        aux[i] = (vaux_t *)calloc(1, sizeof(vaux_t));
+        aux[i] = (depth_aux *)calloc(1, sizeof(depth_aux));
         aux[i]->minMQ = minMQ;
         aux[i]->minFM = minFM;
         aux[i]->requireFP = requireFP;
@@ -263,9 +285,6 @@ int depth_main(int argc, char *argv[])
         double raw_mean, dmp_mean, singleton_mean;
         double raw_stdev, dmp_stdev, singleton_stdev;
         bam_mplp_t mplp;
-        std::vector<uint64_t> dmp_sort_array;
-        std::vector<uint64_t> raw_sort_array;
-        std::vector<uint64_t> singleton_sort_array;
 
         for (p = q = str.s; *p && *p != '\t'; ++p);
         if (*p != '\t') goto bed_error;
@@ -285,9 +304,9 @@ int depth_main(int argc, char *argv[])
         region_len = stop - start;
         capture_size += region_len;
         for(i = 0; i < n; ++i) {
-            aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
-            aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-            aux[i]->singleton_counts = (uint64_t *)realloc(aux[i]->singleton_counts, sizeof(uint64_t) * region_len);
+            aux[i]->dmp_counts.resize(region_len);
+            aux[i]->raw_counts.resize(region_len);
+            aux[i]->singleton_counts.resize(region_len);
         }
         if(*p == '\t') {
             q = ++p;
@@ -305,6 +324,7 @@ int depth_main(int argc, char *argv[])
         bam_mplp_set_maxcnt(mplp, max_depth);
         memset(counts, 0, sizeof(uint64_t) * n);
         arr_ind = 0;
+        // Get the counts for each position within the region.
         while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
             if (pos >= start && pos < stop) {
                 for (i = 0; i < n; ++i) {
@@ -324,41 +344,30 @@ int depth_main(int argc, char *argv[])
                 ++arr_ind; // Increment for positions in range.
             }
         }
-        /*
-         * At this point, the arrays have counts for depth
-         * for each position in the region.
-         * C. Get quartiles.
-         * Do for both raw and dmp.
-         */
+        // Now build the output information.
         kputc('\t', &str);
         kputs(col_names[i], &str);
-        dmp_sort_array = std::vector<uint64_t>(region_len);
-        raw_sort_array = std::vector<uint64_t>(region_len);
-        singleton_sort_array = std::vector<uint64_t>(region_len);
         for(i = 0; i < n; ++i) {
-            memcpy(raw_sort_array.data(), aux[i]->raw_counts, region_len * sizeof(uint64_t));
-            std::sort(raw_sort_array.begin(), raw_sort_array.end());
-            memcpy(dmp_sort_array.data(), aux[i]->dmp_counts, region_len * sizeof(uint64_t));
-            std::sort(dmp_sort_array.begin(), dmp_sort_array.end());
-            memcpy(singleton_sort_array.data(), aux[i]->singleton_counts, region_len * sizeof(uint64_t));
-            std::sort(singleton_sort_array.begin(), singleton_sort_array.end());
-            raw_mean = (double)std::accumulate(aux[i]->raw_counts, aux[i]->raw_counts + region_len, 0) / region_len;
-            raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
-            dmp_mean = (double)std::accumulate(aux[i]->dmp_counts, aux[i]->dmp_counts + region_len, 0) / region_len;
-            dmp_stdev = u64_stdev(aux[i]->dmp_counts, region_len, dmp_mean);
-            singleton_mean = (double)std::accumulate(singleton_sort_array.begin(), singleton_sort_array.end(), 0) / region_len;
-            singleton_stdev = u64_stdev(singleton_sort_array.data(), region_len, singleton_mean);
+            std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
+            std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
+            std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
+            raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0) / region_len;
+            raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
+            dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0) / region_len;
+            dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
+            singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0) / region_len;
+            singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
             kputc('\t', &str);
             kputl(counts[i], &str);
-            ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
-            write_quantiles(&str, &dmp_sort_array[0], region_len, n_quantiles);
+            ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
+            write_quantiles(&str, aux[i]->dmp_counts.data(), region_len, n_quantiles);
             kputc('|', &str);
             kputl((long)(raw_mean * region_len + 0.5), &str); // Total counts
-            ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", raw_mean, raw_stdev, raw_stdev / raw_mean);
-            write_quantiles(&str, &raw_sort_array[0], region_len, n_quantiles);
+            ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", raw_mean, raw_stdev, raw_stdev / raw_mean);
+            write_quantiles(&str, aux[i]->raw_counts.data(), region_len, n_quantiles);
             kputc('|', &str);
             kputl((long)(singleton_mean * region_len + 0.5), &str); // Total counts
-            ksprintf(&str, ":%0.4f:%0.4f:%0.4f:", singleton_mean, singleton_stdev, singleton_stdev / singleton_mean);
+            ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", singleton_mean, singleton_stdev, singleton_stdev / singleton_mean);
             kputc('|', &str);
             ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
             kputc('\t', &str);
@@ -394,15 +403,15 @@ bed_error:
     ks_destroy(ks);
     gzclose(fp);
 
+    // Write histogram only if asked for.
     if(histfp) write_hist(aux, histfp, n, bedpath), fclose(histfp);
 
+    // Clean up
     for (i = 0; i < n; ++i) {
         if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
         hts_idx_destroy(idx[i]);
         bam_hdr_destroy(aux[i]->header);
         sam_close(aux[i]->fp);
-        cond_free(aux[i]->dmp_counts);
-        cond_free(aux[i]->raw_counts);
         kh_destroy(depth, aux[i]->depth_hash);
         cond_free(aux[i]);
     }
