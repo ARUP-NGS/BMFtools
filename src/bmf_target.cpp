@@ -2,7 +2,8 @@
 
 int target_usage(FILE *fp, int retcode)
 {
-    fprintf(fp, "Usage: bmftools target -b <path.to.bed> <in.bam> \n"
+    fprintf(fp,
+            "Usage: bmftools target -b <path.to.bed> <in.bam> \n"
             "Optional arguments:\n"
             "-m\tSet minimum mapping quality for inclusion.\n"
             "-p\tSet padding - number of bases around target region to consider as on-target. Default: 0.\n"
@@ -15,17 +16,23 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
 {
     dlib::BamHandle handle(bampath);
     khash_t(bed) *bed = parse_bed_hash(bedpath, handle.header, padding);
-    target_counts_t counts;
-    memset(&counts, 0, sizeof(target_counts_t));
+    target_counts_t counts = {0};
+    uint8_t *data;
     int c;
+    int test;
     while (LIKELY((c = handle.next()) >= 0)) {
-        if((handle.rec->core.qual < minMQ) || (handle.rec->core.flag & (2820))) { // 2820 is unmapped, secondary, supplementary, qcfail
+        if((handle.rec->core.qual < minMQ) || (handle.rec->core.flag & (3844))) { // 3844 is unmapped, secondary, supplementary, qcfail, duplicate
             ++counts.n_skipped;
             continue;
         }
-        if(bed_test(handle.rec, bed)) ++counts.target;
+        test = bed_test(handle.rec, bed);
+        counts.target += test;
+        if((data = bam_aux_get(handle.rec, "FM")) != NULL && bam_aux2i(data) > 1) {
+            counts.rfm_target += test;
+            ++counts.rfm_count;
+        }
         if(UNLIKELY(++counts.count % notification_interval == 0)) {
-            LOG_INFO("Number of records processed: %lu.\n", ++counts.count);
+            LOG_INFO("Number of records processed: %lu.\n", counts.count);
         }
     }
     bed_destroy_hash(bed);
@@ -80,12 +87,15 @@ int target_main(int argc, char *argv[])
 
     if(bedpath) free(bedpath);
 
-
     LOG_INFO("Number of reads skipped: %lu.\n", counts.n_skipped);
     LOG_INFO("Number of reads total: %lu.\n", counts.count);
     LOG_INFO("Number of reads on target: %lu.\n", counts.target);
+    LOG_INFO("Number of real FM reads total: %lu.\n", counts.rfm_count);
+    LOG_INFO("Number of real FM reads on target: %lu.\n", counts.rfm_target);
     fprintf(stdout, "Fraction of reads on target with padding of %u bases and %i minMQ: %0.12f.\n",
             padding, minMQ, (double)counts.target / counts.count);
-    LOG_DEBUG("target: %lu. Count: %lu.\n", counts.target, counts.count);
+    if(counts.rfm_count)
+        fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f.\n",
+                padding, minMQ, (double)counts.rfm_target / counts.rfm_count);
     return EXIT_SUCCESS;
 }

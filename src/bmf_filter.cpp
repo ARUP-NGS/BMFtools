@@ -134,13 +134,14 @@ int filter_main(int argc, char *argv[]) {
     }
     dlib::BamHandle out(argv[optind + 1], in.header, out_mode);
     // Core
+    int ret = -1;
     if(refused_path.size()) { // refused path is set.
         LOG_DEBUG("Splitting. Refused go to %s, pass to %s.\n", refused_path.c_str(), out.fp->fn);
         dlib::BamHandle refused(refused_path.c_str(), in.header, out_mode);
-        filter_split_core(in, out, refused, &param);
-    } else in.for_each(bam_test, out, (void *)&param);
+        ret = filter_split_core(in, out, refused, &param);
+    } else ret = in.for_each(bam_test, out, (void *)&param);
     // Clean up.
     if(param.bed) bed_destroy_hash((void *)param.bed);
-    return EXIT_SUCCESS;
+    return ret;
 }
 

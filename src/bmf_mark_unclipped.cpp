@@ -37,5 +37,4 @@ int mark_unclipped_main(int argc, char *argv[])
 
     return dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
                                          add_multiple_tags, NULL, wmode);
-    return EXIT_SUCCESS;
 }

@@ -87,8 +87,7 @@ int famstats_target_main(int argc, char *argv[])
         case 'n':
             notification_interval = strtoull(optarg, NULL, 0);
             break;
-        case '?':
-        case 'h':
+        case '?': case 'h':
             return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
         }
     }
