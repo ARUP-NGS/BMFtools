@@ -52,7 +52,7 @@ void print_crms_usage(char *executable)
                         "-u: Set notification/update interval for split. Default: 1000000.\n"
                         "-w: Set flag to leave temporary files. Primarily for debugging.\n"
                         "-h: Print usage.\n",
-					executable, DEFAULT_N_NUCS);
+                    executable, DEFAULT_N_NUCS);
 
 }
 
@@ -87,7 +87,7 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
     for(int i = 0; i < params->n; ++i) {
         kstring_t ks = {0, 0, NULL};
         ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
-        CHECK_CALL(ks.s);
+        check_call(ks.s);
         free(ks.s);
     }
 }
@@ -103,7 +103,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
         if(settings->cleanup) {
             kstring_t ks = {0, 0, NULL};
             ksprintf(&ks, "rm %s", params->infnames_r1[i]);
-            CHECK_CALL(ks.s);
+            check_call(ks.s);
             free(ks.s);
         }
     }
@@ -116,7 +116,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
         if(settings->cleanup) {
             kstring_t ks = {0, 0, NULL};
             ksprintf(&ks, "rm %s", params->infnames_r2[i]);
-            CHECK_CALL(ks.s);
+            check_call(ks.s);
             free(ks.s);
         }
     }
@@ -128,7 +128,7 @@ void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params
     kstring_t ks = {0, 0, NULL};
     // Clear output files.
     ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-    CHECK_CALL(ks.s);
+    check_call(ks.s);
     ks.l = 0;
     ksprintf(&ks, "/bin/cat ");
     for(int i = 0; i < settings->n_handles; ++i) {
@@ -138,7 +138,7 @@ void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params
     }
     ksprintf(&ks, " > %s", ffq_r1);
     if(settings->gzip_output) kputs(".gz", &ks);
-    CHECK_POPEN(ks.s);
+    check_popen(ks.s);
     free(ks.s);
 }
 /*
@@ -191,9 +191,9 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     if(settings->gzip_output) kputs(".gz", &ks1);
     // Clear output files.
     //ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-    CHECK_CALL(ks1.s); ks1.l = 0;
+    check_call(ks1.s); ks1.l = 0;
     ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-    CHECK_CALL(ks1.s); ks1.l = 0;
+    check_call(ks1.s); ks1.l = 0;
     kputs("/bin/cat ", &ks1);
     kstring_t ks2 = {0};
     ksprintf(&ks2, ks1.s);

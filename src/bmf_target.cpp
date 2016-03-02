@@ -3,7 +3,9 @@
 int target_usage(FILE *fp, int retcode)
 {
     fprintf(fp,
-            "Usage: bmftools target -b <path.to.bed> <in.bam> \n"
+            "Usage: bmftools target <opts> <in.bam> \n"
+            "Required arguments:"
+            "-b\tPath to bed.\n"
             "Optional arguments:\n"
             "-m\tSet minimum mapping quality for inclusion.\n"
             "-p\tSet padding - number of bases around target region to consider as on-target. Default: 0.\n"
@@ -94,8 +96,9 @@ int target_main(int argc, char *argv[])
     LOG_INFO("Number of real FM reads on target: %lu.\n", counts.rfm_target);
     fprintf(stdout, "Fraction of reads on target with padding of %u bases and %i minMQ: %0.12f.\n",
             padding, minMQ, (double)counts.target / counts.count);
-    if(counts.rfm_count)
+    if(counts.rfm_count) {
         fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f.\n",
                 padding, minMQ, (double)counts.rfm_target / counts.rfm_count);
+    }
     return EXIT_SUCCESS;
 }
