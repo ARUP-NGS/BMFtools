@@ -28,18 +28,10 @@ struct opts {
     khash_t(bed) *bed;
 };
 
-#define TEST(b, data, options) \
-        (\
-             (\
-            (((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1)\
-                                                     >= (int)((opts *)options)->minFM) &&\
-             b->core.qual >= ((opts *)options)->minMQ &&\
-             ((b->core.flag & ((opts *)options)->skip_flag) == 0) &&\
-             ((b->core.flag & ((opts *)options)->require_flag) == (((opts *)options)->require_flag)) &&\
-             (((opts *)options)->bed ? bed_test(b, ((opts *)options)->bed)\
-                                     : 1)\
-        )
 
+/*
+ * A slower equivalent of bam_test for readability/testing.
+ */
 #if !NDEBUG
 int slow_test(bam1_t *b, uint8_t *data, void *options) {
     data = bam_aux_get(b, "FM");
@@ -69,10 +61,22 @@ int slow_test(bam1_t *b, uint8_t *data, void *options) {
 }
 #endif
 
+
+#define TEST(b, data, options) \
+        (\
+             (\
+            (((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1)\
+                                                     >= (int)((opts *)options)->minFM) &&\
+             b->core.qual >= ((opts *)options)->minMQ &&\
+             ((b->core.flag & ((opts *)options)->skip_flag) == 0) &&\
+             ((b->core.flag & ((opts *)options)->require_flag) == (((opts *)options)->require_flag)) &&\
+             (((opts *)options)->bed ? bed_test(b, ((opts *)options)->bed)\
+                                     : 1)\
+        )
+
 int bam_test(bam1_t *b, void *options) {
     uint8_t *data;
 #if !NDEBUG
-    // Make gcc happy about -Wsequence-point
     int tmp = TEST(b, data, options);
     assert(tmp == slow_test(b, data, options));
 #endif

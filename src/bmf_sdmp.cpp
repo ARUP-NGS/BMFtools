@@ -17,7 +17,7 @@ void sdmp_usage(char *argv[])
                         "Default: 10.\n"
                         "-o: Temporary fastq file prefix.\n"
                         "-i: Index fastq path. Required.\n"
-                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
+                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
                         "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
                         "-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
@@ -33,7 +33,7 @@ void sdmp_usage(char *argv[])
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "-$: Single-end mode. Ignores read 2.\n"
                         "-&: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
-                        argv[0]);
+                        argv[0], DEFAULT_N_NUCS);
 }
 
 static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
@@ -196,7 +196,7 @@ int sdmp_main(int argc, char *argv[])
     // Build settings struct
     marksplit_settings_t settings = {0};
     settings.hp_threshold = 10;
-    settings.n_nucs = 2;
+    settings.n_nucs = 4;
     settings.notification_interval = 1000000;
     settings.threads = 4;
     settings.gzip_compression = 1;

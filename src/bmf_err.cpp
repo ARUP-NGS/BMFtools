@@ -272,8 +272,13 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
     samFile *fp = sam_open_format(fname, "r", open_fmt);
     bam_hdr_t *hdr = sam_hdr_read(fp);
     if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
+    bam1_t *b = bam_init1();
     int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
     char *ref = NULL; // Will hold the sequence for a  chromosome
+    khash_t(obs) *hash;
+    uint8_t *seq, *drdata, *fpdata;
+    uint32_t *cigar, *pv_array;
+    khiter_t k;
     if(f->refcontig) {
         for(int i = 0; i < hdr->n_targets; ++i) {
             if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -283,19 +288,16 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
         if(tid_to_study < 0)
             LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
     }
-    khash_t(obs) *hash;
-    uint8_t *seq, *drdata, *fpdata;
-    uint32_t *cigar, *pv_array;
-    khiter_t k;
-    bam1_t *b = bam_init1();
     while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
         if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
         pv_array = (uint32_t *)array_tag(b, "PV");
         FM = bam_aux2i(bam_aux_get(b, "FM"));
-        DR = ((drdata = bam_aux_get(b, "DR")) != NULL) ? bam_aux2i(drdata): 0;
-        FP = ((fpdata = bam_aux_get(b, "FP")) != NULL) ? bam_aux2i(fpdata): 0;
+        drdata = bam_aux_get(b, "DR");
+        fpdata = bam_aux_get(b, "FP");
+        DR = int_tag_zero(drdata);
+        FP = int_tag_zero(fpdata);
         // Pass reads without FP tag.
-        if((b->core.flag & 772) || // UNMAPPED, SECONDARY, QCFAIL
+        if((b->core.flag & 1796) || // UNMAPPED, SECONDARY, QCFAIL, DUP
                 b->core.qual < f->minMQ || //  minMQ
                 (f->refcontig && tid_to_study != b->core.tid) ||
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // improper pair
@@ -309,10 +311,6 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
         }
         seq = (uint8_t *)bam_get_seq(b);
         cigar = bam_get_cigar(b);
-#if !NDEBUG
-        ifn_abort(cigar);
-        ifn_abort(seq);
-#endif
         hash = (b->core.flag & BAM_FREAD1) ? f->hash1: f->hash2;
         if(b->core.tid != last_tid) {
             cond_free(ref);
@@ -333,9 +331,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
         for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
             length = bam_cigar_oplen(cigar[i]);
             switch(bam_cigar_op(cigar[i])) {
-            case BAM_CMATCH:
-            case BAM_CEQUAL:
-            case BAM_CDIFF:
+            case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                 for(ind = 0; ind < length; ++ind) {
                     if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
                         continue;
@@ -348,13 +344,10 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
                 }
                 rc += length; fc += length;
                 break;
-            case BAM_CSOFT_CLIP:
-            case BAM_CHARD_CLIP:
-            case BAM_CINS:
+            case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
                 rc += length;
                 break;
-            case BAM_CREF_SKIP:
-            case BAM_CDEL:
+            case BAM_CREF_SKIP: case BAM_CDEL:
                 fc += length;
                 break;
             }
@@ -367,56 +360,6 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 }
 
 
-#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen, fpdata)\
-    do {\
-        if(++ce->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", ce->nread);\
-        if((b->core.flag & 772) || \
-            b->core.qual < ce->minMQ || \
-            (ce->refcontig && tid_to_study != b->core.tid) ||\
-            ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) || \
-            ((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||\
-            (ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
-            ++ce->nskipped;\
-            /* LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b)); */\
-            continue;\
-        }\
-        seq = (uint8_t *)bam_get_seq(b);\
-        cigar = bam_get_cigar(b);\
-        if(b->core.tid != last_tid) {\
-            cond_free(ref);\
-            LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);\
-            ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);\
-            if(!ref) {\
-                LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);\
-            }\
-            last_tid = b->core.tid;\
-        }\
-        pos = b->core.pos;\
-        is_rev = b->core.flag & BAM_FREVERSE;\
-        obsarr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;\
-        for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {\
-            length = bam_cigar_oplen(cigar[i]);\
-            switch(bam_cigar_op(cigar[i])) {\
-            case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:\
-                for(ind = 0; ind < length; ++ind) {\
-                    s = bam_seqi(seq, ind + rc);\
-                    if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;\
-                    cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;\
-                    ++obsarr[cycle].obs;\
-                    if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++obsarr[cycle].err;\
-                }\
-                rc += length; fc += length;\
-                break;\
-            case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:\
-                rc += length;\
-                break;\
-            case BAM_CREF_SKIP: case BAM_CDEL:\
-                fc += length;\
-                break;\
-            }\
-        }\
-    } while(0)
-
 cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
                             char *bedpath, char *refcontig, int padding, unsigned minMQ, int flag)
 {
@@ -425,8 +368,6 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
     bam_hdr_t *hdr = sam_hdr_read(fp);
     if (!hdr)
         LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-    if(sam_read1(fp, hdr, b) == -1)
-        LOG_EXIT("Could not read bam record from bam %s. Abort!\n", fname);
     const int32_t rlen = b->core.l_qseq;
     cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
     int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
@@ -443,9 +384,54 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
     uint8_t *seq, *fpdata;
     uint32_t *cigar;
     obserr_t *arr;
-    cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen, fpdata);
     while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-        cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen, fpdata);
+        if(++ce->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", ce->nread);
+        // Filter
+        if((b->core.flag & 1796) /* unmapped, secondary, qc fail, duplicate*/||
+            b->core.qual < ce->minMQ ||
+            (ce->refcontig && tid_to_study != b->core.tid) ||
+            ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) ||
+            ((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||
+            (ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {
+            ++ce->nskipped;
+            /* LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b)); */
+            continue;
+        }
+        seq = (uint8_t *)bam_get_seq(b);
+        cigar = bam_get_cigar(b);
+        if(b->core.tid != last_tid) {
+            cond_free(ref);
+            LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
+            ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
+            if(!ref) {
+                LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+            }
+            last_tid = b->core.tid;
+        }
+        pos = b->core.pos;
+        is_rev = b->core.flag & BAM_FREVERSE;
+        arr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;
+        for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+            length = bam_cigar_oplen(cigar[i]);
+            switch(bam_cigar_op(cigar[i])) {
+            case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+                for(ind = 0; ind < length; ++ind) {
+                    s = bam_seqi(seq, ind + rc);
+                    if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+                    cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;
+                    ++arr[cycle].obs;
+                    if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
+                }
+                rc += length; fc += length;
+                break;
+            case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
+                rc += length;
+                break;
+            case BAM_CREF_SKIP: case BAM_CDEL:
+                fc += length;
+                break;
+            }
+        }
     }
     LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", ce->nread, ce->nskipped);
     cond_free(ref);
@@ -453,8 +439,6 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
     bam_hdr_destroy(hdr), sam_close(fp);
     return ce;
 }
-
-#undef cycle_loop
 
 void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
@@ -483,9 +467,10 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
         fdata = bam_aux_get(b, "FM");
         rdata = bam_aux_get(b, "RV");
         pdata = bam_aux_get(b, "FP");
-        FM = fdata ? bam_aux2i(fdata): 0;
-        RV = rdata ? bam_aux2i(rdata): 0;
-        if((b->core.flag & 772) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+        FM = int_tag_zero(fdata);
+        RV = int_tag_zero(rdata);
+        // Filters... WOOF
+        if((b->core.flag & 1796) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
             (f->bed && bed_test(b, f->bed) == 0) || // Outside of region
             (FM < f->minFM) || (FM > f->maxFM) || // minFM 
             ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
@@ -494,15 +479,10 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                 ++f->nskipped;
                 //LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
                 continue;
-        } // UNMAPPED, SECONDARY, QCFAIL, [removed SUPPLEMENTARY flag for a second],
+        }
         seq = (uint8_t *)bam_get_seq(b);
         qual = (uint8_t *)bam_get_qual(b);
         cigar = bam_get_cigar(b);
-#if !NDEBUG
-        ifn_abort(cigar);
-        ifn_abort(seq);
-        ifn_abort(qual);
-#endif
 
         if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
         if(b->core.tid != last_tid) {
@@ -520,21 +500,13 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH:
-                case BAM_CEQUAL:
-                case BAM_CDIFF:
+                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                     for(ind = 0; ind < length; ++ind) {
                         if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
                             continue;
                         s = bam_seqi(seq, ind + rc);
                         //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                         if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-#if !NDEBUG
-                        if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-                            LOG_EXIT("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-                                    (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-                        }
-#endif
                         cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                         if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
@@ -542,13 +514,10 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                     }
                     rc += length; fc += length;
                     break;
-                case BAM_CSOFT_CLIP:
-                case BAM_CHARD_CLIP:
-                case BAM_CINS:
+                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
                     rc += length;
                     break;
-                case BAM_CREF_SKIP:
-                case BAM_CDEL:
+                case BAM_CREF_SKIP: case BAM_CDEL:
                     fc += length;
                     break;
                 }
@@ -557,116 +526,25 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH:
-                case BAM_CEQUAL:
-                case BAM_CDIFF:
+                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                     for(ind = 0; ind < length; ++ind) {
-                        //LOG_DEBUG("Base at rpos %i, fpos %i: %c. Ref base: %c.\n", ind + rc + 1, pos + fc + ind + 1, seq_nt16_str[bam_seqi(seq, ind + rc)], ref[pos + fc + ind]);
                         s = bam_seqi(seq, ind + rc);
-                        //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                         if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-#if !NDEBUG
-                        if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-                            LOG_EXIT("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-                                    (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-                        }
-#endif
                         cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                         if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
-                            //LOG_DEBUG("Hey, error found at rpos %i.\n", ind + rc + 1);
                             ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            //LOG_DEBUG("Error total at cycle %i : %lu.\n", cycle + 1, r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle]);
                         }
                     }
                     rc += length; fc += length;
                     break;
-                case BAM_CSOFT_CLIP:
-                case BAM_CHARD_CLIP:
-                case BAM_CINS:
+                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
                     rc += length;
                     break;
-                case BAM_CREF_SKIP:
-                case BAM_CDEL:
+                case BAM_CREF_SKIP: case BAM_CDEL:
                     fc += length;
                     break;
                 }
-            }
-        }
-    }
-    cond_free(ref);
-    bam_destroy1(b);
-    bam_hdr_destroy(hdr), sam_close(fp);
-}
-
-void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
-{
-    if(!f->r1) f->r1 = readerr_init(f->l);
-    samFile *fp = sam_open_format(fname, "r", open_fmt);
-    bam_hdr_t *hdr = sam_hdr_read(fp);
-    if (!hdr)
-        LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-    int len;
-    int32_t last_tid = -1;
-    bam1_t *b = bam_init1();
-    char *ref = NULL; // Will hold the sequence for a contig
-    int tid_to_study = -1;
-    unsigned ind;
-    const readerr_t *rerr = f->r1;
-    if(f->refcontig) {
-        for(int i = 0; i < hdr->n_targets; ++i) {
-            if(!strcmp(hdr->target_name[i], f->refcontig)) {
-                tid_to_study = i; break;
-            }
-        }
-        if(tid_to_study < 0)
-            LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-    }
-    int c;
-    while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
-        if((b->core.flag & 772) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-        const uint8_t *seq = (uint8_t *)bam_get_seq(b);
-        const uint8_t *qual = (uint8_t *)bam_get_qual(b);
-        const uint32_t *cigar = bam_get_cigar(b);
-#if !NDEBUG
-        ifn_abort(cigar);
-        ifn_abort(seq);
-        ifn_abort(qual);
-#endif
-
-        if(UNLIKELY(++f->nread % 1000000 == 0))
-            LOG_INFO("Records read: %lu.\n", f->nread);
-
-        if(b->core.tid != last_tid) {
-            cond_free(ref);
-            LOG_INFO("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-            ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-            last_tid = b->core.tid;
-        }
-
-        // rc -> readcount
-        // fc -> reference base  count
-        const int32_t pos = b->core.pos;
-        for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-            int s; // seq value, base 
-            const uint32_t len = bam_cigar_oplen(cigar[i]);
-            switch(bam_cigar_op(cigar[i])) {
-            case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                for(ind = 0; ind < len; ++ind) {
-                    s = bam_seqi(seq, ind + rc);
-                    //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                    if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-                    ++rerr->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-                    if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++rerr->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-                }
-                rc += len; fc += len;
-                break;
-            case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                rc += len;
-                break;
-            case BAM_CREF_SKIP: case BAM_CDEL:
-                fc += len;
-                break;
             }
         }
     }

@@ -8,17 +8,17 @@
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
     kstring_t ret = {0, 0, NULL};
     ksprintf(&ret, infname);
-    LOG_DEBUG("New random string: %s.\n", ret.s);
     char *tmp;
+    /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
+     *
+     */
     if((tmp = strrchr(ret.s, '.')) != NULL){
         *tmp = '\0';
     }
     ret.l = strlen(ret.s);
-    LOG_DEBUG("New random string: %s.\n", ret.s);
     ks_resize(&ret, ret.l + n_rand + 1);
     kputc('.', &ret);
     rand_string(ret.s + ret.l, n_rand);
-    LOG_DEBUG("New random string: %s.\n", ret.s);
     return ret;
 }
 
@@ -36,7 +36,7 @@ void print_crms_usage(char *executable)
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
-                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
+                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
                         "-p: Number of threads to use if running uthash_dmp.\n"
                         "-d: Use this flag to to run hash_dmp.\n"
@@ -51,7 +51,9 @@ void print_crms_usage(char *executable)
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                         "-u: Set notification/update interval for split. Default: 1000000.\n"
                         "-w: Set flag to leave temporary files. Primarily for debugging.\n"
-                        "-h: Print usage.\n", executable);
+                        "-h: Print usage.\n",
+					executable, DEFAULT_N_NUCS);
+
 }
 
 void print_crms_opt_err(char *arg, char *optarg, char optopt)
@@ -346,7 +348,7 @@ int dmp_main(int argc, char *argv[])
     marksplit_settings_t settings = {0};
 
     settings.hp_threshold = 10;
-    settings.n_nucs = 2;
+    settings.n_nucs = DEFAULT_N_NUCS;
     settings.notification_interval = 1000000;
     settings.threads = 1;
     settings.max_blen = -1;

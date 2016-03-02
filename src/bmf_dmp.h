@@ -26,9 +26,9 @@ extern int64_t ipow(int32_t, int32_t);
 
 typedef void (*hash_dmp_fn)(char *, char *, int);
 
-#define CAT_BUFFER_SIZE 250000
 #define METASYNTACTIC_FNAME_BUFLEN 100
 #define RANDSTR_SIZE 20
+#define DEFAULT_N_NUCS 4
 
 
 char test_hp_inline(char *barcode, int length, int threshold);

@@ -93,11 +93,6 @@ CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
 #endif
 }
 
-static inline int32_t int_tag_zero(uint8_t *data)
-{
-    return data ? bam_aux2i(data): 0;
-}
-
 
 int bam_rsq(int argc, char *argv[]);
 void bam2ffq(bam1_t *b, FILE *fp);
