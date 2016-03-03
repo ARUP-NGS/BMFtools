@@ -17,7 +17,7 @@ int target_usage(FILE *fp, int retcode)
 target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval)
 {
     dlib::BamHandle handle(bampath);
-    khash_t(bed) *bed = parse_bed_hash(bedpath, handle.header, padding);
+    khash_t(bed) *bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
     target_counts_t counts = {0};
     uint8_t *data;
     int c;
@@ -27,7 +27,7 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
             ++counts.n_skipped;
             continue;
         }
-        test = bed_test(handle.rec, bed);
+        test = dlib::bed_test(handle.rec, bed);
         counts.target += test;
         if((data = bam_aux_get(handle.rec, "FM")) != NULL && bam_aux2i(data) > 1) {
             counts.rfm_target += test;
@@ -37,7 +37,7 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
             LOG_INFO("Number of records processed: %lu.\n", counts.count);
         }
     }
-    bed_destroy_hash(bed);
+    dlib::bed_destroy_hash(bed);
     return counts;
 }
 

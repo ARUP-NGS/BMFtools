@@ -32,8 +32,8 @@ typedef struct cap_settings {
 
 static inline int cap_bam_dnd(bam1_t *b, cap_settings *settings) {
     int i;
-    uint32_t *PV = (uint32_t *)array_tag(b, "PV");
-    uint32_t *FA = (uint32_t *)array_tag(b, "FA");
+    uint32_t *PV = (uint32_t *)dlib::array_tag(b, "PV");
+    uint32_t *FA = (uint32_t *)dlib::array_tag(b, "FA");
     const int FM = bam_itag(b, "FM");
     if(FM < settings->minFM)
         return 1;
@@ -51,8 +51,8 @@ static inline int cap_bam_dnd(bam1_t *b, cap_settings *settings) {
 }
 
 static inline int cap_bam_q(bam1_t *b, cap_settings *settings) {
-    uint32_t *const PV = (uint32_t *)array_tag(b, "PV");
-    uint32_t *const FA = (uint32_t *)array_tag(b, "FA");
+    uint32_t *const PV = (uint32_t *)dlib::array_tag(b, "PV");
+    uint32_t *const FA = (uint32_t *)dlib::array_tag(b, "FA");
     const int FM = bam_itag(b, "FM");
     if(FM < (int)settings->minFM)
         return 1;

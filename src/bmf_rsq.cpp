@@ -53,8 +53,8 @@ inline void bam2ffq(bam1_t *b, FILE *fp)
     int8_t t;
     kstring_t ks = {0, 0, NULL};
     ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
-    pv = (uint32_t *)array_tag(b, (char *)"PV");
-    fa = (uint32_t *)array_tag(b, (char *)"FA");
+    pv = (uint32_t *)dlib::array_tag(b, (char *)"PV");
+    fa = (uint32_t *)dlib::array_tag(b, (char *)"FA");
     for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
     kputs("\tFA:B:I", &ks);
     for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
@@ -103,8 +103,8 @@ std::string bam2cppstr(bam1_t *b)
     int8_t t;
     kstring_t ks = {0, 0, NULL};
     ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
-    pv = (uint32_t *)array_tag(b, (char *)"PV");
-    fa = (uint32_t *)array_tag(b, (char *)"FA");
+    pv = (uint32_t *)dlib::array_tag(b, (char *)"PV");
+    fa = (uint32_t *)dlib::array_tag(b, (char *)"FA");
     for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
     kputs("\tFA:B:I", &ks);
     for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
@@ -187,13 +187,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
     // Handle NC (Number Changed) tag
     pdata = bam_aux_get(p, "NC");
     bdata = bam_aux_get(b, "NC");
-    n_changed = int_tag_zero(pdata) + int_tag_zero(bdata);
+    n_changed = dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata);
     if(pdata) bam_aux_del(p, pdata);
 
-    uint32_t *const bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
-    uint32_t *const pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
-    uint32_t *const bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
-    uint32_t *const pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+    uint32_t *const bPV = (uint32_t *)dlib::array_tag(b, "PV"); // Length of this should be b->l_qseq
+    uint32_t *const pPV = (uint32_t *)dlib::array_tag(p, "PV"); // Length of this should be b->l_qseq
+    uint32_t *const bFA = (uint32_t *)dlib::array_tag(b, "FA"); // Length of this should be b->l_qseq
+    uint32_t *const pFA = (uint32_t *)dlib::array_tag(p, "FA"); // Length of this should be b->l_qseq
     uint8_t *const bSeq = (uint8_t *)bam_get_seq(b);
     uint8_t *const pSeq = (uint8_t *)bam_get_seq(p);
     uint8_t *const bQual = (uint8_t *)bam_get_qual(b);
@@ -211,14 +211,14 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
                 pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                 pFA[i] += bFA[i];
                 if(bQual[qleni1] > pQual[qleni1]) pQual[qleni1] = bQual[qleni1];
-            } else if(ps == HTS_N) {
+            } else if(ps == dlib::htseq::HTS_N) {
                 bam_set_base(pSeq, bSeq, qleni1);
                 pFA[i] = bFA[i];
                 pPV[i] = bPV[i];
                 pQual[qleni1] = bQual[qleni1];
                 ++n_changed; // Note: goes from N to a useable nucleotide.
                 continue;
-            } else if(bs == HTS_N) {
+            } else if(bs == dlib::htseq::HTS_N) {
                 continue;
             } else {
                 if(pPV[i] > bPV[i]) {
@@ -247,13 +247,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
                 pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                 pFA[i] += bFA[i];
                 if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
-            } else if(ps == HTS_N) {
+            } else if(ps == dlib::htseq::HTS_N) {
                 bam_set_base(pSeq, bSeq, i);
                 pFA[i] = bFA[i];
                 pPV[i] = bPV[i];
                 ++n_changed; // Note: goes from N to a useable nucleotide.
                 continue;
-            } else if(bs == HTS_N) {
+            } else if(bs == dlib::htseq::HTS_N) {
                 continue;
             } else {
                 if(pPV[i] > bPV[i]) {

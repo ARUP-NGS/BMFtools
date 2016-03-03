@@ -112,7 +112,7 @@ int famstats_target_main(int argc, char *argv[])
     if(!bedpath) {
         LOG_WARNING("Can't calculate on-target without a bed file. Abort!\n");
     }
-    bed = parse_bed_hash(bedpath, handle.header, padding);
+    bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
     uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
     uint8_t *fpdata = NULL;
     while(LIKELY(handle.next() >= 0)) {
@@ -125,13 +125,13 @@ int famstats_target_main(int argc, char *argv[])
         }
         const int FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
         total_fm += FM;
-        if(bed_test(handle.rec, bed))
+        if(dlib::bed_test(handle.rec, bed))
             fm_target += FM;
         if(UNLIKELY(++count % notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
     }
     LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
-    bed_destroy_hash(bed);
+    dlib::bed_destroy_hash(bed);
     cond_free(bedpath);
     fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
             (double)fm_target / total_fm, total_fm, fm_target);
@@ -282,7 +282,7 @@ int famstats_fm_main(int argc, char *argv[])
 
     LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
     for(const char *tag: tags_to_check)
-        check_bam_tag_exit(argv[optind], tag);
+        dlib::check_bam_tag_exit(argv[optind], tag);
 
     dlib::BamHandle handle(argv[optind]);
     s = famstats_fm_core(handle, settings);
@@ -324,7 +324,7 @@ int famstats_frac_main(int argc, char *argv[])
         if (argc == optind) famstats_frac_usage_exit(stdout, EXIT_SUCCESS);
         else famstats_frac_usage_exit(stderr, EXIT_FAILURE);
     }
-    for(const char *tag: tags_to_check) check_bam_tag_exit(argv[optind], tag);
+    for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind], tag);
     dlib::BamHandle handle(argv[optind]);
     uint64_t fm_above = 0, total_fm = 0, count = 0;
     // Check to see if the required tags are present before starting.

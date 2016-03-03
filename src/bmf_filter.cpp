@@ -53,7 +53,7 @@ int slow_test(bam1_t *b, uint8_t *data, void *options) {
         //LOG_DEBUG("Require flag fail.\n");
         return 0;
     }
-    if(((opts *)options)->bed && !bed_test(b, ((opts *)options)->bed)) {
+    if(((opts *)options)->bed && !dlib::bed_test(b, ((opts *)options)->bed)) {
         //LOG_DEBUG("Bed fail.\n");
         return 0;
     }
@@ -69,7 +69,7 @@ int slow_test(bam1_t *b, uint8_t *data, void *options) {
              b->core.qual >= ((opts *)options)->minMQ &&\
              ((b->core.flag & ((opts *)options)->skip_flag) == 0) &&\
              ((b->core.flag & ((opts *)options)->require_flag) == (((opts *)options)->require_flag)) &&\
-             (((opts *)options)->bed ? bed_test(b, ((opts *)options)->bed)\
+             (((opts *)options)->bed ? dlib::bed_test(b, ((opts *)options)->bed)\
                                      : 1)\
         )
 
@@ -126,13 +126,13 @@ int filter_main(int argc, char *argv[]) {
         case '?': case 'h': return usage(argv, EXIT_SUCCESS);
         }
     }
-    check_bam_tag_exit(argv[optind], "FM");
+    dlib::check_bam_tag_exit(argv[optind], "FM");
     if(argc - 2 != optind) {
         LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
     }
     dlib::BamHandle in(argv[optind]);
     if(bedpath) {
-        param.bed = parse_bed_hash(bedpath, in.header, padding);
+        param.bed = dlib::parse_bed_hash(bedpath, in.header, padding);
     } else {
         LOG_DEBUG("param.bed pointer: %p.\n", (void *)param.bed);
     }
@@ -145,7 +145,7 @@ int filter_main(int argc, char *argv[]) {
         ret = filter_split_core(in, out, refused, &param);
     } else ret = in.for_each(bam_test, out, (void *)&param);
     // Clean up.
-    if(param.bed) bed_destroy_hash((void *)param.bed);
+    if(param.bed) dlib::bed_destroy_hash((void *)param.bed);
     return ret;
 }
 

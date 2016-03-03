@@ -202,8 +202,8 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
         if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
             ++af_failed; return;
         }
-        const int qpos = arr_qpos(&plp);
-        const uint32_t FA = ((uint32_t *)array_tag(plp.b, "FA"))[qpos];
+        const int qpos = dlib::arr_qpos(&plp);
+        const uint32_t FA = ((uint32_t *)dlib::array_tag(plp.b, "FA"))[qpos];
         if(FA < aux->conf.minFA) {
             ++fa_failed; return;
         }
@@ -239,7 +239,7 @@ int stack_core(BMF::stack_aux_t *aux)
     aux->normal.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->normal);
     bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
     bam_plp_set_maxcnt(aux->normal.plp, aux->conf.max_depth);
-    std::vector<khiter_t> sorted_keys = make_sorted_keys(aux->bed);
+    std::vector<khiter_t> sorted_keys = dlib::make_sorted_keys(aux->bed);
     int ttid, tpos, tn_plp, ntid, npos, nn_plp;
     bcf1_t *v = bcf_init1();
     for(unsigned k = 0; k < sorted_keys.size(); ++k) {
@@ -326,9 +326,9 @@ int stack_main(int argc, char *argv[]) {
     aux.fai = fai_load(refpath);
     if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
     // TODO: Make BCF header
-    aux.bed = bedpath ? parse_bed_hash(bedpath, aux.normal.header, padding): build_ref_hash(aux.normal.header);
+    aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding): dlib::build_ref_hash(aux.normal.header);
     static const char *tags[] = {"FM", "FA", "PV", "FP", "AF", "DR"};
     for(auto tag: tags)
-        check_bam_tag_exit(aux.normal.fp->fn, tag);
+        dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
     return stack_core(&aux);
 }

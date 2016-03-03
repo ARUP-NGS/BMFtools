@@ -108,10 +108,10 @@ namespace BMF {
         }
         inline UniqueObservation(const bam_pileup1_t& plp):
             qname(bam_get_qname(plp.b)),
-            cycle1(arr_qpos(&plp)),
+            cycle1(dlib::arr_qpos(&plp)),
             cycle2(-1),
             discordant(-1),
-            quality(((uint32_t *)array_tag(plp.b, "PV"))[cycle1]),
+            quality(((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle1]),
             mq1(plp.b->core.qual),
             mq2((uint32_t)-1),
             rv((uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"))),
@@ -126,7 +126,7 @@ namespace BMF {
             base1(seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)]),
             base2('\0'),
             base_call(base1),
-            agreed(((uint32_t *)array_tag(plp.b, "FA"))[cycle1]),
+            agreed(((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle1]),
             size(bam_aux2i(bam_aux_get(plp.b, "FM")))
         {
         }
@@ -184,7 +184,7 @@ namespace BMF {
             last_tid(-1),
             ref_seq(NULL)
         {
-            bcf_add_bam_contigs(vcf.vh, tumor.header);
+            dlib::bcf_add_bam_contigs(vcf.vh, tumor.header);
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
         }
         char get_ref_base(int tid, int pos) {
@@ -197,7 +197,7 @@ namespace BMF {
             return ref_seq[pos];
         }
         ~stack_aux_t() {
-            if(bed) bed_destroy_hash((void *)bed);
+            if(bed) dlib::bed_destroy_hash((void *)bed);
             if(ref_seq) free(ref_seq);
         }
     };

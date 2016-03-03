@@ -293,18 +293,18 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
     }
     while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
         if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
-        pv_array = (uint32_t *)array_tag(b, "PV");
+        pv_array = (uint32_t *)dlib::array_tag(b, "PV");
         FM = bam_aux2i(bam_aux_get(b, "FM"));
         drdata = bam_aux_get(b, "DR");
         fpdata = bam_aux_get(b, "FP");
-        DR = int_tag_zero(drdata);
-        FP = int_tag_zero(fpdata);
+        DR = dlib::int_tag_zero(drdata);
+        FP = dlib::int_tag_zero(fpdata);
         // Pass reads without FP tag.
         if((b->core.flag & 1796) || // UNMAPPED, SECONDARY, QCFAIL, DUP
                 b->core.qual < f->minMQ || //  minMQ
                 (f->refcontig && tid_to_study != b->core.tid) ||
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // improper pair
-            (f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
+            (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of  region
             ((f->flag & REQUIRE_DUPLEX) && !DR) || // Requires  duplex
             ((f->flag & REFUSE_DUPLEX) && DR) ||
             ((f->flag & REQUIRE_FP_PASS) && FP == 0)) /* Fails barcode QC */ {
@@ -340,7 +340,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
                         continue;
                     s = bam_seqi(seq, ind + rc);
                     //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                    if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+                    if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                     ++kh_val(hash, k).obs;
                     if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                         ++kh_val(hash, k).err;
@@ -395,7 +395,7 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
             (ce->refcontig && tid_to_study != b->core.tid) ||
             ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) ||
             ((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||
-            (ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {
+            (ce->bed && dlib::bed_test(b, ce->bed) == 0) /* Outside of region */) {
             ++ce->nskipped;
             /* LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b)); */
             continue;
@@ -420,7 +420,7 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
             case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                 for(ind = 0; ind < length; ++ind) {
                     s = bam_seqi(seq, ind + rc);
-                    if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+                    if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                     cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;
                     ++arr[cycle].obs;
                     if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
@@ -470,11 +470,11 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
         fdata = bam_aux_get(b, "FM");
         rdata = bam_aux_get(b, "RV");
         pdata = bam_aux_get(b, "FP");
-        FM = int_tag_zero(fdata);
-        RV = int_tag_zero(rdata);
+        FM = dlib::int_tag_zero(fdata);
+        RV = dlib::int_tag_zero(rdata);
         // Filters... WOOF
         if((b->core.flag & 1796) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
-            (f->bed && bed_test(b, f->bed) == 0) || // Outside of region
+            (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of region
             (FM < f->minFM) || (FM > f->maxFM) || // minFM 
             ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
             ((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
@@ -499,7 +499,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
         pos = b->core.pos;
         is_rev = (b->core.flag & BAM_FREVERSE);
         if(f->minPV) {
-            pv_array = (uint32_t *)array_tag(b, "PV");
+            pv_array = (uint32_t *)dlib::array_tag(b, "PV");
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
@@ -509,7 +509,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                             continue;
                         s = bam_seqi(seq, ind + rc);
                         //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                        if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+                        if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                         cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                         if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
@@ -532,7 +532,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                 case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                     for(ind = 0; ind < length; ++ind) {
                         s = bam_seqi(seq, ind + rc);
-                        if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+                        if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                         cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                         if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
@@ -769,7 +769,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, in
     ret->r2 = readerr_init(l);
     if(bedpath) {
         ret->bed = kh_init(bed);
-        ret->bed = parse_bed_hash(bedpath, hdr, padding);
+        ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
     }
     ret->minFM = minFM;
     ret->maxFM = maxFM;
@@ -792,7 +792,7 @@ void fullerr_destroy(fullerr_t *e) {
 fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ, uint32_t minPV) {
     fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
     if(bedpath && *bedpath) {
-        ret->bed = parse_bed_hash(bedpath, hdr, padding);
+        ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
         ret->bedpath = strdup(bedpath);
     }
     if(refcontig && *refcontig) {
@@ -818,7 +818,7 @@ cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padd
 {
     cycle_err_t *ret = (cycle_err_t *)calloc(1, sizeof(cycle_err_t));
     if(bedpath && *bedpath) {
-        ret->bed = parse_bed_hash(bedpath, hdr, padding);
+        ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
         ret->bedpath = strdup(bedpath);
     }
     if(refcontig && *refcontig) {
@@ -937,8 +937,8 @@ int err_main_main(int argc, char *argv[])
     if ((header = sam_hdr_read(fp)) == NULL)
         LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
 
-    if(minPV) check_bam_tag_exit(argv[optind + 1], "PV");
-    if(minFM || maxFM != INT_MAX) check_bam_tag_exit(argv[optind + 1], "FM");
+    if(minPV) dlib::check_bam_tag_exit(argv[optind + 1], "PV");
+    if(minFM || maxFM != INT_MAX) dlib::check_bam_tag_exit(argv[optind + 1], "FM");
 
     // Get read length from the first read
     bam1_t *b = bam_init1();
@@ -1077,10 +1077,10 @@ int err_fm_main(int argc, char *argv[])
     if (fp == NULL) {
         LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
     }
-    check_bam_tag_exit(argv[optind + 1], "FM");
-    check_bam_tag_exit(argv[optind + 1], "FP");
-    check_bam_tag_exit(argv[optind + 1], "RV");
-    if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX)) check_bam_tag_exit(argv[optind + 1], "DR");
+    dlib::check_bam_tag_exit(argv[optind + 1], "FM");
+    dlib::check_bam_tag_exit(argv[optind + 1], "FP");
+    dlib::check_bam_tag_exit(argv[optind + 1], "RV");
+    if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX)) dlib::check_bam_tag_exit(argv[optind + 1], "DR");
 
     header = sam_hdr_read(fp);
     if (header == NULL) {
@@ -1129,7 +1129,7 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
         case BAM_CDIFF:
             for(ind = 0; ind < length; ++ind) {
                 s = bam_seqi(seq, ind + rc);
-                if(s == HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
+                if(s == dlib::htseq::HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
                 counter.inc_obs();
                 if(seq_nt16_table[(int8_t)ref[b->core.pos + fc + ind]] != s) counter.inc_err();
             }
@@ -1154,7 +1154,7 @@ void err_region_core(RegionExpedition *Holloway) {
     char *ref = NULL;
     int len;
     bam1_t *b = bam_init1();
-    auto sorted_keys = make_sorted_keys(Holloway->bed);
+    auto sorted_keys = dlib::make_sorted_keys(Holloway->bed);
     for(khiter_t& k: sorted_keys) {
         if(!kh_exist(Holloway->bed, k)) continue;
         if(ref) free(ref);

@@ -121,27 +121,27 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
                 bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
                 bam_aux_append(plp[i].b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
             }
-            PV1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "PV");
-            FA1 = (uint32_t *)array_tag(kh_val(hash, k)->b, "FA");
+            PV1 = (uint32_t *)dlib::array_tag(kh_val(hash, k)->b, "PV");
+            FA1 = (uint32_t *)dlib::array_tag(kh_val(hash, k)->b, "FA");
             seq = bam_get_seq(kh_val(hash, k)->b);
             s = bam_seqi(seq, kh_val(hash, k)->qpos);
-            PV2 = (uint32_t *)array_tag(plp[i].b, "PV");
-            FA2 = (uint32_t *)array_tag(plp[i].b, "FA");
+            PV2 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
+            FA2 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
             seq2 = bam_get_seq(plp[i].b);
             s2 = bam_seqi(seq2, plp[i].qpos);
-            const int32_t arr_qpos1 = arr_qpos(kh_val(hash, k));
-            const int32_t arr_qpos2 = arr_qpos(&plp[i]);
+            const int32_t arr_qpos1 = dlib::arr_qpos(kh_val(hash, k));
+            const int32_t arr_qpos2 = dlib::arr_qpos(&plp[i]);
             if(s == s2) {
                 PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
                 FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
-            } else if(s == HTS_N) {
+            } else if(s == dlib::htseq::HTS_N) {
                 set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
                 PV1[arr_qpos1] = PV2[arr_qpos2];
                 FA1[arr_qpos1] = FA2[arr_qpos2];
-            } else if(s2 != HTS_N) {
+            } else if(s2 != dlib::htseq::HTS_N) {
                 ++n_all_disagreed;
                 // Disagreed, both aren't N: N the base, set agrees and p values to 0!
-                n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
+                n_base(seq, kh_val(hash, k)->qpos); // if s2 == dlib::htseq::HTS_N, do nothing.
                 PV1[arr_qpos1] = 0u;
                 FA1[arr_qpos1] = 0u;
             }
@@ -156,8 +156,8 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
             }
 
             seq = bam_get_seq(plp[i].b);
-            FA1 = (uint32_t *)array_tag(plp[i].b, "FA");
-            PV1 = (uint32_t *)array_tag(plp[i].b, "PV");
+            FA1 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
+            PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
 #if 0
             fprintf(stderr, "Read name: %s.\n", bam_get_qname(plp[i].b));
             for(int k1 = 0; k1 < plp[i].b->core.l_qseq; ++k1) {
@@ -174,7 +174,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
             assert(max_FA <= FM);
 #endif
             if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
-                const int32_t arr_qpos1 = arr_qpos(&plp[i]);
+                const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
                 if(bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFM ||
                         FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
                         (double)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFR) {
@@ -259,7 +259,7 @@ int vet_core(vetter_aux_t *aux) {
     bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
     bam_plp_set_maxcnt(pileup, max_depth);
 
-    std::vector<khiter_t> keys = make_sorted_keys(aux->bed);
+    std::vector<khiter_t> keys = dlib::make_sorted_keys(aux->bed);
     for(khiter_t& ki: keys) {
         for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
             int tid, start, stop, pos = -1;
@@ -291,7 +291,7 @@ int vet_core(vetter_aux_t *aux) {
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                     continue; // Only handle simple SNVs
                 }
-                if(!vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
+                if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
                     LOG_DEBUG("Outside of bed region.\n");
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                     continue; // Only handle simple SNVs
@@ -405,9 +405,9 @@ int vetter_main(int argc, char *argv[])
 
     if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
     // Check for required tags.
-    if(aux.minAF) check_bam_tag_exit(argv[optind + 1], "AF");
+    if(aux.minAF) dlib::check_bam_tag_exit(argv[optind + 1], "AF");
     for(auto tag : {"FA", "FM", "FP", "PV", "RV"})
-        check_bam_tag_exit(argv[optind + 1], tag);
+        dlib::check_bam_tag_exit(argv[optind + 1], tag);
 
 
 
@@ -426,7 +426,7 @@ int vetter_main(int argc, char *argv[])
         LOG_EXIT("Could not read header from bam %s. Abort!\n", argv[optind + 1]);
     // Open bed file
     // if no bed provided, do whole genome.
-    if(bed) aux.bed = parse_bed_hash(bed, aux.header, padding);
+    if(bed) aux.bed = dlib::parse_bed_hash(bed, aux.header, padding);
     else LOG_EXIT("No bed file provided. Required. Abort!\n");
 
     if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
@@ -455,7 +455,7 @@ int vetter_main(int argc, char *argv[])
     std::string timestring = std::string("", 16uL);
     string_fmt_time(timestring);
     bcf_hdr_printf(aux.vcf_header, "##StartTime=\"%s\"", timestring.c_str());
-    bcf_add_bam_contigs(aux.vcf_header, aux.header);
+    dlib::bcf_add_bam_contigs(aux.vcf_header, aux.header);
 
     // Open output vcf
 
@@ -475,7 +475,7 @@ int vetter_main(int argc, char *argv[])
     vcf_close(aux.vcf_fp);
     vcf_close(aux.vcf_ofp);
     bcf_hdr_destroy(aux.vcf_header);
-    bed_destroy_hash(aux.bed);
+    dlib::bed_destroy_hash(aux.bed);
     cond_free(outvcf);
     cond_free(bed);
     return ret;

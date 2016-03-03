@@ -102,7 +102,7 @@ public:
         hdr = sam_hdr_read(fp);
         if(!fp || !hdr) LOG_EXIT("Could not open input sam file %s. Abort!\n", bampath);
         padding = _padding;
-        bed = parse_bed_hash(_bedpath, hdr, _padding);
+        bed = dlib::parse_bed_hash(_bedpath, hdr, _padding);
         bedpath = std::string(_bedpath);
         minMQ = _minMQ;
         minFM = _minFM;
@@ -115,7 +115,7 @@ public:
         if(!bam_index) LOG_EXIT("Could not read bam index for sam file %s. Abort!\n", fp->fn);
     }
     ~RegionExpedition() {
-        if(bed) bed_destroy_hash((void *)bed);
+        if(bed) dlib::bed_destroy_hash((void *)bed);
         if(iter) hts_itr_destroy(iter);
         if(bam_index) hts_idx_destroy(bam_index);
         if(hdr) bam_hdr_destroy(hdr);
@@ -128,7 +128,7 @@ public:
 
 cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
 void cycle_destroy(cycle_err_t *c);
-extern void check_bam_tag_exit(char *bampath, const char *tag);
+extern void dlib::check_bam_tag_exit(char *bampath, const char *tag);
 
 KHASH_MAP_INIT_INT(obs, obserr_t)
 KHASH_SET_INIT_INT(obs_union)

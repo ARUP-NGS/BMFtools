@@ -6,9 +6,9 @@
 
 static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
 {
-    add_unclipped_mate_starts(b1, b2);
-    add_sc_lens(b1, b2);
-    add_fraction_aligned(b1, b2);
+    dlib::add_unclipped_mate_starts(b1, b2);
+    dlib::add_sc_lens(b1, b2);
+    dlib::add_fraction_aligned(b1, b2);
     return 0;
 }
 
