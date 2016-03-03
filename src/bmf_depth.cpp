@@ -227,7 +227,7 @@ namespace BMF {
 	        LOG_EXIT("Bed path required. Abort!\n");
 	    }
 	    counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-	    n_cols = count_lines(bedpath);
+	    n_cols = dlib::count_lines(bedpath);
 	    col_names = (char **)calloc(n_cols, sizeof(char *));
 
 	    fp = gzopen(bedpath, "rb");

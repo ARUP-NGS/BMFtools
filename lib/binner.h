@@ -18,7 +18,7 @@
     CONST static inline type_t get_binner_##type_t(char *barcode, size_t length) {\
         type_t bin = 0;\
         barcode += length;\
-        while(length--) bin += ipow(4, length) * nuc2num_acgt(*--barcode);\
+        while(length--) bin += dlib::ipow(4, length) * nuc2num_acgt(*--barcode);\
         return bin;\
     }
 

@@ -86,7 +86,7 @@ namespace BMF {
         for(int i = 0; i < params->n; ++i) {
             kstring_t ks = {0, 0, NULL};
             ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
-            check_call(ks.s);
+            dlib::check_call(ks.s);
             free(ks.s);
         }
     }
@@ -105,7 +105,7 @@ namespace BMF {
             if(settings->cleanup) {
                 kstring_t ks = {0, 0, NULL};
                 ksprintf(&ks, "rm %s", params->infnames_r1[i]);
-                check_call(ks.s);
+                dlib::check_call(ks.s);
                 free(ks.s);
             }
         }
@@ -118,7 +118,7 @@ namespace BMF {
             if(settings->cleanup) {
                 kstring_t ks = {0, 0, NULL};
                 ksprintf(&ks, "rm %s", params->infnames_r2[i]);
-                check_call(ks.s);
+                dlib::check_call(ks.s);
                 free(ks.s);
             }
         }
@@ -130,17 +130,17 @@ namespace BMF {
         kstring_t ks = {0, 0, NULL};
         // Clear output files.
         ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-        check_call(ks.s);
+        dlib::check_call(ks.s);
         ks.l = 0;
         ksprintf(&ks, "/bin/cat ");
         for(int i = 0; i < settings->n_handles; ++i) {
-            if(!isfile(params->outfnames_r1[i]))
+            if(!dlib::isfile(params->outfnames_r1[i]))
                 LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
             ksprintf(&ks, " %s", params->outfnames_r1[i]);
         }
         ksprintf(&ks, " > %s", ffq_r1);
         if(settings->gzip_output) kputs(".gz", &ks);
-        check_popen(ks.s);
+        dlib::check_popen(ks.s);
         free(ks.s);
     }
     /*
@@ -175,7 +175,7 @@ namespace BMF {
 
         const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
         ksprintf(&final, final_template, str1.s, str2.s);
-        bash_system(final.s);
+        dlib::bash_system(final.s);
         free(str1.s), free(str2.s);
         free(final.s);
     }
@@ -193,17 +193,17 @@ namespace BMF {
         if(settings->gzip_output) kputs(".gz", &ks1);
         // Clear output files.
         //ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-        check_call(ks1.s); ks1.l = 0;
+        dlib::check_call(ks1.s); ks1.l = 0;
         ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-        check_call(ks1.s); ks1.l = 0;
+        dlib::check_call(ks1.s); ks1.l = 0;
         kputs("/bin/cat ", &ks1);
         kstring_t ks2 = {0};
         ksprintf(&ks2, ks1.s);
         for(int i = 0; i < settings->n_handles; ++i) {
-            if(!isfile(params->outfnames_r1[i])) {
+            if(!dlib::isfile(params->outfnames_r1[i])) {
                 LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
             }
-            if(!isfile(params->outfnames_r2[i])) {
+            if(!dlib::isfile(params->outfnames_r2[i])) {
                 LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
             }
             ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
@@ -251,7 +251,7 @@ namespace BMF {
             LOG_EXIT("Hey, it looks like you're trying to use the same path for both r1 and r2. "
                     "At least try to fool me by making a symbolic link.\n");
         }
-        if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
+        if(!dlib::isfile(settings->input_r1_path) || !dlib::isfile(settings->input_r2_path)) {
             LOG_EXIT("Could not open read paths: at least one is not a file.\n");
         }
         if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
@@ -403,7 +403,7 @@ namespace BMF {
                 LOG_EXIT("Exactly one read fastq required for single-end. See usage.\n");
             }
             // Number of file handles
-            settings.n_handles = ipow(4, settings.n_nucs);
+            settings.n_handles = dlib::ipow(4, settings.n_nucs);
             if(settings.n_handles * 2 > dlib::get_fileno_limit()) {
                 LOG_INFO("Increasing nofile limit from %i to %i.\n", dlib::get_fileno_limit(), settings.n_handles * 2);
                 dlib::increase_nofile_limit(settings.n_handles * 2);
@@ -418,7 +418,7 @@ namespace BMF {
                 return EXIT_FAILURE;
             }
             // Number of file handles
-            settings.n_handles = ipow(4, settings.n_nucs);
+            settings.n_handles = dlib::ipow(4, settings.n_nucs);
             if(settings.n_handles * 4 > dlib::get_fileno_limit()) {
                 LOG_INFO("Increasing nofile limit from %i to %i.\n", dlib::get_fileno_limit(), settings.n_handles * 4);
                 dlib::increase_nofile_limit(settings.n_handles * 4);

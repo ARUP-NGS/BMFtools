@@ -909,16 +909,16 @@ namespace BMF {
 	        case 'F': flag |= REQUIRE_FP_PASS; break;
 	        case 'm': minFM = atoi(optarg); break;
 	        case 'M': maxFM = atoi(optarg); break;
-	        case 'f': df = open_ofp(optarg); break;
+	        case 'f': df = dlib::open_ofp(optarg); break;
 	        case 'o': strcpy(outpath, optarg); break;
 	        case 'O': min_obs = strtoull(optarg, NULL, 10); break;
-	        case '3': d3 = open_ofp(optarg); break;
-	        case 'c': dc = open_ofp(optarg); break;
-	        case 'n': dbc = open_ofp(optarg); break;
+	        case '3': d3 = dlib::open_ofp(optarg); break;
+	        case 'c': dc = dlib::open_ofp(optarg); break;
+	        case 'n': dbc = dlib::open_ofp(optarg); break;
 	        case 'r': strcpy(refcontig, optarg); break;
 	        case 'b': bedpath = strdup(optarg); break;
 	        case 'p': padding = atoi(optarg); break;
-	        case 'g': global_fp = open_ofp(optarg); break;
+	        case 'g': global_fp = dlib::open_ofp(optarg); break;
 	        case 'S': minPV = strtoul(optarg, NULL, 0); break;
 	        case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 	        }
@@ -927,7 +927,7 @@ namespace BMF {
 	    if(padding < 0 && bedpath && *bedpath)
 	        LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 
-	    ofp = *outpath ? open_ofp(outpath): NULL;
+	    ofp = *outpath ? dlib::open_ofp(outpath): NULL;
 
 	    if (argc != optind+2)
 	        return err_main_usage(stderr, EXIT_FAILURE);
@@ -953,7 +953,6 @@ namespace BMF {
 	    if(*refcontig) f->refcontig = strdup(refcontig);
 	    bam_hdr_destroy(header), header = NULL;
 	    err_main_core(argv[optind + 1], fai, f, &open_fmt);
-	    LOG_DEBUG((char *)"Core finished.\n");
 	    fai_destroy(fai);
 	    fill_qvals(f);
 	    impute_scores(f);
@@ -1005,7 +1004,7 @@ namespace BMF {
 	        outpath = strdup("-");
 	        LOG_WARNING("Output path not set. Defaulting to stdout.\n");
 	    }
-	    ofp = open_ofp(outpath);
+	    ofp = dlib::open_ofp(outpath);
 
 	    if (argc != optind+2)
 	        return err_cycle_usage(stderr, EXIT_FAILURE);
@@ -1068,7 +1067,7 @@ namespace BMF {
 	    if(!*outpath) {
 	        LOG_EXIT("Required -o parameter unset. Abort!\n");
 	    }
-	    ofp = open_ofp(outpath);
+	    ofp = dlib::open_ofp(outpath);
 
 	    if (argc != optind+2)
 	        return err_fm_usage(stderr, EXIT_FAILURE);
@@ -1226,7 +1225,7 @@ namespace BMF {
 	    if(!bedpath) {
 	        LOG_EXIT("Bed file required for bmftools err region.\n");
 	    }
-	    ofp = open_ofp(outpath);
+	    ofp = dlib::open_ofp(outpath);
 
 	    if (argc != optind+2)
 	        return err_region_usage(stderr, EXIT_FAILURE);

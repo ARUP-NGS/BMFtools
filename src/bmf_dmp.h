@@ -72,7 +72,7 @@ namespace BMF {
     #define cfree_rescaler(settings) \
         do {\
             if(settings.rescaler) {\
-                int readlen##_settings = count_lines(settings.rescaler_path);\
+                int readlen##_settings = dlib::count_lines(settings.rescaler_path);\
                 for(int i = 0; i < 2; ++i) {\
                     for(int j = 0; j < readlen##_settings; ++j) {\
                         for(int k = 0; k < nqscores; ++k) {\

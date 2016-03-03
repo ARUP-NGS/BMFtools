@@ -470,7 +470,7 @@ namespace BMF {
         }
         bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);
         std::string timestring = std::string("", 16uL);
-        string_fmt_time(timestring);
+        dlib::string_fmt_time(timestring);
         bcf_hdr_printf(aux.vcf_header, "##StartTime=\"%s\"", timestring.c_str());
         dlib::bcf_add_bam_contigs(aux.vcf_header, aux.header);
 

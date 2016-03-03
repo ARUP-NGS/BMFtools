@@ -150,10 +150,10 @@ namespace BMF {
     {
         char mode[4] = "wT";
         if(level > 0) sprintf(mode, "wb%i", level % 10);
-        FILE *in_handle = open_ifp(infname);
+        FILE *in_handle = dlib::open_ifp(infname);
         gzFile out_handle = gzopen(outfname, mode);
         if(!in_handle) {
-            if(isfile(infname)) {
+            if(dlib::isfile(infname)) {
                 LOG_DEBUG("It's a file, but it's empty....\n");
                 gzclose(out_handle);
                 return;

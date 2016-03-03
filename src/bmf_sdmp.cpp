@@ -52,9 +52,9 @@ namespace BMF {
         int l1, l2, l_index;
         mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
         *splitter_ptr = init_splitter(settings);
-        if(!isfile(settings->input_r1_path) ||
-           !isfile(settings->input_r2_path) ||
-           !isfile(settings->index_fq_path)) {
+        if(!dlib::isfile(settings->input_r1_path) ||
+           !dlib::isfile(settings->input_r2_path) ||
+           !dlib::isfile(settings->index_fq_path)) {
             fprintf(stderr, "[E:%s] At least one input path ('%s', '%s', '%s') is not a file. Abort!\n", __func__,
                     settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
             exit(EXIT_FAILURE);
@@ -133,8 +133,8 @@ namespace BMF {
         int l, l_index;
         mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
         *splitter_ptr = init_splitter(settings);
-        if(!isfile(settings->input_r1_path) ||
-           !isfile(settings->index_fq_path)) {
+        if(!dlib::isfile(settings->input_r1_path) ||
+           !dlib::isfile(settings->index_fq_path)) {
             fprintf(stderr, "[E:%s] At least one input path ('%s', '%s') is not a file. Abort!\n", __func__,
                     settings->input_r1_path, settings->index_fq_path);
             exit(EXIT_FAILURE);
@@ -227,7 +227,7 @@ namespace BMF {
         dlib::increase_nofile_limit(settings.threads);
         omp_set_num_threads(settings.threads);
 
-        settings.n_handles = ipow(4, settings.n_nucs);
+        settings.n_handles = dlib::ipow(4, settings.n_nucs);
         if(settings.n_handles * 3 > dlib::get_fileno_limit()) {
             int o_fnl = dlib::get_fileno_limit();
             dlib::increase_nofile_limit(kroundup32(settings.n_handles));

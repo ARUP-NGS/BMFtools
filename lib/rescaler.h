@@ -9,7 +9,7 @@
 
 
 #define free_rescaler_array(settings) \
-        int _readlen = count_lines(settings.rescaler_path);\
+        int _readlen = dlib::count_lines(settings.rescaler_path);\
         for(int i##settings = 0; i##settings < 2; ++i##settings) {\
             for(int j##settings = 0; j##settings < _readlen; ++j##settings) {\
                 for(unsigned k##settings = 0; k##settings < nqscores; ++k##settings) {\
@@ -67,7 +67,7 @@ typedef unsigned long count_t; /* counter type */
 
 static inline char ****parse_rescaler(char *qual_rescale_fname)
 {
-    int readlen = count_lines(qual_rescale_fname);
+    int readlen = dlib::count_lines(qual_rescale_fname);
     FILE *fp = fopen(qual_rescale_fname, "r");
     if(!fp) {
         fprintf(stderr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
@@ -128,7 +128,7 @@ static void period_to_null(char *instr)
 
 static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 {
-    const int readlen = count_lines(qual_rescale_fname);
+    const int readlen = dlib::count_lines(qual_rescale_fname);
 #if DBG
     fprintf(stderr, "[D:%s] Number of lines: %i.\n", __func__, readlen);
 #endif

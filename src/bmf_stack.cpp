@@ -320,7 +320,7 @@ namespace BMF {
         if(!refpath) {
             LOG_EXIT("refpath required. Abort!\n");
         }
-        if(!outvcf) outvcf = "-";
+        if(!outvcf) outvcf = (char *)"-";
         bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
         for(auto line: vcf_header_lines) {
             LOG_DEBUG("Adding line %s.\n", line);
