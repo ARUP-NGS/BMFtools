@@ -339,7 +339,8 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
     });
     for(unsigned i = 0; i < stack->n; ++i)
         for(unsigned j = i + 1; j < stack->n; ++j)
-            if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
+            if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
+            		stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
                 //LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
                 update_bam1(stack->a[j], stack->a[i]);
                 bam_destroy1(stack->a[i]);

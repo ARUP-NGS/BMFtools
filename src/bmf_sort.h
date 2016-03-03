@@ -27,7 +27,7 @@ extern "C" {
 enum sort_order {
     SAMTOOLS,
     QNAME,
-    BMF,
+    BMF_POS,
     UCS
 };
 

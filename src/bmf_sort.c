@@ -2,7 +2,7 @@
 
 #include "bmf_sort.h"
 
-static int cmpkey = BMF;
+static int cmpkey = BMF_POS;
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
@@ -1533,7 +1533,7 @@ static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
             return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
         case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF:
+        case BMF_POS:
             return bmfsort_se_key(a) < bmfsort_se_key(b);
         case UCS:
             return ucs_se_sort_key(a) < ucs_se_sort_key(b);
@@ -1551,7 +1551,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
             return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
         case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF:
+        case BMF_POS:
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
 #if 0
@@ -1747,7 +1747,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
     switch(cmpkey) {
         case SAMTOOLS: change_SO(header, "coordinate"); break;
         case QNAME: change_SO(header, "queryname"); break;
-        case BMF: change_SO(header, "positional_rescue"); break;
+        case BMF_POS: change_SO(header, "positional_rescue"); break;
         case UCS: change_SO(header, "unclipped_rescue"); break;
         default: LOG_EXIT("Invalid (and impossible) cmpkey. Abort!\n");
     }
@@ -1878,7 +1878,7 @@ int sort_main(int argc, char *argv[])
 
     while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh$?", lopts, NULL)) >= 0) {
         switch (c) {
-        case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF;
+        case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_POS;
                   else if(strcmp(optarg, "pos") == 0) {
                       LOG_INFO("Pos chosen for cmpkey.\n");
                       cmpkey = SAMTOOLS;

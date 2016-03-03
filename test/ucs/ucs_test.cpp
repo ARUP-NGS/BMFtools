@@ -8,6 +8,6 @@ int main(int argc, char **argv)
 
     while(strcmp(bam_get_qname(handle.rec), "CACAAGTACCCATAATAA")) handle.next();
 
-    assert(get_unclipped_start(handle.rec) == 11167320);
+    assert(dlib::get_unclipped_start(handle.rec) == 11167320);
     return EXIT_SUCCESS;
 }

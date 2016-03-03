@@ -1,24 +1,4 @@
-#include <string.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include "src/bmf_sort.h"
-#include "dlib/logging_util.h"
-
-extern int hash_dmp_main(int argc, char *argv[]);
-extern int sdmp_main(int argc, char *argv[]);
-extern int dmp_main(int argc, char *argv[]);
-extern int rsq_main(int argc, char *argv[]);
-extern int vetter_main(int argc, char *argv[]);
-extern int famstats_main(int argc, char *argv[]);
-extern int err_main(int argc, char *argv[]);
-extern int mark_unclipped_main(int argc, char *argv[]);
-extern int cap_qscore_main(int argc, char *argv[]);
-extern int target_main(int argc, char *argv[]);
-extern int depth_main(int argc, char *argv[]);
-extern int stack_main(int argc, char *argv[]);
-extern int filter_main(int argc, char *argv[]);
+#include "bmf_main.h"
 
 static int bmftools_usage(int rc)
 {
@@ -54,13 +34,13 @@ int main(int argc, char *argv[])
     if(strcmp(argv[1], "sort") == 0)
         return sort_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "dmp") == 0)
-        return dmp_main(argc - 1, argv + 1);
+        return BMF::dmp_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "sdmp") == 0)
-        return sdmp_main(argc - 1, argv + 1);
+        return BMF::sdmp_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "rsq") == 0)
         return rsq_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "hashdmp") == 0)
-        return hash_dmp_main(argc - 1, argv + 1);
+        return BMF::hash_dmp_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "famstats") == 0)
         return famstats_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "vet") == 0)
