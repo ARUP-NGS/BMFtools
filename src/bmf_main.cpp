@@ -38,13 +38,13 @@ int main(int argc, char *argv[])
     else if(strcmp(argv[1], "sdmp") == 0)
         return BMF::sdmp_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "rsq") == 0)
-        return rsq_main(argc - 1, argv + 1);
+        return BMF::rsq_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "hashdmp") == 0)
         return BMF::hash_dmp_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "famstats") == 0)
-        return famstats_main(argc - 1, argv + 1);
+        return BMF::famstats_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "vet") == 0)
-        return vetter_main(argc - 1, argv + 1);
+        return BMF::vetter_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "err") == 0)
         return err_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "mark_unclipped") == 0)
@@ -56,9 +56,9 @@ int main(int argc, char *argv[])
     else if(strcmp(argv[1], "depth") == 0)
         return depth_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "stack") == 0)
-        return stack_main(argc - 1, argv + 1);
+        return BMF::stack_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "filter") == 0)
-        return filter_main(argc - 1, argv + 1);
+        return BMF::filter_main(argc - 1, argv + 1);
     fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
     return EXIT_FAILURE;
 }

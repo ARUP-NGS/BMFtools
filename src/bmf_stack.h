@@ -3,7 +3,9 @@
 #include "lib/stack.h"
 #include "htslib/vcf.h"
 
-int stack_main(int argc, char *argv[]);
+namespace BMF {
+    int stack_main(int argc, char *argv[]);
+}
 
 
 #endif /* BMF_STACK_H */
