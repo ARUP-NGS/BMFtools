@@ -340,8 +340,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_settings_t *sett
     for(unsigned i = 0; i < stack->n; ++i)
         for(unsigned j = i + 1; j < stack->n; ++j)
             if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
-            		stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
-                //LOG_DEBUG("hamming distance for flattening between barcodes: %i.\n", hd);
+                    stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
                 update_bam1(stack->a[j], stack->a[i]);
                 bam_destroy1(stack->a[i]);
                 stack->a[i] = NULL;
@@ -359,7 +358,7 @@ void rsq_core(rsq_settings_t *settings, tmp_stack_t *stack)
     std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
     if(strcmp(get_SO(settings->hdr).c_str(), sos[settings->cmpkey])) {
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                get_SO(settings->hdr).c_str(), sos[settings->cmpkey]);
+                 get_SO(settings->hdr).c_str(), sos[settings->cmpkey]);
     }
     bam1_t *b = bam_init1();
     if(sam_read1(settings->in, settings->hdr, b) < 0)
