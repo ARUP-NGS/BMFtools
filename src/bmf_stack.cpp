@@ -17,15 +17,17 @@ namespace BMF {
     void stack_usage(int retcode)
     {
         const char *buf =
-                "Usage:\nbmftools stack -o <out.vcf [stdout]> <in.srt.indexed.bam>\n"
+                "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
                 "Optional arguments:\n"
                 "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
+                "-o, --outpath\tPath to output file. Defaults to stdout.\n"
                 "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                 "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                 "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                 "-2, --skip-secondary\tSkip secondary alignments.\n"
                 "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                 "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
+                "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
                 "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                 "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                 "-p, --padding\tNumber of bases outside of bed region to pad.\n"
@@ -264,29 +266,50 @@ namespace BMF {
         char *outvcf = NULL, *refpath = NULL;
         char *bedpath = NULL;
         struct BMF::stack_conf conf = {0};
-        while ((c = getopt(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV")) >= 0) {
+        const struct option lopts[] = {
+            {"skip-secondary", no_argument, NULL, '2'},
+            {"min-family-agreed", required_argument, NULL, 'a'},
+            {"bedpath", required_argument, NULL, 'b'},
+            {"emit-bcf", no_argument, NULL, 'B'},
+            {"min-count", required_argument, NULL, 'c'},
+            {"max-depth", required_argument, NULL, 'd'},
+            {"min-duplex", required_argument, NULL, 'D'},
+            {"min-fraction-agreed", required_argument, NULL, 'f'},
+            {"min-mapping-quality", required_argument, NULL, 'm'},
+            {"min-overlap", required_argument, NULL, 'O'},
+            {"out-vcf", required_argument, NULL, 'o'},
+            {"skip-improper", no_argument, NULL, 'P'},
+            {"padding", required_argument, NULL, 'p'},
+            {"skip-qcfail", no_argument, NULL, 'q'},
+            {"skip-duplicates", required_argument, NULL, 'r'},
+            {"ref", required_argument, NULL, 'R'},
+            {"min-family-size", required_argument, NULL, 's'},
+            {"skip-supplementary", no_argument, NULL, 'S'},
+            {"min-phred-quality", required_argument, NULL, 'v'},
+            {0, 0, 0, 0}
+        };
+        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, NULL)) >= 0) {
             switch (c) {
-            case 'B': conf.output_bcf = 1; break;
-            case 'a': conf.minFA = atoi(optarg); break;
-            case 'c': conf.minCount = atoi(optarg); break;
-            case 'D': conf.minDuplex = atoi(optarg); break;
-            case 's': conf.minFM = atoi(optarg); break;
-            case 'm': conf.minMQ = atoi(optarg); break;
-            case 'v': conf.minPV = atoi(optarg); break;
-            case '2': conf.skip_flag |= BAM_FSECONDARY; break;
-            case 'S': conf.skip_flag |= BAM_FSUPPLEMENTARY; break;
-            case 'q': conf.skip_flag |= BAM_FQCFAIL; break;
-            case 'r': conf.skip_flag |= BAM_FDUP; break;
-            case 'R': refpath = optarg; break;
-            case 'P': conf.skip_improper = 1; break;
-            case 'p': padding = atoi(optarg); break;
-            case 'd': conf.max_depth = atoi(optarg); break;
-            case 'f': conf.minFR = (float)atof(optarg); break;
-            case 'b': bedpath = optarg; break;
-            case 'o': outvcf = optarg; break;
-            case 'O': conf.minOverlap = atoi(optarg); break;
-            //case 'V': aux.vet_all = 1; break;
-            case 'h': case '?': stack_usage(EXIT_SUCCESS);
+                case '2': conf.skip_flag |= BAM_FSECONDARY; break;
+                case 'a': conf.minFA = atoi(optarg); break;
+                case 'b': bedpath = optarg; break;
+                case 'B': conf.output_bcf = 1; break;
+                case 'c': conf.minCount = atoi(optarg); break;
+                case 'd': conf.max_depth = atoi(optarg); break;
+                case 'D': conf.minDuplex = atoi(optarg); break;
+                case 'f': conf.minFR = (float)atof(optarg); break;
+                case 'm': conf.minMQ = atoi(optarg); break;
+                case 'O': conf.minOverlap = atoi(optarg); break;
+                case 'o': outvcf = optarg; break;
+                case 'P': conf.skip_improper = 1; break;
+                case 'p': padding = atoi(optarg); break;
+                case 'q': conf.skip_flag |= BAM_FQCFAIL; break;
+                case 'r': conf.skip_flag |= BAM_FDUP; break;
+                case 'R': refpath = optarg; break;
+                case 's': conf.minFM = atoi(optarg); break;
+                case 'S': conf.skip_flag |= BAM_FSUPPLEMENTARY; break;
+                case 'v': conf.minPV = atoi(optarg); break;
+                case 'h': case '?': stack_usage(EXIT_SUCCESS);
             }
         }
         if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
@@ -297,24 +320,19 @@ namespace BMF {
         if(!refpath) {
             LOG_EXIT("refpath required. Abort!\n");
         }
-        if(!outvcf)
-            outvcf = (char *)"-";
+        if(!outvcf) outvcf = "-";
         bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
         for(auto line: vcf_header_lines) {
             LOG_DEBUG("Adding line %s.\n", line);
             if(bcf_hdr_append(vh, line))
                 LOG_EXIT("Could not add line %s to header. Abort!\n", line);
         }
-        for(auto line: stack_vcf_lines) {
-            LOG_DEBUG("Adding line %s.\n", line);
+        for(auto line: stack_vcf_lines)
             if(bcf_hdr_append(vh, line))
                 LOG_EXIT("Could not add line %s to header. Abort!\n", line);
-        }
         int tmp;
-        tmp = bcf_hdr_add_sample(vh, "Tumor");
-        if(tmp) LOG_INFO("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        tmp = bcf_hdr_add_sample(vh, "Normal");
-        if(tmp) LOG_INFO("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Tumor"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Normal"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
         bcf_hdr_add_sample(vh, NULL);
         bcf_hdr_nsamples(vh) = 2;
         LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
@@ -324,10 +342,12 @@ namespace BMF {
         aux.fai = fai_load(refpath);
         if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header
-        aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding): dlib::build_ref_hash(aux.normal.header);
-        static const char *tags[] = {"FM", "FA", "PV", "FP", "AF", "DR"};
-        for(auto tag: tags)
+        aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
+                          : dlib::build_ref_hash(aux.normal.header);
+        // Check for required tags.
+        for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"}) {
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
+        }
         return stack_core(&aux);
     }
 

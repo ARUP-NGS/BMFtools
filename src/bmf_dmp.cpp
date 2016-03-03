@@ -41,13 +41,6 @@ namespace BMF {
 
     }
 
-    void print_crms_opt_err(char *arg, char *optarg, char optopt)
-    {
-        print_crms_usage(arg);
-        LOG_EXIT("Unrecognized option %s for flag %c. Abort!\n", optarg, optopt);
-    }
-
-
     kstring_t salted_rand_string(char *infname, size_t n_rand) {
         kstring_t ret = {0, 0, NULL};
         ksprintf(&ret, infname);
@@ -169,7 +162,7 @@ namespace BMF {
         kstring_t str1 = {0, 0, NULL}, str2 = {0, 0, NULL};
         kstring_t final = {0, 0, NULL};
         kputs((settings->gzip_output)? "zcat": "cat", &str1);
-        ks_resize(&str1, 1 << 16);
+        ks_resize(&str1, 1 << 10);
         for(int i = 0; i < settings->n_handles; ++i)
             ksprintf(&str1, " %s", params->outfnames_r1[i]);
         kputs(" | paste -d'~' - - - - ", &str1);

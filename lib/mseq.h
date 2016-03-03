@@ -25,13 +25,13 @@ struct mseq_t {
     int blen;
 };
 
-typedef struct tmp_mseq {
+struct tmp_mseq_t {
     char *tmp_seq;
     char *tmp_qual;
     char *tmp_barcode;
     int readlen;
     int blen;
-} tmp_mseq_t;
+};
 
 // KSEQ Utilities
 

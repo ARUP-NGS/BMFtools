@@ -1841,7 +1841,7 @@ int bam_sort_core(int cmpkey, const char *fn, const char *prefix, size_t max_mem
 static int sort_usage(FILE *fp, int status)
 {
     fprintf(fp,
-"Usage: bmftools sort [options...] [in.bam]\n"
+"Usage: bmftools sort <opts> <in.bam>\n"
 "Flags:\n"
 "-l INT       Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "-m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]\n"

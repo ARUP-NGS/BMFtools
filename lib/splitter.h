@@ -12,7 +12,7 @@
 
 namespace BMF {
 
-    typedef struct marksplit_settings {
+    struct marksplit_settings_t {
         int blen;
         int blen1_2;
         int cleanup; // Set to false to leave temporary files
@@ -39,31 +39,31 @@ namespace BMF {
         int is_se;
         int to_stdout;
         char mode[4];
-    } marksplit_settings_t;
+    };
 
     void free_marksplit_settings_ptr(marksplit_settings_t *settings);
     void free_marksplit_settings(marksplit_settings_t settings);
 
-    typedef struct mark_splitter {
+    struct mark_splitter_t {
         gzFile *tmp_out_handles_r1;
         gzFile *tmp_out_handles_r2;
         int n_nucs;
         int n_handles;
         char **fnames_r1;
         char **fnames_r2;
-    } mark_splitter_t;
+    };
 
     mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr);
     void splitter_destroy(mark_splitter_t *var);
 
-    typedef struct splitterhash_params {
+    struct splitterhash_params_t {
         char **infnames_r1;
         char **infnames_r2;
         char **outfnames_r1;
         char **outfnames_r2;
         int n; // Number of infnames and outfnames
         int paired; // 1 if paired, 0 if single-end
-    } splitterhash_params_t;
+    };
 
     void splitterhash_destroy(splitterhash_params_t *params);
     splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);

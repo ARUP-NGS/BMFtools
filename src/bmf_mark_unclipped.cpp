@@ -4,6 +4,8 @@
 #include "dlib/bam_util.h"
 #include "include/sam_opts.h"
 
+namespace BMF {
+
 static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
 {
     dlib::add_unclipped_mate_starts(b1, b2);
@@ -37,4 +39,6 @@ int mark_unclipped_main(int argc, char *argv[])
 
     return dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
                                          add_multiple_tags, NULL, wmode);
+}
+
 }

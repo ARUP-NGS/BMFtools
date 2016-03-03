@@ -29,24 +29,24 @@ KSEQ_INIT(gzFile, gzread)
 namespace BMF {
 
 
-    typedef struct tmpbuffers {
+    struct tmpbuffers_t {
         char name_buffer[120];
         char PVBuffer[1000];
         char FABuffer[1000];
         char cons_seq_buffer[SEQBUF_SIZE];
         uint32_t cons_quals[SEQBUF_SIZE];
         uint16_t agrees[SEQBUF_SIZE];
-    } tmpbuffers_t;
+    };
 
 
-    typedef struct tmpvars {
+    struct tmpvars_t {
         char *bs_ptr;
         int blen;
         int readlen;
         char key[MAX_BARCODE_LENGTH + 1];
         int l; // For holding ret value for seq.
         tmpbuffers_t *buffers;
-    } tmpvars_t;
+    };
 
 
     struct KingFisher {

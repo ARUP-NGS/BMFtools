@@ -21,9 +21,9 @@
 #include "htslib/kseq.h"
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
-
-KHASH_MAP_INIT_INT(depth, uint64_t)
-
-int depth_main(int argc, char *argv[]);
+namespace BMF {
+    KHASH_MAP_INIT_INT(depth, uint64_t)
+    int depth_main(int argc, char *argv[]);
+}
 
 #endif /* BMF_DEPTH_H */
