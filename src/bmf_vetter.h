@@ -19,24 +19,16 @@
 
 #include <vector>
 #include <set>
-#ifdef __GNUC__
-#    include <parallel/algorithm>
-#else
-#    include <algorithm>
-#endif
+#include <algorithm>
 
 int vetter_main(int, char **);
 
 KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
 static int vet_func(void *data, bam1_t *b);
-extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
 
 #define DEFAULT_MAX_ALLELES 20uL
 
-// Need to expand for new options, but I'll wait until I'm finished first.
-/*
-        }*/
 #define VETTER_OPTIONS \
     {"min-family-agreed",         required_argument, NULL, 'a'}, \
     {"min-family-size",          required_argument, NULL, 's'}, \

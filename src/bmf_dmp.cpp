@@ -265,9 +265,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
     gzFile fp1 = gzopen(settings->input_r1_path, "r");
     gzFile fp2 = gzopen(settings->input_r2_path, "r");
     kseq_t *seq1 = kseq_init(fp1), *seq2 = kseq_init(fp2);
-    int l1, l2;
+    // Manually process the first pair of reads so that we have the read length.
     int pass_fail = 1;
-    if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
+    if(kseq_read(seq1) < 0 || kseq_read(seq2) < 0) {
             free_marksplit_settings(*settings);
             splitter_destroy(splitter);
             LOG_EXIT("Could not open fastqs for reading. Abort!\n");
@@ -303,7 +303,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
         mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
     }
     uint64_t count = 0;
-    while (LIKELY(((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0))) {
+    while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
         // Sets pass_fail
@@ -337,8 +337,10 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
         }
     }
     LOG_DEBUG("Cleaning up.\n");
-    for(l1 = 0; l1 < splitter->n_handles; ++l1)
-        gzclose(splitter->tmp_out_handles_r1[l1]), gzclose(splitter->tmp_out_handles_r2[l1]);
+    for(int i = 0; i < splitter->n_handles; ++i) {
+        gzclose(splitter->tmp_out_handles_r1[i]);
+        gzclose(splitter->tmp_out_handles_r2[i]);
+    }
     tm_destroy(tmp);
     mseq_destroy(rseq1), mseq_destroy(rseq2);
     kseq_destroy(seq1), kseq_destroy(seq2);

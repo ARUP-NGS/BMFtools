@@ -442,7 +442,10 @@ int vetter_main(int argc, char *argv[])
         kstring_t tmpstr = {0};
         ksprintf(&tmpstr, "##cmdline=");
         kputs("bmftools ", &tmpstr);
-        for(int i = 0; i < argc; ++i) kputs(argv[i], &tmpstr), kputc(' ', &tmpstr);
+        for(int i = 0; i < argc; ++i) {
+            kputs(argv[i], &tmpstr);
+            kputc(' ', &tmpstr);
+        }
         bcf_hdr_append(aux.vcf_header, tmpstr.s);
         tmpstr.l = 0;
         // Add in settings
@@ -455,8 +458,9 @@ int vetter_main(int argc, char *argv[])
     bcf_add_bam_contigs(aux.vcf_header, aux.header);
 
     // Open output vcf
-    aux.vcf_ofp = vcf_open(outvcf, vcf_wmode);
-    if(!aux.vcf_ofp) LOG_EXIT("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
+
+    if((aux.vcf_ofp = vcf_open(outvcf, vcf_wmode)) == NULL)
+        LOG_EXIT("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
     bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
     // Open out vcf
@@ -464,6 +468,8 @@ int vetter_main(int argc, char *argv[])
     if(ret)
         fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
                 __func__, __LINE__, ret);
+    else
+        LOG_INFO("Successfully completed!\n");
     sam_close(aux.fp);
     bam_hdr_destroy(aux.header);
     vcf_close(aux.vcf_fp);
@@ -472,6 +478,5 @@ int vetter_main(int argc, char *argv[])
     bed_destroy_hash(aux.bed);
     cond_free(outvcf);
     cond_free(bed);
-    LOG_INFO("Successfully completed!\n");
     return ret;
 }
