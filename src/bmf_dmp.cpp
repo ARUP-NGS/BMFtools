@@ -21,7 +21,7 @@ void print_crms_usage(char *executable)
                         "Default: 10.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
-                        "-p: Number of threads to use if running uthash_dmp.\n"
+                        "-p: Number of threads to use if running uthash_dmp. Default: %i.\n"
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
@@ -35,7 +35,7 @@ void print_crms_usage(char *executable)
                         "-u: Set notification/update interval for split. Default: 1000000.\n"
                         "-w: Set flag to leave temporary files. Primarily for debugging.\n"
                         "-h: Print usage.\n",
-                    executable, DEFAULT_N_NUCS);
+                    executable, DEFAULT_N_NUCS, DEFAULT_N_THREADS);
 
 }
 
@@ -357,7 +357,7 @@ int dmp_main(int argc, char *argv[])
     settings.hp_threshold = 10;
     settings.n_nucs = DEFAULT_N_NUCS;
     settings.notification_interval = 1000000;
-    settings.threads = 1;
+    settings.threads = DEFAULT_N_THREADS;
     settings.max_blen = -1;
     settings.gzip_compression = 1;
     settings.cleanup = 1;

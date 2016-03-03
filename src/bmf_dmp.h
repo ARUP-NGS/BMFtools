@@ -28,6 +28,7 @@ typedef void (*hash_dmp_fn)(char *, char *, int);
 
 #define RANDSTR_SIZE 20
 #define DEFAULT_N_NUCS 4
+#define DEFAULT_N_THREADS 4
 
 
 char test_hp_inline(char *barcode, int length, int threshold);

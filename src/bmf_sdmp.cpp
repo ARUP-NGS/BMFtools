@@ -24,7 +24,7 @@ void sdmp_usage(char *argv[])
                         "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
                         "-m: Number of bases in the start of reads to skip when salting. Default: 1.\n"
                         "-d: Flag to run hash dmp. Default: False.\n"
-                        "-p: Number of threads to use if running hash_dmp. Default: 4.\n"
+                        "-p: Number of threads to use if running hash_dmp. Default: %i.\n"
                         "-v: Set notification interval for split. Default: 1000000.\n"
                         "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
@@ -33,7 +33,7 @@ void sdmp_usage(char *argv[])
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "-S: Single-end mode. Ignores read 2.\n"
                         "-O: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
-                        argv[0], DEFAULT_N_NUCS);
+                        argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
 }
 
 static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
@@ -189,9 +189,9 @@ int sdmp_main(int argc, char *argv[])
     // Build settings struct
     marksplit_settings_t settings = {0};
     settings.hp_threshold = 10;
-    settings.n_nucs = 4;
+    settings.n_nucs = DEFAULT_N_NUCS;
     settings.notification_interval = 1000000;
-    settings.threads = 4;
+    settings.threads = DEFAULT_N_THREADS;
     settings.gzip_compression = 1;
     settings.cleanup = 1;
     sprintf(settings.mode, "wT");
