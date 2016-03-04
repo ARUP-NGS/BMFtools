@@ -57,7 +57,7 @@ namespace BMF {
     }
 
 
-    void duplex_hash_process(HashKing *hfor, HashKing *cfor, HashKing *tmp_hkf, HashKing *crev, HashKing *hrev, gzFile out_handle, tmpvars_t *tmp)
+    void duplex_hash_process(kingfisher_hash_t *hfor, kingfisher_hash_t *cfor, kingfisher_hash_t *tmp_hkf, kingfisher_hash_t *crev, kingfisher_hash_t *hrev, gzFile out_handle, tmpvars_t *tmp)
     {
         kstring_t ks = {0, 0, NULL};
         size_t buf_record_count = 0;
@@ -85,7 +85,7 @@ namespace BMF {
         free(ks.s);
     }
 
-    void duplex_hash_fill(kseq_t *seq, HashKing *hfor, HashKing *tmp_hkf, HashKing *hrev, HashKing *tmp_hkr, char *infname, uint64_t *count, uint64_t *fcount, tmpvars_t *tmp, int blen) {
+    void duplex_hash_fill(kseq_t *seq, kingfisher_hash_t *hfor, kingfisher_hash_t *tmp_hkf, kingfisher_hash_t *hrev, kingfisher_hash_t *tmp_hkr, char *infname, uint64_t *count, uint64_t *fcount, tmpvars_t *tmp, int blen) {
         if(UNLIKELY(++*count % 1000000 == 0))
             fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
                     *infname == '-' ? "stdin" : infname, *count);
@@ -98,7 +98,7 @@ namespace BMF {
             // Look for the barcode in the hashmap.
             if(!tmp_hkf) {
                 // Not found. Add to the table.
-                tmp_hkf = (HashKing *)malloc(sizeof(HashKing));
+                tmp_hkf = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                 tmp_hkf->value = init_kfp(tmp->readlen);
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
                 pushback_kseq(tmp_hkf->value, seq, blen);
@@ -112,7 +112,7 @@ namespace BMF {
             cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
             HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
             if(!tmp_hkr) {
-                tmp_hkr = (HashKing *)malloc(sizeof(HashKing));
+                tmp_hkr = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                 tmp_hkr->value = init_kfp(tmp->readlen);
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
                 pushback_kseq(tmp_hkr->value, seq, blen);
@@ -122,7 +122,7 @@ namespace BMF {
     }
 
 
-    void se_hash_process(HashKing *hash, HashKing *current_entry, HashKing *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
+    void se_hash_process(kingfisher_hash_t *hash, kingfisher_hash_t *current_entry, kingfisher_hash_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
             uint64_t *non_duplex_fm)
     {
         size_t buf_record_count = 0;
@@ -179,9 +179,9 @@ namespace BMF {
         memcpy(tmp->key, bs_ptr, blen);
         tmp->key[blen] = '\0';
         // Start hash table
-        HashKing *hash = NULL;
-        HashKing *current_entry = (HashKing *)malloc(sizeof(HashKing));
-        HashKing *tmp_hk = current_entry; // Save the pointer location for later comparison.
+        kingfisher_hash_t *hash = NULL;
+        kingfisher_hash_t *current_entry = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+        kingfisher_hash_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
         cp_view2buf(bs_ptr + 1, current_entry->id);
         current_entry->value = init_kfp(tmp->readlen);
         HASH_ADD_STR(hash, id, current_entry);
@@ -196,7 +196,7 @@ namespace BMF {
             cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
             HASH_FIND_STR(hash, tmp->key, tmp_hk);
             if(!tmp_hk) {
-                tmp_hk = (HashKing *)malloc(sizeof(HashKing));
+                tmp_hk = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                 tmp_hk->value = init_kfp(tmp->readlen);
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hk->id);
                 pushback_kseq(tmp_hk->value, seq, blen);
@@ -240,10 +240,10 @@ namespace BMF {
         memcpy(tmp->key, bs_ptr, blen);
         tmp->key[blen] = '\0';
         // Start hash table
-        HashKing *hfor = NULL, *hrev = NULL; // Hash forward, hash reverse
-        HashKing *crev = (HashKing *)malloc(sizeof(HashKing)); // Current reverse, current forward.
-        HashKing *cfor = (HashKing *)malloc(sizeof(HashKing));
-        HashKing *tmp_hkr = crev, *tmp_hkf = cfor;
+        kingfisher_hash_t *hfor = NULL, *hrev = NULL; // Hash forward, hash reverse
+        kingfisher_hash_t *crev = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)); // Current reverse, current forward.
+        kingfisher_hash_t *cfor = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+        kingfisher_hash_t *tmp_hkr = crev, *tmp_hkf = cfor;
         uint64_t count = 1, fcount = 0;
         /* Handle first record.
          * We read in a record from the fastq to get the length of the reads
@@ -272,7 +272,7 @@ namespace BMF {
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
                 HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
                 if(!tmp_hkf) {
-                    tmp_hkf = (HashKing *)malloc(sizeof(HashKing));
+                    tmp_hkf = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hkf->value = init_kfp(tmp->readlen);
                     cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
                     pushback_kseq(tmp_hkf->value, seq, blen);
@@ -282,7 +282,7 @@ namespace BMF {
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
                 HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
                 if(!tmp_hkr) {
-                    tmp_hkr = (HashKing *)malloc(sizeof(HashKing));
+                    tmp_hkr = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hkr->value = init_kfp(tmp->readlen);
                     cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
                     pushback_kseq(tmp_hkr->value, seq, blen);

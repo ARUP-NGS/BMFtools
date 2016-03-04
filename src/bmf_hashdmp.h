@@ -15,16 +15,16 @@ extern "C" {
 
 namespace BMF {
 
-    KHASH_MAP_INIT_STR(dmp, KingFisher *)
+    KHASH_MAP_INIT_STR(dmp, kingfisher_t *)
     void hash_dmp_core(char *infname, char *outfname, int level);
     int hash_dmp_main(int argc, char *argv[]);
     void stranded_hash_dmp_core(char *infname, char *outfname, int level);
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
-    struct HashKing {
+    struct kingfisher_hash_t {
         UT_hash_handle hh;
         char id[MAX_BARCODE_LENGTH + 1];
-        KingFisher *value;
+        kingfisher_t *value;
     };
 
 
@@ -51,10 +51,10 @@ namespace BMF {
         }
     }
 
-    static inline KingFisher *init_kfp(size_t readlen)
+    static inline kingfisher_t *init_kfp(size_t readlen)
     {
         const size_t r5 = readlen * 5;
-        KingFisher *ret = (KingFisher *)calloc(1, sizeof(KingFisher));
+        kingfisher_t *ret = (kingfisher_t *)calloc(1, sizeof(kingfisher_t));
         ret->readlen = readlen;
         ret->max_phreds = (char *)malloc((r5) * sizeof(char));
         ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
@@ -64,7 +64,7 @@ namespace BMF {
         return ret;
     }
 
-    static inline void destroy_kf(KingFisher *kfp)
+    static inline void destroy_kf(kingfisher_t *kfp)
     {
         free(kfp->nuc_counts);
         free(kfp->phred_sums);

@@ -19,7 +19,7 @@ namespace BMF {
             }\
         } while(0)
 
-    void kdmp_process_write(KingFisher *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev)
+    void kdmp_process_write(kingfisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev)
     {
         int i, diffs = kfp->length * kfp->readlen;
         for(i = 0; i < kfp->readlen; ++i) {
@@ -41,7 +41,7 @@ namespace BMF {
     }
 
 
-    void dmp_process_write(KingFisher *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
+    void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
     {
         int i, diffs = kfp->length * kfp->readlen;
         for(i = 0; i < kfp->readlen; ++i) {
@@ -61,7 +61,7 @@ namespace BMF {
 
     // kfp forward, kfp reverse
     // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-    void kstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs)
+    void kstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
     {
         const int FM = kfpf->length + kfpr->length;
         int i, diffs = FM * kfpf->readlen;
@@ -107,7 +107,7 @@ namespace BMF {
 
     // kfp forward, kfp reverse
     // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-    void zstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
+    void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
     {
         const int FM = kfpf->length + kfpr->length;
         int i, diffs = FM * kfpf->readlen;
@@ -149,7 +149,7 @@ namespace BMF {
 
     // kfp forward, kfp reverse
     // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-    void stranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs)
+    void stranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
     {
         const int FM = kfpf->length + kfpr->length;
         int i, diffs = FM * kfpf->readlen;
