@@ -144,18 +144,12 @@ namespace BMF {
         fp = gzopen(settings->input_r1_path, "r"), fp_index = gzopen(settings->index_fq_path, "r");
         seq = kseq_init(fp), seq_index = kseq_init(fp_index);
         l = kseq_read(seq), l_index = kseq_read(seq_index);
-        seq_index = kseq_init(fp_index),
-        l_index = kseq_read(seq_index);
 
         tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt);
         if(l < 0 || l_index < 0) {
             fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
             exit(EXIT_FAILURE);
         }
-    #if !NDEBUG
-        fprintf(stderr, "[D:%s] Splitter now opening files read ('%s') and index ('%s').\n",
-                __func__, settings->input_r1_path, settings->index_fq_path);
-    #endif
         mseq_t *rseq = mseq_init(seq, settings->rescaler, 0);
         memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
@@ -177,10 +171,11 @@ namespace BMF {
         mseq_destroy(rseq);
         kseq_destroy(seq); kseq_destroy(seq_index);
         gzclose(fp); gzclose(fp_index);
-        for(int j = 0; j < settings->n_handles; ++j)
+        for(int j = 0; j < settings->n_handles; ++j) {
             gzclose(splitter_ptr->tmp_out_handles_r1[j]);
+            splitter_ptr->tmp_out_handles_r1[j] = NULL;
+        }
         // Set out handles to NULL.
-        memset(splitter_ptr->tmp_out_handles_r1, 0, settings->n_handles * sizeof(FILE *));
         return splitter_ptr;
     }
 
@@ -217,7 +212,8 @@ namespace BMF {
                 case 'g': settings.gzip_compression = atoi(optarg); if(settings.gzip_compression > 9) settings.gzip_compression = 9; break;
                 case 'w': settings.cleanup = 0; break;
                 case 'r':
-                    settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
+                    settings.rescaler_path = strdup(optarg);
+                    settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
                     break;
                 case 'S': settings.is_se = 1; break;
                 case 'O': settings.to_stdout = 1; break;
@@ -265,6 +261,7 @@ namespace BMF {
             return EXIT_FAILURE;
         }
         if(!settings.tmp_basename) {
+            settings.tmp_basename = make_salted_fname(settings.input_r1_path);
             settings.tmp_basename = (char *)malloc(21);
             dlib::rand_string(settings.tmp_basename, 20);
             fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",

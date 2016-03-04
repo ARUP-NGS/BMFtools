@@ -42,6 +42,7 @@ namespace BMF {
     void make_outfname(marksplit_settings_t *settings);
     void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params);
     void check_rescaler(marksplit_settings_t *settings, int arr_size);
+    char *make_salted_fname(char *base);
 
     /*
      * Returns 0 if a barcode is failed.

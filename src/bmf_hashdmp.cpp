@@ -43,7 +43,7 @@ namespace BMF {
         int level = -1;
         while ((c = getopt(argc, argv, "l:o:sh?")) >= 0) {
             switch(c) {
-                case 'l': level = atoi(optarg); break;
+                case 'l': level = atoi(optarg)%10; break;
                 case 'o': outfname = optarg; break;
                 case 's': stranded_analysis = 0; break;
                 case '?': case 'h': hashdmp_usage(); return EXIT_SUCCESS;
@@ -319,13 +319,13 @@ namespace BMF {
                 destroy_kf(cfor->value);
                 HASH_DEL(hfor, cfor);
                 free(cfor);
-                continue;
+            } else {
+                ++duplex;
+                zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
+                destroy_kf(cfor->value), destroy_kf(crev->value);
+                HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
+                cond_free(crev); cond_free(cfor);
             }
-            ++duplex;
-            zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
-            destroy_kf(cfor->value), destroy_kf(crev->value);
-            HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-            cond_free(crev); cond_free(cfor);
         }
         gzputs(out_handle, (const char *)ks.s);
         free(ks.s);

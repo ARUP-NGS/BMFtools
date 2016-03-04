@@ -57,26 +57,33 @@ namespace BMF {
         dlib::rand_string(ret.s + ret.l, n_rand);
         return ret;
     }
+    /*
+     * Makes an output filename when not provided. Handles cases with and without period in the input fq name.
+     */
+    char *make_salted_fname(char *base)
+    {
+        int has_period = 0;
+        for(int i = 0; *base; ++i) {
+            if(base[i] == '.') {
+                has_period = 1; break;
+            }
+        }
+        if(has_period) {
+            kstring_t rs = salted_rand_string(base, RANDSTR_SIZE);
+            LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", base);
+            return rs.s;
+        } else {
+            char *tmp = (char *)malloc(RANDSTR_SIZE + 1);
+            return dlib::rand_string(tmp, RANDSTR_SIZE);
+        }
+    }
 
     /*
      * Makes an output filename when not provided. Handles cases with and without period in the input fq name.
      */
     void make_outfname(marksplit_settings_t *settings)
     {
-        int has_period = 0;
-        for(int i = 0; settings->input_r1_path[i]; ++i) {
-            if(settings->input_r1_path[i] == '.') {
-                has_period = 1; break;
-            }
-        }
-        if(has_period) {
-            kstring_t rs = salted_rand_string(settings->input_r1_path, RANDSTR_SIZE);
-            settings->ffq_prefix = ks_release(&rs);
-            LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
-        } else {
-            char *tmp = (char *)malloc(RANDSTR_SIZE + 1);
-            settings->ffq_prefix = dlib::rand_string(tmp, RANDSTR_SIZE);
-        }
+        settings->ffq_prefix = make_salted_fname(settings->input_r1_path);
     }
 
     void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params)
