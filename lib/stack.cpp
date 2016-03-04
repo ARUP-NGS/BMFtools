@@ -60,7 +60,7 @@ namespace BMF {
     void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
         LOG_DEBUG("Adding obs in pair. This should increment overlap!\n");
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
-        size += bam_aux2i(bam_aux_get(plp.b, "FM"));
+        size += bam_itag(plp.b, "FM");
         base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
         cycle2 = dlib::arr_qpos(&plp);
         mq2 = (uint32_t)plp.b->core.qual;

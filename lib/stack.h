@@ -112,8 +112,8 @@ static const char *stack_vcf_lines[] = {
             quality(((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle1]),
             mq1(plp.b->core.qual),
             mq2((uint32_t)-1),
-            rv((uint32_t)bam_aux2i(bam_aux_get(plp.b, "RV"))),
-            is_duplex1(bam_aux2i(bam_aux_get(plp.b, "DR"))),
+            rv((uint32_t)bam_itag(plp.b, "RV")),
+            is_duplex1(bam_itag(plp.b, "DR")),
             is_duplex2(-1),
             is_reverse1((plp.b->core.flag & BAM_FREVERSE) != 0),
             is_reverse2(-1),
@@ -125,7 +125,7 @@ static const char *stack_vcf_lines[] = {
             base2('\0'),
             base_call(base1),
             agreed(((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle1]),
-            size(bam_aux2i(bam_aux_get(plp.b, "FM")))
+            size(bam_itag(plp.b, "FM"))
         {
         }
         void add_obs(const bam_pileup1_t& plp);

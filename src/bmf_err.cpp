@@ -296,7 +296,7 @@ namespace BMF {
         while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
             if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
             pv_array = (uint32_t *)dlib::array_tag(b, "PV");
-            FM = bam_aux2i(bam_aux_get(b, "FM"));
+            FM = bam_itag(b, "FM");
             drdata = bam_aux_get(b, "DR");
             fpdata = bam_aux_get(b, "FP");
             DR = dlib::int_tag_zero(drdata);

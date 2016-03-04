@@ -59,7 +59,7 @@ namespace BMF {
             /*
             if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
                 ( ||
-                (bam_aux2i(bam_aux_get(b, "FP")) == 0) || (data->minAF && bam_aux2f(bam_aux_get(b, "AF")) < data->minAF))
+                (bam_itag(b, "FP") == 0) || (data->minAF && bam_aux2f(bam_aux_get(b, "AF")) < data->minAF))
                     continue;
             */
             break;
@@ -94,7 +94,7 @@ namespace BMF {
                 ++improper_count[0];
                 if(aux->conf.skip_improper) return;
             }
-            if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+            if(bam_itag(plp.b, "FP") == 0) {
                 ++fp_failed[0]; return;
             }
             if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
@@ -127,7 +127,7 @@ namespace BMF {
                 ++improper_count[1];
                 if(aux->conf.skip_improper) return;
             }
-            if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+            if(bam_itag(plp.b, "FP") == 0) {
                 ++fp_failed[1]; return;
             }
             if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
@@ -197,8 +197,8 @@ namespace BMF {
             if(plp.b->core.qual < aux->conf.minMQ) {
                 ++mq_failed; return;
             }
-            const int FM = bam_aux2i(bam_aux_get(plp.b, "FM"));
-            if(bam_aux2i(bam_aux_get(plp.b, "FP")) == 0) {
+            const int FM = bam_itag(plp.b, "FM");
+            if(bam_itag(plp.b, "FP") == 0) {
                 ++fp_failed; return;
             }
             if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {

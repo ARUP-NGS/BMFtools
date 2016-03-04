@@ -73,8 +73,8 @@ namespace BMF {
             // Skip AF < minAF
             if ((b->core.flag & aux->skip_flag) ||
                 (aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-                (int)b->core.qual < aux->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < aux->minFM) ||
-                (bam_aux2i(bam_aux_get(b, "FP")) == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
+                (int)b->core.qual < aux->minMQ || (bam_itag(b, "FM") < aux->minFM) ||
+                (bam_itag(b, "FP") == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
                     continue;
             break;
         }
@@ -119,7 +119,7 @@ namespace BMF {
                 bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
                 if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == NULL) {
                     uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
-                    const int FM_sum = bam_aux2i(FM1) + bam_aux2i(bam_aux_get(plp[i].b, "FM"));
+                    const int FM_sum = bam_aux2i(FM1) + bam_itag(plp[i].b, "FM");
                     bam_aux_del(kh_val(hash, k)->b, FM1);
                     bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
                     bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
@@ -162,35 +162,12 @@ namespace BMF {
                 seq = bam_get_seq(plp[i].b);
                 FA1 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
                 PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
-    #if 0
-                fprintf(stderr, "Read name: %s.\n", bam_get_qname(plp[i].b));
-                for(int k1 = 0; k1 < plp[i].b->core.l_qseq; ++k1) {
-                    fprintf(stderr, ",%u", PV1[k1]);
-                }
-                fputc('\n', stderr);
-                for(int k1 = 0; k1 < plp[i].b->core.l_qseq; ++k1) {
-                    fprintf(stderr, ",%u", FA1[k1]);
-                }
-                fputc('\n', stderr);
-                const int FM = bam_aux2i(bam_aux_get(plp[i].b, "FM"));
-                uint32_t max_FA = *std::max_element(FA1, FA1 + plp[i].b->core.l_qseq);
-                LOG_DEBUG("FM: %i. Max_FA: %u\n", FM, max_FA);
-                assert(max_FA <= FM);
-    #endif
                 if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
-                    if(bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFM ||
+                    if(bam_itag(plp[i].b, "FM") < aux->minFM ||
                             FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-                            (double)FA1[arr_qpos1] / bam_aux2i(bam_aux_get(plp[i].b, "FM")) < aux->minFR) {
+                            (double)FA1[arr_qpos1] / bam_itag(plp[i].b, "FM") < aux->minFR) {
                         ++n_failed[j];
-    #if 0
-                        if(vrec->d.allele[j][0] == 'T') {
-                        LOG_DEBUG("Note: FM value %i could be less than than minFM now. (%u)\n", bam_aux2i(bam_aux_get(plp[i].b, "FM")), aux->minFM);
-                        LOG_DEBUG("Note: PV1[%i] value (%u) has to be less than than minPV now. (%u)\n", arr_qpos1, PV1[arr_qpos1], aux->minPV);
-                        LOG_DEBUG("Note: FA1[%i] value (%u) has to be less than than minPV now. (%u)\n", arr_qpos1, FA1[arr_qpos1], aux->minFA);
-                        LOG_DEBUG("Note: frac agreed at index[%i] value (%f) has to be less than than minFR now. (%f)\n", arr_qpos1, (double)FA1[arr_qpos1] /  bam_aux2i(bam_aux_get(plp[i].b, "FM")), aux->minFR);
-                        }
-    #endif
                         continue;
                     }
                     ++n_obs[j];

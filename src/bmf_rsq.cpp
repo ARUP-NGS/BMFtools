@@ -55,15 +55,14 @@ namespace BMF {
         int8_t t;
         kstring_t ks = {0, 0, NULL};
         ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
-        pv = (uint32_t *)dlib::array_tag(b, (char *)"PV");
-        fa = (uint32_t *)dlib::array_tag(b, (char *)"FA");
+        pv = (uint32_t *)dlib::array_tag(b, "PV");
+        fa = (uint32_t *)dlib::array_tag(b, "FA");
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i", bam_aux2i(bam_aux_get(b, (char *)"FM")),
-                bam_aux2i(bam_aux_get(b, (char *)"FP")),
-                bam_aux2i(bam_aux_get(b, (char *)"NC")));
-        if((rvdata = bam_aux_get(b, (char *)"RV")) != NULL)
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
+                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        if((rvdata = bam_aux_get(b, "RV")) != NULL)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         seq = bam_get_seq(b);
@@ -105,15 +104,14 @@ namespace BMF {
         int8_t t;
         kstring_t ks = {0, 0, NULL};
         ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
-        pv = (uint32_t *)dlib::array_tag(b, (char *)"PV");
-        fa = (uint32_t *)dlib::array_tag(b, (char *)"FA");
+        pv = (uint32_t *)dlib::array_tag(b, "PV");
+        fa = (uint32_t *)dlib::array_tag(b, "FA");
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i", bam_aux2i(bam_aux_get(b, (char *)"FM")),
-                bam_aux2i(bam_aux_get(b, (char *)"FP")),
-                bam_aux2i(bam_aux_get(b, (char *)"NC")));
-        if((rvdata = bam_aux_get(b, (char *)"RV")) != NULL)
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
+                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        if((rvdata = bam_aux_get(b, "RV")) != NULL)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         seq = bam_get_seq(b);
@@ -182,7 +180,7 @@ namespace BMF {
         bam_aux_del(p, pdata);
         bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
         if((pdata = bam_aux_get(p, "RV")) != NULL) {
-            const int pRV = bam_aux2i(pdata) + bam_aux2i(bam_aux_get(b, "RV"));
+            const int pRV = bam_aux2i(pdata) + bam_itag(b, "RV");
             bam_aux_del(p, pdata);
             bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
         }

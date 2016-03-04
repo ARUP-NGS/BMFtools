@@ -127,7 +127,7 @@ namespace BMF {
         if(!data) return n_plp;
         int ret = 0;
         std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
-            ret += bam_aux2i(bam_aux_get(plp.b, "FM"));
+            ret += bam_itag(plp.b, "FM");
         });
         return ret;
     }
