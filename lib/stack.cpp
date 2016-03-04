@@ -229,7 +229,6 @@ namespace BMF {
         bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
-} /* namespace BMF */
 
 void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
     while(n)
@@ -240,3 +239,5 @@ void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
 void add_stack_lines(bcf_hdr_t *hdr) {
     add_hdr_lines(hdr, stack_vcf_lines, sizeof(stack_vcf_lines) / sizeof(stack_vcf_lines[0]));
 }
+
+} /* namespace BMF */

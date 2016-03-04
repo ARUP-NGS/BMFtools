@@ -80,7 +80,7 @@ namespace BMF {
             fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
             exit(EXIT_FAILURE);
         }
-        check_rescaler(settings, nqscores * 2 * 4 * seq1->seq.l);
+        check_rescaler(settings, NQSCORES * 2 * 4 * seq1->seq.l);
         mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
         mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
         memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.

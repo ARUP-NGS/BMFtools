@@ -265,7 +265,7 @@ namespace BMF {
         if(argc < 2) stack_usage(EXIT_FAILURE);
         char *outvcf = NULL, *refpath = NULL;
         char *bedpath = NULL;
-        struct BMF::stack_conf conf = {0};
+        struct BMF::stack_conf_t conf = {0};
         const struct option lopts[] = {
             {"skip-secondary", no_argument, NULL, '2'},
             {"min-family-agreed", required_argument, NULL, 'a'},
@@ -330,24 +330,26 @@ namespace BMF {
         for(auto line: stack_vcf_lines)
             if(bcf_hdr_append(vh, line))
                 LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+        // Add samples
         int tmp;
-        if((tmp = bcf_hdr_add_sample(vh, "Tumor"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        if((tmp = bcf_hdr_add_sample(vh, "Normal"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
+            LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Normal")))
+            LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
         bcf_hdr_add_sample(vh, NULL);
         bcf_hdr_nsamples(vh) = 2;
         LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
         // Add lines to the header for the bed file?
         BMF::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
         bcf_hdr_destroy(vh);
-        aux.fai = fai_load(refpath);
-        if(!aux.fai) LOG_EXIT("failed to open fai. Abort!\n");
+        if((aux.fai = fai_load(refpath)) == NULL)
+            LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header
         aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
                           : dlib::build_ref_hash(aux.normal.header);
         // Check for required tags.
-        for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"}) {
+        for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
-        }
         return stack_core(&aux);
     }
 
