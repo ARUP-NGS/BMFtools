@@ -8,7 +8,7 @@
 namespace BMF {
 
     static int cap_qscore_usage() {
-        fprintf(stderr, "\ncap_qscore takes a bam and caps quality scores from PV tags "
+        fprintf(stderr, "\nTakes a bam and caps quality scores from PV tags "
                 "to facilitate working with outside tools.\nValues >= cap for PV will have the quality"
                 "strings set to the cap value. All others are set to 2 (#).\n");
         fprintf(stderr, "Usage: bmftools cap <input.bam> <output.bam>\n\n");

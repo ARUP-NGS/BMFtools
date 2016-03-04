@@ -27,6 +27,9 @@ namespace BMF {
 
     void depth_usage(int retcode)
     {
+        fprintf(stderr, "Use: Creates a bed file of coverage depths "
+                        "for both raw and collapsed read families "
+                        "over a capture region of interest.");
         fprintf(stderr, "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n");
         fprintf(stderr, "  -Q INT        Only count bases of at least INT quality [0]\n");
         fprintf(stderr, "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n");

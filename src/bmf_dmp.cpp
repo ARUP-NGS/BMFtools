@@ -7,11 +7,11 @@
 
 namespace BMF {
 
-    void print_crms_usage(char *executable)
+    void dmp_usage()
     {
-            fprintf(stderr, "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>"
+            fprintf(stderr, "Performs molecular demultiplexing for inline barcoded experiments.\n"
+                            "Usage: bmftools dmp <options> <Fq.R1.seq> <Fq.R2.seq>"
                             "\nFlags:\n"
-                            "-S: Flag for single-end mode.\n"
                             "-=: Emit interleaved final output to stdout.\n"
                             "-l: Number of nucleotides at the beginning of each read to "
                             "use for barcode. Final barcode length is twice this. REQUIRED.\n"
@@ -36,7 +36,7 @@ namespace BMF {
                             "-u: Set notification/update interval for split. Default: 1000000.\n"
                             "-w: Set flag to leave temporary files. Primarily for debugging.\n"
                             "-h: Print usage.\n",
-                        executable, DEFAULT_N_NUCS, DEFAULT_N_THREADS);
+                        DEFAULT_N_NUCS, DEFAULT_N_THREADS);
 
     }
 
@@ -53,7 +53,7 @@ namespace BMF {
         ret.l = strlen(ret.s);
         ks_resize(&ret, ret.l + n_rand + 1);
         kputc('.', &ret);
-        rand_string(ret.s + ret.l, n_rand);
+        dlib::rand_string(ret.s + ret.l, n_rand);
         return ret;
     }
 
@@ -74,7 +74,7 @@ namespace BMF {
             LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", settings->ffq_prefix);
         } else {
             char *tmp = (char *)malloc(RANDSTR_SIZE + 1);
-            settings->ffq_prefix = rand_string(tmp, RANDSTR_SIZE);
+            settings->ffq_prefix = dlib::rand_string(tmp, RANDSTR_SIZE);
         }
     }
 
@@ -165,7 +165,7 @@ namespace BMF {
         for(int i = 0; i < settings->n_handles; ++i)
             ksprintf(&str1, " %s", params->outfnames_r1[i]);
         kputs(" | paste -d'~' - - - - ", &str1);
-        str2.s = kstrdup(&str1); // strdup the string.
+        str2.s = dlib::kstrdup(&str1); // strdup the string.
         for(uint32_t i = 0; i < str2.l; ++i) {
             LOG_DEBUG("Current str.s + i: %s.\n", str2.s + i);
             if(memcmp(str2.s + i, "R1", 2) == 0)
@@ -342,7 +342,7 @@ namespace BMF {
 
     int dmp_main(int argc, char *argv[])
     {
-        if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
+        if(argc == 1) dmp_usage(), exit(EXIT_FAILURE);
         // Build settings struct
 
         marksplit_settings_t settings = {0};
@@ -382,7 +382,7 @@ namespace BMF {
                 case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
                 case 'S': settings.is_se = 1; break;
                 case '=': settings.to_stdout = 1; break;
-                case '?': case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
+                case '?': case 'h': dmp_usage(); exit(EXIT_SUCCESS);
             }
         }
 
@@ -391,11 +391,11 @@ namespace BMF {
         // Check for proper command-line usage.
         if(settings.is_se) {
             if(argc < 4) {
-                print_crms_usage(argv[0]);
+                dmp_usage();
                 exit(EXIT_FAILURE);
             }
             if(argc != optind + 1) {
-                print_crms_usage(argv[0]);
+                dmp_usage();
                 LOG_EXIT("Exactly one read fastq required for single-end. See usage.\n");
             }
             // Number of file handles
@@ -407,10 +407,10 @@ namespace BMF {
             // Handle filenames
             settings.input_r1_path = strdup(argv[optind]);
         } else {
-            if(argc < 5) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
+            if(argc < 5) dmp_usage(), exit(EXIT_FAILURE);
             if(argc != optind + 2) {
                 fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required for paired-end. See usage.\n", __func__);
-                print_crms_usage(argv[0]);
+                dmp_usage();
                 return EXIT_FAILURE;
             }
             // Number of file handles

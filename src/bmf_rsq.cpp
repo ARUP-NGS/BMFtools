@@ -3,7 +3,7 @@
 
 namespace BMF {
 
-    struct rsq_aux {
+    struct rsq_aux_t {
         FILE *fqh;
         samFile *in;
         samFile *out;
@@ -279,7 +279,7 @@ namespace BMF {
     }
 
 
-    void write_stack(tmp_stack_t *stack, rsq_aux *settings)
+    void write_stack(tmp_stack_t *stack, rsq_aux_t *settings)
     {
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
@@ -326,7 +326,7 @@ namespace BMF {
         return 1;
     }
 
-    static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_aux *settings)
+    static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_aux_t *settings)
     {
         // Sort by read names to make sure that any progressive rescuing ends at the same name.
         std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
@@ -355,7 +355,7 @@ namespace BMF {
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
-    void rsq_core(rsq_aux *settings, tmp_stack_t *stack)
+    void rsq_core(rsq_aux_t *settings, tmp_stack_t *stack)
     {
         std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey])) {
@@ -403,7 +403,7 @@ namespace BMF {
         }
     }
 
-    void bam_rsq_bookends(rsq_aux *settings)
+    void bam_rsq_bookends(rsq_aux_t *settings)
     {
 
         tmp_stack_t stack = {0};
@@ -433,7 +433,7 @@ namespace BMF {
         int c;
         char wmode[4] = "wb";
 
-        rsq_aux settings = {0};
+        rsq_aux_t settings = {0};
         settings.mmlim = 2;
         settings.cmpkey = POSITION;
 

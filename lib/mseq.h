@@ -63,7 +63,7 @@ namespace BMF {
      */
     CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
     {
-        return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
+        return dlib::lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
     }
 
     /*

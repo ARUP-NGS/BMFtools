@@ -12,7 +12,8 @@ namespace BMF {
 
     void sdmp_usage(char *argv[])
     {
-            fprintf(stderr, "Usage: bmftools %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
+            fprintf(stderr, "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
+                            "Usage: bmftools %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
                             "\nFlags:\n"
                             "-t: Homopolymer failure threshold. A molecular barcode with"
                             " a homopolymer of length >= this limit is flagged as QC fail."
@@ -265,7 +266,7 @@ namespace BMF {
         }
         if(!settings.tmp_basename) {
             settings.tmp_basename = (char *)malloc(21);
-            rand_string(settings.tmp_basename, 20);
+            dlib::rand_string(settings.tmp_basename, 20);
             fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",
                     __func__, settings.tmp_basename);
         }

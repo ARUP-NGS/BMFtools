@@ -17,6 +17,8 @@ namespace BMF {
     void stack_usage(int retcode)
     {
         const char *buf =
+                "Builds a stack summary for base calls and performs simple filters"
+                " to produce a maximally permissive 'variant caller'.\n"
                 "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
                 "Optional arguments:\n"
                 "-R, --refpath\tPath to fasta reference. REQUIRED.\n"

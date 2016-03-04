@@ -87,12 +87,6 @@ namespace BMF {
         } while(0)
 
 
-    static inline char *make_crms_outfname(char *fname)
-    {
-        return make_default_outfname(fname, ".crms.split");
-    }
-
-
     static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
     {
         for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {

@@ -110,10 +110,10 @@ namespace BMF {
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
             ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
-            ret.fnames_r1[i] = kstrdup(&ks);
+            ret.fnames_r1[i] = dlib::kstrdup(&ks);
             ks.l = 0;
             ksprintf(&ks, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);
-            ret.fnames_r2[i] = kstrdup(&ks);
+            ret.fnames_r2[i] = dlib::kstrdup(&ks);
             ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
             ret.tmp_out_handles_r2[i] = gzopen(ret.fnames_r2[i], settings_ptr->mode);
         }
@@ -134,7 +134,7 @@ namespace BMF {
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
             ksprintf(&ks, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
-            ret.fnames_r1[i] = kstrdup(&ks);
+            ret.fnames_r1[i] = dlib::kstrdup(&ks);
             ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
         }
         return ret;
