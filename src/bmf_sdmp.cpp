@@ -13,13 +13,13 @@ namespace BMF {
     void sdmp_usage(char *argv[])
     {
             fprintf(stderr, "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
-                            "Usage: bmftools %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
-                            "\nFlags:\n"
+                            "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>\n"
+                            "Flags:\n"
+                            "-i: Index fastq path. REQUIRED.\n"
                             "-t: Homopolymer failure threshold. A molecular barcode with"
                             " a homopolymer of length >= this limit is flagged as QC fail."
                             "Default: 10.\n"
                             "-o: Temporary fastq file prefix.\n"
-                            "-i: Index fastq path. Required.\n"
                             "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                             "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
                             "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"

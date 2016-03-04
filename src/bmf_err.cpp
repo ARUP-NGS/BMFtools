@@ -846,7 +846,7 @@ namespace BMF {
         free(e);
     }
 
-    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ, uint32_t minPV) {
+    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minMQ, uint32_t minPV) {
         fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
         if(bedpath && *bedpath) {
             ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
@@ -941,8 +941,7 @@ namespace BMF {
         samFile *fp = NULL;
         bam_hdr_t *header = NULL;
         int c, minMQ = 0;
-        char outpath[500] = "";
-
+        std::string outpath("");
         if(argc < 2) return err_main_usage(stderr, EXIT_FAILURE);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(stderr, EXIT_SUCCESS);
@@ -966,7 +965,7 @@ namespace BMF {
             case 'm': minFM = atoi(optarg); break;
             case 'M': maxFM = atoi(optarg); break;
             case 'f': df = dlib::open_ofp(optarg); break;
-            case 'o': strcpy(outpath, optarg); break;
+            case 'o': outpath = optarg; break;
             case 'O': min_obs = strtoull(optarg, NULL, 10); break;
             case '3': d3 = dlib::open_ofp(optarg); break;
             case 'c': dc = dlib::open_ofp(optarg); break;
@@ -982,8 +981,6 @@ namespace BMF {
 
         if(padding < 0 && bedpath && *bedpath)
             LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
-
-        ofp = *outpath ? dlib::open_ofp(outpath): NULL;
 
         if (argc != optind+2)
             return err_main_usage(stderr, EXIT_FAILURE);
@@ -1013,8 +1010,12 @@ namespace BMF {
         fill_qvals(f);
         impute_scores(f);
         //fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
-        if(*outpath)
-            ofp = fopen(outpath, "w"), write_final(ofp, f), fclose(ofp);
+        if(outpath.size()) {
+            ofp = fopen(outpath.c_str(), "w");
+            write_final(ofp, f);
+            fclose(ofp);
+        }
+
         if(d3) {
             write_3d_offsets(d3, f);
             fclose(d3), d3 = NULL;
@@ -1047,7 +1048,8 @@ namespace BMF {
 
         if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);
 
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_cycle_usage(stderr, EXIT_SUCCESS);
+        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+            return err_cycle_usage(stderr, EXIT_SUCCESS);
 
         FILE *ofp = NULL;
         int padding = -1, minMQ = 0, flag = 0, c;
@@ -1055,7 +1057,7 @@ namespace BMF {
         while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
             switch (c) {
             case 'a': minMQ = atoi(optarg); break;
-            case 'o': outpath = strdup(optarg); break;
+            case 'o': outpath = optarg; break;
             case 'r': refcontig = strdup(optarg); break;
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
@@ -1069,7 +1071,6 @@ namespace BMF {
         }
 
         if(!outpath) {
-            outpath = strdup("-");
             LOG_WARNING("Output path not set. Defaulting to stdout.\n");
         }
         ofp = dlib::open_ofp(outpath);
@@ -1085,7 +1086,6 @@ namespace BMF {
         fai_destroy(fai);
         cond_free(refcontig);
         cond_free(bedpath);
-        cond_free(outpath);
         LOG_INFO("Successfully completed bmftools err cycle!\n");
         return EXIT_SUCCESS;
     }
@@ -1101,7 +1101,7 @@ namespace BMF {
         open_fmt.version.minor = 3;
         samFile *fp = NULL;
         bam_hdr_t *header = NULL;
-        char outpath[500] = "";
+        char *outpath = NULL;
 
         if(argc < 2) return err_fm_usage(stderr, EXIT_FAILURE);
 
@@ -1110,7 +1110,7 @@ namespace BMF {
 
 
         FILE *ofp = NULL;
-        char refcontig[200] = "";
+        std::string refcontig("");
         char *bedpath = NULL;
         int flag = 0, padding = -1, minMQ = 0, c;
         uint32_t minPV = 0;
@@ -1118,8 +1118,8 @@ namespace BMF {
             switch (c) {
             case 'a': minMQ = atoi(optarg); break;
             case 'd': flag |= REQUIRE_DUPLEX; break;
-            case 'o': strcpy(outpath, optarg); break;
-            case 'r': strcpy(refcontig, optarg); break;
+            case 'o': outpath = optarg; break;
+            case 'r': refcontig = optarg; break;
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 'P': flag |= REQUIRE_PROPER; break;
@@ -1133,8 +1133,8 @@ namespace BMF {
             LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
         }
 
-        if(!*outpath) {
-            LOG_EXIT("Required -o parameter unset. Abort!\n");
+        if(!outpath) {
+            LOG_WARNING("Output path unset. Defaulting to stdout.\n");
         }
         ofp = dlib::open_ofp(outpath);
 
@@ -1154,7 +1154,7 @@ namespace BMF {
         if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
             dlib::check_bam_tag_exit(argv[optind + 1], "DR");
 
-        fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ, minPV);
+        fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minMQ, minPV);
         // Get read length from the first
         bam_hdr_destroy(header); header = NULL;
         err_fm_core(argv[optind + 1], fai, f, &open_fmt);
@@ -1252,7 +1252,8 @@ namespace BMF {
 
     void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
         fprintf(fp, "#Region name\t%%Error Rate\t#Errors\t#Obs\n");
-        for(RegionErr& re: Holloway.region_counts) re.write_report(fp);
+        for(RegionErr& re: Holloway.region_counts)
+            re.write_report(fp);
     }
 
     int err_region_main(int argc, char *argv[])

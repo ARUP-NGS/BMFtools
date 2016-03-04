@@ -409,7 +409,8 @@ namespace BMF {
 
     int rsq_usage(int retcode)
     {
-        fprintf(stderr, "Positional rescue. \n"
+        fprintf(stderr,
+                        "Positional rescue. \n"
                         "Reads with the same start position (or unclipped start, if -u is set) are compared.\n"
                         "If their barcodes are sufficiently similar, they are treated as having originated"
                         "from the same original template molecule.\n"
@@ -419,7 +420,8 @@ namespace BMF {
                         "-t      Mismatch limit. Default: 2\n"
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
-                        "Note: -u requires pre-processing with bmftools mark_unclipped.\n");
+                        "Note: -u requires pre-processing with bmftools mark_unclipped.\n"
+                );
         return retcode;
     }
 
@@ -435,7 +437,7 @@ namespace BMF {
 
         char *fqname = NULL;
 
-        if(argc < 3) rsq_usage(EXIT_FAILURE);
+        if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
         while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
             switch (c) {

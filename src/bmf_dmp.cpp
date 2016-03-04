@@ -9,7 +9,8 @@ namespace BMF {
 
     void dmp_usage()
     {
-            fprintf(stderr, "Performs molecular demultiplexing for inline barcoded experiments.\n"
+            fprintf(stderr,
+                            "Performs molecular demultiplexing for inline barcoded experiments.\n"
                             "Usage: bmftools dmp <options> <Fq.R1.seq> <Fq.R2.seq>"
                             "\nFlags:\n"
                             "-=: Emit interleaved final output to stdout.\n"
@@ -35,8 +36,8 @@ namespace BMF {
                             "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                             "-u: Set notification/update interval for split. Default: 1000000.\n"
                             "-w: Set flag to leave temporary files. Primarily for debugging.\n"
-                            "-h: Print usage.\n",
-                        DEFAULT_N_NUCS, DEFAULT_N_THREADS);
+                            "-h: Print usage.\n"
+                        , DEFAULT_N_NUCS, DEFAULT_N_THREADS);
 
     }
 

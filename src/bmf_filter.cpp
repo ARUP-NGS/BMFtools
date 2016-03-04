@@ -31,35 +31,43 @@ namespace BMF {
         khash_t(bed) *bed;
     };
 
+#define fm_pass(data, b, options) ((((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1) >= (int)(options->minFM))
     static inline int test_core(bam1_t *b, opts *options) {
         uint8_t *data;
-        return (
-                ((((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1) >= (int)(options->minFM)) &&
-                b->core.qual >=  options->minMQ &&
+#if !NDEBUG
+        int ret = fm_pass(data, b, options) &&
+                  b->core.qual >= options->minMQ &&
+                  ((b->core.flag & options->skip_flag) == 0) &&
+                  (b->core.flag & options->require_flag) == options->require_flag &&
+                  (options->bed ? dlib::bed_test(b, options->bed):1);
+        assert(fm_pass(data, b, options) ? 1: ret == 0);
+#endif
+        return fm_pass(data, b, options) &&
+                b->core.qual >= options->minMQ &&
                 ((b->core.flag & options->skip_flag) == 0) &&
                 (b->core.flag & options->require_flag) == options->require_flag &&
-                options->bed ? dlib::bed_test(b, options->bed): 1
-                );
+                (options->bed ? dlib::bed_test(b, options->bed):1);
     }
 
+    /*
+     * Return a 0 status to pass, a 1 to fail, in order to match for_each.
+     */
     int bam_test(bam1_t *b, void *options) {
-        return ((opts *)options)->v ? !test_core(b, (opts *)options)
-                                    : test_core(b, (opts *)options);
+        return ((opts *)options)->v ? test_core(b, (opts *)options)
+                                    : !test_core(b, (opts *)options);
     }
 
     int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle& refused, opts *param)
     {
-        while(in.next() >= 0) (bam_test(in.rec, (void *)param) ? out: refused).write(in.rec);
-        /*
-         * Equivalent to:
         while(in.next() >= 0) {
             if(bam_test(in.rec, (void *)param)) {
-                out.write(in.rec);
-            } else {
+                LOG_DEBUG("Writing to output file %s.\n", refused.fp->fn);
                 refused.write(in.rec);
+            } else {
+                LOG_DEBUG("Writing to output file %s.\n", out.fp->fn);
+                out.write(in.rec);
             }
         }
-        */
         return EXIT_SUCCESS;
     }
 

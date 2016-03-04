@@ -20,8 +20,8 @@ static int unclipped_usage() {
             "\tSU: Self Unclipped start.\n"
             "\tMU: Mate Unclipped start.\n"
             "Required for bmftools rsq using unclipped start.\n"
-            "Usage: bmftools mark_unclipped <input.namesrt.bam> <output.bam>\n\n"
-            "Opts:\n-l     Sets bam compression level. (Valid: 1-9).\n"
+            "Usage: bmftools mark_unclipped <opts> <input.namesrt.bam> <output.bam>\n\n"
+            "Flags:\n-l     Sets bam compression level. (Valid: 1-9).\n"
             "Set output.bam to \'-\' or \'stdout\' to pipe results.\n"
             "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
             );
