@@ -6,6 +6,8 @@ namespace BMF {
     void vetter_usage(int retcode)
     {
         const char *buf =
+                "Checks variants from the vcf within a set of bed regions."
+                "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
                 "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
                 "Optional arguments:\n"
                 "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
@@ -14,6 +16,8 @@ namespace BMF {
                 "-2, --skip-secondary\tSkip secondary alignments.\n"
                 "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                 "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
+                "-r, --skip-duplicates\tSkip reads marked as duplicates.\n"
+                "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
                 "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                 "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                 "-p, --padding\tNumber of bases outside of bed region to pad.\n"
@@ -192,7 +196,8 @@ namespace BMF {
 
     int read_bcf(vetter_aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec)
     {
-        return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec):bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
+        return vcf_iter ? bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)
+                        : bcf_read1(aux->vcf_fp, aux->vcf_header, vrec);
     }
 
     int vet_core(vetter_aux_t *aux) {
@@ -232,11 +237,11 @@ namespace BMF {
         vrec->rid = -1;
         hts_itr_t *vcf_iter = NULL;
 
-        std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES, 0);
-        std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES, 0);
-        std::vector<int32_t> duplex_values(DEFAULT_MAX_ALLELES, 0);
-        std::vector<int32_t> overlap_values(DEFAULT_MAX_ALLELES, 0);
-        std::vector<int32_t> fail_values(DEFAULT_MAX_ALLELES, 0);
+        std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> duplex_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> overlap_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> fail_values(DEFAULT_MAX_ALLELES);
         bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
         bam_plp_set_maxcnt(pileup, max_depth);
 
@@ -253,7 +258,9 @@ namespace BMF {
                 LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-                vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+                vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
+                                   : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                                             : NULL;
                 //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 
                 int n_disagreed = 0;
@@ -357,6 +364,7 @@ namespace BMF {
                 {"skip-supplementary", no_argument, NULL, 'S'},
                 {"skip-qcfail", no_argument, NULL, 'q'},
                 {"skip-improper", no_argument, NULL, 'P'},
+                {"skip-recommended", no_argument, NULL, 'F'},
                 {"max-depth", required_argument, NULL, 'd'},
                 {"emit-bcf", no_argument, NULL, 'B'},
                 {0, 0, 0, 0}
@@ -389,6 +397,7 @@ namespace BMF {
             case 'p': padding = atoi(optarg); break;
             case 'd': aux.max_depth = atoi(optarg); break;
             case 'f': aux.minFR = (float)atof(optarg); break;
+            case 'F': aux.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP); break;
             case 'b': bed = strdup(optarg); break;
             case 'o': outvcf = strdup(optarg); break;
             case 'O': aux.minOverlap = atoi(optarg); break;
