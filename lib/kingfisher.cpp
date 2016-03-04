@@ -98,7 +98,6 @@ namespace BMF {
         for(i = 0; i < kfpf->readlen; ++i)
             kputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], &ks);
         kputc('\n', &ks);
-        //const int ND = get_num_differ
         fputs(ks.s, handle);
         free(ks.s);
         return;
@@ -144,49 +143,6 @@ namespace BMF {
             kputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], ks);
         kputc('\n', ks);
         //const int ND = get_num_differ
-        return;
-    }
-
-    // kfp forward, kfp reverse
-    // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
-    void stranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs)
-    {
-        const int FM = kfpf->length + kfpr->length;
-        int i, diffs = FM * kfpf->readlen;
-        int index;
-
-        for(i = 0; i < kfpf->readlen; ++i) {
-            const int argmaxretf = kfp_argmax(kfpf, i), argmaxretr = kfp_argmax(kfpr, i);
-            if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
-                index = i * 5 + argmaxretf;
-                kfpf->phred_sums[index] += kfpr->phred_sums[index];
-                kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-                dmp_pos(kfpf, bufs, argmaxretf, i, index, diffs);
-                if(kfpr->max_phreds[index] > kfpf->max_phreds[index]) kfpf->max_phreds[index] = kfpr->max_phreds[index];
-            } else if(argmaxretf == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
-                index = i * 5 + argmaxretr;
-                kfpf->phred_sums[index] += kfpr->phred_sums[index];
-                kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-                dmp_pos(kfpf, bufs, argmaxretr, i, index, diffs);
-                kfpf->max_phreds[index] = kfpr->max_phreds[index];
-            } else if(argmaxretr == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
-                index = i * 5 + argmaxretf;
-                kfpf->phred_sums[index] += kfpr->phred_sums[index];
-                kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-                dmp_pos(kfpf, bufs, argmaxretf, i, index, diffs);
-                // Don't update max_phreds, since the max phred is already here.
-            } else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
-        }
-        fill_fa(kfpf->readlen, bufs->agrees, bufs->FABuffer);
-        fill_pv(kfpf->readlen, bufs->cons_quals, bufs->PVBuffer);
-        //const int ND = get_num_differ
-        fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->barcode + 1,
-                bufs->FABuffer, bufs->PVBuffer,
-                kfpf->pass_fail, FM, kfpr->length,
-                (double) diffs / FM, kfpf->length && kfpr->length,
-                bufs->cons_seq_buffer);
-        for(i = 0; i < kfpf->readlen; ++i) fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);
-        fputc('\n', handle);
         return;
     }
 
