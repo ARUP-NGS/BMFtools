@@ -170,6 +170,7 @@ namespace BMF {
         cond_free(bedpath);
         fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
                 (double)fm_target / total_fm, total_fm, fm_target);
+        LOG_INFO("Successfully complete bmftools famstats target.\n");
         return EXIT_SUCCESS;
     }
 
@@ -326,6 +327,7 @@ namespace BMF {
         kh_destroy(rc, s->rc);
         free(s);
         free(settings);
+        LOG_INFO("Successfully complete bmftools famstats fm.\n");
         return EXIT_SUCCESS;
     }
 
@@ -379,6 +381,7 @@ namespace BMF {
         if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
         fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n",
                 minFM, (double)fm_above / total_fm);
+        LOG_INFO("Successfully complete bmftools famstats frac.\n");
         return EXIT_SUCCESS;
     }
 

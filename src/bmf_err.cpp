@@ -1074,19 +1074,17 @@ namespace BMF {
 
         faidx_t *fai = fai_load(argv[optind]);
 
-        fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
-        if (fp == NULL) {
+        if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
             LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
         }
-        dlib::check_bam_tag_exit(argv[optind + 1], "FM");
-        dlib::check_bam_tag_exit(argv[optind + 1], "FP");
-        dlib::check_bam_tag_exit(argv[optind + 1], "RV");
-        if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX)) dlib::check_bam_tag_exit(argv[optind + 1], "DR");
-
-        header = sam_hdr_read(fp);
-        if (header == NULL) {
+        if ((header = sam_hdr_read(fp)) == NULL) {
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
         }
+        for(auto tag: {"FM", "FP", "RV"})
+            dlib::check_bam_tag_exit(argv[optind + 1], tag);
+        if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
+            dlib::check_bam_tag_exit(argv[optind + 1], "DR");
+
         fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ, minPV);
         // Get read length from the first
         bam_hdr_destroy(header); header = NULL;
@@ -1125,9 +1123,7 @@ namespace BMF {
         for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
             length = bam_cigar_oplen(cigar[i]);
             switch(bam_cigar_op(cigar[i])) {
-            case BAM_CMATCH:
-            case BAM_CEQUAL:
-            case BAM_CDIFF:
+            case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
                 for(ind = 0; ind < length; ++ind) {
                     s = bam_seqi(seq, ind + rc);
                     if(s == dlib::htseq::HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
@@ -1136,13 +1132,10 @@ namespace BMF {
                 }
                 rc += length; fc += length;
                 break;
-            case BAM_CSOFT_CLIP:
-            case BAM_CHARD_CLIP:
-            case BAM_CINS:
+            case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
                 rc += length;
                 break;
-            case BAM_CREF_SKIP:
-            case BAM_CDEL:
+            case BAM_CREF_SKIP: case BAM_CDEL:
                 fc += length;
                 break;
             }
@@ -1163,7 +1156,6 @@ namespace BMF {
             ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
             LOG_DEBUG("Fetched! Length: %i\n", len);
             for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
-                LOG_DEBUG("Loop started.\n");
                 Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
                 LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
                 const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
@@ -1197,11 +1189,13 @@ namespace BMF {
     {
         if(argc < 2) return err_region_usage(stderr, EXIT_FAILURE);
 
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_region_usage(stderr, EXIT_SUCCESS);
+        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+            return err_region_usage(stderr, EXIT_SUCCESS);
 
         FILE *ofp = NULL;
         int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
         char *bedpath = NULL, *outpath = NULL;
+        faidx_t *fai;
         while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
             switch (c) {
             case 'q': requireFP = 1; break;
@@ -1230,7 +1224,7 @@ namespace BMF {
         if (argc != optind+2)
             return err_region_usage(stderr, EXIT_FAILURE);
 
-        faidx_t *fai = fai_load(argv[optind]);
+        fai = fai_load(argv[optind]);
         if(!fai) {
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
         }

@@ -150,20 +150,13 @@ namespace BMF {
         for(;*n1;++n1, ++n2)
             if(*n1 != *n2)
                 return *n1 < *n2;
-        return 0; // This never happens unless a null character appears prematurely.
+        return 0; // If identical, don't switch. Should never happen.
     }
 
     static inline void update_bam1(bam1_t *p, bam1_t *b)
     {
         uint8_t *bdata, *pdata;
         int n_changed;
-    /*
-        if(!b || !p) {
-            // If the
-            fprintf(stderr, "One of these records is null. Abort!\n");
-            exit(EXIT_FAILURE);
-        }
-    */
         bdata = bam_aux_get(b, "FM");
         pdata = bam_aux_get(p, "FM");
         if(UNLIKELY(!bdata || !pdata)) {
@@ -355,6 +348,8 @@ namespace BMF {
 
     void rsq_core(rsq_aux_t *settings, tmp_stack_t *stack)
     {
+        // This selects the proper function to use for deciding if reads belong in the same stack.
+        // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey])) {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
@@ -393,7 +388,7 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         if(settings->realign_pairs.size()) {
-            LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something is wrong....\n", settings->realign_pairs.size());
+            LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something may be wrong....\n", settings->realign_pairs.size());
             for(auto& pair: settings->realign_pairs) {
                 fprintf(settings->fqh, pair.second.c_str());
                 settings->realign_pairs.erase(pair.first);

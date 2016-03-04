@@ -53,6 +53,7 @@ namespace BMF {
         else LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
         stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level)
                           : hash_dmp_core (infname, outfname, level);
+        LOG_INFO("Successfully complete bmftools hashdmp!\n");
         return EXIT_SUCCESS;
     }
 
