@@ -135,7 +135,7 @@ namespace BMF {
                 ks.l = 0;
             }
             if(++(*count) % 1000000 == 0) LOG_DEBUG("Number of records written: %lu.\n", *count);
-            if(current_entry->value->length > 1 && non_duplex_fm) ++*non_duplex_fm;
+            if(non_duplex_fm && current_entry->value->length > 1) ++*non_duplex_fm;
             dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
             destroy_kf(current_entry->value);
             HASH_DEL(hash, current_entry);
