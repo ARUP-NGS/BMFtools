@@ -45,6 +45,8 @@ namespace BMF {
     int err_main_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
+                "Calculates error rates over a variety of variables."
+                "The primary output format consists of quality scores "
                 "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
                 "Flags:\n"
                 "-h/-?\t\tThis helpful help menu!\n"
@@ -337,15 +339,28 @@ namespace BMF {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
                 case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    for(ind = 0; ind < length; ++ind) {
-                        if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
-                            continue;
-                        s = bam_seqi(seq, ind + rc);
-                        //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                        if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                        ++kh_val(hash, k).obs;
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                            ++kh_val(hash, k).err;
+                    if(is_rev) {
+                        for(ind = 0; ind < length; ++ind) {
+                            if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
+                                continue;
+                            s = bam_seqi(seq, ind + rc);
+                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            ++kh_val(hash, k).obs;
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                ++kh_val(hash, k).err;
+                        }
+                    } else {
+                        for(ind = 0; ind < length; ++ind) {
+                            if(pv_array[ind + rc] < f->minPV)
+                                continue;
+                            s = bam_seqi(seq, ind + rc);
+                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            ++kh_val(hash, k).obs;
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                ++kh_val(hash, k).err;
+                        }
                     }
                     rc += length; fc += length;
                     break;
@@ -376,6 +391,9 @@ namespace BMF {
         const int32_t rlen = b->core.l_qseq;
         cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
         int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
+        uint8_t *seq, *fpdata;
+        uint32_t *cigar;
+        obserr_t *arr;
         char *ref = NULL; // Will hold the sequence for a  chromosome
         if(ce->refcontig) {
             for(int i = 0; i < hdr->n_targets; ++i) {
@@ -386,9 +404,6 @@ namespace BMF {
             if(tid_to_study < 0)
                 LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
         }
-        uint8_t *seq, *fpdata;
-        uint32_t *cigar;
-        obserr_t *arr;
         while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
             if(++ce->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", ce->nread);
             // Filter
@@ -420,12 +435,22 @@ namespace BMF {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
                 case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    for(ind = 0; ind < length; ++ind) {
-                        s = bam_seqi(seq, ind + rc);
-                        if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                        cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;
-                        ++arr[cycle].obs;
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
+                    if(is_rev) {
+                        for(ind = 0; ind < length; ++ind) {
+                            s = bam_seqi(seq, ind + rc);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = rlen - 1 - ind - rc;
+                            ++arr[cycle].obs;
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
+                        }
+                    } else {
+                        for(ind = 0; ind < length; ++ind) {
+                            s = bam_seqi(seq, ind + rc);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = ind + rc;
+                            ++arr[cycle].obs;
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
+                        }
                     }
                     rc += length; fc += length;
                     break;
@@ -506,16 +531,30 @@ namespace BMF {
                     length = bam_cigar_oplen(cigar[i]);
                     switch(bam_cigar_op(cigar[i])) {
                     case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
-                                continue;
-                            s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                            cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
-                            ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                        if(is_rev) {
+                            for(ind = 0; ind < length; ++ind) {
+                                cycle = b->core.l_qseq - 1 - ind - rc;
+                                if(pv_array[cycle] < f->minPV)
+                                    continue;
+                                s = bam_seqi(seq, ind + rc);
+                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                            }
+                        } else {
+                            for(ind = 0; ind < length; ++ind) {
+                                cycle = ind + rc;
+                                if(pv_array[cycle] < f->minPV)
+                                    continue;
+                                s = bam_seqi(seq, cycle);
+                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
+                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+                            }
                         }
                         rc += length; fc += length;
                         break;
@@ -1229,7 +1268,7 @@ namespace BMF {
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
         }
 
-        RegionExpedition Holloway = RegionExpedition(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
+        RegionExpedition Holloway(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
         err_region_core(&Holloway);
         write_region_rates(ofp, Holloway), fclose(ofp);
         fai_destroy(fai);
