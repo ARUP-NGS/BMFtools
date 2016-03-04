@@ -8,18 +8,20 @@
 namespace BMF {
 
     static int cap_qscore_usage() {
-        fprintf(stderr, "\nTakes a bam and caps quality scores from PV tags "
-                "to facilitate working with outside tools.\nValues >= cap for PV will have the quality"
-                "strings set to the cap value. All others are set to 2 (#).\n");
-        fprintf(stderr, "Usage: bmftools cap <input.bam> <output.bam>\n\n");
-        fprintf(stderr, "Opts:\n-l     Sets bam compression level. (Valid: 1-9).\n");
-        fprintf(stderr, "-c: set PV cap [uint32_t]. (Passing base qualities set to 93, < set to 2).\n");
-        fprintf(stderr, "-m: set minFM to pass reads. [uint32_t].\n");
-        fprintf(stderr, "-f: set minimum fraction agreed. [double].\n");
-        fprintf(stderr, "-t: set maximum permitted phred score. [int, coerced to char].\n");
-        fprintf(stderr, "-d: Flag to use existing quality scores instead of setting all below a threshold to 2.\n");
-        fprintf(stderr, "Set output.bam to \'-\' or \'stdout\' to pipe results.\n");
-        fprintf(stderr, "Set input.csrt.bam to \'-\' or \'stdin\' to read from stdin.\n");
+        fprintf(stderr,
+                        "\nCaps quality scores from PV tags to facilitate working with barcode-agnostic tools.\n"
+                        "Values >= cap for PV will have the quality"
+                        "strings set to the cap value. All others are set to 2 (#).\n"
+                        "Usage: bmftools cap <input.bam> <output.bam>\n\n"
+                        "Opts:\n-l     Sets bam compression level. (Valid: 1-9).\n"
+                        "-c: set PV cap [uint32_t]. (Passing base qualities set to 93, < set to 2).\n"
+                        "-m: set minFM to pass reads. [uint32_t].\n"
+                        "-f: set minimum fraction agreed. [double].\n"
+                        "-t: set maximum permitted phred score. [int, coerced to char].\n"
+                        "-d: Flag to use existing quality scores instead of setting all below a threshold to 2.\n"
+                        "Set output.bam to \'-\' or \'stdout\' to pipe results.\n"
+                        "Set input.csrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
+                );
         return EXIT_FAILURE;
     }
 

@@ -27,16 +27,18 @@ namespace BMF {
 
     void depth_usage(int retcode)
     {
-        fprintf(stderr, "Use: Creates a bed file of coverage depths "
+        fprintf(stderr,
+                        "Creates a bed file of coverage depths "
                         "for both raw and collapsed read families "
-                        "over a capture region of interest.");
-        fprintf(stderr, "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n");
-        fprintf(stderr, "  -Q INT        Only count bases of at least INT quality [0]\n");
-        fprintf(stderr, "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n");
-        fprintf(stderr, "  -m INT        Max depth. Default: %i.\n", DEFAULT_MAX_DEPTH);
-        fprintf(stderr, "  -n INT        Set N for quantile reporting. Default: 4 (quartiles)\n");
-        fprintf(stderr, "  -p INT        Number of bases around region to pad in coverage calculations. Default: %i\n", (int)DEFAULT_PADDING);
-        fprintf(stderr, "  -s FLAG       Skip reads with an FP tag whose value is 0. (Fail)\n");
+                        "over a capture region of interest.\n"
+                        "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n"
+                        "  -Q INT        Only count bases of at least INT quality [0]\n"
+                        "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n"
+                        "  -m INT        Max depth. Default: %i.\n"
+                        "  -n INT        Set N for quantile reporting. Default: 4 (quartiles)\n"
+                        "  -p INT        Number of bases around region to pad in coverage calculations. Default: %i\n"
+                        "  -s FLAG       Skip reads with an FP tag whose value is 0. (Fail)\n"
+                , DEFAULT_MAX_DEPTH, (int)DEFAULT_PADDING);
         exit(retcode);
     }
 

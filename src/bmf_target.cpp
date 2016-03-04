@@ -5,6 +5,7 @@ namespace BMF {
     int target_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
+                "Calculates the fraction of on-target reads."
                 "Usage: bmftools target <opts> <in.bam> \n"
                 "Required arguments:"
                 "-b\tPath to bed.\n"

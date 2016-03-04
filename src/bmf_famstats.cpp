@@ -6,9 +6,12 @@ namespace BMF {
     int RVWarn = 1;
 
     int famstats_frac_usage_exit(FILE *fp, int code) {
-        fprintf(fp, "bmftools famstats frac <opts> <in.bam>\n"
-                "Opts:\n-m minFM to accept. REQUIRED.\n"
-                "-h, -?: Return usage.\n");
+        fprintf(fp,
+                    "Calculates the fraction of raw reads with family size >= parameter.\n"
+                    "bmftools famstats frac <opts> <in.bam>\n"
+                    "Opts:\n-m minFM to accept. REQUIRED.\n"
+                    "-h, -?: Return usage.\n"
+                );
         exit(code);
         return code; // This never happens
     }
@@ -89,11 +92,14 @@ namespace BMF {
     }
 
 
-    int famstats_target_usage_exit(FILE *fp, int success)
+    int famstats_target_usage(FILE *fp, int success)
     {
-        fprintf(fp, "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
-                "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
-                "-h, -?: Return usage.\n", DEFAULT_PADDING);
+        fprintf(fp,
+                    "Calculates the fraction of raw reads on target.\n"
+                    "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
+                    "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
+                    "-h, -?: Return usage.\n"
+                , DEFAULT_PADDING);
         exit(success);
         return success;
     }
@@ -107,10 +113,10 @@ namespace BMF {
         uint32_t padding = (uint32_t)-1;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 4) return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
+        if(argc < 4) return famstats_target_usage(stderr, EXIT_SUCCESS);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
+            return famstats_target_usage(stderr, EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
             switch (c) {
@@ -124,7 +130,7 @@ namespace BMF {
                 notification_interval = strtoull(optarg, NULL, 0);
                 break;
             case '?': case 'h':
-                return famstats_target_usage_exit(stderr, EXIT_SUCCESS);
+                return famstats_target_usage(stderr, EXIT_SUCCESS);
             }
         }
 
@@ -135,11 +141,11 @@ namespace BMF {
         }
 
         if (argc != optind+1)
-            return famstats_target_usage_exit(stderr, EXIT_FAILURE);
+            return famstats_target_usage(stderr, EXIT_FAILURE);
 
         if(!bedpath) {
             fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
-            return famstats_target_usage_exit(stderr, EXIT_FAILURE);
+            return famstats_target_usage(stderr, EXIT_FAILURE);
         }
 
         dlib::BamHandle handle(argv[optind]);
@@ -151,6 +157,8 @@ namespace BMF {
         uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
         uint8_t *fpdata = NULL;
         while(LIKELY(handle.next() >= 0)) {
+            if(UNLIKELY(++count % notification_interval == 0))
+                LOG_INFO("Number of records processed: %lu.\n", count);
             if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FSUPPLEMENTARY))) {
                 ++n_flag_skipped;
                 continue;
@@ -160,10 +168,7 @@ namespace BMF {
             }
             const int FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
             total_fm += FM;
-            if(dlib::bed_test(handle.rec, bed))
-                fm_target += FM;
-            if(UNLIKELY(++count % notification_interval == 0))
-                LOG_INFO("Number of records processed: %lu.\n", count);
+            if(dlib::bed_test(handle.rec, bed)) fm_target += FM;
         }
         LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
         dlib::bed_destroy_hash(bed);
@@ -270,19 +275,25 @@ namespace BMF {
 
     static int famstats_usage_exit(FILE *fp, int exit_status)
     {
-        fprintf(fp, "Usage: bmftools famstats\n");
-        fprintf(fp, "Subcommands: \nfm\tFamily Size stats\n"
-                "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
-                "target\tFraction of raw reads on target.\n");
+        fprintf(fp,
+                    "Calculates various utilities regarding family size on a given bam.\n"
+                    "Usage: bmftools famstats\n"
+                    "Subcommands: \nfm\tFamily Size stats\n"
+                    "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
+                    "target\tFraction of raw reads on target.\n"
+                );
         exit(exit_status);
         return exit_status;
     }
 
-    static int famstats_fm_usage_exit(FILE *fp, int exit_status)
+    static int famstats_fm_usage(FILE *fp, int exit_status)
     {
-        fprintf(fp, "Usage: bmftools famstats fm <opts> <in.bam>\n");
-        fprintf(fp, "-m Set minimum mapping quality. Default: 0.\n");
-        fprintf(fp, "-f Set minimum family size. Default: 0.\n");
+        fprintf(fp,
+                    "Produces a histogram of family sizes and reverse counts.\n"
+                    "Usage: bmftools famstats fm <opts> <in.bam>\n"
+                    "-m Set minimum mapping quality. Default: 0.\n"
+                    "-f Set minimum family size. Default: 0.\n"
+                );
         exit(exit_status);
         return exit_status;
     }
@@ -306,14 +317,14 @@ namespace BMF {
                 break;
             case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
-                return famstats_fm_usage_exit(stderr, EXIT_SUCCESS);
+                return famstats_fm_usage(stderr, EXIT_SUCCESS);
             }
         }
 
         if (argc != optind+1) {
             if (argc == optind) {
-                famstats_fm_usage_exit(stdout, EXIT_SUCCESS);
-            } else famstats_fm_usage_exit(stderr, EXIT_FAILURE);
+                famstats_fm_usage(stdout, EXIT_SUCCESS);
+            } else famstats_fm_usage(stderr, EXIT_FAILURE);
         }
 
         LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);

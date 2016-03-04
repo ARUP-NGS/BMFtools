@@ -274,11 +274,9 @@ namespace BMF {
         splitterhash_params_t *params = NULL;
         mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
         if(!settings.run_hash_dmp) {
-            fprintf(stderr, "[%s] Finished mark/split.\n", __func__);
+            fprintf(stderr, "[%s] Finished mark/split. Skipping dmp.\n", __func__);
             goto cleanup;
         }
-        fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
-                        __func__);
         if(!settings.ffq_prefix) make_outfname(&settings);
         params = init_splitterhash(&settings, splitter);
         fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
@@ -293,12 +291,11 @@ namespace BMF {
         else cat_fastqs(&settings, params, ffq_r1, ffq_r2);
         cleanup_hashdmp(&settings, params);
         splitterhash_destroy(params);
-        fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 
         cleanup:
         splitter_destroy(splitter);
         free_marksplit_settings(settings);
-        LOG_INFO("Successfully complete bmftools sdmp!\n");
+        LOG_INFO("Successfully completed bmftools sdmp!\n");
         return EXIT_SUCCESS;
     }
 

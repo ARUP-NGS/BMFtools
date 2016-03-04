@@ -293,17 +293,19 @@ namespace BMF {
                     LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
                     plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                     LOG_DEBUG("Finished pileup.\n");
-                    while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0)) {
+                    while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) &&
+                            ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) >= 0)) {
                         LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                         /* Zoom ahead until you're at the correct position */
                     }
                     if(!plp) {
                         if(n_plp == -1) {
-                            LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n", aux->header->target_name[tid], start, stop, n_plp, pos, tid);
+                            LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
+                                        aux->header->target_name[tid], start, stop, n_plp, pos, tid);
                         }
                         else if(n_plp == 0){
-                            LOG_WARNING("No reads at position. Skip this variant?\n");
-                        }
+                            LOG_WARNING("No reads at position. Skip this variant.\n");
+                        } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                     }
                     LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
                     if(pos != vrec->pos || tid != vrec->rid) {
@@ -313,18 +315,17 @@ namespace BMF {
                         continue;
                     }
                     // Reset vectors for each pass.
-                    memset(&uniobs_values[0], 0, sizeof(int32_t) * uniobs_values.size());
-                    memset(&duplex_values[0], 0, sizeof(int32_t) * duplex_values.size());
-                    memset(&fail_values[0], 0, sizeof(int32_t) * fail_values.size());
-                    memset(&overlap_values[0], 0, sizeof(int32_t) * overlap_values.size());
+                    memset(uniobs_values.data(), 0, sizeof(int32_t) * uniobs_values.size());
+                    memset(duplex_values.data(), 0, sizeof(int32_t) * duplex_values.size());
+                    memset(fail_values.data(), 0, sizeof(int32_t) * fail_values.size());
+                    memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
+                    // Perform tests to provide the results for the tags.
                     bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                                fail_values, n_overlapped, n_duplex, n_disagreed);
-                    LOG_DEBUG("Adding disc_overlap.\n");
+                                 fail_values, n_overlapped, n_duplex, n_disagreed);
+                    // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
-                    LOG_DEBUG("Adding n_overlap.\n");
                     bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
-                    LOG_DEBUG("n allele: %i.\n", vrec->n_allele);
                     bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
                     bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
                     bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
@@ -468,11 +469,10 @@ namespace BMF {
 
         // Open out vcf
         int ret = vet_core(&aux);
-        if(ret)
+        if(ret) {
             fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
                     __func__, __LINE__, ret);
-        else
-            LOG_INFO("Successfully completed!\n");
+        } else LOG_INFO("Successfully completed!\n");
         sam_close(aux.fp);
         bam_hdr_destroy(aux.header);
         vcf_close(aux.vcf_fp);

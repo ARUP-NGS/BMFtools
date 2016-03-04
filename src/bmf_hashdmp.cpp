@@ -5,13 +5,18 @@ size_t buf_set_size = 50000;
 
 namespace BMF {
 
-    void print_hash_dmp_usage(char *arg) {
-        fprintf(stderr, "Usage: %s <opts> <input_filename>.\n"
-                "Flags:\n"
-                "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
-                "-o\tOutput filename.\n"
-                "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
-                , arg);
+    void hashdmp_usage() {
+        fprintf(stderr,
+                        "Molecularly demultiplexes marked temporary fastqs into final unique observation records.\n"
+                        "bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.\n"
+                        "For samples which can't fit into memory, use bmftools dmp or sdmp, which subsets the sample,"
+                        " reducing memory requirements while keeping the constant-time hashmap collapsing.\n"
+                        "Usage: bmftools hashdmp <opts> <input_filename>.\n"
+                        "Flags:\n"
+                        "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
+                        "-o\tOutput filename.\n"
+                        "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
+                );
     }
 
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
@@ -31,7 +36,7 @@ namespace BMF {
 
     int hash_dmp_main(int argc, char *argv[])
     {
-        if(argc == 1) print_hash_dmp_usage(argv[0]), exit(EXIT_SUCCESS);
+        if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
         char *outfname = NULL, *infname = NULL;
         int c;
         int stranded_analysis = 1;
@@ -41,12 +46,12 @@ namespace BMF {
                 case 'l': level = atoi(optarg); break;
                 case 'o': outfname = optarg; break;
                 case 's': stranded_analysis = 0; break;
-                case '?': case 'h': print_hash_dmp_usage(argv[0]); return EXIT_SUCCESS;
+                case '?': case 'h': hashdmp_usage(); return EXIT_SUCCESS;
             }
         }
         if(argc < 2) {
             fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
-            print_hash_dmp_usage(argv[0]);
+            hashdmp_usage();
             exit(EXIT_FAILURE);
         }
         if(argc - 1 == optind) infname = argv[optind];
@@ -217,7 +222,7 @@ namespace BMF {
 
     void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     {
-        char mode[4] = "wT";
+        char mode[4] = "wT"; // Defaults to uncompressed "transparent" gzip output.
         if(level > 0) sprintf(mode, "wb%i", level % 10);
         LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.\n", mode);
         gzFile out_handle = gzopen(outfname, mode);

@@ -409,13 +409,16 @@ namespace BMF {
 
     int rsq_usage(int retcode)
     {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n");
-        fprintf(stderr, "Flags:\n"
+        fprintf(stderr, "Positional rescue. \n"
+                        "Reads with the same start position (or unclipped start, if -u is set) are compared.\n"
+                        "If their barcodes are sufficiently similar, they are treated as having originated"
+                        "from the same original template molecule.\n"
+                        "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n"
+                        "Flags:\n"
                         "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
-                        "-t      Mismatch limit. Default: 2\n");
-        fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
-        fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
+                        "-t      Mismatch limit. Default: 2\n"
+                        "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
+                        "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
                         "Note: -u requires pre-processing with bmftools mark_unclipped.\n");
         return retcode;
     }
