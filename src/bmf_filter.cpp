@@ -6,9 +6,10 @@
 namespace BMF {
 
     int usage(char **argv, int retcode=EXIT_FAILURE) {
-        fprintf(stderr, "bmftools filter <-l output_compression_level> in.bam out.bam\n"
+        fprintf(stderr, "Filters a bam by a set of given parameters.\n"
+                        "Usage: bmftools filter <-l output_compression_level> in.bam out.bam\n"
                         "Use - for stdin or stdout.\n"
-                        "Flags-\n"
+                        "Flags:\n"
                         "-F\t\tSkip all reads with any bits in parameter set.\n"
                         "-f\t\tSkip reads not sharing all bits in parameter set.\n"
                         "-b\t\tPath to bed file with which to filter.\n"

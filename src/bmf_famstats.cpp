@@ -5,11 +5,11 @@ namespace BMF {
     const char *tags_to_check[] = {"FP", "RV", "FM", "FA"};
     int RVWarn = 1;
 
-    int famstats_frac_usage_exit(FILE *fp, int code) {
+    int famstats_frac_usage(FILE *fp, int code) {
         fprintf(fp,
                     "Calculates the fraction of raw reads with family size >= parameter.\n"
-                    "bmftools famstats frac <opts> <in.bam>\n"
-                    "Opts:\n-m minFM to accept. REQUIRED.\n"
+                    "Usage: bmftools famstats frac <opts> <in.bam>\n"
+                    "Flags:\n-m minFM to accept. REQUIRED.\n"
                     "-h, -?: Return usage.\n"
                 );
         exit(code);
@@ -96,7 +96,8 @@ namespace BMF {
     {
         fprintf(fp,
                     "Calculates the fraction of raw reads on target.\n"
-                    "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
+                    "Usage: bmftools famstats target <opts> <in.bam>\n"
+                    "Flags:\n-b Path to bed file.\n"
                     "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
                     "-h, -?: Return usage.\n"
                 , DEFAULT_PADDING);
@@ -291,6 +292,7 @@ namespace BMF {
         fprintf(fp,
                     "Produces a histogram of family sizes and reverse counts.\n"
                     "Usage: bmftools famstats fm <opts> <in.bam>\n"
+                    "Flags:\n"
                     "-m Set minimum mapping quality. Default: 0.\n"
                     "-f Set minimum family size. Default: 0.\n"
                 );
@@ -348,8 +350,8 @@ namespace BMF {
         uint32_t minFM = 0;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 3) famstats_frac_usage_exit(stderr, EXIT_FAILURE);
-        if(strcmp(argv[1], "--help") == 0) famstats_frac_usage_exit(stderr, EXIT_SUCCESS);
+        if(argc < 3) famstats_frac_usage(stderr, EXIT_FAILURE);
+        if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(stderr, EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
             switch (c) {
@@ -359,7 +361,7 @@ namespace BMF {
             case 'n':
                 notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
-                return famstats_frac_usage_exit(stderr, EXIT_SUCCESS);
+                return famstats_frac_usage(stderr, EXIT_SUCCESS);
             }
         }
 
@@ -369,8 +371,8 @@ namespace BMF {
         LOG_INFO("Running frac main minFM %i.\n", minFM);
 
         if (argc != optind+1) {
-            if (argc == optind) famstats_frac_usage_exit(stdout, EXIT_SUCCESS);
-            else famstats_frac_usage_exit(stderr, EXIT_FAILURE);
+            if (argc == optind) famstats_frac_usage(stdout, EXIT_SUCCESS);
+            else famstats_frac_usage(stderr, EXIT_FAILURE);
         }
         for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind], tag);
         dlib::BamHandle handle(argv[optind]);

@@ -75,6 +75,7 @@ namespace BMF {
     int err_fm_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
+                "Calculates error rates by family size.\n"
                 "Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
                 "Flags:\n"
                 "-h/-?\t\tThis helpful help menu!\n"
@@ -95,6 +96,7 @@ namespace BMF {
     int err_region_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
+                "Calculates error rates by genomic region.\n"
                 "Usage: bmftools err region <reference.fasta> <input.csrt.bam>\n"
                 "Flags:\n"
                 "-b\t\tPath to bed file. REQUIRED."
@@ -111,6 +113,7 @@ namespace BMF {
     int err_cycle_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
+                "Calculates error rate by cycle.\n"
                 "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
                 "Flags:\n"
                 "-h/-?\t\tThis helpful help menu!\n"
@@ -898,16 +901,17 @@ namespace BMF {
 
     int err_usage(FILE *fp, int retcode)
     {
-        fprintf(stderr, "bmftools err\nSubcommands:\n"
-                "\tmain:\n"
-                "\t\tCalculates error rates by family size, cycle, base call, and quality score.\n"
-                "\t\tProvides a variety of ways of slicing the data.\n"
-                "\tfm:\n"
-                "\t\tCalculates error rates by family size.\n"
-                "\tcycle:\n"
-                "\t\tCalculates error rates by cycle.\n"
-                "\tregion:\n"
-                "\t\tCalculates error rates by bed region.\n"
+        fprintf(stderr,
+                        "bmftools err\nSubcommands:\n"
+                        "\tmain:\n"
+                        "\t\tCalculates error rates by family size, cycle, base call, and quality score.\n"
+                        "\t\tProvides a variety of ways of slicing the data.\n"
+                        "\tfm:\n"
+                        "\t\tCalculates error rates by family size.\n"
+                        "\tcycle:\n"
+                        "\t\tCalculates error rates by cycle.\n"
+                        "\tregion:\n"
+                        "\t\tCalculates error rates by bed region.\n"
                 );
         exit(retcode);
         return retcode; // This never happens
