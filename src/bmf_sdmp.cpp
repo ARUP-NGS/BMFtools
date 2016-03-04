@@ -298,6 +298,7 @@ namespace BMF {
         cleanup:
         splitter_destroy(splitter);
         free_marksplit_settings(settings);
+        LOG_INFO("Successfully complete bmftools sdmp!\n");
         return EXIT_SUCCESS;
     }
 

@@ -102,6 +102,7 @@ namespace BMF {
             fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f.\n",
                     padding, minMQ, (double)counts.rfm_target / counts.rfm_count);
         }
+        LOG_INFO("Successfully complete bmftools target!\n");
         return EXIT_SUCCESS;
     }
 

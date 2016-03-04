@@ -1937,5 +1937,6 @@ int sort_main(int argc, char *argv[])
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);
+    LOG_INFO("Successfully complete bmftools sort!\n");
     return ret;
 }

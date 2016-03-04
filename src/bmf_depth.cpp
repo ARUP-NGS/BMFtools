@@ -395,6 +395,7 @@ namespace BMF {
         free(aux); free(idx);
         free(str.s);
         free(bedpath);
+        LOG_INFO("Successfully completed bmftools depth!\n");
         return(EXIT_SUCCESS);
     }
 }

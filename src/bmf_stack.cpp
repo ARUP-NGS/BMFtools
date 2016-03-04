@@ -352,7 +352,9 @@ namespace BMF {
         // Check for required tags.
         for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
-        return stack_core(&aux);
+        int ret = stack_core(&aux);
+        LOG_INFO("Successfully complete bmftools stack!\n");
+        return ret;
     }
 
 } /* namespace BMF */

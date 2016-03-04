@@ -472,6 +472,7 @@ namespace BMF {
         dlib::bed_destroy_hash(aux.bed);
         cond_free(outvcf);
         cond_free(bed);
+        LOG_INFO("Successfully complete bmftools vet!\n");
         return ret;
     }
 

@@ -108,6 +108,7 @@ namespace BMF {
         } else ret = in.for_each(bam_test, out, (void *)&param);
         // Clean up.
         if(param.bed) dlib::bed_destroy_hash((void *)param.bed);
+        LOG_INFO("Successfully completed bmftools filter!\n");
         return ret;
     }
 

@@ -108,10 +108,12 @@ namespace BMF {
             fprintf(stderr, "[E:%s] All caps cannot be set to 0 (default value). [Required parameter] See usage.\n", __func__);
             return cap_qscore_usage();
         }
-        return dlib::bam_apply_function(argv[optind], argv[optind+1],
-                                        settings.dnd ? (single_aux_check)&cap_bam_dnd
-                                                     : (single_aux_check)&cap_bam_q,
-                                        (void *)&settings, wmode);
+        int ret = dlib::bam_apply_function(argv[optind], argv[optind+1],
+                                           settings.dnd ? (single_aux_check)&cap_bam_dnd
+                                                        : (single_aux_check)&cap_bam_q,
+                                           (void *)&settings, wmode);
+        LOG_INFO("Successfully completed bmftools cap_qscore!\n");
+        return ret;
     }
 
 }

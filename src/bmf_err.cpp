@@ -571,13 +571,23 @@ namespace BMF {
                     length = bam_cigar_oplen(cigar[i]);
                     switch(bam_cigar_op(cigar[i])) {
                     case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        for(ind = 0; ind < length; ++ind) {
-                            s = bam_seqi(seq, ind + rc);
-                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                            cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
-                            ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
-                                ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                        if(is_rev) {
+                            for(ind = 0; ind < length; ++ind) {
+                                s = bam_seqi(seq, ind + rc);
+                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                                cycle = b->core.l_qseq - 1 - ind - rc;
+                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                            }
+                        } else {
+                            for(ind = 0; ind < length; ++ind) {
+                                cycle = ind + rc;
+                                s = bam_seqi(seq, cycle);
+                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
+                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
                             }
                         }
                         rc += length; fc += length;
@@ -686,12 +696,14 @@ namespace BMF {
         for(unsigned i = 0; i < 4u; ++i) {
             for(uint64_t l = 0; l < f->l; ++l) {
                 // Handle qscores of 2
-                f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l]) : 2;
-                f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l]) : 2;
+                f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l])
+                                                                       : 2;
+                f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l])
+                                                                       : 2;
                 for(unsigned j = 1; j < NQSCORES; ++j) {
                     f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2;
-                    f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
                     if(f->r1->final[i][j][l] < 2) f->r1->final[i][j][l] = 2;
+                    f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
                     if(f->r2->final[i][j][l] < 2) f->r2->final[i][j][l] = 2;
                 }
             }
@@ -705,10 +717,12 @@ namespace BMF {
         for(i = 0; i < 4; ++i) {
             for(l = 0; l < f->l; ++l) {
                 for(unsigned j = 1; j < NQSCORES; ++j) { // Skip qualities of 2
-                    f->r1->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
-                    f->r2->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
-                    f->r1->qobs[i][l] += f->r1->obs[i][j][l]; f->r2->qobs[i][l] += f->r2->obs[i][j][l];
-                    f->r1->qerr[i][l] += f->r1->err[i][j][l]; f->r2->qerr[i][l] += f->r2->err[i][j][l];
+                    f->r1->qpvsum[i][l] += std::pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
+                    f->r1->qobs[i][l] += f->r1->obs[i][j][l];
+                    f->r1->qerr[i][l] += f->r1->err[i][j][l];
+                    f->r2->qpvsum[i][l] += std::pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
+                    f->r2->qobs[i][l] += f->r2->obs[i][j][l];
+                    f->r2->qerr[i][l] += f->r2->err[i][j][l];
                 }
             }
         }
@@ -717,9 +731,10 @@ namespace BMF {
                 f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
                 //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
-                f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]): 0;
-                f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l]): 0;
-                LOG_DEBUG("qdiffs at %i, %lu: %i, %i\n", i, l, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
+                f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
+                                                                     : 0;
+                f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
+                                                                     : 0;
             }
         }
     }
@@ -729,9 +744,9 @@ namespace BMF {
         for(int i = 0; i < 4; ++i) {
             for(unsigned j = 0; j < NQSCORES; ++j) {
                 for(uint64_t l = 0; l < f->l; ++l) {
-                    if(f->r1->obs[i][j][l] > min_obs)
+                    if(f->r1->obs[i][j][l] >= min_obs)
                         f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-                    if(f->r2->obs[i][j][l] > min_obs)
+                    if(f->r2->obs[i][j][l] >= min_obs)
                         f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
                 }
             }
@@ -808,10 +823,8 @@ namespace BMF {
         ret->l = l;
         ret->r1 = readerr_init(l);
         ret->r2 = readerr_init(l);
-        if(bedpath) {
-            ret->bed = kh_init(bed);
+        if(bedpath)
             ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
-        }
         ret->minFM = minFM;
         ret->maxFM = maxFM;
         ret->flag = flag;
@@ -998,17 +1011,29 @@ namespace BMF {
         //fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
         if(*outpath)
             ofp = fopen(outpath, "w"), write_final(ofp, f), fclose(ofp);
-        if(d3)
-            write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
-        if(df)
-            write_full_rates(df, f), fclose(df), df = NULL;
-        if(dbc)
-            write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
-        if(dc)
-            write_cycle_rates(dc, f), fclose(dc), dc = NULL;
-        if(!global_fp) global_fp = stdout;
+        if(d3) {
+            write_3d_offsets(d3, f);
+            fclose(d3), d3 = NULL;
+        }
+        if(df) {
+            write_full_rates(df, f);
+            fclose(df), df = NULL;
+        }
+        if(dbc) {
+            write_base_rates(dbc, f);
+            fclose(dbc), dbc = NULL;
+        }
+        if(dc) {
+            write_cycle_rates(dc, f);
+            fclose(dc), dc = NULL;
+        }
+        if(!global_fp) {
+            LOG_INFO("No global rate outfile provided. Defaulting to stdout.\n");
+            global_fp = stdout;
+        }
         write_global_rates(global_fp, f); fclose(global_fp);
         fullerr_destroy(f);
+        LOG_INFO("Successfully completed bmftools err main!\n");
         return EXIT_SUCCESS;
     }
 
@@ -1057,6 +1082,7 @@ namespace BMF {
         cond_free(refcontig);
         cond_free(bedpath);
         cond_free(outpath);
+        LOG_INFO("Successfully completed bmftools err cycle!\n");
         return EXIT_SUCCESS;
     }
 
@@ -1131,6 +1157,7 @@ namespace BMF {
         err_fm_report(ofp, f); fclose(ofp);
         fai_destroy(fai);
         fm_destroy(f);
+        LOG_INFO("Successfully completed bmftools err fm!\n");
         return EXIT_SUCCESS;
     }
 
@@ -1274,6 +1301,7 @@ namespace BMF {
         fai_destroy(fai);
         cond_free(bedpath);
         cond_free(outpath);
+        LOG_INFO("Successfully completed bmftools err region!\n");
         return EXIT_SUCCESS;
     }
 
