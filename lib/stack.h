@@ -23,6 +23,8 @@
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
+namespace BMF {
+
 static const char *stack_vcf_lines[] = {
         "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
         "##FORMAT=<ID=ADP,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">",
@@ -37,11 +39,7 @@ static const char *stack_vcf_lines[] = {
         "##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description=\"Somatic mutation\">"
 };
 
-
-
-namespace BMF {
-
-    struct stack_conf {
+    struct stack_conf_t {
         float minFR; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
         int max_depth;
@@ -135,7 +133,7 @@ namespace BMF {
 
     class stack_aux_t {
     public:
-        stack_conf conf;
+        stack_conf_t conf;
         dlib::BamHandle tumor;
         dlib::BamHandle normal;
         dlib::VcfHandle vcf;
@@ -174,7 +172,7 @@ namespace BMF {
             }
             return 0;
         }
-        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf conf):
+        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf_t conf):
             conf(conf),
             tumor(tumor_path),
             normal(normal_path),

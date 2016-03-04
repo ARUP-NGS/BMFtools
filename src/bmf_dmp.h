@@ -75,7 +75,7 @@ namespace BMF {
                 int readlen##_settings = dlib::count_lines(settings.rescaler_path);\
                 for(int i = 0; i < 2; ++i) {\
                     for(int j = 0; j < readlen##_settings; ++j) {\
-                        for(int k = 0; k < nqscores; ++k) {\
+                        for(int k = 0; k < NQSCORES; ++k) {\
                             cond_free(settings.rescaler[i][j][k]);\
                         }\
                         cond_free(settings.rescaler[i][j]);\

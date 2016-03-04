@@ -99,17 +99,13 @@ namespace BMF {
     mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
     {
         mark_splitter_t ret = {
-            NULL, // tmp_out_handles_r1
-            NULL, // tmp_out_handles_r2
+            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r1
+            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r2
             settings_ptr->n_nucs, // n_nucs
             (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
-            NULL, // infnames_r1
-            NULL  // infnames_r2
+            (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
+            (char **)malloc(ret.n_handles * sizeof(char *))  // infnames_r2
         };
-        ret.tmp_out_handles_r1 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
-        ret.tmp_out_handles_r2 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
-        ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
-        ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
         kstring_t ks = {0, 0, NULL};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
@@ -127,15 +123,13 @@ namespace BMF {
     mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
     {
         mark_splitter_t ret = {
-            NULL, // tmp_out_handles_r1
+            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r1
             NULL, // tmp_out_handles_r2
             settings_ptr->n_nucs, // n_nucs
             (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
-            NULL, // infnames_r1
+            (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
             NULL  // infnames_r2
         };
-        ret.tmp_out_handles_r1 = (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile));
-        ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
         kstring_t ks = {0, 0, NULL};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;

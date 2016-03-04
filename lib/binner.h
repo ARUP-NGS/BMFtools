@@ -6,6 +6,8 @@
 #include "dlib/compiler_util.h"
 #include "dlib/math_util.h"
 
+namespace BMF {
+
 /* get_binner is written in a type-generic way.
  * You must declare the binner with DECLARE_BINNER and then use
  * get_binner_type to access the correct function.
@@ -23,5 +25,7 @@
     }
 
 DECLARE_BINNER(uint64_t)
+
+}
 
 #endif /* BINNER_H */

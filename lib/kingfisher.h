@@ -66,7 +66,6 @@ namespace BMF {
 
     static inline void pushback_kseq(KingFisher *kfp, kseq_t *seq, int blen);
     static inline void pb_pos(KingFisher *kfp, kseq_t *seq, int i);
-    static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
     void stranded_process_write(KingFisher *kfpf, KingFisher *kfpr, FILE *handle, tmpbuffers_t *bufs);
     void zstranded_process_write(KingFisher *kfpf, KingFisher *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
     void dmp_process_write(KingFisher *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);

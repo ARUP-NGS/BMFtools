@@ -7,7 +7,6 @@
 
 namespace BMF {
 
-
     void print_crms_usage(char *executable)
     {
             fprintf(stderr, "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>"
@@ -231,7 +230,7 @@ namespace BMF {
             switch(*sequence) {
             case 'A': case 'C':  case 'G':  case 'T':
                 break;
-            case 'a': case 'g': case 'c': case 't':
+            case 'a': case 'c': case 'g': case 't':
                 *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
             default:
                 LOG_EXIT("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
@@ -268,7 +267,7 @@ namespace BMF {
                 LOG_EXIT("Could not open fastqs for reading. Abort!\n");
         }
         LOG_DEBUG("Read length (inferred): %lu.\n", seq1->seq.l);
-        check_rescaler(settings, seq1->seq.l * 4 * 2 * nqscores);
+        check_rescaler(settings, seq1->seq.l * 4 * 2 * NQSCORES);
         tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
         int switch_reads = switch_test(seq1, seq2, settings->offset);
         const int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
@@ -319,14 +318,11 @@ namespace BMF {
                 mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
                 mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
             } else {
-                // Copy barcode over
                 memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
                 memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
-                // Test for homopolymer failure
                 pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
-                bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+                bin = BMF::get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
                 assert(bin < (uint64_t)settings->n_handles);
-                // Write out
                 mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
                 mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
             }

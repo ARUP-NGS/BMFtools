@@ -265,7 +265,7 @@ namespace BMF {
         if(argc < 2) stack_usage(EXIT_FAILURE);
         char *outvcf = NULL, *refpath = NULL;
         char *bedpath = NULL;
-        struct BMF::stack_conf conf = {0};
+        struct BMF::stack_conf_t conf = {0};
         const struct option lopts[] = {
             {"skip-secondary", no_argument, NULL, '2'},
             {"min-family-agreed", required_argument, NULL, 'a'},
@@ -330,9 +330,12 @@ namespace BMF {
         for(auto line: stack_vcf_lines)
             if(bcf_hdr_append(vh, line))
                 LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+        // Add samples
         int tmp;
-        if((tmp = bcf_hdr_add_sample(vh, "Tumor"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        if((tmp = bcf_hdr_add_sample(vh, "Normal"))) LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
+            LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
+        if((tmp = bcf_hdr_add_sample(vh, "Normal")))
+            LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
         bcf_hdr_add_sample(vh, NULL);
         bcf_hdr_nsamples(vh) = 2;
         LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));

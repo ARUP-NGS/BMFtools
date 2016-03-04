@@ -6,7 +6,7 @@
 namespace BMF {
 
     int usage(char **argv, int retcode=EXIT_FAILURE) {
-        fprintf(stderr, "bmftools %s <-l output_compression_level> in.bam out.bam\n"
+        fprintf(stderr, "bmftools filter <-l output_compression_level> in.bam out.bam\n"
                         "Use - for stdin or stdout.\n"
                         "Flags-\n"
                         "-F\t\tSkip all reads with any bits in parameter set.\n"
@@ -16,7 +16,7 @@ namespace BMF {
                         "-s\t\tMinimum family size for inclusion.\n"
                         "-r\t\tIf set, writes failed reads to this file.\n"
                         "-v\t\tInvert pass/fail, analogous to grep.\n"
-                , argv[0]);
+                );
         return retcode;
     }
 
