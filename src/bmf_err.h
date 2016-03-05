@@ -85,36 +85,38 @@ namespace BMF {
     };
 
     class RegionExpedition {
+    public:
+        samFile *fp;
+        bam_hdr_t *hdr;
+        khash_t(bed) *bed;
+    private:
         uint32_t padding;
         std::string bedpath;
     public:
-        khash_t(bed) *bed;
         faidx_t *fai; // Does not own fai!
         std::vector<RegionErr> region_counts;
-        samFile *fp;
-        bam_hdr_t *hdr;
         hts_itr_t *iter;
         hts_idx_t *bam_index;
         int32_t minMQ;
         int32_t minFM;
         int32_t requireFP;
         int32_t max_depth;
-        RegionExpedition(char *bampath, char *_bedpath, faidx_t *_fai, int32_t _minMQ=0, uint32_t _padding=DEFAULT_PADDING,
-                int32_t _minFM=0, int32_t _requireFP=0, int _max_depth=262144) {
-            fp = sam_open(bampath, "r");
-            hdr = sam_hdr_read(fp);
+        RegionExpedition(char *bampath, char *bedpath, faidx_t *fai, int32_t minMQ=0, uint32_t padding=DEFAULT_PADDING,
+                         int32_t minFM=0, int32_t requireFP=0, int max_depth=262144) :
+                fp(sam_open(bampath, "r")),
+                hdr(sam_hdr_read(fp)),
+                bed(dlib::parse_bed_hash(bedpath, hdr, padding)),
+                padding(padding),
+                bedpath(bedpath),
+                fai(fai),
+                iter(NULL),
+                bam_index(sam_index_load(fp, fp->fn)),
+                minMQ(minMQ),
+                minFM(minFM),
+                requireFP(requireFP),
+                max_depth(max_depth)
+        {
             if(!fp || !hdr) LOG_EXIT("Could not open input sam file %s. Abort!\n", bampath);
-            padding = _padding;
-            bed = dlib::parse_bed_hash(_bedpath, hdr, _padding);
-            bedpath = std::string(_bedpath);
-            minMQ = _minMQ;
-            minFM = _minFM;
-            max_depth = _max_depth;
-            requireFP = _requireFP;
-            fai = _fai;
-            region_counts = std::vector<RegionErr>();
-            iter = NULL;
-            bam_index= sam_index_load(fp, fp->fn);
             if(!bam_index) LOG_EXIT("Could not read bam index for sam file %s. Abort!\n", fp->fn);
         }
         ~RegionExpedition() {

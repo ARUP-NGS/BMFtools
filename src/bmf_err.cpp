@@ -113,16 +113,16 @@ namespace BMF {
     int err_cycle_usage(FILE *fp, int retcode)
     {
         fprintf(fp,
-                "Calculates error rate by cycle.\n"
-                "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
-                "Flags:\n"
-                "-h/-?\t\tThis helpful help menu!\n"
-                "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-                "-a\t\tSet minimum mapping quality for inclusion.\n"
-                "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
-                "-b:\t\tPath to bed file for restricting analysis.\n"
-                "-p:\t\tSet padding for bed region. Default: 50.\n"
-                "-P:\t\tOnly include proper pairs.\n"
+                   "Calculates error rate by cycle.\n"
+                   "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
+                   "Flags:\n"
+                   "-h/-?\t\tThis helpful help menu!\n"
+                   "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+                   "-a\t\tSet minimum mapping quality for inclusion.\n"
+                   "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+                   "-b:\t\tPath to bed file for restricting analysis.\n"
+                   "-p:\t\tSet padding for bed region. Default: 50.\n"
+                   "-P:\t\tOnly include proper pairs.\n"
                 );
         exit(retcode);
         return retcode; // This never happens.
@@ -163,11 +163,6 @@ namespace BMF {
         }
     }
 
-    int int32_cmp(const void *a, const void *b)
-    {
-        return *((int *)a) - *((int *)b);
-    }
-
     void err_fm_report(FILE *fp, fmerr_t *f)
     {
         LOG_DEBUG("Beginning err fm report.\n");
@@ -196,7 +191,7 @@ namespace BMF {
         for(k = kh_begin(key_union), khr = 0; k != kh_end(key_union); ++k)
             if(kh_exist(key_union, k))
                 tmp[khr++] = kh_key(key_union, k);
-        qsort(tmp, key_union->n_occupied, sizeof(int), &int32_cmp);
+        std::sort(tmp, tmp + key_union->n_occupied);
         for(unsigned i = 0; i < key_union->n_occupied; ++i) {
             fm = tmp[i];
             fprintf(fp, "%i\t", fm);

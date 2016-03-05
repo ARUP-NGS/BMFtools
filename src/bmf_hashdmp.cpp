@@ -322,7 +322,7 @@ namespace BMF {
             } else {
                 ++duplex;
                 zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
-                destroy_kf(cfor->value), destroy_kf(crev->value);
+                destroy_kf(cfor->value); destroy_kf(crev->value);
                 HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
                 cond_free(crev); cond_free(cfor);
             }
