@@ -6,7 +6,8 @@
 namespace BMF {
 
     int usage(char **argv, int retcode=EXIT_FAILURE) {
-        fprintf(stderr, "Filters a bam by a set of given parameters.\n"
+        fprintf(stderr,
+                        "Filters a bam by a set of given parameters.\n"
                         "Usage: bmftools filter <-l output_compression_level> in.bam out.bam\n"
                         "Use - for stdin or stdout.\n"
                         "Flags:\n"

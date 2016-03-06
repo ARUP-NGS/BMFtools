@@ -12,7 +12,8 @@ namespace BMF {
 
     void sdmp_usage(char *argv[])
     {
-            fprintf(stderr, "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
+            fprintf(stderr,
+                            "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
                             "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>\n"
                             "Flags:\n"
                             "-i: Index fastq path. REQUIRED.\n"
@@ -35,8 +36,8 @@ namespace BMF {
                             "-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
                             "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                             "-S: Single-end mode. Ignores read 2.\n"
-                            "-O: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
-                            argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
+                            "-O: Emit final fastqs to stdout in interleaved form. Ignores -f.\n"
+                    , argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
     }
 
     static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)

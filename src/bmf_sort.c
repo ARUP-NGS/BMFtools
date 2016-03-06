@@ -1838,22 +1838,24 @@ int bam_sort_core(int cmpkey, const char *fn, const char *prefix, size_t max_mem
 */
 
 
-static int sort_usage(FILE *fp, int status)
+static int sort_usage(int status)
 {
-    fprintf(fp,
-            "Usage: bmftools sort <opts> <in.bam>\n"
-            "Flags:\n"
-            "-l INT       Set compression level, from 0 (uncompressed) to 9 (best)\n"
-            "-m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-            "-k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
-            "-o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
-            "-O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
-            "-T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
-            "-@ INT       Set number of sorting and compression threads [1]\n"
-            "-s           Flag to split the bam into a list of file handles.\n"
-            "-p           If splitting into a list of handles, this sets the file prefix.\n"
-            "-$           Flag to specify single-end. Needed for unclipped start compatibility.\n"
-            "\n"
+    fprintf(stderr,
+                    "Sorts bam alignments by alignment signatures to group "
+                    "reads with barcode errors with their original families.\n"
+                    "Usage: bmftools sort <opts> <in.bam>\n"
+                    "Flags:\n"
+                    "-l INT       Set compression level, from 0 (uncompressed) to 9 (best)\n"
+                    "-m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
+                    "-k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
+                    "-o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
+                    "-O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
+                    "-T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
+                    "-@ INT       Set number of sorting and compression threads [1]\n"
+                    "-s           Flag to split the bam into a list of file handles.\n"
+                    "-p           If splitting into a list of handles, this sets the file prefix.\n"
+                    "-$           Flag to specify single-end. Needed for unclipped start compatibility.\n"
+                    "\n"
             );
     return status;
 }
@@ -1894,7 +1896,7 @@ int sort_main(int argc, char *argv[])
                   }
                   else {
                       fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
-                      return sort_usage(stderr, EXIT_FAILURE);
+                      return sort_usage(EXIT_FAILURE);
                   }
                   break;
         case 'o': strcpy(fnout, optarg); break;
@@ -1915,15 +1917,15 @@ int sort_main(int argc, char *argv[])
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
         case '?':
-        case 'h': return sort_usage(stderr, EXIT_SUCCESS);
+        case 'h': return sort_usage(EXIT_SUCCESS);
         }
     }
 
     nargs = argc - optind;
     if (argc == 1)
-        return sort_usage(stdout, EXIT_SUCCESS);
+        return sort_usage(EXIT_SUCCESS);
     else if (nargs > 1)
-        return sort_usage(stderr, EXIT_FAILURE);
+        return sort_usage(EXIT_FAILURE);
 
 
     strcpy(modeout, "wb");

@@ -16,27 +16,27 @@ namespace BMF {
 
     void stack_usage(int retcode)
     {
-        const char *buf =
-                "Builds a stack summary for base calls and performs simple filters"
-                " to produce a maximally permissive 'variant caller'.\n"
-                "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
-                "Optional arguments:\n"
-                "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
-                "-o, --outpath\tPath to output file. Defaults to stdout.\n"
-                "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
-                "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
-                "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
-                "-2, --skip-secondary\tSkip secondary alignments.\n"
-                "-S, --skip-supplementary\tSkip supplementary alignments.\n"
-                "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
-                "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
-                "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-                "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
-                "-p, --padding\tNumber of bases outside of bed region to pad.\n"
-                "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
-                "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-                "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n";
-        fprintf(stderr, buf);
+        fprintf(stderr,
+                        "Builds a stack summary for base calls and performs simple filters"
+                        " to produce a maximally permissive 'variant caller'.\n"
+                        "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
+                        "Optional arguments:\n"
+                        "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
+                        "-o, --outpath\tPath to output file. Defaults to stdout.\n"
+                        "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
+                        "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
+                        "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-2, --skip-secondary\tSkip secondary alignments.\n"
+                        "-S, --skip-supplementary\tSkip supplementary alignments.\n"
+                        "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
+                        "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
+                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
+                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+                        "-p, --padding\tNumber of bases outside of bed region to pad.\n"
+                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
+                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
+                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
+                );
         exit(retcode);
     }
 

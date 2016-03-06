@@ -2,17 +2,18 @@
 
 namespace BMF {
 
-    int target_usage(FILE *fp, int retcode)
+    int target_usage(int retcode)
     {
-        fprintf(fp,
-                "Calculates the fraction of on-target reads."
-                "Usage: bmftools target <opts> <in.bam> \n"
-                "Required arguments:"
-                "-b\tPath to bed.\n"
-                "Optional arguments:\n"
-                "-m\tSet minimum mapping quality for inclusion.\n"
-                "-p\tSet padding - number of bases around target region to consider as on-target. Default: 0.\n"
-                "-n\tSet notification interval - number of reads between logging statements. Default: 1000000.\n");
+        fprintf(stderr,
+                        "Calculates the fraction of on-target reads."
+                        "Usage: bmftools target <opts> <in.bam> \n"
+                        "Required arguments:"
+                        "-b\tPath to bed.\n"
+                        "Optional arguments:\n"
+                        "-m\tSet minimum mapping quality for inclusion.\n"
+                        "-p\tSet padding - number of bases around target region to consider as on-target. Default: 0.\n"
+                        "-n\tSet notification interval - number of reads between logging statements. Default: 1000000.\n"
+                );
         exit(retcode);
         return retcode; // This never happens.
     }
@@ -20,12 +21,11 @@ namespace BMF {
     target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval)
     {
         dlib::BamHandle handle(bampath);
-        khash_t(bed) *bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
-        target_counts_t counts = {0};
+        khash_t(bed) *bed(dlib::parse_bed_hash(bedpath, handle.header, padding));
+        target_counts_t counts({0});
         uint8_t *data;
-        int c;
         int test;
-        while (LIKELY((c = handle.next()) >= 0)) {
+        while (LIKELY(handle.next() >= 0)) {
             if((handle.rec->core.qual < minMQ) || (handle.rec->core.flag & (3844))) { // 3844 is unmapped, secondary, supplementary, qcfail, duplicate
                 ++counts.n_skipped;
                 continue;
@@ -52,9 +52,9 @@ namespace BMF {
         uint64_t notification_interval = 1000000;
 
 
-        if(argc < 4) return target_usage(stderr, EXIT_SUCCESS);
+        if(argc < 4) return target_usage(EXIT_SUCCESS);
 
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return target_usage(stderr, EXIT_SUCCESS);
+        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return target_usage(EXIT_SUCCESS);
 
         int c;
         while ((c = getopt(argc, argv, "m:b:p:n:h?")) >= 0) {
@@ -68,7 +68,7 @@ namespace BMF {
             case 'n':
                 notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
-                return target_usage(stderr, EXIT_SUCCESS);
+                return target_usage(EXIT_SUCCESS);
             }
         }
 
@@ -79,13 +79,13 @@ namespace BMF {
         }
 
         if (argc != optind+1)
-            return target_usage(stdout, (argc == optind) ?  EXIT_SUCCESS: EXIT_FAILURE);
+            return target_usage((argc == optind) ?  EXIT_SUCCESS: EXIT_FAILURE);
 
         target_counts_t counts = target_core(bedpath, argv[optind], padding, minMQ, notification_interval);
 
         if(!bedpath) {
             fprintf(stderr, "[E:%s] Bed path required for bmftools target. See usage.\n", __func__);
-            return target_usage(stderr, EXIT_FAILURE);
+            return target_usage(EXIT_FAILURE);
         }
 
         // Open [smt]am file.

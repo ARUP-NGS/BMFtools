@@ -5,26 +5,26 @@ namespace BMF {
 
     void vetter_usage(int retcode)
     {
-        const char *buf =
-                "Checks variants from the vcf within a set of bed regions."
-                "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
-                "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
-                "Optional arguments:\n"
-                "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
-                "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
-                "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
-                "-2, --skip-secondary\tSkip secondary alignments.\n"
-                "-S, --skip-supplementary\tSkip supplementary alignments.\n"
-                "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
-                "-r, --skip-duplicates\tSkip reads marked as duplicates.\n"
-                "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
-                "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-                "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
-                "-p, --padding\tNumber of bases outside of bed region to pad.\n"
-                "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
-                "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-                "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n";
-        fprintf(stderr, buf);
+        fprintf(stderr,
+                        "Checks variants from the vcf within a set of bed regions."
+                        "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
+                        "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
+                        "Optional arguments:\n"
+                        "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
+                        "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
+                        "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-2, --skip-secondary\tSkip secondary alignments.\n"
+                        "-S, --skip-supplementary\tSkip supplementary alignments.\n"
+                        "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
+                        "-r, --skip-duplicates\tSkip reads marked as duplicates.\n"
+                        "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
+                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
+                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+                        "-p, --padding\tNumber of bases outside of bed region to pad.\n"
+                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
+                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
+                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
+                );
         exit(retcode);
     }
 
