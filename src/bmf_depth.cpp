@@ -76,7 +76,7 @@ namespace BMF {
         keyset.clear();
         std::vector<std::vector<uint64_t>> csums;
         for(i = 0; i < n_samples; ++i) {
-            csums.push_back(std::vector<uint64_t>(keys.size()));
+            csums.emplace_back((keys.size()));
             for(j = keys.size() - 1; j != (unsigned)-1; --j) {
                 if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
                     csums[i][j] = kh_val(aux[i]->depth_hash, k);
@@ -251,9 +251,9 @@ namespace BMF {
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
         size_t capture_size = 0;
-        std::vector<uint64_t> raw_capture_counts = std::vector<uint64_t>((size_t)n);
-        std::vector<uint64_t> dmp_capture_counts = std::vector<uint64_t>((size_t)n);
-        std::vector<uint64_t> singleton_capture_counts = std::vector<uint64_t>((size_t)n);
+        std::vector<uint64_t> raw_capture_counts(n);
+        std::vector<uint64_t> dmp_capture_counts(n);
+        std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str = {0, 0, NULL};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;

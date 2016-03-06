@@ -245,7 +245,7 @@ namespace BMF {
         bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
         bam_plp_set_maxcnt(pileup, max_depth);
 
-        std::vector<khiter_t> keys = dlib::make_sorted_keys(aux->bed);
+        std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
         for(khiter_t& ki: keys) {
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
                 int tid, start, stop, pos = -1;

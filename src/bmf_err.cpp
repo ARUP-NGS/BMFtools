@@ -1213,7 +1213,7 @@ namespace BMF {
         char *ref = NULL;
         int len;
         bam1_t *b = bam_init1();
-        auto sorted_keys = dlib::make_sorted_keys(Holloway->bed);
+        std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
         for(khiter_t& k: sorted_keys) {
             if(!kh_exist(Holloway->bed, k)) continue;
             if(ref) free(ref);

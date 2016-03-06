@@ -26,9 +26,9 @@ namespace BMF {
         kputc(refbase, &allele_str);
         auto match = templates.find(refbase);
         if(match == templates.end()) {
-            counts = std::vector<int>(templates.size() + 1, 0);
-            duplex_counts = std::vector<int>(templates.size() + 1, 0);
-            overlap_counts = std::vector<int>(templates.size() + 1, 0);
+            counts = std::vector<int>(templates.size() + 1);
+            duplex_counts = std::vector<int>(templates.size() + 1);
+            overlap_counts = std::vector<int>(templates.size() + 1);
             bcf_update_info_flag(hdr, vrec, "NOREF", NULL, 1);
             // No reference calls? Add appropriate info fields.
         } else {
@@ -91,7 +91,6 @@ namespace BMF {
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         const char refbase = aux->get_ref_base(ttid, tpos);
         int ambig[2] = {0, 0};
-        std::vector<char> base_calls;
         std::unordered_set<char> base_set = std::unordered_set<char>({refbase});
         for(auto& pair: tumor.templates) {
             if(pair.first == 'N') {
@@ -107,18 +106,18 @@ namespace BMF {
             }
             base_set.insert(pair.first);
         }
-        base_calls = std::vector<char>(base_set.begin(), base_set.end());
+        std::vector<char> base_calls(base_set.begin(), base_set.end());
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
         });
-        std::vector<int> counts = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> duplex_counts = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> overlap_counts = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> allele_passes = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> reverse_counts = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> failed_counts = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> qscore_sums = std::vector<int>(base_calls.size() * 2);
-        std::vector<int> somatic = std::vector<int>(base_calls.size());
+        std::vector<int> counts(base_calls.size() * 2);
+        std::vector<int> duplex_counts(base_calls.size() * 2);
+        std::vector<int> overlap_counts(base_calls.size() * 2);
+        std::vector<int> reverse_counts(base_calls.size() * 2);
+        std::vector<int> failed_counts(base_calls.size() * 2);
+        std::vector<int> allele_passes(base_calls.size() * 2);
+        std::vector<int> qscore_sums(base_calls.size() * 2);
+        std::vector<int> somatic(base_calls.size());
         vrec->rid = tumor.tid;
         vrec->pos = tumor.pos;
         vrec->qual = 0;
@@ -209,8 +208,8 @@ namespace BMF {
         }
         const int total_depth_tumor = std::accumulate(counts.begin(), counts.begin() + base_calls.size(), 0);
         const int total_depth_normal = std::accumulate(counts.begin() + base_calls.size(), counts.end(), 0);
-        std::vector<float> rv_fractions = std::vector<float>(reverse_counts.size());
-        std::vector<float> allele_fractions = std::vector<float>(reverse_counts.size());
+        std::vector<float> rv_fractions(reverse_counts.size());
+        std::vector<float> allele_fractions(reverse_counts.size());
         for(unsigned i = 0; i < reverse_counts.size(); ++i) {
             rv_fractions[i] = (float)counts[i] / reverse_counts[i];
             rv_fractions[i + base_calls.size()] = (float)counts[i + base_calls.size()] / reverse_counts[i + base_calls.size()];

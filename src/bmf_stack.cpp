@@ -241,7 +241,7 @@ namespace BMF {
         aux->normal.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->normal);
         bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->normal.plp, aux->conf.max_depth);
-        std::vector<khiter_t> sorted_keys = dlib::make_sorted_keys(aux->bed);
+        std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
         int ttid, tpos, tn_plp, ntid, npos, nn_plp;
         bcf1_t *v = bcf_init1();
         for(unsigned k = 0; k < sorted_keys.size(); ++k) {
