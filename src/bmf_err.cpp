@@ -42,37 +42,36 @@ namespace BMF {
         return ret;
     }
 
-    int err_main_usage(FILE *fp, int retcode)
+    int err_main_usage(int exit_status)
     {
-        fprintf(fp,
-                "Calculates error rates over a variety of variables."
-                "The primary output format consists of quality scores "
-                "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
-                "Flags:\n"
-                "-h/-?\t\tThis helpful help menu!\n"
-                "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-                "-a\t\tSet minimum mapping quality for inclusion.\n"
-                "-S\t\tSet minimum calculated PV tag value for inclusion.\n"
-                "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
-                "-3:\t\tPath to write the 3d offset array in tabular format.\n"
-                "-f:\t\tPath to write the full measured error rates in tabular format.\n"
-                "-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
-                "-c:\t\tPath to write the cycle error rates in tabular format.\n"
-                "-b:\t\tPath to bed file for restricting analysis.\n"
-                "-m:\t\tMinimum family size for inclusion. Default: 0.\n"
-                "-M:\t\tMaximum family size for inclusion. Default: %i.\n"
-                "-d:\t\tFlag to only calculate error rates for duplex reads.\n"
-                "-D:\t\tFlag to only calculate error rates for non-duplex reads.\n"
-                "-p:\t\tSet padding for bed region. Default: %i.\n"
-                "-P:\t\tOnly include proper pairs.\n"
-                "-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
-                , INT_MAX, DEFAULT_PADDING, min_obs
-                );
-        exit(retcode);
-        return retcode;
+        fprintf(stderr,
+                        "Calculates error rates over a variety of variables."
+                        "The primary output format consists of quality scores "
+                        "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
+                        "Flags:\n"
+                        "-h/-?\t\tThis helpful help menu!\n"
+                        "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+                        "-a\t\tSet minimum mapping quality for inclusion.\n"
+                        "-S\t\tSet minimum calculated PV tag value for inclusion.\n"
+                        "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+                        "-3:\t\tPath to write the 3d offset array in tabular format.\n"
+                        "-f:\t\tPath to write the full measured error rates in tabular format.\n"
+                        "-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
+                        "-c:\t\tPath to write the cycle error rates in tabular format.\n"
+                        "-b:\t\tPath to bed file for restricting analysis.\n"
+                        "-m:\t\tMinimum family size for inclusion. Default: 0.\n"
+                        "-M:\t\tMaximum family size for inclusion. Default: %i.\n"
+                        "-d:\t\tFlag to only calculate error rates for duplex reads.\n"
+                        "-D:\t\tFlag to only calculate error rates for non-duplex reads.\n"
+                        "-p:\t\tSet padding for bed region. Default: %i.\n"
+                        "-P:\t\tOnly include proper pairs.\n"
+                        "-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
+                , INT_MAX, DEFAULT_PADDING, min_obs);
+        exit(exit_status);
+        return exit_status;
     }
 
-    int err_fm_usage(FILE *fp, int retcode)
+    int err_fm_usage(FILE *fp, int exit_status)
     {
         fprintf(fp,
                 "Calculates error rates by family size.\n"
@@ -89,11 +88,11 @@ namespace BMF {
                 "-P:\t\tOnly include proper pairs.\n"
                 "-F:\t\tRequire that the FP tag be present and nonzero.\n"
                 );
-        exit(retcode);
-        return retcode; // This never happens.
+        exit(exit_status);
+        return exit_status; // This never happens.
     }
 
-    int err_region_usage(FILE *fp, int retcode)
+    int err_region_usage(FILE *fp, int exit_status)
     {
         fprintf(fp,
                 "Calculates error rates by genomic region.\n"
@@ -105,12 +104,12 @@ namespace BMF {
                 "-a\t\tSet minimum mapping quality for inclusion.\n"
                 "-p:\t\tSet padding for bed region. Default: 50.\n"
                 );
-        exit(retcode);
-        return retcode; // This never happens.
+        exit(exit_status);
+        return exit_status; // This never happens.
     }
 
 
-    int err_cycle_usage(FILE *fp, int retcode)
+    int err_cycle_usage(FILE *fp, int exit_status)
     {
         fprintf(fp,
                    "Calculates error rate by cycle.\n"
@@ -124,8 +123,8 @@ namespace BMF {
                    "-p:\t\tSet padding for bed region. Default: 50.\n"
                    "-P:\t\tOnly include proper pairs.\n"
                 );
-        exit(retcode);
-        return retcode; // This never happens.
+        exit(exit_status);
+        return exit_status; // This never happens.
     }
 
 
@@ -894,7 +893,7 @@ namespace BMF {
     }
 
 
-    int err_usage(FILE *fp, int retcode)
+    int err_usage(FILE *fp, int exit_status)
     {
         fprintf(stderr,
                         "bmftools err\nSubcommands:\n"
@@ -908,8 +907,8 @@ namespace BMF {
                         "\tregion:\n"
                         "\t\tCalculates error rates by bed region.\n"
                 );
-        exit(retcode);
-        return retcode; // This never happens
+        exit(exit_status);
+        return exit_status; // This never happens
     }
 
     int err_main(int argc, char *argv[])

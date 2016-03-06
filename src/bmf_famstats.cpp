@@ -5,15 +5,15 @@ namespace BMF {
     const char *tags_to_check[] = {"FP", "RV", "FM", "FA"};
     int RVWarn = 1;
 
-    int famstats_frac_usage(FILE *fp, int code) {
-        fprintf(fp,
-                    "Calculates the fraction of raw reads with family size >= parameter.\n"
-                    "Usage: bmftools famstats frac <opts> <in.bam>\n"
-                    "Flags:\n-m minFM to accept. REQUIRED.\n"
-                    "-h, -?: Return usage.\n"
+    int famstats_frac_usage(int exit_status) {
+        fprintf(stderr,
+                        "Calculates the fraction of raw reads with family size >= parameter.\n"
+                        "Usage: bmftools famstats frac <opts> <in.bam>\n"
+                        "Flags:\n-m minFM to accept. REQUIRED.\n"
+                        "-h, -?: Return usage.\n"
                 );
-        exit(code);
-        return code; // This never happens
+        exit(exit_status);
+        return exit_status; // This never happens
     }
 
 
@@ -92,17 +92,17 @@ namespace BMF {
     }
 
 
-    int famstats_target_usage(FILE *fp, int success)
+    int famstats_target_usage(int exit_status)
     {
-        fprintf(fp,
-                    "Calculates the fraction of raw reads on target.\n"
-                    "Usage: bmftools famstats target <opts> <in.bam>\n"
-                    "Flags:\n-b Path to bed file.\n"
-                    "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
-                    "-h, -?: Return usage.\n"
+        fprintf(stderr,
+                        "Calculates the fraction of raw reads on target.\n"
+                        "Usage: bmftools famstats target <opts> <in.bam>\n"
+                        "Flags:\n-b Path to bed file.\n"
+                        "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
+                        "-h, -?: Return usage.\n"
                 , DEFAULT_PADDING);
-        exit(success);
-        return success;
+        exit(exit_status);
+        return exit_status;
     }
 
 
@@ -114,10 +114,10 @@ namespace BMF {
         uint32_t padding = (uint32_t)-1;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 4) return famstats_target_usage(stderr, EXIT_SUCCESS);
+        if(argc < 4) return famstats_target_usage(EXIT_SUCCESS);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return famstats_target_usage(stderr, EXIT_SUCCESS);
+            return famstats_target_usage(EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
             switch (c) {
@@ -131,7 +131,7 @@ namespace BMF {
                 notification_interval = strtoull(optarg, NULL, 0);
                 break;
             case '?': case 'h':
-                return famstats_target_usage(stderr, EXIT_SUCCESS);
+                return famstats_target_usage(EXIT_SUCCESS);
             }
         }
 
@@ -142,11 +142,11 @@ namespace BMF {
         }
 
         if (argc != optind+1)
-            return famstats_target_usage(stderr, EXIT_FAILURE);
+            return famstats_target_usage(EXIT_FAILURE);
 
         if(!bedpath) {
             fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
-            return famstats_target_usage(stderr, EXIT_FAILURE);
+            return famstats_target_usage(EXIT_FAILURE);
         }
 
         dlib::BamHandle handle(argv[optind]);
@@ -274,14 +274,14 @@ namespace BMF {
         return s;
     }
 
-    static int famstats_usage_exit(FILE *fp, int exit_status)
+    static int famstats_usage_exit(int exit_status)
     {
-        fprintf(fp,
-                    "Calculates various utilities regarding family size on a given bam.\n"
-                    "Usage: bmftools famstats\n"
-                    "Subcommands: \nfm\tFamily Size stats\n"
-                    "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
-                    "target\tFraction of raw reads on target.\n"
+        fprintf(stderr,
+                        "Calculates various utilities regarding family size on a given bam.\n"
+                        "Usage: bmftools famstats\n"
+                        "Subcommands: \nfm\tFamily Size stats\n"
+                        "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
+                        "target\tFraction of raw reads on target.\n"
                 );
         exit(exit_status);
         return exit_status;
