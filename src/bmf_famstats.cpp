@@ -43,7 +43,7 @@ namespace BMF {
         uint8_t *data;
     };
 
-    struct famstat_settings_t {
+    struct famstats_fm_settings_t {
         uint64_t notification_interval;
         uint32_t minMQ;
         int minFM;
@@ -207,7 +207,7 @@ namespace BMF {
 
 
 
-    static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
+    static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settings_t *settings)
     {
         //Since R1 and R2
         if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
@@ -257,7 +257,7 @@ namespace BMF {
     }
 
 
-    famstats_t *famstats_fm_core(dlib::BamHandle& handle, famstat_settings_t *settings)
+    famstats_t *famstats_fm_core(dlib::BamHandle& handle, famstats_fm_settings_t *settings)
     {
         uint64_t count = 0;
         famstats_t *s = (famstats_t*)calloc(1, sizeof(famstats_t));
@@ -306,18 +306,18 @@ namespace BMF {
         int c;
 
 
-        famstat_settings_t *settings = (famstat_settings_t *)calloc(1, sizeof(famstat_settings_t));
-        settings->notification_interval = 1000000uL;
+        famstats_fm_settings_t settings{0};
+        settings.notification_interval = 1000000uL;
 
         while ((c = getopt(argc, argv, "m:f:n:h?")) >= 0) {
             switch (c) {
             case 'm':
-                settings->minMQ = atoi(optarg); break;
+                settings.minMQ = atoi(optarg); break;
                 break;
             case 'f':
-                settings->minFM = atoi(optarg); break;
+                settings.minFM = atoi(optarg); break;
                 break;
-            case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
+            case 'n': settings.notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
                 return famstats_fm_usage(EXIT_SUCCESS);
             }
@@ -329,17 +329,16 @@ namespace BMF {
             } else famstats_fm_usage(EXIT_FAILURE);
         }
 
-        LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
+        LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings.minMQ, settings.minFM);
         for(const char *tag: tags_to_check)
             dlib::check_bam_tag_exit(argv[optind], tag);
 
         dlib::BamHandle handle(argv[optind]);
-        s = famstats_fm_core(handle, settings);
+        s = famstats_fm_core(handle, &settings);
         print_stats(s, stdout);
         kh_destroy(fm, s->fm);
         kh_destroy(rc, s->rc);
         free(s);
-        free(settings);
         LOG_INFO("Successfully complete bmftools famstats fm.\n");
         return EXIT_SUCCESS;
     }

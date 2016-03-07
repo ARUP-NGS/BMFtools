@@ -2,7 +2,9 @@
 
 namespace BMF {
 
-    static uint64_t min_obs = 10000uL;
+    namespace {
+        uint64_t default_min_obs = 10000uL;
+    }
 
     int err_main_main(int argc, char *argv[]);
     int err_fm_main(int argc, char *argv[]);
@@ -66,7 +68,7 @@ namespace BMF {
                         "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
-                , INT_MAX, DEFAULT_PADDING, min_obs);
+                , INT_MAX, DEFAULT_PADDING, default_min_obs);
         exit(exit_status);
         return exit_status;
     }
@@ -218,24 +220,24 @@ namespace BMF {
         kh_destroy(obs_union, key_union);
     }
 
-    void err_report(FILE *fp, fullerr_t *e)
+    void err_report(FILE *fp, fullerr_t *f)
     {
         LOG_DEBUG("Beginning error main report.\n");
-        fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", e->nread, e->nskipped);
+        fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", f->nread, f->nskipped);
         uint64_t n1_obs = 0, n1_err = 0, n1_ins = 0;
         uint64_t n2_obs = 0, n2_err = 0, n2_ins = 0;
         // n_ins is number with insufficient observations to report.
         for(int i = 0; i < 4; ++i) {
             for(unsigned j = 0; j < NQSCORES; ++j) {
-                for(unsigned k = 0; k < e->l; ++k) {
-                    n1_obs += e->r1->obs[i][j][k]; n1_err += e->r1->err[i][j][k];
-                    n2_obs += e->r2->obs[i][j][k]; n2_err += e->r2->err[i][j][k];
-                    if(e->r1->obs[i][j][k] < min_obs) ++n1_ins;
-                    if(e->r2->obs[i][j][k] < min_obs) ++n2_ins;
+                for(unsigned k = 0; k < f->l; ++k) {
+                    n1_obs += f->r1->obs[i][j][k]; n1_err += f->r1->err[i][j][k];
+                    n2_obs += f->r2->obs[i][j][k]; n2_err += f->r2->err[i][j][k];
+                    if(f->r1->obs[i][j][k] < f->min_obs) ++n1_ins;
+                    if(f->r2->obs[i][j][k] < f->min_obs) ++n2_ins;
                 }
             }
         }
-        uint64_t n_cases = NQSCORES * 4 * e->l;
+        uint64_t n_cases = NQSCORES * 4 * f->l;
         fprintf(stderr, "{\"read1\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
                 ",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
                 (double)n1_err / n1_obs, n1_obs, n1_err, n1_ins, n_cases);
@@ -693,10 +695,10 @@ namespace BMF {
         for(unsigned i = 0; i < 4u; ++i) {
             for(uint64_t l = 0; l < f->l; ++l) {
                 // Handle qscores of 2
-                f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l])
-                                                                       : 2;
-                f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l])
-                                                                       : 2;
+                f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= f->min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l])
+                                                                          : 2;
+                f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= f->min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l])
+                                                                          : 2;
                 for(unsigned j = 1; j < NQSCORES; ++j) {
                     f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2;
                     if(f->r1->final[i][j][l] < 2) f->r1->final[i][j][l] = 2;
@@ -728,9 +730,9 @@ namespace BMF {
                 f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
                 //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
-                f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
+                f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
                                                                      : 0;
-                f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
+                f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
                                                                      : 0;
             }
         }
@@ -741,9 +743,9 @@ namespace BMF {
         for(int i = 0; i < 4; ++i) {
             for(unsigned j = 0; j < NQSCORES; ++j) {
                 for(uint64_t l = 0; l < f->l; ++l) {
-                    if(f->r1->obs[i][j][l] >= min_obs)
+                    if(f->r1->obs[i][j][l] >= f->min_obs)
                         f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-                    if(f->r2->obs[i][j][l] >= min_obs)
+                    if(f->r2->obs[i][j][l] >= f->min_obs)
                         f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
                 }
             }
@@ -815,7 +817,9 @@ namespace BMF {
         return ret;
     }
 
-    fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV) {
+    fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
+                            int padding, int minFM, int maxFM, int flag,
+                            int minMQ, uint32_t minPV, uint64_t min_obs) {
         fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
         ret->l = l;
         ret->r1 = readerr_init(l);
@@ -827,6 +831,7 @@ namespace BMF {
         ret->flag = flag;
         ret->minMQ = minMQ;
         ret->minPV = minPV;
+        ret->min_obs = min_obs;
         return ret;
     }
 
@@ -949,6 +954,7 @@ namespace BMF {
         int maxFM = INT_MAX;
         int flag = 0;
         uint32_t minPV = 0;
+        uint64_t min_obs = default_min_obs;
         while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:S:O:h?FdDP")) >= 0) {
             switch (c) {
             case 'a': minMQ = atoi(optarg); break;
@@ -993,7 +999,7 @@ namespace BMF {
         bam1_t *b = bam_init1();
         c = sam_read1(fp, header, b);
         fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header,
-                                     padding, minFM, maxFM, flag, minMQ, minPV);
+                                     padding, minFM, maxFM, flag, minMQ, minPV, min_obs);
         sam_close(fp);
         fp = NULL;
         bam_destroy1(b);

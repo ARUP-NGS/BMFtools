@@ -45,6 +45,7 @@ namespace BMF {
         int minMQ;
         uint32_t minPV;
         int flag; // Filter flags. First use will simply be
+        uint64_t min_obs;
     };
 
     struct obserr_t {

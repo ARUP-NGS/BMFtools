@@ -76,7 +76,7 @@ namespace BMF {
         keyset.clear();
         std::vector<std::vector<uint64_t>> csums;
         for(i = 0; i < n_samples; ++i) {
-            csums.emplace_back((keys.size()));
+            csums.emplace_back(keys.size());
             for(j = keys.size() - 1; j != (unsigned)-1; --j) {
                 if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
                     csums[i][j] = kh_val(aux[i]->depth_hash, k);
