@@ -287,14 +287,14 @@ namespace BMF {
         return exit_status;
     }
 
-    static int famstats_fm_usage(FILE *fp, int exit_status)
+    static int famstats_fm_usage(int exit_status)
     {
-        fprintf(fp,
-                    "Produces a histogram of family sizes and reverse counts.\n"
-                    "Usage: bmftools famstats fm <opts> <in.bam>\n"
-                    "Flags:\n"
-                    "-m Set minimum mapping quality. Default: 0.\n"
-                    "-f Set minimum family size. Default: 0.\n"
+        fprintf(stderr,
+                        "Produces a histogram of family sizes and reverse counts.\n"
+                        "Usage: bmftools famstats fm <opts> <in.bam>\n"
+                        "Flags:\n"
+                        "-m Set minimum mapping quality. Default: 0.\n"
+                        "-f Set minimum family size. Default: 0.\n"
                 );
         exit(exit_status);
         return exit_status;
@@ -319,14 +319,14 @@ namespace BMF {
                 break;
             case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
-                return famstats_fm_usage(stderr, EXIT_SUCCESS);
+                return famstats_fm_usage(EXIT_SUCCESS);
             }
         }
 
         if (argc != optind+1) {
             if (argc == optind) {
-                famstats_fm_usage(stdout, EXIT_SUCCESS);
-            } else famstats_fm_usage(stderr, EXIT_FAILURE);
+                famstats_fm_usage(EXIT_SUCCESS);
+            } else famstats_fm_usage(EXIT_FAILURE);
         }
 
         LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
@@ -350,8 +350,8 @@ namespace BMF {
         uint32_t minFM = 0;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 3) famstats_frac_usage(stderr, EXIT_FAILURE);
-        if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(stderr, EXIT_SUCCESS);
+        if(argc < 3) famstats_frac_usage(EXIT_FAILURE);
+        if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
             switch (c) {
@@ -361,7 +361,7 @@ namespace BMF {
             case 'n':
                 notification_interval = strtoull(optarg, NULL, 0); break;
             case '?': case 'h':
-                return famstats_frac_usage(stderr, EXIT_SUCCESS);
+                return famstats_frac_usage(EXIT_SUCCESS);
             }
         }
 
@@ -371,8 +371,8 @@ namespace BMF {
         LOG_INFO("Running frac main minFM %i.\n", minFM);
 
         if (argc != optind+1) {
-            if (argc == optind) famstats_frac_usage(stdout, EXIT_SUCCESS);
-            else famstats_frac_usage(stderr, EXIT_FAILURE);
+            if (argc == optind) famstats_frac_usage(EXIT_SUCCESS);
+            else famstats_frac_usage(EXIT_FAILURE);
         }
         for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind], tag);
         dlib::BamHandle handle(argv[optind]);
@@ -401,9 +401,9 @@ namespace BMF {
     int famstats_main(int argc, char *argv[])
     {
         if(argc < 2)
-            return famstats_usage_exit(stderr, EXIT_FAILURE);
+            return famstats_usage_exit(EXIT_FAILURE);
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return famstats_usage_exit(stderr, EXIT_SUCCESS);
+            return famstats_usage_exit(EXIT_SUCCESS);
         if(strcmp(argv[1], "fm") == 0)
             return famstats_fm_main(argc - 1, argv + 1);
         if(strcmp(argv[1], "frac") == 0)
@@ -411,7 +411,7 @@ namespace BMF {
         if(strcmp(argv[1], "target") == 0)
             return famstats_target_main(argc - 1, argv + 1);
         fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
-        return famstats_usage_exit(stderr, EXIT_FAILURE);
+        return famstats_usage_exit(EXIT_FAILURE);
     }
 
 }

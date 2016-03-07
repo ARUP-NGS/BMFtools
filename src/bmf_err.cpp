@@ -71,57 +71,57 @@ namespace BMF {
         return exit_status;
     }
 
-    int err_fm_usage(FILE *fp, int exit_status)
+    int err_fm_usage(int exit_status)
     {
-        fprintf(fp,
-                "Calculates error rates by family size.\n"
-                "Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
-                "Flags:\n"
-                "-h/-?\t\tThis helpful help menu!\n"
-                "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-                "-S\t\tSet minimum calculated PV tag value for inclusion.\n"
-                "-a\t\tSet minimum mapping quality for inclusion.\n"
-                "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
-                "-b:\t\tPath to bed file for restricting analysis.\n"
-                "-d:\t\tFlag to only calculate error rates for duplex reads.\n"
-                "-p:\t\tSet padding for bed region. Default: 50.\n"
-                "-P:\t\tOnly include proper pairs.\n"
-                "-F:\t\tRequire that the FP tag be present and nonzero.\n"
+        fprintf(stderr,
+                        "Calculates error rates by family size.\n"
+                        "Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+                        "Flags:\n"
+                        "-h/-?\t\tThis helpful help menu!\n"
+                        "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+                        "-S\t\tSet minimum calculated PV tag value for inclusion.\n"
+                        "-a\t\tSet minimum mapping quality for inclusion.\n"
+                        "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+                        "-b:\t\tPath to bed file for restricting analysis.\n"
+                        "-d:\t\tFlag to only calculate error rates for duplex reads.\n"
+                        "-p:\t\tSet padding for bed region. Default: 50.\n"
+                        "-P:\t\tOnly include proper pairs.\n"
+                        "-F:\t\tRequire that the FP tag be present and nonzero.\n"
                 );
         exit(exit_status);
         return exit_status; // This never happens.
     }
 
-    int err_region_usage(FILE *fp, int exit_status)
+    int err_region_usage(int exit_status)
     {
-        fprintf(fp,
-                "Calculates error rates by genomic region.\n"
-                "Usage: bmftools err region <reference.fasta> <input.csrt.bam>\n"
-                "Flags:\n"
-                "-b\t\tPath to bed file. REQUIRED."
-                "-h/-?\t\tThis helpful help menu!\n"
-                "-o\t\tPath to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.\n"
-                "-a\t\tSet minimum mapping quality for inclusion.\n"
-                "-p:\t\tSet padding for bed region. Default: 50.\n"
+        fprintf(stderr,
+                        "Calculates error rates by genomic region.\n"
+                        "Usage: bmftools err region <reference.fasta> <input.csrt.bam>\n"
+                        "Flags:\n"
+                        "-b\t\tPath to bed file. REQUIRED."
+                        "-h/-?\t\tThis helpful help menu!\n"
+                        "-o\t\tPath to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.\n"
+                        "-a\t\tSet minimum mapping quality for inclusion.\n"
+                        "-p:\t\tSet padding for bed region. Default: 50.\n"
                 );
         exit(exit_status);
         return exit_status; // This never happens.
     }
 
 
-    int err_cycle_usage(FILE *fp, int exit_status)
+    int err_cycle_usage(int exit_status)
     {
-        fprintf(fp,
-                   "Calculates error rate by cycle.\n"
-                   "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
-                   "Flags:\n"
-                   "-h/-?\t\tThis helpful help menu!\n"
-                   "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-                   "-a\t\tSet minimum mapping quality for inclusion.\n"
-                   "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
-                   "-b:\t\tPath to bed file for restricting analysis.\n"
-                   "-p:\t\tSet padding for bed region. Default: 50.\n"
-                   "-P:\t\tOnly include proper pairs.\n"
+        fprintf(stderr,
+                        "Calculates error rate by cycle.\n"
+                        "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
+                        "Flags:\n"
+                        "-h/-?\t\tThis helpful help menu!\n"
+                        "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+                        "-a\t\tSet minimum mapping quality for inclusion.\n"
+                        "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+                        "-b:\t\tPath to bed file for restricting analysis.\n"
+                        "-p:\t\tSet padding for bed region. Default: 50.\n"
+                        "-P:\t\tOnly include proper pairs.\n"
                 );
         exit(exit_status);
         return exit_status; // This never happens.
@@ -893,7 +893,7 @@ namespace BMF {
     }
 
 
-    int err_usage(FILE *fp, int exit_status)
+    int err_usage(int exit_status)
     {
         fprintf(stderr,
                         "bmftools err\nSubcommands:\n"
@@ -913,9 +913,9 @@ namespace BMF {
 
     int err_main(int argc, char *argv[])
     {
-        if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
+        if(argc < 2) return err_usage(EXIT_FAILURE);
         if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
-            return err_usage(stderr, EXIT_SUCCESS);
+            return err_usage(EXIT_SUCCESS);
         if(strcmp(argv[1], "main") == 0)
             return err_main_main(argc - 1, argv + 1);
         if(strcmp(argv[1], "fm") == 0)
@@ -936,9 +936,9 @@ namespace BMF {
         bam_hdr_t *header = NULL;
         int c, minMQ = 0;
         std::string outpath("");
-        if(argc < 2) return err_main_usage(stderr, EXIT_FAILURE);
+        if(argc < 2) return err_main_usage(EXIT_FAILURE);
 
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(stderr, EXIT_SUCCESS);
+        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(EXIT_SUCCESS);
 
 
         FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
@@ -969,7 +969,7 @@ namespace BMF {
             case 'p': padding = atoi(optarg); break;
             case 'g': global_fp = dlib::open_ofp(optarg); break;
             case 'S': minPV = strtoul(optarg, NULL, 0); break;
-            case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
+            case '?': case 'h': return err_main_usage(EXIT_SUCCESS);
             }
         }
 
@@ -977,7 +977,7 @@ namespace BMF {
             LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 
         if (argc != optind+2)
-            return err_main_usage(stderr, EXIT_FAILURE);
+            return err_main_usage(EXIT_FAILURE);
 
         faidx_t *fai = fai_load(argv[optind]);
 
@@ -1040,10 +1040,10 @@ namespace BMF {
     {
         htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
 
-        if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);
+        if(argc < 2) return err_cycle_usage(EXIT_FAILURE);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return err_cycle_usage(stderr, EXIT_SUCCESS);
+            return err_cycle_usage(EXIT_SUCCESS);
 
         FILE *ofp = NULL;
         int padding = -1, minMQ = 0, flag = 0, c;
@@ -1056,7 +1056,7 @@ namespace BMF {
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 'P': flag |= REQUIRE_PROPER; break;
-            case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
+            case '?': case 'h': return err_cycle_usage(EXIT_SUCCESS);
             }
         }
 
@@ -1070,7 +1070,7 @@ namespace BMF {
         ofp = dlib::open_ofp(outpath);
 
         if (argc != optind+2)
-            return err_cycle_usage(stderr, EXIT_FAILURE);
+            return err_cycle_usage(EXIT_FAILURE);
 
         faidx_t *fai = fai_load(argv[optind]);
 
@@ -1097,9 +1097,9 @@ namespace BMF {
         bam_hdr_t *header = NULL;
         char *outpath = NULL;
 
-        if(argc < 2) return err_fm_usage(stderr, EXIT_FAILURE);
+        if(argc < 2) return err_fm_usage(EXIT_FAILURE);
 
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_fm_usage(stderr, EXIT_SUCCESS);
+        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_fm_usage(EXIT_SUCCESS);
 
 
 
@@ -1119,7 +1119,7 @@ namespace BMF {
             case 'P': flag |= REQUIRE_PROPER; break;
             case 'S': minPV = strtoul(optarg, NULL, 0); break;
             case 'F': flag |= REQUIRE_FP_PASS; break;
-            case '?': case 'h': return err_fm_usage(stderr, EXIT_SUCCESS);
+            case '?': case 'h': return err_fm_usage(EXIT_SUCCESS);
             }
         }
 
@@ -1133,7 +1133,7 @@ namespace BMF {
         ofp = dlib::open_ofp(outpath);
 
         if (argc != optind+2)
-            return err_fm_usage(stderr, EXIT_FAILURE);
+            return err_fm_usage(EXIT_FAILURE);
 
         faidx_t *fai = fai_load(argv[optind]);
 
@@ -1252,10 +1252,10 @@ namespace BMF {
 
     int err_region_main(int argc, char *argv[])
     {
-        if(argc < 2) return err_region_usage(stderr, EXIT_FAILURE);
+        if(argc < 2) return err_region_usage(EXIT_FAILURE);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return err_region_usage(stderr, EXIT_SUCCESS);
+            return err_region_usage(EXIT_SUCCESS);
 
         FILE *ofp = NULL;
         int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
@@ -1269,7 +1269,7 @@ namespace BMF {
             case 'o': outpath = strdup(optarg); break;
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
-            case '?': case 'h': return err_region_usage(stderr, EXIT_SUCCESS);
+            case '?': case 'h': return err_region_usage(EXIT_SUCCESS);
             }
         }
 
@@ -1287,7 +1287,7 @@ namespace BMF {
         ofp = dlib::open_ofp(outpath);
 
         if (argc != optind+2)
-            return err_region_usage(stderr, EXIT_FAILURE);
+            return err_region_usage(EXIT_FAILURE);
 
         fai = fai_load(argv[optind]);
         if(!fai) {
