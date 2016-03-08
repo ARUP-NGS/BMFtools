@@ -74,7 +74,7 @@ namespace BMF {
      * :param: blen1_2 - number of bases to steal from each read
      * :returns: int - whether or not it was switched == 0.
      */
-    static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
+    static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, uint32_t offset, uint32_t blen1_2)
     {
         if(switch_test(seq1, seq2, offset)) { // seq1's barcode is lower. No switching.
             memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode

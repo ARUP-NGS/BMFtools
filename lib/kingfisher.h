@@ -18,7 +18,6 @@
 #include "dlib/compiler_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
-#define MIN_FRAC_AGREED 0.5 // Minimum fraction of bases agreed in a family to not "N" the base.
 #define HASH_DMP_OFFSET 14
 #define FP_OFFSET 9
 
@@ -61,18 +60,8 @@ namespace BMF {
 
 
 
-    extern double igamc(double a, double x);
-
-
-    static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen);
-    static inline void pb_pos(kingfisher_t *kfp, kseq_t *seq, int i);
-    static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
-    void stranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
     void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
     void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
-    void kdmp_process_write(kingfisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
-    CONST static inline int kfp_argmax(kingfisher_t *kfp, int index);
-    CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
     static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
     {
@@ -81,33 +70,6 @@ namespace BMF {
         for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
         kputsn("\tPV:B:I", 7, ks);
         for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
-    }
-
-    static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks)
-    {
-        kputsn("PV:B:I", 6, ks);
-        for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
-    }
-
-    static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
-    {
-        kputsn("FA:B:I", 6, ks);
-        for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
-    }
-
-    /*
-     * @func fill_fa
-     * Calls append_csv_buffer for 32-bit PV array tags.
-     * :param: readlen [int] Length of read
-     * :param: arr [uint16_t *] Array of values to put into the buffer.
-     * :param: buffer [char *] Buffer for the values.
-     */
-    static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
-    {
-        char tmpbuf[7];
-        memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
-        for(int i = 0; i < readlen; ++i)
-            sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
     }
 
     static inline void pb_pos(kingfisher_t *kfp, kseq_t *seq, int i) {

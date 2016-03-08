@@ -33,12 +33,6 @@ namespace BMF {
         cond_free(settings.ffq_prefix);
     }
 
-    void free_marksplit_settings_ptr(marksplit_settings_t *settings)
-    {
-        free_marksplit_settings(*settings);
-        free(settings);
-    }
-
     splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
     {
         if(!settings_ptr) {

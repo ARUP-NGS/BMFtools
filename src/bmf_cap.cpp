@@ -1,7 +1,3 @@
-/*  cap_qscore.cpp -- a postprocessor for bmftools dmp which
- *  prepares our sophisticated error model for downstream analysis
- *  for BMF-agnostic tools.
-*/
 #include "dlib/bam_util.h"
 #include "include/sam_opts.h"
 

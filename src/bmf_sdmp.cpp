@@ -210,7 +210,7 @@ namespace BMF {
                 case 't': settings.hp_threshold = atoi(optarg); break;
                 case 'v': settings.notification_interval = atoi(optarg); break;
                 case 'z': settings.gzip_output = 1; break;
-                case 'g': settings.gzip_compression = atoi(optarg); if(settings.gzip_compression > 9) settings.gzip_compression = 9; break;
+                case 'g': settings.gzip_compression = (uint32_t)atoi(optarg)%10; break;
                 case 'w': settings.cleanup = 0; break;
                 case 'r':
                     settings.rescaler_path = strdup(optarg);

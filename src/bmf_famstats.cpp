@@ -39,7 +39,6 @@ namespace BMF {
         khash_t(fm) *fm;
         khash_t(rc) *rc;
         khiter_t ki;
-        int khr;
         uint8_t *data;
     };
 
@@ -69,10 +68,11 @@ namespace BMF {
     {
         std::vector<fm_t> fms = std::vector<fm_t>(stats->fm->n_occupied);
         unsigned i;
+        khiter_t ki;
         fprintf(fp, "#Family size\tNumber of families\n");
-        for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)
-            if(kh_exist(stats->fm, stats->ki))
-                fms[i++] = {kh_val(stats->fm, stats->ki), kh_key(stats->fm, stats->ki)};
+        for(i = 0, ki = kh_begin(stats->fm); ki != kh_end(stats->fm); ++ki)
+            if(kh_exist(stats->fm, ki))
+                fms[i++] = {kh_val(stats->fm, ki), kh_key(stats->fm, ki)};
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
@@ -81,9 +81,9 @@ namespace BMF {
         fprintf(fp, "#RV'd in family\tNumber of families\n");
 
         fms.resize(stats->rc->n_occupied);
-        for(i = 0, stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki)
-            if(kh_exist(stats->rc, stats->ki))
-                fms[i++] = {kh_val(stats->rc, stats->ki), kh_key(stats->rc, stats->ki)};
+        for(i = 0, ki = kh_begin(stats->rc); ki != kh_end(stats->rc); ++ki)
+            if(kh_exist(stats->rc, ki))
+                fms[i++] = {kh_val(stats->rc, ki), kh_key(stats->rc, ki)};
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
@@ -152,7 +152,7 @@ namespace BMF {
         dlib::BamHandle handle(argv[optind]);
         // If bedfile provided, use it. If not, calculate by contig. Why? Why not?
         if(!bedpath) {
-            LOG_WARNING("Can't calculate on-target without a bed file. Abort!\n");
+            LOG_EXIT("Can't calculate on-target without a bed file. Abort!\n");
         }
         bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
         uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
@@ -237,14 +237,15 @@ namespace BMF {
         s->allfm_sum += FM;
         s->allrc_sum += RV;
 
+        int khr;
         // Have we seen this family size before?
         if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
             // If not, put it into the hash table with a count of 1.
-            s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
+            s->ki = kh_put(fm, s->fm, FM, &khr), kh_val(s->fm, s->ki) = 1;
         else ++kh_val(s->fm, s->ki); // Otherwise increment counts
         // Same, but for RV
         if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
-            s->ki = kh_put(rc, s->rc, RV, &s->khr), kh_val(s->rc, s->ki) = 1;
+            s->ki = kh_put(rc, s->rc, RV, &khr), kh_val(s->rc, s->ki) = 1;
         else ++kh_val(s->rc, s->ki);
 
         // If the Duplex Read tag is present, incrememnt duplex read counts

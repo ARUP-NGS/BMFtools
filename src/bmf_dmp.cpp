@@ -1,8 +1,3 @@
-/*
- * Conditional reverse complement Rescale Mark Split
- * For inline Loeb adapters only.
- */
-
 #include "bmf_dmp.h"
 
 namespace BMF {
@@ -371,7 +366,7 @@ namespace BMF {
                 case 'c': LOG_WARNING("Deprecated option -c.\n"); break;
                 case 'd': settings.run_hash_dmp = 1; break;
                 case 'f': settings.ffq_prefix = strdup(optarg); break;
-                case 'g': settings.gzip_compression = atoi(optarg); break;
+                case 'g': settings.gzip_compression = (uint32_t)atoi(optarg)%10; break;
                 case 'l': settings.blen = atoi(optarg); break;
                 case 'm': settings.offset = atoi(optarg); break;
                 case 'n': settings.n_nucs = atoi(optarg); break;

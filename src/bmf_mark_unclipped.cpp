@@ -1,6 +1,3 @@
-/*  unclipped.c -- a postprocessor for bwa to facilitate MEI calls.
-*/
-
 #include "dlib/bam_util.h"
 #include "include/sam_opts.h"
 

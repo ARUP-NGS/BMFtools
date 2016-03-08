@@ -1,9 +1,10 @@
 #include "bmf_hashdmp.h"
 
-size_t buf_set_size = 50000;
-
-
 namespace BMF {
+
+	namespace {
+		const size_t buf_set_size = 50000;
+	}
 
     void hashdmp_usage() {
         fprintf(stderr,
@@ -109,10 +110,8 @@ namespace BMF {
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
                 pushback_kseq(tmp_hkf->value, seq, blen);
                 HASH_ADD_STR(hfor, id, tmp_hkf);
-            } else {
-                // Found -- add data to the kingfisher struct.
-                pushback_kseq(tmp_hkf->value, seq, blen);
-            }
+            } else pushback_kseq(tmp_hkf->value, seq, blen);
+              // Found -- add data to the kingfisher struct.
         } else {
             // Reverse read
             cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);

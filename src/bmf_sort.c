@@ -1,5 +1,3 @@
-/*  bmfsort.c -- sorting and merging. */
-
 #include "bmf_sort.h"
 
 static int cmpkey = BMF_POS;

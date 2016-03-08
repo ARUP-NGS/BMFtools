@@ -1,4 +1,3 @@
-/*  bam_rsq.c */
 #include "bmf_rsq.h"
 
 namespace BMF {
