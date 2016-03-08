@@ -26,147 +26,142 @@
 #define KSEQ_DEC_GZ
 KSEQ_INIT(gzFile, gzread)
 #endif
+namespace BMF {
 
 
-typedef struct tmpbuffers {
-	char name_buffer[120];
-	char PVBuffer[1000];
-	char FABuffer[1000];
-	char cons_seq_buffer[SEQBUF_SIZE];
-	uint32_t cons_quals[SEQBUF_SIZE];
-	uint16_t agrees[SEQBUF_SIZE];
-} tmpbuffers_t;
+    struct tmpbuffers_t {
+        char name_buffer[120];
+        char PVBuffer[1000];
+        char FABuffer[1000];
+        char cons_seq_buffer[SEQBUF_SIZE];
+        uint32_t cons_quals[SEQBUF_SIZE];
+        uint16_t agrees[SEQBUF_SIZE];
+    };
 
 
-typedef struct tmpvars {
-	char *bs_ptr;
-	int blen;
-	int readlen;
-	char key[MAX_BARCODE_LENGTH + 1];
-	int l; // For holding ret value for seq.
-	tmpbuffers_t *buffers;
-} tmpvars_t;
+    struct tmpvars_t {
+        char *bs_ptr;
+        int blen;
+        int readlen;
+        char key[MAX_BARCODE_LENGTH + 1];
+        int l; // For holding ret value for seq.
+        tmpbuffers_t *buffers;
+    };
 
 
-typedef struct KingFisher {
-	uint16_t *nuc_counts; // Count of nucleotides of this form
-	uint32_t *phred_sums; // Sums of -10log10(p-value)
-	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
-	int length; // Number of reads in family
-	int readlen; // Length of reads
-	char barcode[MAX_BARCODE_LENGTH + 1];
-	char pass_fail;
-} KingFisher_t;
+    struct kingfisher_t {
+        uint16_t *nuc_counts; // Count of nucleotides of this form
+        uint32_t *phred_sums; // Sums of -10log10(p-value)
+        char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
+        int length; // Number of reads in family
+        int readlen; // Length of reads
+        char barcode[MAX_BARCODE_LENGTH + 1];
+        char pass_fail;
+    };
 
 
 
-extern double igamc(double a, double x);
-
-#ifdef __cpluslus
-extern "C" {
-#endif
+    extern double igamc(double a, double x);
 
 
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
-static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
-static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
-void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
-void zstranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, gzFile handle, tmpbuffers_t *bufs);
-void dmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
-void kdmp_process_write(KingFisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
-CONST static inline int kfp_argmax(KingFisher_t *kfp, int index);
-CONST static inline int arr_max_u32(uint32_t *arr, int index);
+    static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen);
+    static inline void pb_pos(kingfisher_t *kfp, kseq_t *seq, int i);
+    static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
+    void stranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
+    void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
+    void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
+    void kdmp_process_write(kingfisher_t *kfp, gzFile handle, tmpbuffers_t *bufs, int is_rev);
+    CONST static inline int kfp_argmax(kingfisher_t *kfp, int index);
+    CONST static inline int arr_max_u32(uint32_t *arr, int index);
 
-static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
-{
-	int i;
-	kputsn("FA:B:I", 6, ks);
-	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
-	kputsn("\tPV:B:I", 7, ks);
-	for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
-}
+    static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
+    {
+        int i;
+        kputsn("FA:B:I", 6, ks);
+        for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+        kputsn("\tPV:B:I", 7, ks);
+        for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+    }
 
-static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks)
-{
-	kputsn("PV:B:I", 6, ks);
-	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
-}
+    static inline void kfill_pv(int readlen, uint32_t *quals, kstring_t *ks)
+    {
+        kputsn("PV:B:I", 6, ks);
+        for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
+    }
 
-static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
-{
-	kputsn("FA:B:I", 6, ks);
-	for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
-}
+    static inline void kfill_agrees(int readlen, uint16_t *agrees, kstring_t *ks)
+    {
+        kputsn("FA:B:I", 6, ks);
+        for(int i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
+    }
 
-/*
- * @func fill_fa
- * Calls append_csv_buffer for 32-bit PV array tags.
- * :param: readlen [int] Length of read
- * :param: arr [uint16_t *] Array of values to put into the buffer.
- * :param: buffer [char *] Buffer for the values.
- */
-static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
-{
-	char tmpbuf[7];
-	memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
-	for(int i = 0; i < readlen; ++i)
-		sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
-}
+    /*
+     * @func fill_fa
+     * Calls append_csv_buffer for 32-bit PV array tags.
+     * :param: readlen [int] Length of read
+     * :param: arr [uint16_t *] Array of values to put into the buffer.
+     * :param: buffer [char *] Buffer for the values.
+     */
+    static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
+    {
+        char tmpbuf[7];
+        memcpy(buffer, "FA:B:I", 7); // "Copy FA:B:I:\0" over
+        for(int i = 0; i < readlen; ++i)
+            sprintf(tmpbuf, ",%u", agrees[i]), strcat(buffer, tmpbuf);
+    }
 
-static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
-	++kfp->nuc_counts[posdata];
-	kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
-}
-
-
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
-{
-	if(!kfp->length++) { // Increment while checking
-		kfp->pass_fail = seq->comment.s[FP_OFFSET];
-		memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
-		kfp->barcode[blen] = '\0';
-	}
-	for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
-}
+    static inline void pb_pos(kingfisher_t *kfp, kseq_t *seq, int i) {
+        const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
+        ++kfp->nuc_counts[posdata];
+        kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
+        if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
+    }
 
 
-/*
- * @func arr_max_u32
- * :param: arr [uint32_t *] 2-d array of values. 5 * index + basecall is the index to use.
- * :param: index [int] Base in read to find the maximum value for.
- * :returns: [int] the nucleotide number for the maximum value at this index in the read.
- */
-CONST static inline int arr_max_u32(uint32_t *arr, int index)
-{
-	const uint32_t i5 = index * 5;
-	if(arr[i5] > arr[i5 + 1] &&
-		arr[i5] > arr[i5 + 2] &&
-		arr[i5] > arr[i5 + 3] &&
-		arr[i5] > arr[i5 + 4])
-		return 0;
-	else if(arr[i5 + 1] > arr[i5 + 2] &&
-			arr[i5 + 1] > arr[i5 + 3] &&
-			arr[i5 + 1] > arr[i5 + 4])
-		return 1;
-	else if(arr[i5 + 2] > arr[i5 + 3] &&
-			arr[i5 + 2] > arr[i5 + 4])
-		return 2;
-	else if(arr[i5 + 3] > arr[i5 + 4])
-		return 3;
-	return 4; // 'N'
-}
+    static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen)
+    {
+        if(!kfp->length++) { // Increment while checking
+            kfp->pass_fail = seq->comment.s[FP_OFFSET];
+            memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
+            kfp->barcode[blen] = '\0';
+        }
+        for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
+    }
 
 
-CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
-{
-	return arr_max_u32(kfp->phred_sums, index);
-}
+    /*
+     * @func arr_max_u32
+     * :param: arr [uint32_t *] 2-d array of values. 5 * index + basecall is the index to use.
+     * :param: index [int] Base in read to find the maximum value for.
+     * :returns: [int] the nucleotide number for the maximum value at this index in the read.
+     */
+    CONST static inline int arr_max_u32(uint32_t *arr, int index)
+    {
+        const uint32_t i5 = index * 5;
+        if(arr[i5] > arr[i5 + 1] &&
+            arr[i5] > arr[i5 + 2] &&
+            arr[i5] > arr[i5 + 3] &&
+            arr[i5] > arr[i5 + 4])
+            return 0;
+        else if(arr[i5 + 1] > arr[i5 + 2] &&
+                arr[i5 + 1] > arr[i5 + 3] &&
+                arr[i5 + 1] > arr[i5 + 4])
+            return 1;
+        else if(arr[i5 + 2] > arr[i5 + 3] &&
+                arr[i5 + 2] > arr[i5 + 4])
+            return 2;
+        else if(arr[i5 + 3] > arr[i5 + 4])
+            return 3;
+        return 4; // 'N'
+    }
 
 
-#ifdef __cpluslus
-}
-#endif
+    CONST static inline int kfp_argmax(kingfisher_t *kfp, int index)
+    {
+        return arr_max_u32(kfp->phred_sums, index);
+    }
+
+} /* namespace BMF */
+
 
 #endif /*KINGFISHER_H*/

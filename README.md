@@ -1,6 +1,6 @@
 #BMFTools
 ###Summary
->BMFTools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
+>BMFtools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
 
 ###What is BMF?
 >BMF is a promiscuous acronym with multiple appropriate meanings. Primarily:
@@ -35,23 +35,6 @@ bmftools <--help/-h>
 bmftools <subcommand> <-h>
 ```
 
-## Dependencies
-
-cutadapt is required for adapter trimming.
-
-pigz is required for compression/decompression
-
-### Required external tools:
-
-#### Utilities set
-samtools >= 1.2
-
-#### Aligners
-
-bwa >= 0.7.10 (mem, aln, bwasw)
-
-#### Adapter Trimming
-Cutadapt >= 1.7
 
 ## BMF Tags
 
@@ -66,33 +49,30 @@ FA | Number of reads in Family which Agreed with final sequence at each base | C
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | Integer [0, 1]|
 MF | Mate fraction aligned (fraction of bases mapped to reference bases, not counting IDSHNP operations. | Float |
+mc | Mate soft-clipped length | Integer |
 NC | Number of changed bases in rescued families of reads. | Integer |
 NF | Mean number of differences between reads and consensus per read in family | Single-precision floating number |
-PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
+PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array |
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
-
-## Read Pair Merging Tags
-
-These are only used for merging read pairs.
-
-Tag | Content | Format |
-:----:|:-----|:-----:|
-DG | Discordant positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
-DR | Discordant read positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
-MA | Indices for read positions which agreed during merging. | String. Regex: [0-9,]+ |
-mp | Original Mate Position | Integer |
-om | Original Mapping Quality | Integer |
-op | Original Position | Integer |
-ot | Original Template Langth | Integer |
-PM | Indices for read positions which have been merged | String. Regex: [0-9,]+ |
+SC | Soft-clipped length | Integer |
 
 ## Barcoding methods
 
-####i5/i7 barcoding, nicknamed 'Shades'
+Essentially, the process is *molecular* demultiplexing.
 
+####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.
-Faster than using a homing sequence-specified barcode (informatically). More issues with barcode rescues and errors occurring in the auxiliary fastq. Less complicated sample prep.
+> bmftools sdmp
+
+(Secondary-index DeMultiPlex)
+
+Barcodes are contained in the additional (typically "Read 2" of 3) fastq, with optional "salting" from the tthe start of the insert reads.
 
 ####Inline (Loeb-like) barcoding
+Requires only read fastqs, as the barcodes are inline.
+> bmftools dmp
 
-Barcodes are inline in the start of each read. This information is removed, added to a fastq comment, and then used in final hashmap-powered molecular demultiplexing.
+(DeMultiPlex)
+
+Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the chemistry is more complicated.
+

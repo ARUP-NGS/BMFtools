@@ -8,7 +8,8 @@
 #include <unistd.h>
 #include <zlib.h>
 #include <vector>
-#include <parallel/algorithm>
+#include <unordered_set>
+#include <algorithm>
 #include "htslib/kstring.h"
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"
@@ -20,9 +21,9 @@
 #include "htslib/kseq.h"
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
-
-KHASH_MAP_INIT_INT(depth, uint64_t)
-
-int depth_main(int argc, char *argv[]);
+namespace BMF {
+    KHASH_MAP_INIT_INT(depth, uint64_t)
+    int depth_main(int argc, char *argv[]);
+}
 
 #endif /* BMF_DEPTH_H */

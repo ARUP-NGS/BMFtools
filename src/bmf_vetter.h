@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include "include/igamc_cephes.h"
+#include "include/bam.h"
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
@@ -18,125 +19,27 @@
 
 #include <vector>
 #include <set>
-#ifdef __GNUC__
-#	include <parallel/algorithm>
-#else
-#	include <algorithm>
-#endif
+#include <algorithm>
 
-int vetter_main(int, char **);
+namespace BMF {
 
-KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
+    int vetter_main(int, char **);
 
-static int vet_func(void *data, bam1_t *b);
-extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
+    KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
-// Setup needed for pileup engine
-#ifndef BAM_PLP_DEC
-#define BAM_PLP_DEC
-extern void bam_plp_init_overlaps(bam_plp_t);
+    const uint64_t DEFAULT_MAX_ALLELES = 20uL;
+    const char *bmf_header_lines[] =  {
+            "##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
+            "##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">",
+            "##INFO=<ID=BMF_DUPLEX,Number=A,Type=Integer,Description=\"Number of duplex reads supporting variant at position.\">",
+            "##INFO=<ID=BMF_FAIL,Number=A,Type=Integer,Description=\"Number of unique observations at position failing filters.\">",
+            "##INFO=<ID=DUPLEX_DEPTH,Number=1,Type=Integer,Description=\"Number of duplex reads passing filters at position.\">",
+            "##INFO=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">",
+            "##INFO=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs combined into single observations at position.\">"
+    };
 
+}
 
-#define DEFAULT_MAX_ALLELES 10uL
-
-/*
-typedef struct {
-	int k, x, y, end;
-} cstate_t;
-
-typedef struct __linkbuf_t {
-	bam1_t b;
-	int32_t beg, end;
-	cstate_t s;
-	struct __linkbuf_t *next;
-} lbnode_t;
-
-typedef struct {
-	int cnt, n, max;
-	lbnode_t **buf;
-} mempool_t;
-
-KHASH_MAP_INIT_STR(olap_hash, lbnode_t *)
-typedef khash_t(olap_hash) olap_hash_t;
-struct __bam_plp_t {
-	mempool_t *mp;
-	lbnode_t *head, *tail, *dummy;
-	int32_t tid, pos, max_tid, max_pos;
-	int is_eof, max_plp, error, maxcnt;
-	uint64_t id;
-	bam_pileup1_t *plp;
-	// for the "auto" interface only
-	bam1_t *b;
-	bam_plp_auto_f func;
-	void *data;
-	olap_hash_t *overlaps;
-};
-**/
-
-#endif /* BAM_PLP_DEC */
-
-// Need to expand for new options, but I'll wait until I'm finished first.
-/*
-		}*/
-#define VETTER_OPTIONS \
-	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
-	{"min-family-size",		  required_argument, NULL, 's'}, \
-	{"min-fraction-agreed",		 required_argument, NULL, 'f'}, \
-	{"min-mapping-quality",		 required_argument, NULL, 'm'}, \
-	{"min-phred-quality",		 required_argument, NULL, 'v'}, \
-	{"min-count",		 required_argument, NULL, 'c'}, \
-	{"min-duplex",		 required_argument, NULL, 'D'}, \
-	{"min-overlap",		 required_argument, NULL, 'O'}, \
-	{"out-vcf",		 required_argument, NULL, 'o'}, \
-	{"bedpath",		 required_argument, NULL, 'b'}, \
-	{"ref",		 required_argument, NULL, 'r'}, \
-	{"padding",		 required_argument, NULL, 'p'}, \
-	{"skip-secondary", no_argument, NULL, '2'},\
-	{"skip-supplementary", no_argument, NULL, 'S'},\
-	{"skip-qcfail", no_argument, NULL, 'q'},\
-	{"skip-improper", no_argument, NULL, 'P'},\
-	{"max-depth", required_argument, NULL, 'd'},\
-	{"emit-bcf", no_argument, NULL, 'B'},\
-	{0, 0, 0, 0}
-
-const char *bmf_header_lines[] =  {
-		"##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
-		"##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">",
-		"##INFO=<ID=BMF_DUPLEX,Number=A,Type=Integer,Description=\"Number of duplex reads supporting variant at position.\">",
-		"##INFO=<ID=BMF_FAIL,Number=A,Type=Integer,Description=\"Number of unique observations at position failing filters.\">",
-		"##INFO=<ID=DUPLEX_DEPTH,Number=1,Type=Integer,Description=\"Number of duplex reads passing filters at position.\">",
-		"##INFO=<ID=DISC_OVERLAP,Number=1,Type=Integer,Description=\"Number of read pairs at position with discordant base calls.\">",
-		"##INFO=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs combined into single observations at position.\">"
-};
-
-typedef struct {
-	samFile *fp;
-	hts_itr_t *iter;
-	bam_hdr_t *header;
-	vcfFile *vcf_fp;
-	vcfFile *vcf_ofp;
-	bcf_hdr_t *vcf_header;
-	khash_t(bed) *bed;
-	float minFR; // Minimum fraction of family members agreed on base
-	float minAF; // Minimum aligned fraction
-	int max_depth;
-	int minFM;
-	uint32_t minFA;
-	uint32_t minPV;
-	uint32_t minMQ;
-	int minCount;
-	int minDuplex;
-	int minOverlap;
-	int skip_improper;
-	uint32_t skip_flag; // Skip reads with any bits set to true
-} aux_t;
-
-#define SKIP_IMPROPER 4096
-#define BAM_FETCH_BUFFER 150
-
-extern void *bed_read(const char *fn);
-
-
-extern void bed_destroy(void *);
+//extern std::vector<khiter_t> dlib::make_sorted_keys(khash_t(bed) *h);
 
 #endif /* BMF_VETTER_H */

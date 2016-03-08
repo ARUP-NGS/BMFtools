@@ -16,7 +16,7 @@ TMP_PREF="tmpfileswtf"
 tmpstr=${1%.fq*}
 FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
 
-time bmftools dmp -zcdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
+time bmftools dmp -zdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
 	-o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
 R1=${FINAL_FQ_PREFIX}.R1.fq.gz
 R2=${FINAL_FQ_PREFIX}.R2.fq.gz
@@ -32,8 +32,7 @@ bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     samtools sort -O bam -T tmplastsort -@ $SORT_THREADS2 -m $SORTMEM -o $TMPBAM -
 
 # Sort fastq by name, align, sort/convert, merge with temporary bam
-cat $TMPFQ | paste -d'~' - - - - | sort | tr '~' '\n' | \
-    bwa mem -pCYT0 -t${THREADS} $REF - | \
+bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -h $TMPBAM $FINALBAM $TMPBAM -
 
