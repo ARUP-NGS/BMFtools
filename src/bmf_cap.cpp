@@ -90,8 +90,8 @@ namespace BMF {
                 level = atoi(optarg) % 10; wmode[2] = level + '0';
                 LOG_DEBUG("Emitting bam with compression level %i.\n", level);
                 break;
-            case 'm': settings.minFM = strtoul(optarg, NULL, 10); break;
-            case 'c': settings.minPV = strtoul(optarg, NULL, 10); break;
+            case 'm': settings.minFM = strtoul(optarg, nullptr, 10); break;
+            case 'c': settings.minPV = strtoul(optarg, nullptr, 10); break;
             case 'f': settings.minFrac = atof(optarg); break;
             case 't':
                 settings.cap = (char)atoi(optarg);

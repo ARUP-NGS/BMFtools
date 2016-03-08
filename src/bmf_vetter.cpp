@@ -121,7 +121,7 @@ namespace BMF {
                 ++n_all_overlaps;
                 bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
                 bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
-                if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == NULL) {
+                if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == nullptr) {
                     uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
                     const int FM_sum = bam_aux2i(FM1) + bam_itag(plp[i].b, "FM");
                     bam_aux_del(kh_val(hash, k)->b, FM1);
@@ -159,7 +159,7 @@ namespace BMF {
             if(strcmp(vrec->d.allele[j], "<*>") == 0) continue;
             for(int i = 0; i < n_plp; ++i) {
                 if(plp[i].is_del || plp[i].is_refskip) continue;
-                if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) {
+                if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) {
                     continue;
                 }
 
@@ -175,10 +175,10 @@ namespace BMF {
                         continue;
                     }
                     ++n_obs[j];
-                    if((drdata = bam_aux_get(plp[i].b, "DR")) != NULL && bam_aux2i(drdata)) {
+                    if((drdata = bam_aux_get(plp[i].b, "DR")) != nullptr && bam_aux2i(drdata)) {
                         ++n_duplex[j]; // Has DR tag and its value is nonzero.
                     }
-                    if((tmptag = bam_aux_get(plp[i].b, "KR")) != NULL) {
+                    if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
                         ++n_overlaps[j];
                         bam_aux_del(plp[i].b, tmptag);
                     }
@@ -189,7 +189,7 @@ namespace BMF {
 
         }
         for(int i = 0; i < n_plp; ++i)
-            if((tmptag = bam_aux_get(plp[i].b, "SK")) != NULL) bam_aux_del(plp[i].b, tmptag);
+            if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) bam_aux_del(plp[i].b, tmptag);
         kh_destroy(names, hash);
         n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
     }
@@ -203,8 +203,8 @@ namespace BMF {
     int vet_core(vetter_aux_t *aux) {
         int n_plp;
         const bam_pileup1_t *plp;
-        tbx_t *vcf_idx = NULL;
-        hts_idx_t *bcf_idx = NULL;
+        tbx_t *vcf_idx = nullptr;
+        hts_idx_t *bcf_idx = nullptr;
         hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
@@ -214,7 +214,7 @@ namespace BMF {
             if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
             if(vcf_idx) {
                 tbx_destroy(vcf_idx);
-                vcf_idx = NULL;
+                vcf_idx = nullptr;
             }
             */
             break;
@@ -235,7 +235,7 @@ namespace BMF {
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
         vrec->rid = -1;
-        hts_itr_t *vcf_iter = NULL;
+        hts_itr_t *vcf_iter = nullptr;
 
         std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES);
         std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES);
@@ -260,8 +260,8 @@ namespace BMF {
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
                 vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
                                    : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                             : NULL;
-                //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
+                                             : nullptr;
+                //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
                 int n_disagreed = 0;
                 int n_overlapped = 0;
@@ -350,38 +350,38 @@ namespace BMF {
     {
         if(argc < 3) vetter_usage(EXIT_FAILURE);
         const struct option lopts[] = {
-                {"min-family-agreed",         required_argument, NULL, 'a'},
-                {"min-family-size",          required_argument, NULL, 's'},
-                {"min-fraction-agreed",         required_argument, NULL, 'f'},
-                {"min-mapping-quality",         required_argument, NULL, 'm'},
-                {"min-phred-quality",         required_argument, NULL, 'v'},
-                {"min-count",         required_argument, NULL, 'c'},
-                {"min-duplex",         required_argument, NULL, 'D'},
-                {"min-overlap",         required_argument, NULL, 'O'},
-                {"out-vcf",         required_argument, NULL, 'o'},
-                {"bedpath",         required_argument, NULL, 'b'},
-                {"ref",         required_argument, NULL, 'r'},
-                {"padding",         required_argument, NULL, 'p'},
-                {"skip-secondary", no_argument, NULL, '2'},
-                {"skip-supplementary", no_argument, NULL, 'S'},
-                {"skip-qcfail", no_argument, NULL, 'q'},
-                {"skip-improper", no_argument, NULL, 'P'},
-                {"skip-recommended", no_argument, NULL, 'F'},
-                {"max-depth", required_argument, NULL, 'd'},
-                {"emit-bcf", no_argument, NULL, 'B'},
+                {"min-family-agreed",         required_argument, nullptr, 'a'},
+                {"min-family-size",          required_argument, nullptr, 's'},
+                {"min-fraction-agreed",         required_argument, nullptr, 'f'},
+                {"min-mapping-quality",         required_argument, nullptr, 'm'},
+                {"min-phred-quality",         required_argument, nullptr, 'v'},
+                {"min-count",         required_argument, nullptr, 'c'},
+                {"min-duplex",         required_argument, nullptr, 'D'},
+                {"min-overlap",         required_argument, nullptr, 'O'},
+                {"out-vcf",         required_argument, nullptr, 'o'},
+                {"bedpath",         required_argument, nullptr, 'b'},
+                {"ref",         required_argument, nullptr, 'r'},
+                {"padding",         required_argument, nullptr, 'p'},
+                {"skip-secondary", no_argument, nullptr, '2'},
+                {"skip-supplementary", no_argument, nullptr, 'S'},
+                {"skip-qcfail", no_argument, nullptr, 'q'},
+                {"skip-improper", no_argument, nullptr, 'P'},
+                {"skip-recommended", no_argument, nullptr, 'F'},
+                {"max-depth", required_argument, nullptr, 'd'},
+                {"emit-bcf", no_argument, nullptr, 'B'},
                 {0, 0, 0, 0}
         };
         char vcf_wmode[4] = "w";
-        char *outvcf = NULL, *bed = NULL;
+        char *outvcf = nullptr, *bed = nullptr;
         int c;
         int padding = 0, output_bcf = 0;
         // Defaults to outputting textual (vcf)
-        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
+        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
         vetter_aux_t aux = {0};
         aux.minCount = 1;
         aux.max_depth = (1 << 18); // Default max depth
 
-        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, NULL)) >= 0) {
+        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, nullptr)) >= 0) {
             switch (c) {
             case 'B': output_bcf = 1; break;
             case 'a': aux.minFA = atoi(optarg); break;
@@ -433,8 +433,8 @@ namespace BMF {
         if(bed) aux.bed = dlib::parse_bed_hash(bed, aux.header, padding);
         else LOG_EXIT("No bed file provided. Required. Abort!\n");
 
-        if((aux.vcf_fp = vcf_open(argv[optind], "r")) == NULL) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
-        if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == NULL) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
+        if((aux.vcf_fp = vcf_open(argv[optind], "r")) == nullptr) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
+        if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == nullptr) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
         // Add lines to header
         for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
@@ -463,7 +463,7 @@ namespace BMF {
 
         // Open output vcf
 
-        if((aux.vcf_ofp = vcf_open(outvcf, vcf_wmode)) == NULL)
+        if((aux.vcf_ofp = vcf_open(outvcf, vcf_wmode)) == nullptr)
             LOG_EXIT("Could not open output vcf '%s' for writing. Abort!\n", outvcf);
         bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 

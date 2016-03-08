@@ -24,7 +24,7 @@ namespace BMF {
         if ((end = strchr(hdr->text, '\n')) == 0) goto NA;
         *end = '\0';
 
-        if((so_start = strstr(hdr->text, "SO:")) == NULL) goto NA;
+        if((so_start = strstr(hdr->text, "SO:")) == nullptr) goto NA;
         ret = std::string(so_start + strlen("SO:"));
         *end = '\n';
         return ret;
@@ -53,7 +53,7 @@ namespace BMF {
         uint8_t *seq, *rvdata;
         uint32_t *pv, *fa;
         int8_t t;
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
         pv = (uint32_t *)dlib::array_tag(b, "PV");
         fa = (uint32_t *)dlib::array_tag(b, "FA");
@@ -62,7 +62,7 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
                 bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
-        if((rvdata = bam_aux_get(b, "RV")) != NULL)
+        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         seq = bam_get_seq(b);
@@ -102,7 +102,7 @@ namespace BMF {
         uint8_t *seq, *rvdata;
         uint32_t *pv, *fa;
         int8_t t;
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
         pv = (uint32_t *)dlib::array_tag(b, "PV");
         fa = (uint32_t *)dlib::array_tag(b, "FA");
@@ -111,7 +111,7 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
                 bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
-        if((rvdata = bam_aux_get(b, "RV")) != NULL)
+        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         seq = bam_get_seq(b);
@@ -172,7 +172,7 @@ namespace BMF {
         pFM += bFM;
         bam_aux_del(p, pdata);
         bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
-        if((pdata = bam_aux_get(p, "RV")) != NULL) {
+        if((pdata = bam_aux_get(p, "RV")) != nullptr) {
             const int pRV = bam_aux2i(pdata) + bam_itag(b, "RV");
             bam_aux_del(p, pdata);
             bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
@@ -276,7 +276,7 @@ namespace BMF {
             if(stack->a[i]) {
                 uint8_t *data;
                 std::string qname;
-                if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                     qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = bam2cppstr(stack->a[i]);
@@ -297,7 +297,7 @@ namespace BMF {
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
-                bam_destroy1(stack->a[i]), stack->a[i] = NULL;
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
     }
@@ -327,7 +327,7 @@ namespace BMF {
                 return b ? 1: 0;
             }
             // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
-            // Returns 0 if comparing two nulls, and returns true that a NULL lt a valued name
+            // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
             // Compares strings otherwise.
         });
         for(unsigned i = 0; i < stack->n; ++i)
@@ -336,7 +336,7 @@ namespace BMF {
                         stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
                     update_bam1(stack->a[j], stack->a[i]);
                     bam_destroy1(stack->a[i]);
-                    stack->a[i] = NULL;
+                    stack->a[i] = nullptr;
                     break;
                     // "break" in case there are multiple within hamming distance.
                     // Otherwise, I'll end up having memory mistakes.
@@ -435,7 +435,7 @@ namespace BMF {
         settings.mmlim = 2;
         settings.cmpkey = POSITION;
 
-        char *fqname = NULL;
+        char *fqname = nullptr;
 
         if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
@@ -468,7 +468,7 @@ namespace BMF {
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 
-        if (settings.hdr == NULL || settings.hdr->n_targets == 0)
+        if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
         settings.out = sam_open(argv[optind+1], wmode);

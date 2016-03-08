@@ -37,7 +37,7 @@ namespace BMF {
     int hash_dmp_main(int argc, char *argv[])
     {
         if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
-        char *outfname = NULL, *infname = NULL;
+        char *outfname = nullptr, *infname = nullptr;
         int c;
         int stranded_analysis = 1;
         int level = -1;
@@ -65,7 +65,7 @@ namespace BMF {
 
     void duplex_hash_process(kingfisher_hash_t *hfor, kingfisher_hash_t *cfor, kingfisher_hash_t *tmp_hkf, kingfisher_hash_t *crev, kingfisher_hash_t *hrev, gzFile out_handle, tmpvars_t *tmp)
     {
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         size_t buf_record_count = 0;
 
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
@@ -133,7 +133,7 @@ namespace BMF {
     {
         size_t buf_record_count = 0;
         LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         HASH_ITER(hh, hash, current_entry, tmp_hk) {
             if(buf_record_count++ == buf_set_size) {
                 buf_record_count = 0;
@@ -185,7 +185,7 @@ namespace BMF {
         memcpy(tmp->key, bs_ptr, blen);
         tmp->key[blen] = '\0';
         // Start hash table
-        kingfisher_hash_t *hash = NULL;
+        kingfisher_hash_t *hash = nullptr;
         kingfisher_hash_t *current_entry = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
         kingfisher_hash_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
         cp_view2buf(bs_ptr + 1, current_entry->id);
@@ -211,7 +211,7 @@ namespace BMF {
         }
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
         count = 0;
-        se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count, NULL);
+        se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count, nullptr);
         // Demultiplex and write out.
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
         gzclose(fp);
@@ -246,7 +246,7 @@ namespace BMF {
         memcpy(tmp->key, bs_ptr, blen);
         tmp->key[blen] = '\0';
         // Start hash table
-        kingfisher_hash_t *hfor = NULL, *hrev = NULL; // Hash forward, hash reverse
+        kingfisher_hash_t *hfor = nullptr, *hrev = nullptr; // Hash forward, hash reverse
         kingfisher_hash_t *crev = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)); // Current reverse, current forward.
         kingfisher_hash_t *cfor = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
         kingfisher_hash_t *tmp_hkr = crev, *tmp_hkf = cfor;
@@ -303,7 +303,7 @@ namespace BMF {
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
         size_t buf_record_count = 0;
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         // Demultiplex and empty the hash.
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
             if(buf_record_count++ == buf_set_size) {

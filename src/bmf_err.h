@@ -109,7 +109,7 @@ namespace BMF {
                 padding(padding),
                 bedpath(bedpath),
                 fai(fai),
-                iter(NULL),
+                iter(nullptr),
                 bam_index(sam_index_load(fp, fp->fn)),
                 minMQ(minMQ),
                 minFM(minFM),
@@ -127,7 +127,7 @@ namespace BMF {
             if(fp) sam_close(fp);
         }
         char *get_bampath() {
-            return fp ? fp->fn: NULL;
+            return fp ? fp->fn: nullptr;
         }
     };
 

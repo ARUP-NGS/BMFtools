@@ -32,7 +32,7 @@ namespace BMF {
             }
             test = dlib::bed_test(handle.rec, bed);
             counts.target += test;
-            if((data = bam_aux_get(handle.rec, "FM")) != NULL && bam_aux2i(data) > 1) {
+            if((data = bam_aux_get(handle.rec, "FM")) != nullptr && bam_aux2i(data) > 1) {
                 counts.rfm_target += test;
                 ++counts.rfm_count;
             }
@@ -47,7 +47,7 @@ namespace BMF {
 
     int target_main(int argc, char *argv[])
     {
-        char *bedpath = NULL;
+        char *bedpath = nullptr;
         uint32_t padding = (uint32_t)-1, minMQ = 0;
         uint64_t notification_interval = 1000000;
 
@@ -60,13 +60,13 @@ namespace BMF {
         while ((c = getopt(argc, argv, "m:b:p:n:h?")) >= 0) {
             switch (c) {
             case 'm':
-                minMQ = strtoul(optarg, NULL, 0); break;
+                minMQ = strtoul(optarg, nullptr, 0); break;
             case 'b':
                 bedpath = strdup(optarg); break;
             case 'p':
-                padding = strtoul(optarg, NULL, 0); break;
+                padding = strtoul(optarg, nullptr, 0); break;
             case 'n':
-                notification_interval = strtoull(optarg, NULL, 0); break;
+                notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return target_usage(EXIT_SUCCESS);
             }

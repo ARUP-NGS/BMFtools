@@ -109,8 +109,8 @@ namespace BMF {
     int famstats_target_main(int argc, char *argv[])
     {
         int c;
-        khash_t(bed) *bed = NULL;
-        char *bedpath = NULL;
+        khash_t(bed) *bed = nullptr;
+        char *bedpath = nullptr;
         uint32_t padding = (uint32_t)-1;
         uint64_t notification_interval = 1000000;
 
@@ -125,10 +125,10 @@ namespace BMF {
                 bedpath = strdup(optarg);
                 break;
             case 'p':
-                padding = strtoul(optarg, NULL, 0);
+                padding = strtoul(optarg, nullptr, 0);
                 break;
             case 'n':
-                notification_interval = strtoull(optarg, NULL, 0);
+                notification_interval = strtoull(optarg, nullptr, 0);
                 break;
             case '?': case 'h':
                 return famstats_target_usage(EXIT_SUCCESS);
@@ -156,14 +156,14 @@ namespace BMF {
         }
         bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
         uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
-        uint8_t *fpdata = NULL;
+        uint8_t *fpdata = nullptr;
         while(LIKELY(handle.next() >= 0)) {
             if(UNLIKELY(++count % notification_interval == 0))
                 LOG_INFO("Number of records processed: %lu.\n", count);
             if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FSUPPLEMENTARY))) {
                 ++n_flag_skipped;
                 continue;
-            } else if((fpdata = bam_aux_get(handle.rec, "FP")) != NULL && !bam_aux2i(fpdata)) {
+            } else if((fpdata = bam_aux_get(handle.rec, "FP")) != nullptr && !bam_aux2i(fpdata)) {
                 ++n_fp_skipped;
                 continue;
             }
@@ -264,7 +264,7 @@ namespace BMF {
         int ret;
         s->fm = kh_init(fm);
         s->rc = kh_init(rc);
-        s->data = NULL;
+        s->data = nullptr;
         while (LIKELY((ret = handle.next()) >= 0)) {
             famstats_fm_loop(s, handle.rec, settings);
             if(UNLIKELY(++count % settings->notification_interval == 0))
@@ -317,7 +317,7 @@ namespace BMF {
             case 'f':
                 settings->minFM = atoi(optarg); break;
                 break;
-            case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
+            case 'n': settings->notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return famstats_fm_usage(EXIT_SUCCESS);
             }
@@ -359,7 +359,7 @@ namespace BMF {
                 minFM = (uint32_t)atoi(optarg); break;
                 break;
             case 'n':
-                notification_interval = strtoull(optarg, NULL, 0); break;
+                notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return famstats_frac_usage(EXIT_SUCCESS);
             }

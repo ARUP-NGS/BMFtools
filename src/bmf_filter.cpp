@@ -32,7 +32,7 @@ namespace BMF {
         khash_t(bed) *bed;
     };
 
-#define fm_pass(data, b, options) ((((data = bam_aux_get(b, "FM")) != NULL) ? bam_aux2i(data): 1) >= (int)(options->minFM))
+#define fm_pass(data, b, options) ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM))
     static inline int test_core(bam1_t *b, opts *options) {
         uint8_t *data;
 #if !NDEBUG
@@ -80,7 +80,7 @@ namespace BMF {
         int c;
         char out_mode[4] = "wb";
         opts param = {0};
-        char *bedpath = NULL;
+        char *bedpath = nullptr;
         int padding = DEFAULT_PADDING;
         std::string refused_path("");
         while((c = getopt(argc, argv, "s:a:r:P:b:m:F:f:l:hv?")) > -1) {
@@ -88,10 +88,10 @@ namespace BMF {
             case 'a': param.minAF = atof(optarg); break;
             case 'P': padding = atoi(optarg); break;
             case 'b': bedpath = optarg; break;
-            case 'm': param.minMQ = strtoul(optarg, NULL, 0); break;
-            case 's': param.minFM = strtoul(optarg, NULL, 0); break;
-            case 'F': param.skip_flag = strtoul(optarg, NULL, 0); break;
-            case 'f': param.require_flag = strtoul(optarg, NULL, 0); break;
+            case 'm': param.minMQ = strtoul(optarg, nullptr, 0); break;
+            case 's': param.minFM = strtoul(optarg, nullptr, 0); break;
+            case 'F': param.skip_flag = strtoul(optarg, nullptr, 0); break;
+            case 'f': param.require_flag = strtoul(optarg, nullptr, 0); break;
             case 'v': param.v = 1; break;
             case 'r': refused_path = optarg; break;
             case 'l': out_mode[2] = atoi(optarg) % 10 + '0'; break;
