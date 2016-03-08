@@ -16,14 +16,14 @@ static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
 
 static int unclipped_usage() {
     fprintf(stderr,
-                   "Adds the unclipped start position for each read and its mate as tags:\n"
-                   "\tSU: Self Unclipped start.\n"
-                   "\tMU: Mate Unclipped start.\n"
-                   "Required for bmftools rsq using unclipped start.\n"
-                   "Usage: bmftools mark_unclipped <opts> <input.namesrt.bam> <output.bam>\n\n"
-                   "Flags:\n-l     Sets bam compression level. (Valid: 1-9).\n"
-                   "Set output.bam to \'-\' or \'stdout\' to pipe results.\n"
-                   "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
+                    "Adds the unclipped start position for each read and its mate as tags:\n"
+                    "\tSU: Self Unclipped start.\n"
+                    "\tMU: Mate Unclipped start.\n"
+                    "Required for bmftools rsq using unclipped start.\n"
+                    "Usage: bmftools mark_unclipped <opts> <input.namesrt.bam> <output.bam>\n\n"
+                    "Flags:\n-l     Sets bam compression level. (Valid: 1-9).\n"
+                    "Set output.bam to \'-\' or \'stdout\' to pipe results.\n"
+                    "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
             );
     exit(EXIT_FAILURE);
 }

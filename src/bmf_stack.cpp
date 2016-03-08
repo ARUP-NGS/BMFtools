@@ -50,19 +50,8 @@ namespace BMF {
             ret = sam_itr_next(data->fp, data->iter, b);
             if ( ret<0 ) break;
             // Skip unmapped, secondary, qcfail, duplicates.
-            // Skip improper if option set
-            // Skip MQ < minMQ
-            // Skip FM < minFM
-            // Skip AF < minAF
-            if (b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP))
-                continue;
-            /*
-            if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                ( ||
-                (bam_itag(b, "FP") == 0) || (data->minAF && bam_aux2f(bam_aux_get(b, "AF")) < data->minAF))
-                    continue;
-            */
-            break;
+            if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) == 0)
+                break;
         }
         return ret;
     }
@@ -216,7 +205,7 @@ namespace BMF {
             qname = bam_get_qname(plp.b);
             LOG_DEBUG("Got qname %s.\n", qname.c_str());
             if((found = obs.find(qname)) == obs.end())
-                obs[qname] = BMF::UniqueObservation(plp);
+                obs.emplace(std::make_pair(qname, BMF::UniqueObservation(plp)));
             else found->second.add_obs(plp);
         });
         // Build vcfline struct

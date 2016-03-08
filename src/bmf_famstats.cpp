@@ -171,7 +171,8 @@ namespace BMF {
             total_fm += FM;
             if(dlib::bed_test(handle.rec, bed)) fm_target += FM;
         }
-        LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
+        LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n",
+                 count, n_flag_skipped, n_fp_skipped);
         dlib::bed_destroy_hash(bed);
         cond_free(bedpath);
         fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
@@ -324,12 +325,10 @@ namespace BMF {
         }
 
         if (argc != optind+1) {
-            if (argc == optind) {
-                famstats_fm_usage(EXIT_SUCCESS);
-            } else famstats_fm_usage(EXIT_FAILURE);
+            return famstats_fm_usage((argc == optind) ? EXIT_SUCCESS: EXIT_FAILURE);
         }
 
-        LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings.minMQ, settings.minFM);
+        LOG_INFO("Running famstats fm with minMQ %i and minFM %i.\n", settings.minMQ, settings.minFM);
         for(const char *tag: tags_to_check)
             dlib::check_bam_tag_exit(argv[optind], tag);
 

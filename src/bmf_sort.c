@@ -1854,7 +1854,7 @@ static int sort_usage(int status)
                     "-@ INT       Set number of sorting and compression threads [1]\n"
                     "-s           Flag to split the bam into a list of file handles.\n"
                     "-p           If splitting into a list of handles, this sets the file prefix.\n"
-                    "-$           Flag to specify single-end. Needed for unclipped start compatibility.\n"
+                    "-S           Flag to specify single-end. Needed for unclipped start compatibility.\n"
                     "\n"
             );
     return status;
@@ -1879,7 +1879,7 @@ int sort_main(int argc, char *argv[])
     };
 
 
-    while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh$?", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:shS?", lopts, NULL)) >= 0) {
         switch (c) {
         case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_POS;
                   else if(strcmp(optarg, "pos") == 0) {
@@ -1912,12 +1912,10 @@ int sort_main(int argc, char *argv[])
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
         case 's': split = 1; break;
-        case '$': is_se = 1; break;
-
+        case 'S': is_se = 1; break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
-        case '?':
-        case 'h': return sort_usage(EXIT_SUCCESS);
+        case '?': case 'h': return sort_usage(EXIT_SUCCESS);
         }
     }
 
