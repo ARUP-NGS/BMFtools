@@ -15,9 +15,22 @@ make
 
 ### Tools
 
-Name | Use | Example |
-:---:|:----|:-----:|
-
+Name | Use |
+:---:|:----|
+bmftools cap| Postprocess a tagged BAM for BMF-agnostic tools.|
+bmftools depth| Calculates depth of coverage over a set of bed intervals.|
+bmftools dmp| Demultiplex inline barcoded experiments.|
+bmftools err| Calculate error rates based on cycle, base call, and quality score.|
+bmftools famstats| Calculate family size statistics for a bam alignment file.|
+bmftools filter| Filter or split a bam file by a set of filters.|
+bmftools hashdmp| Demultiplex inline barcoded experiments that have already been marked.|
+bmftools mark_unclipped| Add unclipped start position as annotation for both read and mate.|
+bmftools rsq| Rescue bmf-sorted or ucs-sorted bam alignments.|
+bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
+bmftools sort| Sort for bam rescue.|
+bmftools stack| A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.|
+bmftools target| Calculates on-target rate.|
+bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
 
 
 ### Use
@@ -36,9 +49,6 @@ bmftools <subcommand> <-h>
 
 
 ## BMF Tags
-
-These tags are used both in the fastq and the SAM/BAM files.
-The only difference between the SAM/BAM tags and the Fastq tags are that the SAM/BAM tags are tab-delimited (as described in sam specifications), while the fastq tags are separated by a delimiter and separated from their values by "=" instead of ":".
 
 Tag | Content | Format |
 :----:|:-----|:-----:|

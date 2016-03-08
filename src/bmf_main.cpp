@@ -4,7 +4,7 @@ static int bmftools_usage(int rc)
 {
     fprintf(stderr,
                     "Usage: bmftools <subcommand>. See subcommand menus for usage.\n"
-                    "-v/--version:            Print BMFtools version and exit."
+                    "-v/--version:            Print BMFtools version and exit.\n"
                     "cap:             Modifies the quality string as function of family metadata.\n"
                     "depth:           Calculates depth of coverage over a set of bed intervals.\n"
                     "dmp:             Demultiplex inline barcoded experiments.\n"
