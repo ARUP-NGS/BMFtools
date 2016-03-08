@@ -42,12 +42,12 @@ namespace BMF {
         int minFM;
         uint32_t minFA;
         uint32_t minPV;
-        uint32_t minMQ;
         int minCount;
         int minDuplex;
         int minOverlap;
-        int skip_improper;
-        int vet_all; // If provided an unindexed variant file, vet all variants, not just those in bed region of interest.
+        uint32_t skip_improper:1;
+        uint32_t vet_all:1;
+        uint32_t minMQ:8;
         uint32_t skip_flag; // Skip reads with any bits set to true
     };
 
@@ -348,6 +348,7 @@ namespace BMF {
 
     int vetter_main(int argc, char *argv[])
     {
+        if(argc < 3) vetter_usage(EXIT_FAILURE);
         const struct option lopts[] = {
                 {"min-family-agreed",         required_argument, NULL, 'a'},
                 {"min-family-size",          required_argument, NULL, 's'},
@@ -379,7 +380,6 @@ namespace BMF {
         vetter_aux_t aux = {0};
         aux.minCount = 1;
         aux.max_depth = (1 << 18); // Default max depth
-        if(argc < 3) vetter_usage(EXIT_FAILURE);
 
         while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, NULL)) >= 0) {
             switch (c) {
@@ -402,7 +402,7 @@ namespace BMF {
             case 'b': bed = strdup(optarg); break;
             case 'o': outvcf = strdup(optarg); break;
             case 'O': aux.minOverlap = atoi(optarg); break;
-            //case 'V': aux.vet_all = 1; break;
+            case 'V': aux.vet_all = 1; break;
             case 'h': case '?': vetter_usage(EXIT_SUCCESS);
             }
         }
