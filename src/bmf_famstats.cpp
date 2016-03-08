@@ -67,7 +67,7 @@ namespace BMF {
 
     static void print_hashstats(famstats_t *stats, FILE *fp)
     {
-        std::vector<fm_t> fms = std::vector<fm_t>(stats->fm->n_occupied);
+        std::vector<fm_t> fms(stats->fm->n_occupied);
         unsigned i;
         fprintf(fp, "#Family size\tNumber of families\n");
         for(i = 0, stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki)

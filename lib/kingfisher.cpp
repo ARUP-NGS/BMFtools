@@ -24,7 +24,7 @@ namespace BMF {
             const int index = argmaxret + i * 5;
             dmp_pos(kfp, bufs, argmaxret, i, index, diffs);
         }
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         ksprintf(&ks, "@%s ", kfp->barcode + 1);
         kfill_both(kfp->readlen, bufs->agrees, bufs->cons_quals, &ks);
         ksprintf(&ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%0.6f\tDR:i:0\n%s\n+\n",
@@ -85,7 +85,7 @@ namespace BMF {
                 // Don't update max_phreds, since the max phred is already here.
             } else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
         }
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         ksprintf(&ks, "@%s ", kfpf->barcode + 1);
         // Add read name
         kfill_both(kfpf->readlen, bufs->agrees, bufs->cons_quals, &ks);

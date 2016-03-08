@@ -51,7 +51,7 @@ namespace BMF {
         char *buffer, *ret, *tok;
         readlen = dlib::count_lines(qual_rescale_fname);
         LOG_DEBUG("Number of lines: %i.\n", readlen);
-        if((fp = fopen(qual_rescale_fname, "rb")) == NULL) {
+        if((fp = fopen(qual_rescale_fname, "rb")) == nullptr) {
             LOG_EXIT("Could not open file %s. Abort mission!\n", qual_rescale_fname);
         }
         // Get the length of the file contents.
@@ -61,11 +61,11 @@ namespace BMF {
         buffer = (char *)malloc((size_t)length);
         if(!buffer) LOG_EXIT("Could not allocate memory.\n");
         fread(buffer, 1, length, fp);
-        fclose(fp), fp = NULL;
+        fclose(fp), fp = nullptr;
         arr_len = 2 * readlen * NQSCORES * 4;
         ret = (char *)malloc(arr_len * sizeof(char));
         memset(ret, -127, arr_len); // Set all of these char values to -127, which is definitely unprintable
-        tok = NULL;
+        tok = nullptr;
         index = 0;
         LOG_DEBUG("Parsing in array with read len %lu from %s...\n",
                   arr_len, qual_rescale_fname);
@@ -73,7 +73,7 @@ namespace BMF {
             for(int readnum = 0; readnum < 2; ++readnum) {
                 for(unsigned qnum = 0; qnum < NQSCORES; ++qnum) {
                     for(int bnum = 0; bnum < 4; ++bnum) {
-                        if((tok = strtok(tok ? NULL : buffer, "|:,\n")) == NULL)
+                        if((tok = strtok(tok ? nullptr : buffer, "|:,\n")) == nullptr)
                             break;
                         period_to_null(tok);
                         ret[index++] = static_cast<char>(atof(tok) + 0.5); // Round up.

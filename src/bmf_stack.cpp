@@ -101,7 +101,7 @@ namespace BMF {
                 ++af_failed[0]; return;
             }
             //LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
-            qname = std::string(bam_get_qname(plp.b));
+            qname = bam_get_qname(plp.b);
             //LOG_DEBUG("Changed qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
             if((found = tobs.find(qname)) == tobs.end()) {
                 tobs.emplace(qname, plp);
@@ -112,9 +112,9 @@ namespace BMF {
             }
         });
         for(auto& pair: tobs) {
-            if(pair.second.size < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
-            if(pair.second.agreed < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
-            if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
+            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
+            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[0], pair.second.set_pass(0);
         }
         std::for_each(aux->normal.pileups, aux->normal.pileups + nn_plp, [&](const bam_pileup1_t& plp) {
@@ -133,7 +133,7 @@ namespace BMF {
             if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
                 ++af_failed[1]; return;
             }
-            qname = std::string(bam_get_qname(plp.b));
+            qname = bam_get_qname(plp.b);
             if((found = nobs.find(qname)) == nobs.end()) {
                 nobs.emplace(qname, plp);
             } else {
@@ -142,9 +142,9 @@ namespace BMF {
             }
         });
         for(auto& pair: nobs) {
-            if(pair.second.size < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
-            if(pair.second.agreed < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
-            if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
+            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
+            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
         }
         LOG_DEBUG("Making PairVCFPos.\n");

@@ -50,7 +50,7 @@ namespace BMF {
                     else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
             }
         }
-        return NULL; // This shouldn't ever happen.
+        return nullptr; // This shouldn't ever happen.
     }
 
 

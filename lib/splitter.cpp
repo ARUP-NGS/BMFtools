@@ -52,7 +52,7 @@ namespace BMF {
             fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
             exit(EXIT_FAILURE);
         }
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
         ret->n = splitter_ptr->n_handles;
         if(settings_ptr->is_se) {
@@ -106,7 +106,7 @@ namespace BMF {
             (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
             (char **)malloc(ret.n_handles * sizeof(char *))  // infnames_r2
         };
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
             ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
@@ -124,13 +124,13 @@ namespace BMF {
     {
         mark_splitter_t ret = {
             (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r1
-            NULL, // tmp_out_handles_r2
+            nullptr, // tmp_out_handles_r2
             settings_ptr->n_nucs, // n_nucs
             (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
             (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
-            NULL  // infnames_r2
+            nullptr  // infnames_r2
         };
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
             ksprintf(&ks, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
