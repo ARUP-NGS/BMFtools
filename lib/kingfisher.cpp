@@ -9,11 +9,8 @@ namespace BMF {
             bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[index]))));\
             bufs->agrees[i] = kfp->nuc_counts[index];\
             diffcount -= bufs->agrees[i];\
-            if(argmaxret != 4) diffcount -= kfp->nuc_counts[i * 5 + 4];\
-            if(bufs->cons_quals[i] <= 2) {\
-                bufs->cons_quals[i] = 2;\
-                bufs->cons_seq_buffer[i] = 'N';\
-            } else if((double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) {\
+            if(argmaxret != 4) diffcount -= kfp->nuc_counts[i * 5 + 4]; /*(Skip Ns in counting diffs) */\
+            if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) {\
                 bufs->cons_seq_buffer[i] = num2nuc(argmaxret);\
             } else {\
                 bufs->cons_quals[i] = 2;\
@@ -46,20 +43,21 @@ namespace BMF {
         int i, diffs = FM * kfpf->readlen;
         int index;
         for(i = 0; i < kfpf->readlen; ++i) {
-            const int argmaxretf = kfp_argmax(kfpf, i), argmaxretr = kfp_argmax(kfpr, i);
+            const int argmaxretf = kfp_argmax(kfpf, i); // Forward consensus nucleotide
+            const int argmaxretr = kfp_argmax(kfpr, i); // Reverse consensus nucleotide
             if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
                 index = i * 5 + argmaxretf;
                 kfpf->phred_sums[index] += kfpr->phred_sums[index];
                 kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
                 dmp_pos(kfpf, bufs, argmaxretf, i, index, diffs);
                 if(kfpr->max_phreds[index] > kfpf->max_phreds[index]) kfpf->max_phreds[index] = kfpr->max_phreds[index];
-            } else if(argmaxretf == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
+            } else if(argmaxretf == 4) { // Forward is N'd and reverse is not. Reverse call is probably right.
                 index = i * 5 + argmaxretr;
                 kfpf->phred_sums[index] += kfpr->phred_sums[index];
                 kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
                 dmp_pos(kfpf, bufs, argmaxretr, i, index, diffs);
                 kfpf->max_phreds[index] = kfpr->max_phreds[index];
-            } else if(argmaxretr == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
+            } else if(argmaxretr == 4) { // Forward is N'd and reverse is not. Reverse call is probably right.
                 index = i * 5 + argmaxretf;
                 kfpf->phred_sums[index] += kfpr->phred_sums[index];
                 kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
@@ -71,8 +69,8 @@ namespace BMF {
         // Add read name
         kfill_both(kfpf->readlen, bufs->agrees, bufs->cons_quals, ks);
         ksprintf(ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->pass_fail,
-                FM, kfpr->length, (double) diffs / FM, kfpf->length && kfpr->length,
-                bufs->cons_seq_buffer);
+                 FM, kfpr->length, (double) diffs / FM, kfpf->length && kfpr->length,
+                 bufs->cons_seq_buffer);
         for(i = 0; i < kfpf->readlen; ++i)
             kputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], ks);
         kputc('\n', ks);

@@ -16,7 +16,7 @@ namespace BMF {
         uint64_t n_analyzed;
     };
     /*
-     * Effectively strdup for a NULL dest and a realloc/strcpy for pre-allocated dest strings.
+     * Effectively strdup for a nullptr dest and a realloc/strcpy for pre-allocated dest strings.
      */
     static inline char *restrdup(char *dest, char *src)
     {
@@ -110,7 +110,7 @@ namespace BMF {
     {
         // Check for FM tag.
         if(!n_plp) return 0;
-        uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
+        uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
         if(!data) return n_plp;
         int ret = 0;
         std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
@@ -125,7 +125,7 @@ namespace BMF {
     static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
     {
         // Check for FM tag.
-        uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
+        uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
         if(!data) return n_plp;
         int ret = 0;
         std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
@@ -174,8 +174,8 @@ namespace BMF {
         const bam_pileup1_t **plp;
         int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
         int requireFP = 0, n_cols = 0;
-        char *bedpath = NULL;
-        FILE *histfp = NULL;
+        char *bedpath = nullptr;
+        FILE *histfp = nullptr;
         khiter_t k = 0;
         if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
             depth_usage(EXIT_SUCCESS);
@@ -222,7 +222,7 @@ namespace BMF {
             }
             // TODO bgzf_set_cache_size(aux[i]->fp, 20);
             aux[i]->header = sam_hdr_read(aux[i]->fp);
-            if (aux[i]->header == NULL) {
+            if (aux[i]->header == nullptr) {
                 fprintf(stderr, "ERROR: failed to read header for '%s'\n",
                         argv[i+optind+1]);
                 return 2;
@@ -245,7 +245,7 @@ namespace BMF {
         int line_num = 0;
         // Write header
         // stderr ONLY for this development phase.
-        kstring_t hdr_str = {0, 0, NULL};
+        kstring_t hdr_str = {0, 0, nullptr};
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
@@ -254,7 +254,7 @@ namespace BMF {
         std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
-        kstring_t cov_str = {0, 0, NULL};
+        kstring_t cov_str = {0, 0, nullptr};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;

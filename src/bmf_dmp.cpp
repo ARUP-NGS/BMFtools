@@ -37,13 +37,13 @@ namespace BMF {
     }
 
     kstring_t salted_rand_string(char *infname, size_t n_rand) {
-        kstring_t ret = {0, 0, NULL};
+        kstring_t ret = {0, 0, nullptr};
         ksprintf(&ret, infname);
         char *tmp;
         /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
          *
          */
-        if((tmp = strrchr(ret.s, '.')) != NULL){
+        if((tmp = strrchr(ret.s, '.')) != nullptr){
             *tmp = '\0';
         }
         ret.l = strlen(ret.s);
@@ -86,7 +86,7 @@ namespace BMF {
         if(!settings->cleanup) return;
         #pragma omp parallel for
         for(int i = 0; i < params->n; ++i) {
-            kstring_t ks = {0, 0, NULL};
+            kstring_t ks = {0, 0, nullptr};
             ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
             dlib::check_call(ks.s);
             free(ks.s);
@@ -105,7 +105,7 @@ namespace BMF {
                     params->infnames_r1[i], params->outfnames_r1[i]);
             func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
             if(settings->cleanup) {
-                kstring_t ks = {0, 0, NULL};
+                kstring_t ks = {0, 0, nullptr};
                 ksprintf(&ks, "rm %s", params->infnames_r1[i]);
                 dlib::check_call(ks.s);
                 free(ks.s);
@@ -118,7 +118,7 @@ namespace BMF {
                     params->infnames_r2[i], params->outfnames_r2[i]);
             func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
             if(settings->cleanup) {
-                kstring_t ks = {0, 0, NULL};
+                kstring_t ks = {0, 0, nullptr};
                 ksprintf(&ks, "rm %s", params->infnames_r2[i]);
                 dlib::check_call(ks.s);
                 free(ks.s);
@@ -129,7 +129,7 @@ namespace BMF {
 
     void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
     {
-        kstring_t ks = {0, 0, NULL};
+        kstring_t ks = {0, 0, nullptr};
         // Clear output files.
         ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
         dlib::check_call(ks.s);
@@ -161,8 +161,8 @@ namespace BMF {
 
     void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
     {
-        kstring_t str1 = {0, 0, NULL}, str2 = {0, 0, NULL};
-        kstring_t final = {0, 0, NULL};
+        kstring_t str1 = {0, 0, nullptr}, str2 = {0, 0, nullptr};
+        kstring_t final = {0, 0, nullptr};
         kputs((settings->gzip_output)? "zcat": "cat", &str1);
         ks_resize(&str1, 1 << 10);
         for(int i = 0; i < settings->n_handles; ++i)
@@ -190,7 +190,7 @@ namespace BMF {
 
     void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
     {
-        kstring_t ks1 = {0, 0, NULL};
+        kstring_t ks1 = {0, 0, nullptr};
         kputs("> ", &ks1), kputs(ffq_r1, &ks1);
         if(settings->gzip_output) kputs(".gz", &ks1);
         // Clear output files.

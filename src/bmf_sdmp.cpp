@@ -50,7 +50,7 @@ namespace BMF {
         else
             fprintf(stderr, "[%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
         gzFile fp_read1, fp_read2, fp_index;
-        kseq_t *seq1 = NULL, *seq2 = NULL, *seq_index = NULL;
+        kseq_t *seq1 = nullptr, *seq2 = nullptr, *seq_index = nullptr;
         int l1, l2, l_index;
         mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
         *splitter_ptr = init_splitter(settings);
@@ -120,7 +120,7 @@ namespace BMF {
         for(int j = 0; j < settings->n_handles; ++j) {
             gzclose(splitter_ptr->tmp_out_handles_r1[j]);
             gzclose(splitter_ptr->tmp_out_handles_r2[j]);
-            splitter_ptr->tmp_out_handles_r1[j] = splitter_ptr->tmp_out_handles_r2[j] = NULL;
+            splitter_ptr->tmp_out_handles_r1[j] = splitter_ptr->tmp_out_handles_r2[j] = nullptr;
         }
         return splitter_ptr;
     }
@@ -131,7 +131,7 @@ namespace BMF {
         fprintf(stderr, "[D:%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
     #endif
         gzFile fp, fp_index;
-        kseq_t *seq = NULL, *seq_index = NULL;
+        kseq_t *seq = nullptr, *seq_index = nullptr;
         int l, l_index;
         mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
         *splitter_ptr = init_splitter(settings);
@@ -174,9 +174,9 @@ namespace BMF {
         gzclose(fp); gzclose(fp_index);
         for(int j = 0; j < settings->n_handles; ++j) {
             gzclose(splitter_ptr->tmp_out_handles_r1[j]);
-            splitter_ptr->tmp_out_handles_r1[j] = NULL;
+            splitter_ptr->tmp_out_handles_r1[j] = nullptr;
         }
-        // Set out handles to NULL.
+        // Set out handles to nullptr.
         return splitter_ptr;
     }
 
@@ -269,7 +269,7 @@ namespace BMF {
                     __func__, settings.tmp_basename);
         }
 
-        splitterhash_params_t *params = NULL;
+        splitterhash_params_t *params = nullptr;
         mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
         if(!settings.run_hash_dmp) {
             fprintf(stderr, "[%s] Finished mark/split. Skipping dmp.\n", __func__);

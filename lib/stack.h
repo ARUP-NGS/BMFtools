@@ -78,11 +78,17 @@ static const char *stack_vcf_lines[] = {
     char base1;
     char base2; // Masked, from other read
     char base_call;
+    uint32_t agreed;
+    uint32_t size;
     public:
-        uint32_t agreed;
-        uint32_t size;
         int is_pass() {
             return pass;
+        }
+        uint32_t get_size() {
+            return size;
+        }
+        uint32_t get_agreed() {
+            return agreed;
         }
         int get_reverse() {
             return is_reverse1 + (is_reverse2 >= 0) ? is_reverse2: 0;
@@ -99,12 +105,12 @@ static const char *stack_vcf_lines[] = {
         int get_overlap() {return is_overlap;}
         uint32_t get_quality() {return quality;}
         int get_duplex() {
-            return is_duplex1 + (is_duplex2 != -1 ? is_duplex2: 0);
+            return is_duplex1 + (is_duplex2 >= 0 ? is_duplex2: 0);
         }
         UniqueObservation() {
             memset(this, 0, sizeof(*this));
         }
-        inline UniqueObservation(const bam_pileup1_t& plp):
+        UniqueObservation(const bam_pileup1_t& plp):
             qname(bam_get_qname(plp.b)),
             cycle1(dlib::arr_qpos(&plp)),
             cycle2(-1),
@@ -177,10 +183,10 @@ static const char *stack_vcf_lines[] = {
             tumor(tumor_path),
             normal(normal_path),
             vcf(vcf_path, vh, conf.output_bcf ? "wb": "w"),
-            fai(NULL),
-            bed(NULL),
+            fai(nullptr),
+            bed(nullptr),
             last_tid(-1),
-            ref_seq(NULL)
+            ref_seq(nullptr)
         {
             dlib::bcf_add_bam_contigs(vcf.vh, tumor.header);
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
@@ -222,7 +228,8 @@ static const char *stack_vcf_lines[] = {
                 std::unordered_map<std::string, UniqueObservation>& nobs,
                     int32_t _tid, int32_t _pos):
                         tumor(tobs, _tid, _pos),
-                        normal(nobs, _tid, _pos) {
+                        normal(nobs, _tid, _pos)
+        {
         }
     };
 }

@@ -42,7 +42,7 @@ int mark_unclipped_main(int argc, char *argv[])
     if (optind + 2 > argc) unclipped_usage();
 
     int ret = dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
-                                            add_multiple_tags, NULL, wmode);
+                                            add_multiple_tags, nullptr, wmode);
     LOG_INFO("Successfully complete bmftools mark_unclipped.\n");
     return ret;
 }

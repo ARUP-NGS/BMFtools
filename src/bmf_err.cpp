@@ -16,7 +16,7 @@ namespace BMF {
             name("")
         {
         LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
-        kstring_t tmp{0, 0, NULL};
+        kstring_t tmp{0, 0, nullptr};
         LOG_DEBUG("Contig name: %s. Strlen: %lu.\n", set.contig_name, strlen(set.contig_name));
         ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
         name = std::string(tmp.s);
@@ -280,7 +280,7 @@ namespace BMF {
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
         int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
-        char *ref = NULL; // Will hold the sequence for a  chromosome
+        char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
         uint32_t *cigar, *pv_array;
@@ -393,7 +393,7 @@ namespace BMF {
         uint8_t *seq, *fpdata;
         uint32_t *cigar;
         obserr_t *arr;
-        char *ref = NULL; // Will hold the sequence for a  chromosome
+        char *ref = nullptr; // Will hold the sequence for a  chromosome
         if(ce->refcontig) {
             for(int i = 0; i < hdr->n_targets; ++i) {
                 if(!strcmp(hdr->target_name[i], ce->refcontig)) {
@@ -409,7 +409,7 @@ namespace BMF {
             if((b->core.flag & 1796) /* unmapped, secondary, qc fail, duplicate*/||
                 b->core.qual < ce->minMQ ||
                 (ce->refcontig && tid_to_study != b->core.tid) ||
-                ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != NULL) && bam_aux2i(fpdata) == 0) ||
+                ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != nullptr) && bam_aux2i(fpdata) == 0) ||
                 ((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||
                 (ce->bed && dlib::bed_test(b, ce->bed) == 0) /* Outside of region */) {
                 ++ce->nskipped;
@@ -480,7 +480,7 @@ namespace BMF {
         int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
         unsigned ind;
         bam1_t *b = bam_init1();
-        char *ref = NULL; // Will hold the sequence for a  chromosome
+        char *ref = nullptr; // Will hold the sequence for a  chromosome
         if(f->refcontig) {
             for(i = 0; i < hdr->n_targets; ++i) {
                 if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -519,7 +519,7 @@ namespace BMF {
                 cond_free(ref);
                 LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
                 ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-                if(ref == NULL) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+                if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
             }
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
@@ -836,8 +836,8 @@ namespace BMF {
     }
 
     void fullerr_destroy(fullerr_t *e) {
-        if(e->r1) readerr_destroy(e->r1), e->r1 = NULL;
-        if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
+        if(e->r1) readerr_destroy(e->r1), e->r1 = nullptr;
+        if(e->r2) readerr_destroy(e->r2), e->r2 = nullptr;
         cond_free(e->refcontig);
         if(e->bed) {
             kh_destroy(bed, e->bed);
@@ -890,7 +890,7 @@ namespace BMF {
 
     void cycle_destroy(cycle_err_t *c)
     {
-        if(c->bed) kh_destroy(bed, c->bed), c->bed = NULL;
+        if(c->bed) kh_destroy(bed, c->bed), c->bed = nullptr;
         cond_free(c->bedpath);
         cond_free(c->refcontig);
         cond_free(c->r1); cond_free(c->r2);
@@ -936,9 +936,9 @@ namespace BMF {
 
     int err_main_main(int argc, char *argv[])
     {
-        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
-        samFile *fp = NULL;
-        bam_hdr_t *header = NULL;
+        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
+        samFile *fp = nullptr;
+        bam_hdr_t *header = nullptr;
         int c, minMQ = 0;
         std::string outpath("");
         if(argc < 2) return err_main_usage(EXIT_FAILURE);
@@ -946,9 +946,9 @@ namespace BMF {
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(EXIT_SUCCESS);
 
 
-        FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
+        FILE *ofp = nullptr, *d3 = nullptr, *df = nullptr, *dbc = nullptr, *dc = nullptr, *global_fp = nullptr;
         char refcontig[200] = "";
-        char *bedpath = NULL;
+        char *bedpath = nullptr;
         int padding = -1;
         int minFM = 0;
         int maxFM = INT_MAX;
@@ -966,7 +966,7 @@ namespace BMF {
             case 'M': maxFM = atoi(optarg); break;
             case 'f': df = dlib::open_ofp(optarg); break;
             case 'o': outpath = optarg; break;
-            case 'O': min_obs = strtoull(optarg, NULL, 10); break;
+            case 'O': min_obs = strtoull(optarg, nullptr, 10); break;
             case '3': d3 = dlib::open_ofp(optarg); break;
             case 'c': dc = dlib::open_ofp(optarg); break;
             case 'n': dbc = dlib::open_ofp(optarg); break;
@@ -974,7 +974,7 @@ namespace BMF {
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 'g': global_fp = dlib::open_ofp(optarg); break;
-            case 'S': minPV = strtoul(optarg, NULL, 0); break;
+            case 'S': minPV = strtoul(optarg, nullptr, 0); break;
             case '?': case 'h': return err_main_usage(EXIT_SUCCESS);
             }
         }
@@ -987,9 +987,9 @@ namespace BMF {
 
         faidx_t *fai = fai_load(argv[optind]);
 
-        if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL)
+        if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == nullptr)
             LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
-        if ((header = sam_hdr_read(fp)) == NULL)
+        if ((header = sam_hdr_read(fp)) == nullptr)
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
 
         if(minPV) dlib::check_bam_tag_exit(argv[optind + 1], "PV");
@@ -1001,10 +1001,10 @@ namespace BMF {
         fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header,
                                      padding, minFM, maxFM, flag, minMQ, minPV, min_obs);
         sam_close(fp);
-        fp = NULL;
+        fp = nullptr;
         bam_destroy1(b);
         if(*refcontig) f->refcontig = strdup(refcontig);
-        bam_hdr_destroy(header), header = NULL;
+        bam_hdr_destroy(header), header = nullptr;
         err_main_core(argv[optind + 1], fai, f, &open_fmt);
         fai_destroy(fai);
         fill_qvals(f);
@@ -1018,19 +1018,19 @@ namespace BMF {
 
         if(d3) {
             write_3d_offsets(d3, f);
-            fclose(d3), d3 = NULL;
+            fclose(d3), d3 = nullptr;
         }
         if(df) {
             write_full_rates(df, f);
-            fclose(df), df = NULL;
+            fclose(df), df = nullptr;
         }
         if(dbc) {
             write_base_rates(dbc, f);
-            fclose(dbc), dbc = NULL;
+            fclose(dbc), dbc = nullptr;
         }
         if(dc) {
             write_cycle_rates(dc, f);
-            fclose(dc), dc = NULL;
+            fclose(dc), dc = nullptr;
         }
         if(!global_fp) {
             LOG_INFO("No global rate outfile provided. Defaulting to stdout.\n");
@@ -1044,16 +1044,16 @@ namespace BMF {
 
     int err_cycle_main(int argc, char *argv[])
     {
-        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, NULL};
+        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
 
         if(argc < 2) return err_cycle_usage(EXIT_FAILURE);
 
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
             return err_cycle_usage(EXIT_SUCCESS);
 
-        FILE *ofp = NULL;
+        FILE *ofp = nullptr;
         int padding = -1, minMQ = 0, flag = 0, c;
-        char *bedpath = NULL, *outpath = NULL, *refcontig = NULL;
+        char *bedpath = nullptr, *outpath = nullptr, *refcontig = nullptr;
         while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
             switch (c) {
             case 'a': minMQ = atoi(optarg); break;
@@ -1099,9 +1099,9 @@ namespace BMF {
         open_fmt.format = bam;
         open_fmt.version.major = 1;
         open_fmt.version.minor = 3;
-        samFile *fp = NULL;
-        bam_hdr_t *header = NULL;
-        char *outpath = NULL;
+        samFile *fp = nullptr;
+        bam_hdr_t *header = nullptr;
+        char *outpath = nullptr;
 
         if(argc < 2) return err_fm_usage(EXIT_FAILURE);
 
@@ -1109,9 +1109,9 @@ namespace BMF {
 
 
 
-        FILE *ofp = NULL;
+        FILE *ofp = nullptr;
         std::string refcontig("");
-        char *bedpath = NULL;
+        char *bedpath = nullptr;
         int flag = 0, padding = -1, minMQ = 0, c;
         uint32_t minPV = 0;
         while ((c = getopt(argc, argv, "S:p:b:r:o:a:Fh?dP")) >= 0) {
@@ -1123,7 +1123,7 @@ namespace BMF {
             case 'b': bedpath = strdup(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 'P': flag |= REQUIRE_PROPER; break;
-            case 'S': minPV = strtoul(optarg, NULL, 0); break;
+            case 'S': minPV = strtoul(optarg, nullptr, 0); break;
             case 'F': flag |= REQUIRE_FP_PASS; break;
             case '?': case 'h': return err_fm_usage(EXIT_SUCCESS);
             }
@@ -1143,10 +1143,10 @@ namespace BMF {
 
         faidx_t *fai = fai_load(argv[optind]);
 
-        if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
+        if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == nullptr) {
             LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
         }
-        if ((header = sam_hdr_read(fp)) == NULL) {
+        if ((header = sam_hdr_read(fp)) == nullptr) {
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
         }
         for(auto tag: {"FM", "FP", "RV"})
@@ -1156,7 +1156,7 @@ namespace BMF {
 
         fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minMQ, minPV);
         // Get read length from the first
-        bam_hdr_destroy(header); header = NULL;
+        bam_hdr_destroy(header); header = nullptr;
         err_fm_core(argv[optind + 1], fai, f, &open_fmt);
         err_fm_report(ofp, f); fclose(ofp);
         fai_destroy(fai);
@@ -1215,7 +1215,7 @@ namespace BMF {
 
     void err_region_core(RegionExpedition *Holloway) {
         // Make region_counts classes. These can now be filled from the bam.
-        char *ref = NULL;
+        char *ref = nullptr;
         int len;
         bam1_t *b = bam_init1();
         std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
@@ -1263,9 +1263,9 @@ namespace BMF {
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
             return err_region_usage(EXIT_SUCCESS);
 
-        FILE *ofp = NULL;
+        FILE *ofp = nullptr;
         int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
-        char *bedpath = NULL, *outpath = NULL;
+        char *bedpath = nullptr, *outpath = nullptr;
         faidx_t *fai;
         while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
             switch (c) {

@@ -1,27 +1,26 @@
 #BMFTools
 ###Summary
->BMFtools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
-
-###What is BMF?
->BMF is a promiscuous acronym with multiple appropriate meanings. Primarily:
-
-|By __Reference__| By __Value__ |
-|---------------|-----------|
-|_**B**arcoded **M**olecular **F**amilies_ | _**B**arcode **M**anipulation and **F**actorization_ |
-######[Cf. Nicklaus Wirth]
+>BMFtools (_**B**arcoded **M**olecular **F**amilies_tools) is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
 
 ===================
 
 
-## Installation
+### Installation
 
 ```bash
 git clone https://github.com/ARUP-NGS/BMFtools --recursive
 cd BMFtools
 make
 ```
-## Use
 
+### Tools
+
+Name | Use | Example |
+:---:|:----|:-----:|
+
+
+
+### Use
 
 ```bash
 bmftools
@@ -57,8 +56,6 @@ RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry
 SC | Soft-clipped length | Integer |
 
 ## Barcoding methods
-
-Essentially, the process is *molecular* demultiplexing.
 
 ####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.

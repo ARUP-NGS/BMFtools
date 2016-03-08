@@ -91,7 +91,7 @@ namespace BMF {
                 ++af_failed[0]; return;
             }
             //LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
-            qname = std::string(bam_get_qname(plp.b));
+            qname = bam_get_qname(plp.b);
             //LOG_DEBUG("Changed qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
             if((found = tobs.find(qname)) == tobs.end()) {
                 tobs.emplace(qname, plp);
@@ -102,9 +102,9 @@ namespace BMF {
             }
         });
         for(auto& pair: tobs) {
-            if(pair.second.size < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
-            if(pair.second.agreed < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
-            if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
+            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
+            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[0], pair.second.set_pass(0);
         }
         std::for_each(aux->normal.pileups, aux->normal.pileups + nn_plp, [&](const bam_pileup1_t& plp) {
@@ -123,7 +123,7 @@ namespace BMF {
             if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
                 ++af_failed[1]; return;
             }
-            qname = std::string(bam_get_qname(plp.b));
+            qname = bam_get_qname(plp.b);
             if((found = nobs.find(qname)) == nobs.end()) {
                 nobs.emplace(qname, plp);
             } else {
@@ -132,9 +132,9 @@ namespace BMF {
             }
         });
         for(auto& pair: nobs) {
-            if(pair.second.size < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
-            if(pair.second.agreed < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
-            if((float)pair.second.agreed / pair.second.size < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
+            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
+            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
         }
         LOG_DEBUG("Making PairVCFPos.\n");
@@ -255,32 +255,32 @@ namespace BMF {
         int c;
         unsigned padding = (unsigned)-1;
         if(argc < 2) stack_usage(EXIT_FAILURE);
-        char *outvcf = NULL, *refpath = NULL;
-        char *bedpath = NULL;
+        char *outvcf = nullptr, *refpath = nullptr;
+        char *bedpath = nullptr;
         struct BMF::stack_conf_t conf = {0};
         const struct option lopts[] = {
-            {"skip-secondary", no_argument, NULL, '2'},
-            {"min-family-agreed", required_argument, NULL, 'a'},
-            {"bedpath", required_argument, NULL, 'b'},
-            {"emit-bcf", no_argument, NULL, 'B'},
-            {"min-count", required_argument, NULL, 'c'},
-            {"max-depth", required_argument, NULL, 'd'},
-            {"min-duplex", required_argument, NULL, 'D'},
-            {"min-fraction-agreed", required_argument, NULL, 'f'},
-            {"min-mapping-quality", required_argument, NULL, 'm'},
-            {"min-overlap", required_argument, NULL, 'O'},
-            {"out-vcf", required_argument, NULL, 'o'},
-            {"skip-improper", no_argument, NULL, 'P'},
-            {"padding", required_argument, NULL, 'p'},
-            {"skip-qcfail", no_argument, NULL, 'q'},
-            {"skip-duplicates", required_argument, NULL, 'r'},
-            {"ref", required_argument, NULL, 'R'},
-            {"min-family-size", required_argument, NULL, 's'},
-            {"skip-supplementary", no_argument, NULL, 'S'},
-            {"min-phred-quality", required_argument, NULL, 'v'},
+            {"skip-secondary", no_argument, nullptr, '2'},
+            {"min-family-agreed", required_argument, nullptr, 'a'},
+            {"bedpath", required_argument, nullptr, 'b'},
+            {"emit-bcf", no_argument, nullptr, 'B'},
+            {"min-count", required_argument, nullptr, 'c'},
+            {"max-depth", required_argument, nullptr, 'd'},
+            {"min-duplex", required_argument, nullptr, 'D'},
+            {"min-fraction-agreed", required_argument, nullptr, 'f'},
+            {"min-mapping-quality", required_argument, nullptr, 'm'},
+            {"min-overlap", required_argument, nullptr, 'O'},
+            {"out-vcf", required_argument, nullptr, 'o'},
+            {"skip-improper", no_argument, nullptr, 'P'},
+            {"padding", required_argument, nullptr, 'p'},
+            {"skip-qcfail", no_argument, nullptr, 'q'},
+            {"skip-duplicates", required_argument, nullptr, 'r'},
+            {"ref", required_argument, nullptr, 'R'},
+            {"min-family-size", required_argument, nullptr, 's'},
+            {"skip-supplementary", no_argument, nullptr, 'S'},
+            {"min-phred-quality", required_argument, nullptr, 'v'},
             {0, 0, 0, 0}
         };
-        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, NULL)) >= 0) {
+        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, nullptr)) >= 0) {
             switch (c) {
                 case '2': conf.skip_flag |= BAM_FSECONDARY; break;
                 case 'a': conf.minFA = atoi(optarg); break;
@@ -328,13 +328,13 @@ namespace BMF {
             LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
         if((tmp = bcf_hdr_add_sample(vh, "Normal")))
             LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
-        bcf_hdr_add_sample(vh, NULL);
+        bcf_hdr_add_sample(vh, nullptr);
         bcf_hdr_nsamples(vh) = 2;
         LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
         // Add lines to the header for the bed file?
         BMF::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
         bcf_hdr_destroy(vh);
-        if((aux.fai = fai_load(refpath)) == NULL)
+        if((aux.fai = fai_load(refpath)) == nullptr)
             LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header
         aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
