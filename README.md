@@ -58,7 +58,7 @@ SC | Soft-clipped length | Integer |
 
 ## Barcoding methods
 
-Essentially, the process is *molecular* demultiplexing.
+Essentially, the process is *molecular* **d**e**m**ulti**p**lexing.
 
 ####Secondary Index Barcoding 
 Requires read fastqs and an additional fastq containing barcodes.
