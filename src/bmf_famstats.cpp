@@ -319,7 +319,7 @@ namespace BMF {
             case 'f':
                 settings.minFM = atoi(optarg); break;
                 break;
-            case 'n': settings->notification_interval = strtoull(optarg, nullptr, 0); break;
+            case 'n': settings.notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return famstats_fm_usage(EXIT_SUCCESS);
             }
