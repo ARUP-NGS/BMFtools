@@ -27,6 +27,8 @@ KSEQ_INIT(gzFile, gzread)
 #endif
 namespace BMF {
 
+    const double MIN_FRAC_AGREED = 0.5; // Minimum fraction of bases agreed in a family to not "N" the base.
+
 
     struct tmpbuffers_t {
         char name_buffer[120];

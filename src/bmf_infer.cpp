@@ -2,16 +2,7 @@
 
 namespace BMF {
 
-    struct infer_aux_t {
-        FILE *fqh;
-        samFile *in;
-        samFile *out;
-        int cmpkey; // 0 for pos, 1 for unclipped start position
-        int mmlim; // Mismatch failure threshold.
-        int is_se;
-        bam_hdr_t *hdr; // BAM header
-        std::unordered_map<std::string, std::string> realign_pairs;
-    };
+
 
     /* OUTLINE FOR INFER
      * 1. multidimensional array (in 1-d) of nucleotide counts.
@@ -253,7 +244,7 @@ namespace BMF {
         // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
         // Compares strings otherwise.
         BamFisherKing king(stack);
-        king.add_to_hash(settings->realign_pairs);
+        king.add_to_hash(settings);
     }
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};

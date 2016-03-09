@@ -2,8 +2,6 @@
 
 namespace BMF {
 
-    const double MIN_FRAC_AGREED = 0.5; // Minimum fraction of bases agreed in a family to not "N" the base.
-
     #define dmp_pos(kfp, bufs, argmaxret, i, index, diffcount)\
         do {\
             bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[index]))));\
