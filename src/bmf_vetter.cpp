@@ -208,7 +208,7 @@ namespace BMF {
         hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
-            LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
+            //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
             /*
             vcf_idx = tbx_index_load(aux->vcf_fp->fn);
             if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
