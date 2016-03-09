@@ -22,21 +22,6 @@
 
 namespace BMF {
 
-    struct tmp_stack_t {
-        size_t n, max;
-        bam1_t **a;
-    };
-
-    static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
-    {
-        if (stack->n == stack->max) {
-            stack->max = stack->max? stack->max<<1 : 0x10000;
-            stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
-        }
-        stack->a[stack->n++] = bam_dup1(b);
-    }
-
-
     enum cmpkey {
         POSITION,
         UNCLIPPED
@@ -89,8 +74,8 @@ namespace BMF {
             pc = bam_seqi(pseq, i);
             if(bc != pc &&
                bc != dlib::htseq::HTS_N &&
-			   pc != dlib::htseq::HTS_N &&
-			   ++hd > lim) // Note increment on hd.
+               pc != dlib::htseq::HTS_N &&
+               ++hd > lim) // Note increment on hd.
                 return 0;
         }
         return 1;

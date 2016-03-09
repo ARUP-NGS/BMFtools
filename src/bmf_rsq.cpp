@@ -16,18 +16,6 @@ namespace BMF {
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                    &same_stack_ucs, &same_stack_ucs_se};
 
-    void resize_stack(tmp_stack_t *stack, size_t n) {
-        if(n > stack->max) {
-            stack->max = n;
-            stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-            if(!stack->a) LOG_EXIT("Failed to reallocate memory for %lu bam1_t * objects. Abort!\n", stack->max);
-        } else if(n < stack->n){
-            for(uint64_t i = stack->n;i > n;) free(stack->a[--i]->data);
-            stack->max = n;
-            stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-        }
-    }
-
     inline void bam2ffq(bam1_t *b, FILE *fp)
     {
         char *qual, *seqbuf;
@@ -201,7 +189,7 @@ namespace BMF {
     }
 
 
-    void write_stack(tmp_stack_t *stack, rsq_aux_t *settings)
+    void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
@@ -248,7 +236,7 @@ namespace BMF {
         return 1;
     }
 
-    static inline void flatten_stack_linear(tmp_stack_t *stack, rsq_aux_t *settings)
+    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
         // Sort by read names to make sure that any progressive rescuing ends at the same name.
         std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
@@ -277,7 +265,7 @@ namespace BMF {
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
-    void rsq_core(rsq_aux_t *settings, tmp_stack_t *stack)
+    void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
@@ -330,8 +318,8 @@ namespace BMF {
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
 
-        tmp_stack_t stack = {0};
-        resize_stack(&stack, STACK_START);
+        dlib::tmp_stack_t stack = {0};
+        dlib::resize_stack(&stack, STACK_START);
         if(!stack.a)
             LOG_EXIT("Failed to start array of bam1_t structs...\n");
         rsq_core(settings, &stack);

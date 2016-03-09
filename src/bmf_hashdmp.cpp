@@ -2,9 +2,9 @@
 
 namespace BMF {
 
-	namespace {
-		const size_t buf_set_size = 50000;
-	}
+    namespace {
+        const size_t buf_set_size = 50000;
+    }
 
     void hashdmp_usage() {
         fprintf(stderr,
