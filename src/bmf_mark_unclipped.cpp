@@ -8,6 +8,7 @@ static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
     dlib::add_unclipped_mate_starts(b1, b2);
     dlib::add_sc_lens(b1, b2);
     dlib::add_fraction_aligned(b1, b2);
+    dlib::add_qseq_len(b1, b2);
     return 0;
 }
 

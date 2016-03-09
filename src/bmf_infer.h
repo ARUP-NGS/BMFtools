@@ -32,34 +32,57 @@ namespace BMF {
         bam_hdr_t *hdr; // BAM header
         std::unordered_map<std::string, std::string> realign_pairs;
     };
-    // Once a set of reads have been selected, their data is put into this struct for collapsing.
+
+    // Once a set of reads have been selected, their data is put into this class for collapsing.
     class BamFisherSet {
     const int32_t len;
     std::vector<uint32_t> phred_sums; // Length: 5 * readlen
     std::vector<uint32_t> votes; // Length: 5 * readlen
-    std::string name; // Read name
     std::string max_observed_phreds; // Held in memory -33, write out as readable string.
+    std::string name;
     uint32_t n:31;
     uint32_t is_read1:1;
     public:
         void update_qual(uint8_t *qual) {
-            for(int i = 0; i < len; ++i) {
+            for(int i = 0; i < len; ++i)
                 if(max_observed_phreds[i] < qual[i])
                     max_observed_phreds[i] = qual[i];
-            }
         }
         uint32_t get_is_read1() {
             return is_read1;
         }
+        std::string const& get_name() {
+            return name;
+        }
+        void make_name(bam1_t *b) {
+            if(is_read1) {
+                sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                        bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
+                        b->core.tid, b->core.mtid, // Contigs
+                        !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
+                        bam_itag(b, "LR"), bam_itag(b, "LM") // Read length of self and mate.
+                        );
+            } else {
+                sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                        bam_itag(b, "MU"), bam_itag(b, "SU"),
+                        b->core.mtid, b->core.tid,
+                        !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
+                        bam_itag(b, "LM"), bam_itag(b, "LR")
+                        );
+            }
+            name.resize(strlen(name.data()));
+        }
         BamFisherSet(bam1_t *b) :
         len(b->core.l_qseq),
         phred_sums(len * 5),
-        name(bam_get_qname(b)),
         max_observed_phreds(0, len),
+        name('\0', 60uL),
         n(1),
         is_read1(!!(b->core.flag & BAM_FREAD1))
         {
             update_qual(bam_get_qual(b));
+            make_name(b);
+
         }
         void add_rec(bam1_t *b) {
             assert(b->core.l_qseq == len);
@@ -76,7 +99,7 @@ namespace BMF {
         std::string to_fastq() {
             int i;
             std::stringstream stream;
-            stream << '@' << name << " PV:B:I";
+            stream << '@' << get_name() << " PV:B:I";
             std::string seq(0, len);
             std::vector<uint32_t> agrees(len);
             std::vector<uint32_t> full_quals(len); // igamc calculated
@@ -99,18 +122,11 @@ namespace BMF {
             stream << seq << "\n+\n" << max_observed_phreds << '\n';
             return stream.str();
         }
-        std::string get_name() {
-            return name;
-        }
     };
     class BamFisherKing {
     std::unordered_map<int32_t, BamFisherSet> sets;
     public:
         BamFisherKing(dlib::tmp_stack_t *stack) {
-            // Name-sort for balanced pairs.
-            std::sort(stack->a, stack->a + stack->n, [](const bam1_t *a, const bam1_t *b) {
-                return strcmp(bam_get_qname(a), bam_get_qname(b)) < 0;
-            });
             std::for_each(stack->a, stack->a + stack->n, [&](bam1_t *b) {
                 auto found = sets.find(b->core.l_qseq);
                 if(found == sets.end()) {
@@ -126,6 +142,9 @@ namespace BMF {
                 if(found == settings->realign_pairs.end())
                     settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
                 else {
+                    assert(memcmp(found->second.c_str() + 1,
+                                  set.second.get_name().c_str(),
+                                  set.second.get_name().size()) == 0);
                     if(set.second.get_is_read1()) {
                         fputs(set.second.to_fastq().c_str(), settings->fqh);
                         fputs(found->second.c_str(), settings->fqh);
@@ -137,7 +156,6 @@ namespace BMF {
             }
         }
     };
-    //extern std::string bam2cppstr(bam1_t *b);
     // In this prototype, we're ignoring the alignment stop, though it should likely be expanded to include it.
 } /* namespace BMF */
 
