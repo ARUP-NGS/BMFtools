@@ -11,6 +11,7 @@ static int bmftools_usage(int rc)
                     "err:             Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:        Calculate family size statistics for a bam alignment file.\n"
                     "filter:          Filter or split a bam file by a set of filters.\n"
+                    "infer:           Heuristically use full alignment signatures but no barcodes for duplicate identification and meta-analysis/collapsing.\n"
                     "hashdmp:         Demultiplex inline barcoded experiments that have already been marked.\n"
                     "mark_unclipped:  Add unclipped start position as annotation for both read and mate.\n"
                     "rsq:             Rescue bmf-sorted or ucs-sorted bam alignments.\n"
@@ -59,6 +60,8 @@ int main(int argc, char *argv[])
         return BMF::stack_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "filter") == 0)
         return BMF::filter_main(argc - 1, argv + 1);
+    else if(strcmp(argv[1], "infer") == 0)
+        return BMF::infer_main(argc - 1, argv + 1);
     fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
     return EXIT_FAILURE;
 }

@@ -22,7 +22,7 @@
 
 namespace BMF {
 
-    struct tmp_stack_t{
+    struct tmp_stack_t {
         size_t n, max;
         bam1_t **a;
     };
@@ -35,8 +35,6 @@ namespace BMF {
         }
         stack->a[stack->n++] = bam_dup1(b);
     }
-
-    void resize_stack(tmp_stack_t *stack, size_t n);
 
 
     enum cmpkey {

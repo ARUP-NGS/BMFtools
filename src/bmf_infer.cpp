@@ -32,7 +32,7 @@ namespace BMF {
         LOG_WARNING("Sort order not found. Returning N/A.\n");
         return std::string("N/A");
     }
-
+/*
     void resize_stack(tmp_stack_t *stack, size_t n) {
         if(n > stack->max) {
             stack->max = n;
@@ -44,6 +44,7 @@ namespace BMF {
             stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
         }
     }
+*/
 
     inline void bam2ffq(bam1_t *b, FILE *fp)
     {
@@ -92,57 +93,6 @@ namespace BMF {
         kputs(seqbuf, &ks), free(seqbuf);
         kputc('\n', &ks);
         fputs(ks.s, fp), free(ks.s);
-    }
-
-    std::string bam2cppstr(bam1_t *b)
-    {
-        char *qual, *seqbuf;
-        int i;
-        uint8_t *seq, *rvdata;
-        uint32_t *pv, *fa;
-        int8_t t;
-        kstring_t ks = {0, 0, nullptr};
-        ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
-        pv = (uint32_t *)dlib::array_tag(b, "PV");
-        fa = (uint32_t *)dlib::array_tag(b, "FA");
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputs("\tFA:B:I", &ks);
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
-        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
-            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
-        kputc('\n', &ks);
-        seq = bam_get_seq(b);
-        seqbuf = (char *)malloc(b->core.l_qseq + 1);
-        for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
-        seqbuf[i] = '\0';
-        if (b->core.flag & BAM_FREVERSE) { // reverse complement
-            for(i = 0; i < b->core.l_qseq>>1; ++i) {
-                t = seqbuf[b->core.l_qseq - i - 1];
-                seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
-                seqbuf[i] = nuc_cmpl(t);
-            }
-            if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
-        }
-        seqbuf[b->core.l_qseq] = '\0';
-        assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
-        kputs(seqbuf, &ks);
-        kputs("\n+\n", &ks);
-        qual = (char *)bam_get_qual(b);
-        for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
-        if (b->core.flag & BAM_FREVERSE) { // reverse
-            for (i = 0; i < b->core.l_qseq>>1; ++i) {
-                t = seqbuf[b->core.l_qseq - 1 - i];
-                seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
-                seqbuf[i] = t;
-            }
-        }
-        assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
-        kputs(seqbuf, &ks), free(seqbuf);
-        kputc('\n', &ks);
-        std::string ret(ks.s), free(ks.s);
-        return ret;
     }
 
     inline int switch_names(char *n1, char *n2) {
@@ -278,7 +228,7 @@ namespace BMF {
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                     qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                        settings->realign_pairs[qname] = bam2cppstr(stack->a[i]);
+                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
                     } else {
                         // Make sure the read names/barcodes match.
                         assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
@@ -307,11 +257,10 @@ namespace BMF {
         std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
             return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0)
                      : (b ? 1: 0);
-            }
+            });
             // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
             // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
             // Compares strings otherwise.
-        });
     }
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
