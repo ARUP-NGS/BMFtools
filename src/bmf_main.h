@@ -21,7 +21,7 @@ namespace BMF {
     extern int sdmp_main(int argc, char *argv[]);
     extern int stack_main(int argc, char *argv[]);
     extern int vetter_main(int argc, char *argv[]);
-    extern int mark_unclipped_main(int argc, char *argv[]);
+    extern int mark_main(int argc, char *argv[]);
     extern int cap_qscore_main(int argc, char *argv[]);
     extern int target_main(int argc, char *argv[]);
 }

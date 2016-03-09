@@ -13,7 +13,7 @@ static int bmftools_usage(int rc)
                     "filter:          Filter or split a bam file by a set of filters.\n"
                     "infer:           Heuristically use full alignment signatures but no barcodes for duplicate identification and meta-analysis/collapsing.\n"
                     "hashdmp:         Demultiplex inline barcoded experiments that have already been marked.\n"
-                    "mark_unclipped:  Add unclipped start position as annotation for both read and mate.\n"
+                    "mark:            Add tags including unclippd start positions.\n"
                     "rsq:             Rescue bmf-sorted or ucs-sorted bam alignments.\n"
                     "sdmp:            Demultiplex secondary-index barcoded experiments.\n"
                     "sort:            Sort for bam rescue.\n"
@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
         return BMF::vetter_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "err") == 0)
         return BMF::err_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "mark_unclipped") == 0)
-        return BMF::mark_unclipped_main(argc - 1, argv + 1);
+    else if(strcmp(argv[1], "mark") == 0)
+        return BMF::mark_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "cap") == 0)
         return BMF::cap_qscore_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "target") == 0)

@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <functional>
 #include "htslib/sam.h"
-#include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library
 #include "include/igamc_cephes.h" // for igamc
 #include "lib/kingfisher.h"
