@@ -13,6 +13,16 @@ namespace BMF {
         std::unordered_map<std::string, std::string> realign_pairs;
     };
 
+    /* OUTLINE FOR INFER
+     * 1. multidimensional array (in 1-d) of nucleotide counts.
+     * 2. multidimensional array (in 1-d) of phred sums.
+     * 3. argmax
+     * 4. Write as fastq.
+     * 5. ???
+     * 6. PROFIT
+     *
+     * */
+
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                    &same_stack_ucs, &same_stack_ucs_se};
 
@@ -243,9 +253,7 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else {
-                    sam_write1(settings->out, settings->hdr, stack->a[i]);
-                }
+                } else sam_write1(settings->out, settings->hdr, stack->a[i]);
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
@@ -257,10 +265,13 @@ namespace BMF {
         std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
             return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0)
                      : (b ? 1: 0);
-            });
-            // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
-            // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
-            // Compares strings otherwise.
+        });
+        // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
+        // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
+        // Compares strings otherwise.
+        for(unsigned i = 0; i < stack->n; ++i) {
+
+        }
     }
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};

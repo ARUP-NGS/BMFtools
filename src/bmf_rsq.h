@@ -87,7 +87,10 @@ namespace BMF {
         for(int i = 0; i < b->core.l_qseq; ++i) {
             bc = bam_seqi(bseq, i);
             pc = bam_seqi(pseq, i);
-            if(bc != pc && bc != dlib::htseq::HTS_N && pc != dlib::htseq::HTS_N && ++hd > lim)
+            if(bc != pc &&
+               bc != dlib::htseq::HTS_N &&
+			   pc != dlib::htseq::HTS_N &&
+			   ++hd > lim) // Note increment on hd.
                 return 0;
         }
         return 1;
