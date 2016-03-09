@@ -54,9 +54,9 @@ namespace BMF {
             assert(b->core.tid == p->core.tid);
             assert(b->core.mtid == p->core.mtid);
             assert(b->core.mtid == p->core.mtid);
+            assert(b->core.l_qseq == p->core.l_qseq);
             assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
             assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
-            assert(bam_itag(b, "LR") == bam_itag(p, "LR"));
             assert(bam_itag(b, "LM") == bam_itag(p, "LM"));
             return 1;
         }

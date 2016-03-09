@@ -13,9 +13,10 @@ static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
 
 static int mark_usage() {
     fprintf(stderr,
-                    "Adds the unclipped start position for each read and its mate as tags:\n"
+                    "Adds positional bam tags for a read and its mate for bmftools rsq and bmftools infer.\n"
                     "\tSU: Self Unclipped start.\n"
                     "\tMU: Mate Unclipped start.\n"
+                    "\tLM: Mate length.\n"
                     "In addition, adds additional tags for use in infer.\n"
                     "Required for bmftools rsq using unclipped start.\n"
                     "Required for bmftools infer.\n"
