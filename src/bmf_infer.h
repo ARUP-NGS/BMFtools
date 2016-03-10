@@ -54,19 +54,19 @@ namespace BMF {
          */
         void make_name(bam1_t *b) {
             if(is_read1) {
-                name.resize(sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                         bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
                         b->core.tid, b->core.mtid, // Contigs
                         !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
                         bam_itag(b, "LR"), bam_itag(b, "LM") // Read length of self and mate.
-                        ));
+                        );
             } else {
-                name.resize(sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                         bam_itag(b, "MU"), bam_itag(b, "SU"),
                         b->core.mtid, b->core.tid,
                         !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
                         bam_itag(b, "LM"), bam_itag(b, "LR")
-                        ));
+                        );
             }
         }
     public:

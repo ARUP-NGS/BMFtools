@@ -2,7 +2,7 @@
 
 namespace BMF {
 
-	std::string BamFisherSet::to_fastq() {
+    std::string BamFisherSet::to_fastq() {
         int i;
         std::stringstream stream;
         stream << '@' << get_name() << " PV:B:I";
