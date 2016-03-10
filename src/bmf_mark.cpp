@@ -4,6 +4,7 @@ namespace BMF {
 
     namespace {
         struct mark_settings_t {
+            // I might add more options later, hence the use of the bitfield.
             uint32_t remove_qcfail:1;
         };
     }
@@ -28,21 +29,20 @@ namespace BMF {
                         "\tSU: Self Unclipped start.\n"
                         "\tMU: Mate Unclipped start.\n"
                         "\tLM: Mate length.\n"
-                        "In addition, adds additional tags for use in infer.\n"
                         "Required for bmftools rsq using unclipped start.\n"
                         "Required for bmftools infer.\n"
                         "Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>\n\n"
                         "Flags:\n-l     Sets bam compression level. (Valid: 1-9).\n"
                         "-q    Skip read pairs which fail"
-                        "Set output.bam to \'-\' or \'stdout\' to pipe results.\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
+                        "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
                 );
         exit(EXIT_FAILURE);
     }
 
     int mark_main(int argc, char *argv[])
     {
-        char wmode[4] = "wb";
+        char wmode[4]{"wb"};
         int c;
         mark_settings_t settings{0};
         while ((c = getopt(argc, argv, "l:q?h")) >= 0) {
@@ -57,9 +57,19 @@ namespace BMF {
             }
         }
 
-        if (optind + 2 > argc) mark_usage();
+        char *in = (char *)"-", *out = (char *)"-";
+        if(optind + 2 == argc) {
+            in = argv[optind];
+            out = argv[optind + 1];
+        } else if(optind + 1 == argc) {
+            LOG_INFO("No outfile provided. Defaulting to stdout.\n");
+            in = argv[optind];
+        } else {
+            LOG_INFO("Input bam path required!\n");
+            mark_usage();
+        }
 
-        int ret = dlib::bam_pair_apply_function(argv[optind], argv[optind+1],
+        int ret = dlib::bam_pair_apply_function(in, out,
                                                 add_multiple_tags, (void *)&settings, wmode);
         LOG_INFO("Successfully complete bmftools mark.\n");
         return ret;
