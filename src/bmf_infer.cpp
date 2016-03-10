@@ -29,7 +29,7 @@ namespace BMF {
         return stream.str();
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
-        for(auto set: sets) {
+        for(auto& set: sets) {
             auto found = settings->realign_pairs.find(set.second.get_name());
             if(found == settings->realign_pairs.end()) {
                 settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());

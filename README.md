@@ -24,7 +24,7 @@ bmftools err| Calculate error rates based on cycle, base call, and quality score
 bmftools famstats| Calculate family size statistics for a bam alignment file.|
 bmftools filter| Filter or split a bam file by a set of filters.|
 bmftools hashdmp| Demultiplex inline barcoded experiments that have already been marked.|
-bmftools mark_unclipped| Add unclipped start position as annotation for both read and mate.|
+bmftools mark| Add unclipped start position as annotation for both read and mate.|
 bmftools rsq| Rescue bmf-sorted or ucs-sorted bam alignments.|
 bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
 bmftools sort| Sort for bam rescue.|
@@ -76,6 +76,8 @@ Requires read fastqs and an additional fastq containing barcodes.
 (Secondary-index DeMultiPlex)
 
 Barcodes are contained in the additional (typically "Read 2" of 3) fastq, with optional "salting" from the tthe start of the insert reads.
+Note: It is **STRONGLY** recommended that for the secondary-index chemistry that you mask adapter sequence in the molecular barcode reads.
+This will N those bases, failing the reads, If not, you'll get a ton of garbage!
 
 ####Inline (Loeb-like) barcoding
 Requires only read fastqs, as the barcodes are inline.

@@ -18,8 +18,6 @@
 #include "dlib/bam_util.h"
 #include "bmf_rsq.h"
 
-using namespace std::string_literals;
-
 namespace BMF {
     struct infer_aux_t {
         FILE *fqh;
@@ -55,18 +53,18 @@ namespace BMF {
         void make_name(bam1_t *b) {
             if(is_read1) {
                 stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                        bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
-                        b->core.tid, b->core.mtid, // Contigs
-                        !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
-                        bam_itag(b, "LR"), bam_itag(b, "LM") // Read length of self and mate.
-                        );
+                             bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
+                             b->core.tid, b->core.mtid, // Contigs
+                             !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
+                             b->core.l_qseq, bam_itag(b, "LM") // Read length of self and mate.
+                             );
             } else {
                 stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                        bam_itag(b, "MU"), bam_itag(b, "SU"),
-                        b->core.mtid, b->core.tid,
-                        !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
-                        bam_itag(b, "LM"), bam_itag(b, "LR")
-                        );
+                             bam_itag(b, "MU"), bam_itag(b, "SU"),
+                             b->core.mtid, b->core.tid,
+                             !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
+                             bam_itag(b, "LM"), b->core.l_qseq
+                             );
             }
         }
     public:
@@ -102,10 +100,12 @@ namespace BMF {
         }
         std::string to_fastq();
     };
+
     class BamFisherKing {
     std::unordered_map<int32_t, BamFisherSet> sets;
     public:
-        BamFisherKing(dlib::tmp_stack_t *stack) {
+
+    BamFisherKing(dlib::tmp_stack_t *stack) {
             std::for_each(stack->a, stack->a + stack->n, [&](bam1_t *b) {
                 auto found = sets.find(b->core.l_qseq);
                 if(found == sets.end()) {

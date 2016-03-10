@@ -128,6 +128,7 @@ namespace BMF {
         if(match != tumor.templates.end()) {
             // Already 0-initialized if not found.
             counts[0] = match->second.size();
+            // auto without "reference" because auto is pointers.
             for(auto uni: tumor.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
                         || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
@@ -146,6 +147,7 @@ namespace BMF {
         }
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
             counts[n_base_calls] = match->second.size();
+            // auto without "reference" because auto is pointers.
             for(auto uni: normal.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
                        || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
