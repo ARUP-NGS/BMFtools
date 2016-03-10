@@ -3,7 +3,7 @@
 
 namespace BMF {
 
-    static int cap_qscore_usage() {
+    static int cap_usage() {
         fprintf(stderr,
                         "\nCaps quality scores from PV tags to facilitate working with barcode-agnostic tools.\n"
                         "Values >= cap for PV will have the quality"
@@ -71,7 +71,7 @@ namespace BMF {
 
 
 
-    int cap_qscore_main(int argc, char *argv[])
+    int cap_main(int argc, char *argv[])
     {
         cap_settings_t settings = {0};
         settings.cap = 93;
@@ -96,21 +96,21 @@ namespace BMF {
                 }
                 break;
             case 'd': settings.dnd = 1; break;
-            case 'h': case '?': cap_qscore_usage(); return EXIT_SUCCESS;
+            case 'h': case '?': cap_usage(); return EXIT_SUCCESS;
             }
         }
         if (optind + 2 > argc)
-            return cap_qscore_usage();
+            return cap_usage();
 
         if(settings.minPV == 0 && settings.minFM == 0 && settings.minFrac == 0.0) {
             fprintf(stderr, "[E:%s] All caps cannot be set to 0 (default value). [Required parameter] See usage.\n", __func__);
-            return cap_qscore_usage();
+            return cap_usage();
         }
         int ret = dlib::bam_apply_function(argv[optind], argv[optind+1],
                                            settings.dnd ? (single_aux_check)&cap_bam_dnd
                                                         : (single_aux_check)&cap_bam_q,
                                            (void *)&settings, wmode);
-        LOG_INFO("Successfully completed bmftools cap_qscore!\n");
+        LOG_INFO("Successfully completed bmftools cap!\n");
         return ret;
     }
 

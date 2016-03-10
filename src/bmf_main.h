@@ -10,18 +10,18 @@ extern "C" {
 }
 
 namespace BMF {
+    extern int cap_main(int argc, char *argv[]);
     extern int depth_main(int argc, char *argv[]);
     extern int dmp_main(int argc, char *argv[]);
     extern int err_main(int argc, char *argv[]);
     extern int famstats_main(int argc, char *argv[]);
     extern int filter_main(int argc, char *argv[]);
-    extern int infer_main(int argc, char *argv[]);
     extern int hash_dmp_main(int argc, char *argv[]);
+    extern int infer_main(int argc, char *argv[]);
+    extern int mark_main(int argc, char *argv[]);
     extern int rsq_main(int argc, char *argv[]);
     extern int sdmp_main(int argc, char *argv[]);
     extern int stack_main(int argc, char *argv[]);
-    extern int vetter_main(int argc, char *argv[]);
-    extern int mark_main(int argc, char *argv[]);
-    extern int cap_qscore_main(int argc, char *argv[]);
     extern int target_main(int argc, char *argv[]);
+    extern int vetter_main(int argc, char *argv[]);
 }

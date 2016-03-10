@@ -2,7 +2,51 @@
 
 namespace BMF {
 
-
+	std::string BamFisherSet::to_fastq() {
+        int i;
+        std::stringstream stream;
+        stream << '@' << get_name() << " PV:B:I";
+        std::string seq(0, len);
+        std::vector<uint32_t> agrees(len);
+        std::vector<uint32_t> full_quals(len); // igamc calculated
+        for(i = 0; i < len; ++i) {
+            const int argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
+            agrees[i] = votes[i * 5 + argmaxret];
+            full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[i * 5 + argmaxret])));
+            // Mask unconfident base calls
+            if(full_quals[i] < 2 || (double)agrees[i] / n < MIN_FRAC_AGREED) {
+                seq[i] = 'N';
+                max_observed_phreds[i] = 2;
+            } else seq[i] = num2nuc(argmaxret);
+        }
+        for(auto pv: full_quals) stream << ',' << pv;
+        stream << "\tFA:B:I";
+        for(auto agree: agrees) stream << ',' << agree;
+        stream << "\tFM:i:" << n << '\n';
+        for(auto& phred: max_observed_phreds)
+            phred += 33;
+        stream << seq << "\n+\n" << max_observed_phreds << '\n';
+        return stream.str();
+    }
+    void BamFisherKing::add_to_hash(infer_aux_t *settings) {
+        for(auto set: sets) {
+            auto found = settings->realign_pairs.find(set.second.get_name());
+            if(found == settings->realign_pairs.end()) {
+                settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
+            } else {
+                assert(memcmp(found->second.c_str() + 1,
+                              set.second.get_name().c_str(),
+                              set.second.get_name().size()) == 0);
+                if(set.second.get_is_read1()) {
+                    fputs(set.second.to_fastq().c_str(), settings->fqh);
+                    fputs(found->second.c_str(), settings->fqh);
+                } else {
+                    fputs(found->second.c_str(), settings->fqh);
+                    fputs(set.second.to_fastq().c_str(), settings->fqh);
+                }
+            }
+        }
+    }
 
     /* OUTLINE FOR INFER
      * 1. multidimensional array (in 1-d) of nucleotide counts.
@@ -299,17 +343,6 @@ namespace BMF {
         }
     }
 
-    void bam_infer_bookends(infer_aux_t *settings)
-    {
-
-        dlib::tmp_stack_t stack = {0};
-        dlib::resize_stack(&stack, STACK_START);
-        if(!stack.a)
-            LOG_EXIT("Failed to start array of bam1_t structs...\n");
-        infer_core(settings, &stack);
-        free(stack.a);
-    }
-
     int infer_usage(int retcode)
     {
         fprintf(stderr,
@@ -382,12 +415,18 @@ namespace BMF {
             LOG_EXIT("fail to read/write input files\n");
         sam_hdr_write(settings.out, settings.hdr);
 
-        bam_infer_bookends(&settings);
+        dlib::tmp_stack_t stack = {0};
+        dlib::resize_stack(&stack, STACK_START);
+        if(!stack.a)
+            LOG_EXIT("Failed to start array of bam1_t structs...\n");
+
+        infer_core(&settings, &stack);
+
+        free(stack.a);
         bam_hdr_destroy(settings.hdr);
         sam_close(settings.in); sam_close(settings.out);
         if(settings.fqh) fclose(settings.fqh);
         LOG_INFO("Successfully completed bmftools infer.\n");
         return EXIT_SUCCESS;
     }
-
 }

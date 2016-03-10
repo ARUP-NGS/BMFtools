@@ -32,18 +32,14 @@ namespace BMF {
         khash_t(bed) *bed;
     };
 
-#define fm_pass(data, b, options) ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM))
+/* If FM tag absent, it's treated as if it were 1.
+ * Fail reads with FM < minFM, MQ < minMQ, a flag with any skip bits set,
+ * a flag without all required bits set, and, if a bed file is provided,
+ * reads outside of the bed region.
+*/
     static inline int test_core(bam1_t *b, opts *options) {
         uint8_t *data;
-#if !NDEBUG
-        int ret = fm_pass(data, b, options) &&
-                  b->core.qual >= options->minMQ &&
-                  ((b->core.flag & options->skip_flag) == 0) &&
-                  (b->core.flag & options->require_flag) == options->require_flag &&
-                  (options->bed ? dlib::bed_test(b, options->bed):1);
-        assert(fm_pass(data, b, options) ? 1: ret == 0);
-#endif
-        return fm_pass(data, b, options) &&
+        return ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM)) &&
                 b->core.qual >= options->minMQ &&
                 ((b->core.flag & options->skip_flag) == 0) &&
                 (b->core.flag & options->require_flag) == options->require_flag &&

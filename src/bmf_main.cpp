@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     else if(strcmp(argv[1], "mark") == 0)
         return BMF::mark_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "cap") == 0)
-        return BMF::cap_qscore_main(argc - 1, argv + 1);
+        return BMF::cap_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "target") == 0)
         return BMF::target_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "depth") == 0)

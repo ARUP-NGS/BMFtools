@@ -41,41 +41,46 @@ namespace BMF {
     std::string name;
     uint32_t n:31;
     uint32_t is_read1:1;
-    public:
         void update_qual(uint8_t *qual) {
             for(int i = 0; i < len; ++i)
                 if(max_observed_phreds[i] < qual[i])
                     max_observed_phreds[i] = qual[i];
         }
+        /*
+         * This sprintf's to the buffer in name, then tells it to resize
+         * itself to the number of characters written, which is the
+         * return value of sprintf.
+         * This is probably evil, but very, very efficient.
+         */
+        void make_name(bam1_t *b) {
+            if(is_read1) {
+                name.resize(sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                        bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
+                        b->core.tid, b->core.mtid, // Contigs
+                        !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
+                        bam_itag(b, "LR"), bam_itag(b, "LM") // Read length of self and mate.
+                        ));
+            } else {
+                name.resize(sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                        bam_itag(b, "MU"), bam_itag(b, "SU"),
+                        b->core.mtid, b->core.tid,
+                        !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
+                        bam_itag(b, "LM"), bam_itag(b, "LR")
+                        ));
+            }
+        }
+    public:
         uint32_t get_is_read1() {
             return is_read1;
         }
         std::string const& get_name() {
             return name;
         }
-        void make_name(bam1_t *b) {
-            if(is_read1) {
-                sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                        bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
-                        b->core.tid, b->core.mtid, // Contigs
-                        !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
-                        bam_itag(b, "LR"), bam_itag(b, "LM") // Read length of self and mate.
-                        );
-            } else {
-                sprintf((char *)name.data(), "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                        bam_itag(b, "MU"), bam_itag(b, "SU"),
-                        b->core.mtid, b->core.tid,
-                        !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
-                        bam_itag(b, "LM"), bam_itag(b, "LR")
-                        );
-            }
-            name.resize(strlen(name.data()));
-        }
         BamFisherSet(bam1_t *b) :
         len(b->core.l_qseq),
         phred_sums(len * 5),
         max_observed_phreds(0, len),
-        name('\0', 60uL),
+        name('\0', 50uL),
         n(1),
         is_read1(!!(b->core.flag & BAM_FREAD1))
         {
@@ -95,32 +100,7 @@ namespace BMF {
             }
             ++n;
         }
-        std::string to_fastq() {
-            int i;
-            std::stringstream stream;
-            stream << '@' << get_name() << " PV:B:I";
-            std::string seq(0, len);
-            std::vector<uint32_t> agrees(len);
-            std::vector<uint32_t> full_quals(len); // igamc calculated
-            for(i = 0; i < len; ++i) {
-                const int argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
-                agrees[i] = votes[i * 5 + argmaxret];
-                full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[i * 5 + argmaxret])));
-                // Mask unconfident base calls
-                if(full_quals[i] < 2 || (double)agrees[i] / n < MIN_FRAC_AGREED) {
-                    seq[i] = 'N';
-                    max_observed_phreds[i] = 2;
-                } else seq[i] = num2nuc(argmaxret);
-            }
-            for(auto pv: full_quals) stream << ',' << pv;
-            stream << "\tFA:B:I";
-            for(auto agree: agrees) stream << ',' << agree;
-            stream << "\tFM:i:" << n << '\n';
-            for(auto& phred: max_observed_phreds)
-                phred += 33;
-            stream << seq << "\n+\n" << max_observed_phreds << '\n';
-            return stream.str();
-        }
+        std::string to_fastq();
     };
     class BamFisherKing {
     std::unordered_map<int32_t, BamFisherSet> sets;
@@ -135,25 +115,7 @@ namespace BMF {
                 }
             });
         }
-        void add_to_hash(infer_aux_t *settings) {
-            for(auto set: sets) {
-                auto found = settings->realign_pairs.find(set.second.get_name());
-                if(found == settings->realign_pairs.end())
-                    settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
-                else {
-                    assert(memcmp(found->second.c_str() + 1,
-                                  set.second.get_name().c_str(),
-                                  set.second.get_name().size()) == 0);
-                    if(set.second.get_is_read1()) {
-                        fputs(set.second.to_fastq().c_str(), settings->fqh);
-                        fputs(found->second.c_str(), settings->fqh);
-                    } else {
-                        fputs(found->second.c_str(), settings->fqh);
-                        fputs(set.second.to_fastq().c_str(), settings->fqh);
-                    }
-                }
-            }
-        }
+        void add_to_hash(infer_aux_t *settings);
     };
     // In this prototype, we're ignoring the alignment stop, though it should likely be expanded to include it.
 } /* namespace BMF */
