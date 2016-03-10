@@ -92,41 +92,6 @@ namespace BMF {
         free(ks.s);
     }
 
-    void duplex_hash_fill(kseq_t *seq, kingfisher_hash_t *hfor, kingfisher_hash_t *tmp_hkf, kingfisher_hash_t *hrev, kingfisher_hash_t *tmp_hkr, char *infname, uint64_t *count, uint64_t *fcount, tmpvars_t *tmp, int blen) {
-        if(UNLIKELY(++*count % 1000000 == 0))
-            fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
-                    *infname == '-' ? "stdin" : infname, *count);
-        if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
-            // Forward read
-            ++*fcount;
-            cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
-            // Copy the barcode into the key field.
-            HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
-            // Look for the barcode in the hashmap.
-            if(!tmp_hkf) {
-                // Not found. Add to the table.
-                tmp_hkf = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-                tmp_hkf->value = init_kfp(tmp->readlen);
-                cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
-                pushback_kseq(tmp_hkf->value, seq, blen);
-                HASH_ADD_STR(hfor, id, tmp_hkf);
-            } else pushback_kseq(tmp_hkf->value, seq, blen);
-              // Found -- add data to the kingfisher struct.
-        } else {
-            // Reverse read
-            cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
-            HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
-            if(!tmp_hkr) {
-                tmp_hkr = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-                tmp_hkr->value = init_kfp(tmp->readlen);
-                cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
-                pushback_kseq(tmp_hkr->value, seq, blen);
-                HASH_ADD_STR(hrev, id, tmp_hkr);
-            } else pushback_kseq(tmp_hkr->value, seq, blen);
-        }
-    }
-
-
     void se_hash_process(kingfisher_hash_t *hash, kingfisher_hash_t *current_entry, kingfisher_hash_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
             uint64_t *non_duplex_fm)
     {
@@ -163,7 +128,7 @@ namespace BMF {
                 gzclose(out_handle);
                 return;
             }
-            fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
+            LOG_EXIT("[E:%s] Could not open %s for reading. Abort mission!\n", infname);
             exit(EXIT_FAILURE);
         }
         gzFile fp = gzdopen(fileno(in_handle), "r");
@@ -297,8 +262,9 @@ namespace BMF {
         }
         uint64_t rcount = count - fcount;
         LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
-
+#if !NDEBUG
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
+#endif
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
         size_t buf_record_count = 0;
