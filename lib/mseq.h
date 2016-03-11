@@ -19,6 +19,9 @@ KSEQ_INIT(gzFile, gzread)
 
 namespace BMF {
 
+    /*
+     * A mutable kseq clone, roughly. Holds seq, qual, name, and other information
+     */
     struct mseq_t {
         char name[100];
         char comment[2000];
@@ -126,13 +129,13 @@ namespace BMF {
     static inline void mseq2fq_stranded(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
     {
         gzprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
-                mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
+                 mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
     }
 
     static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode)
     {
         gzprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
-                mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
+                 mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
     }
 
 
