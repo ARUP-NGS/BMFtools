@@ -75,8 +75,7 @@ namespace BMF {
             LOG_INFO("No outfile provided. Defaulting to stdout.\n");
             in = argv[optind];
         } else {
-            LOG_INFO("Input bam path required!\n");
-            mark_usage();
+            LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
 
         int ret = dlib::bam_pair_apply_function(in, out,

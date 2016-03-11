@@ -4,7 +4,7 @@ namespace BMF {
 
     std::string BamFisherSet::to_fastq() {
         int i;
-        std::string seq();
+        std::string seq;
         seq.resize(len);
         std::vector<uint32_t> agrees(len);
         std::vector<uint32_t> full_quals(len); // igamc calculated
@@ -22,9 +22,11 @@ namespace BMF {
             }
         }
         const size_t bufsize = (5 * len + 6);
-        std::string pvbuf(), pvbuf.resize(bufsize);
+        std::string pvbuf;
+        pvbuf.resize(bufsize);
         kstring_t pvks = {0, bufsize, (char *)pvbuf.data()};
-        std::string fabuf(), fabuf.resize(bufsize);
+        std::string fabuf;
+        fabuf.resize(bufsize);
         kstring_t faks = {0, bufsize, (char *)pvbuf.data()};
         ksprintf(&pvks, "PV:B:I");
         ksprintf(&faks, "FA:B:I");
@@ -34,10 +36,11 @@ namespace BMF {
         }
         pvbuf.resize(pvks.l);
         fabuf.resize(faks.l);
-        std::string ret();
-        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 24);
+        std::string ret;
+        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 32);
+        // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
         stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                     get_name(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+                     get_name().c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
