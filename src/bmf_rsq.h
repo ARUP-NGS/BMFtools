@@ -50,7 +50,8 @@ namespace BMF {
     {
     #if !NDEBUG
         if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
-                ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
+                ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
+                sort_rlen_key(b) == sort_rlen_key(p)) {
             assert(b->core.tid == p->core.tid);
             assert(b->core.mtid == p->core.mtid);
             assert(b->core.mtid == p->core.mtid);

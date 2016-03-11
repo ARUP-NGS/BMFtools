@@ -249,10 +249,11 @@ namespace BMF {
             // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
             // Compares strings otherwise.
         });
-        for(unsigned i = 0; i < stack->n; ++i)
-            for(unsigned j = i + 1; j < stack->n; ++j)
+        for(unsigned i = 0; i < stack->n; ++i) {
+            for(unsigned j = i + 1; j < stack->n; ++j) {
                 if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
                         stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
+                    //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     update_bam1(stack->a[j], stack->a[i]);
                     bam_destroy1(stack->a[i]);
                     stack->a[i] = nullptr;
@@ -261,6 +262,8 @@ namespace BMF {
                     // Otherwise, I'll end up having memory mistakes.
                     // Besides, that read set will get merged into the later read in the set.
                 }
+            }
+        }
     }
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
@@ -308,9 +311,9 @@ namespace BMF {
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         if(settings->realign_pairs.size()) {
             LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something may be wrong....\n", settings->realign_pairs.size());
-            for(auto& pair: settings->realign_pairs) {
+            for(auto pair: settings->realign_pairs) {
                 fprintf(settings->fqh, pair.second.c_str());
-                settings->realign_pairs.erase(pair.first);
+                LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
             }
         }
     }
