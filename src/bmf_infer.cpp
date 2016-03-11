@@ -21,10 +21,10 @@ namespace BMF {
             	max_observed_phreds[i] += 33;
             }
         }
-        const size_t bufsize = (5 * len + 6);
+        const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
         std::string pvbuf;
         pvbuf.resize(bufsize);
-        kstring_t pvks = {0, bufsize, (char *)pvbuf.data()};
+        kstring_t pvks = {0, bufsize, (char *)pvbuf.data()}; // Does not own!
         std::string fabuf;
         fabuf.resize(bufsize);
         kstring_t faks = {0, bufsize, (char *)pvbuf.data()};
