@@ -31,50 +31,75 @@ rule all:
 rule clean:
     shell:
         "rm -rf mapping && rm -rf logs && rm -rf FastQC && rm -rf FastqBMF"
-        " && rm -rf rescued_reads "
+        " && rm -rf rescued_reads && rm -rf final_bams"
 
 
 ###Consilidates reads by barcode using BMFtools#####
 rule consolidate_by_barcode:
     input:
-        lambda wildcards: config["units"][wildcards.unit]
+        fqs = lambda wildcards: config["units"][wildcards.unit]
     output:
         "FastqBMF/{unit}.R1.fq.gz",
         "FastqBMF/{unit}.R2.fq.gz"
     log:
         "logs/_01_Read_Collapse/{unit}_dmp.log"
     threads:
-        config["params"]["threads"]["bwa"]
+        config["params"]["threads"]["bmftools"]
     params:
-        homing = config["params"]["homing_seq"]
+        dmp = config["params"]["bmftools"]["dmp"],
+        homing = config["params"]["bmftools"]["homing"]
     shell:
-        "bmftools dmp -l 11 -v 12 -s {params.homing} -p {threads} -d -f "
-        "FastqBMF/{wildcards.unit} -z {input} 2> {log}"
+        "bmftools dmp {params.dmp} -s {params.homing} -p {threads} -f "
+        "FastqBMF/{wildcards.unit} {input} 2> {log}"
+
+
+rule cutadapt:
+    input:
+        "FastqBMF/{unit}.R1.fq.gz",
+        "FastqBMF/{unit}.R2.fq.gz"
+    output:
+        fq1 = "FastqBMF/{unit}.ca.R1.fq.gz",
+        fq2 = "FastqBMF/{unit}.ca.R2.fq.gz"
+    params:
+        three = config["params"]["cutadapt"]["3pAdapter"],
+        five = config["params"]["cutadapt"]["5pAdapter"],
+        args = config["params"]["cutadapt"]["args"]
+    log:
+        "logs/_02_cutadapt/{unit}.log"
+    shell:
+        "cutadapt {params.args} -a {params.three} -g {params.five} -A {params.three} "
+        "-G {params.five} -o {output.fq1} -p {output.fq2} {input} "
+        ">> {log} 2>> {log}"
+
 
 
 ###Maps consolidated reads to reference, and marks the unclipped start###
 ###position for rescued                                               ###
-rule bwa_mem_map:
+rule bwa_mem_map_and_rescue:
     input:
         lambda wildcards: config["references"][wildcards.reference],
-        "FastqBMF/{unit}.R1.fq.gz",
-        "FastqBMF/{unit}.R2.fq.gz"
+        "FastqBMF/{unit}.ca.R1.fq.gz",
+        "FastqBMF/{unit}.ca.R2.fq.gz"
     output:
-        "mapping/{reference}/{unit}.bam"
+        bam = "mapping/{reference}/{unit}.rescueRemoved.bam",
+        fastq = "mapping/{reference}/{unit}.rescued.fastq"
     params:
-        sample=lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
-        custom=config["params"]["bs_bwa"]
+        sample = lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
+        bwa = config["params"]["bs_bwa"],
+        thread_mem = config["params"]["thread_mem"]
     log:
         "logs/_02_Map_Mark_Sort/{unit}.log"
-    threads: 8
+    threads: config["params"]["threads"]["bmftools"]
     shell:
-        "bwa mem {params.custom} "
-        "-R '@RG\tID:{wildcards.unit}\t"
-        "SM:{params.sample}\tPL:{config[platform]}' "
-        "-t {threads} {input}  2> {log} | bmftools mark_unclipped -l 0 - - 2> "
-        " {log}  | samtools sort -O bam -T temp 2> {log} > {output} "
+        "bwa mem {params.bwa} -R '@RG\tID:{wildcards.unit}\tSM:{params.sample}\tPL:{config[platform]}' "
+        "-t {threads} {input}  2>> {log} | bmftools mark -l 0 - -  "
+        " 2>> {log}  | bmftools sort  -l 0 -m {params.thread_mem} -@ {threads} "
+        "-k ucs -T {output.bam}_tmp 2>> {log} | bmftools rsq -uf "
+        "{output.fastq} -l 0 - - 2>> {log} | samtools sort -O bam -T "
+        "{output.bam}_tmp -@ {threads} -m {params.thread_mem}"
+        " -o {output.bam} 2>> {log} "
 
-
+"""
 ###Recovers reads with degenerate barcodes, splits them out into a new ###
 ###Fastq for realignment                                               ###
 rule bam_rescue:
@@ -82,17 +107,17 @@ rule bam_rescue:
         "mapping/{reference}/{unit}.bam"
     output:
         bam = "mapping/{reference}/{unit}.rescueRemoved.bam",
-        fastq = "mapping/{reference}/{unit}.rescued.fastq"
     params:
         max_mem = config["params"]["max_mem"]
     log:
         "logs/_03_rescue_split/{unit}.log"
     threads: config["params"]["threads"]["bwa"]
     shell:
-        "bmftools sort -l 0 -m {params.max_mem} -@ {threads} -k ucs -T temp "
-        " {input} 2> {log}| bmftools rsq -uf {output.fastq} -l 0 - - 2> {log}|"
+        "bmftools sort -l 0 -m {params.max_mem} -@ {threads} -k ucs -T {input}_temp "
+        " {input} 2>> {log}| bmftools rsq -uf {output.fastq} -l 0 - - 2>> {log} |"
         " samtools sort -O bam -T templastsort -@ {threads} -m {params.max_mem}"
-        " -o {output.bam} - 2> {log}"
+        " -o {output.bam} - 2>> {log}"
+"""
 
 
 ###Re-aligns reads with errored barcodes and combines them with the rest ###
@@ -107,15 +132,15 @@ rule align_merge_rescue:
         "logs/_04_rescue_merge/{unit}.log"
     params:
         sample=lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
-        max_mem = config["params"]["max_mem"]
+        thread_mem = config["params"]["thread_mem"]
     threads: config["params"]["threads"]["bwa"]
     shell:
         "cat {input.fastq} | paste -d\'~\' - - - - | sort | tr \'~\' \'\\n\' |"
         " bwa mem -pCYT0 -t {threads} -R '@RG\tID:{wildcards.unit}\t"
-        "SM:{params.sample}\tPL:{config[platform]}' {input.ref} - 2> {log} | "
-        "samtools sort -l 0 -O bam "
-        "-T temprsqsort -O bam -@ {threads} -m {params.max_mem} - 2> {log} | "
-        "samtools merge -cp -h {input.bam} {output} {input.bam} - 2> {log}"
+        "SM:{params.sample}\tPL:{config[platform]}' {input.ref} - 2>> {log} | "
+        "bmftools mark -l 0 - - 2>> {log} | samtools sort -l 0 -O bam "
+        "-T temprsqsort -O bam -@ {threads} -m {params.thread_mem} - 2>> {log} | "
+        "samtools merge -cp -h {input.bam} {output} {input.bam} - 2>> {log}"
 
 
 ###Indexes rescued bams for indel relignment###
@@ -161,7 +186,7 @@ rule gatk_realign_bam:
     params:
         gatk = config["params"]["gatk"]
     log:
-        "mapping/log/{reference}/{prefix}.realign.log"
+        "logs/_07_indel_realign/{prefix}.realign.log"
     shell:
         "{params.gatk} -T IndelRealigner -R {input.ref} "
         "--disable_bam_indexing "
@@ -193,7 +218,7 @@ rule fastqc:
     run:
         if not os.path.exists("FastQC"):
             os.makedirs("FastQC")
-        shell("~/bin/FastQC/fastqc {input} --outdir FastQC 2> {log}")
+        shell("~/bin/FastQC/fastqc {input} --outdir FastQC >> {log} 2> {log}")
 
 
 ###run bmftools famstats on final bams###
