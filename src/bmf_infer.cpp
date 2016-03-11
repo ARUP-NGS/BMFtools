@@ -17,8 +17,8 @@ namespace BMF {
                 seq[i] = 'N';
                 max_observed_phreds[i] = '#';
             } else {
-            	seq[i] = num2nuc(argmaxret);
-            	max_observed_phreds[i] += 33;
+                seq[i] = num2nuc(argmaxret);
+                max_observed_phreds[i] += 33;
             }
         }
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
