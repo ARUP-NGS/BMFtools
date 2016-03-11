@@ -316,6 +316,7 @@ namespace BMF {
                 LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
             }
         }
+        settings->realign_pairs.clear();
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
