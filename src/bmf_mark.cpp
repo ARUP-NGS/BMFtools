@@ -17,13 +17,8 @@ namespace BMF {
         dlib::add_sc_lens(b1, b2);
         dlib::add_fraction_aligned(b1, b2);
         dlib::add_qseq_len(b1, b2);
-/*
-        if(((mark_settings_t *)data)->remove_qcfail) {
-            ret |= dlib::bitset_qcfail(b1, b2);
-        } else {
-            dlib::bitset_qcfail(b1, b2);
-        }
-*/
+        // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
+        ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
         if(((mark_settings_t *)data)->min_insert_length) {
             if(b1->core.isize && // Non-zero insert size
                std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length)
@@ -35,13 +30,14 @@ namespace BMF {
     static int mark_usage() {
         fprintf(stderr,
                         "Adds positional bam tags for a read and its mate for bmftools rsq and bmftools infer.\n"
+                        "Meant primarily for piping to avoid I/O. Default compression is therefore 0. Typical compression for writing to disk: 6.\n"
                         "\tSU: Self Unclipped start.\n"
                         "\tMU: Mate Unclipped start.\n"
                         "\tLM: Mate length.\n"
                         "Required for bmftools rsq using unclipped start.\n"
                         "Required for bmftools infer.\n"
                         "Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>\n\n"
-                        "Flags:\n-l     Sets bam compression level. (Valid: 1-9).\n"
+                        "Flags:\n-l     Sets bam compression level. (Valid: 1-9). Default: 0.\n"
                         "-q    Skip read pairs which fail.\n"
                         "-i    Skip read pairs whose insert size is less than this number.\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
@@ -52,7 +48,7 @@ namespace BMF {
 
     int mark_main(int argc, char *argv[])
     {
-        char wmode[4]{"wb"};
+        char wmode[4]{"wb0"};
         int c;
         mark_settings_t settings{0};
         while ((c = getopt(argc, argv, "l:i:q?h")) >= 0) {
