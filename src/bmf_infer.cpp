@@ -15,8 +15,11 @@ namespace BMF {
             // Mask unconfident base calls
             if(full_quals[i] < 2 || (double)agrees[i] / n < MIN_FRAC_AGREED) {
                 seq[i] = 'N';
-                max_observed_phreds[i] = 2;
-            } else seq[i] = num2nuc(argmaxret);
+                max_observed_phreds[i] = '#';
+            } else {
+            	seq[i] = num2nuc(argmaxret);
+            	max_observed_phreds[i] += 33;
+            }
         }
         const size_t bufsize = (5 * len + 6);
         std::string pvbuf(), pvbuf.resize(bufsize);
@@ -31,8 +34,6 @@ namespace BMF {
         }
         pvbuf.resize(pvks.l);
         fabuf.resize(faks.l);
-        for(auto& phred: max_observed_phreds)
-            phred += 33;
         std::string ret();
         ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 17);
         stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\n%s\n+\n%s\n",
