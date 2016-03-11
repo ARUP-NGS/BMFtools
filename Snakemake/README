@@ -1,6 +1,7 @@
 #BMFtools Snakemake Workflow
 ###Summary
 >Runs a variety of tools to process barcoded from FASTQ to variant calling ready BAMs
+>Two workflows, one for secondary index barcodes, one for inline barcodes, each with a config yaml.
 
 ##Snakemake
 >Tutorial: http://snakemake.bitbucket.org/snakemake-tutorial.html
