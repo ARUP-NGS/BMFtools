@@ -29,43 +29,36 @@ namespace BMF {
 
     CONST static inline int same_stack_pos_se(bam1_t *b, bam1_t *p)
     {
-        return bmfsort_se_key(b) == bmfsort_se_key(p) &&
-                b->core.l_qseq == p->core.l_qseq;
+        return bmfsort_se_key(b) == bmfsort_se_key(p);
     }
 
     CONST static inline int same_stack_ucs_se(bam1_t *b, bam1_t *p)
     {
-        return ucs_se_sort_key(b) == ucs_se_sort_key(p) &&
-                b->core.l_qseq == p->core.l_qseq;
+        return ucs_se_sort_key(b) == ucs_se_sort_key(p);
     }
 
     CONST static inline int same_stack_pos(bam1_t *b, bam1_t *p)
     {
         return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
-                bmfsort_mate_key(b) == bmfsort_mate_key(p) &&
-                sort_rlen_key(b) == sort_rlen_key(p));
+                bmfsort_mate_key(b) == bmfsort_mate_key(p));
     }
 
     CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
     {
     #if !NDEBUG
         if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
-                ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
-                sort_rlen_key(b) == sort_rlen_key(p)) {
+           ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
             assert(b->core.tid == p->core.tid);
             assert(b->core.mtid == p->core.mtid);
             assert(b->core.mtid == p->core.mtid);
-            assert(b->core.l_qseq == p->core.l_qseq);
             assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
             assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
-            assert(bam_itag(b, "LM") == bam_itag(p, "LM"));
             return 1;
         }
         return 0;
     #else
         return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
-                ucs_sort_mate_key(b) == ucs_sort_mate_key(p)&&
-                sort_rlen_key(b) == sort_rlen_key(p));
+                ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
     #endif
     }
 
