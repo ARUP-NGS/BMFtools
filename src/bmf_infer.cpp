@@ -35,8 +35,8 @@ namespace BMF {
         pvbuf.resize(pvks.l);
         fabuf.resize(faks.l);
         std::string ret();
-        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 17);
-        stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\n%s\n+\n%s\n",
+        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 24);
+        stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
                      get_name(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
         return ret;
     }
