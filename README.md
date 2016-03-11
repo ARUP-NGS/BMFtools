@@ -1,6 +1,6 @@
 #BMFTools
 ###Summary
->BMFtools (_**B**arcoded **M**olecular **F**amilies_tools) is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
+>BMFtools (**B**arcoded **M**olecular **F**amilies tools) is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
 
 ===================
 
