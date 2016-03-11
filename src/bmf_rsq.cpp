@@ -2,6 +2,29 @@
 
 namespace BMF {
 
+    namespace {
+        inline std::string make_name(bam1_t *b, size_t n) {
+            std::string ret;
+            ret.resize(60uL);
+            if(b->core.flag & BAM_FREAD1) {
+                stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
+                             bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
+                             b->core.tid, b->core.mtid, // Contigs
+                             !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
+                             b->core.l_qseq, bam_itag(b, "LM"), n // Read length of self and mate.
+                             );
+            } else {
+                stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
+                             bam_itag(b, "MU"), bam_itag(b, "SU"),
+                             b->core.mtid, b->core.tid,
+                             !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
+                             bam_itag(b, "LM"), b->core.l_qseq, n
+                             );
+            }
+            return ret;
+        }
+    }
+
     struct rsq_aux_t {
         FILE *fqh;
         samFile *in;
@@ -16,7 +39,7 @@ namespace BMF {
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                    &same_stack_ucs, &same_stack_ucs_se};
 
-    inline void bam2ffq(bam1_t *b, FILE *fp)
+    inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
     {
         char *qual, *seqbuf;
         int i;
@@ -24,7 +47,7 @@ namespace BMF {
         uint32_t *pv, *fa;
         int8_t t;
         kstring_t ks = {0, 0, nullptr};
-        ksprintf(&ks, "@%s PV:B:I", bam_get_qname(b));
+        ksprintf(&ks, "@%s PV:B:I", qname.c_str());
         pv = (uint32_t *)dlib::array_tag(b, "PV");
         fa = (uint32_t *)dlib::array_tag(b, "FA");
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
@@ -191,23 +214,25 @@ namespace BMF {
 
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
+        size_t n = 0;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
                 uint8_t *data;
                 std::string qname;
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                    qname = bam_get_qname(stack->a[i]);
+                    qname = make_name(stack->a[i], ++n);
+                    LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
+                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i], qname);
                     } else {
                         // Make sure the read names/barcodes match.
                         assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
                         // Write read 1 out first.
                         if(stack->a[i]->core.flag & BAM_FREAD2) {
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                            bam2ffq(stack->a[i], settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh, qname);
                         } else {
-                            bam2ffq(stack->a[i], settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh, qname);
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                         }
                         // Clear entry, as there can only be two.
