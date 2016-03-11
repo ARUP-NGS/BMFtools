@@ -4,9 +4,8 @@ namespace BMF {
 
     std::string BamFisherSet::to_fastq() {
         int i;
-        std::stringstream stream;
-        stream << '@' << get_name() << " PV:B:I";
-        std::string seq(0, len);
+        std::string seq();
+        seq.resize(len);
         std::vector<uint32_t> agrees(len);
         std::vector<uint32_t> full_quals(len); // igamc calculated
         for(i = 0; i < len; ++i) {
@@ -19,14 +18,26 @@ namespace BMF {
                 max_observed_phreds[i] = 2;
             } else seq[i] = num2nuc(argmaxret);
         }
-        for(auto pv: full_quals) stream << ',' << pv;
-        stream << "\tFA:B:I";
-        for(auto agree: agrees) stream << ',' << agree;
-        stream << "\tFM:i:" << n << '\n';
+        const size_t bufsize = (5 * len + 6);
+        std::string pvbuf(), pvbuf.resize(bufsize);
+        kstring_t pvks = {0, bufsize, (char *)pvbuf.data()};
+        std::string fabuf(), fabuf.resize(bufsize);
+        kstring_t faks = {0, bufsize, (char *)pvbuf.data()};
+        ksprintf(&pvks, "PV:B:I");
+        ksprintf(&faks, "FA:B:I");
+        for(int i = 0; i < len; ++i) {
+            ksprintf(&pvks, ",%u", full_quals[i]);
+            ksprintf(&faks, ",%u", agrees[i]);
+        }
+        pvbuf.resize(pvks.l);
+        fabuf.resize(faks.l);
         for(auto& phred: max_observed_phreds)
             phred += 33;
-        stream << seq << "\n+\n" << max_observed_phreds << '\n';
-        return stream.str();
+        std::string ret();
+        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 17);
+        stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\n%s\n+\n%s\n",
+                     get_name(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+        return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
         for(auto& set: sets) {
