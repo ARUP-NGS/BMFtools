@@ -230,9 +230,8 @@ namespace BMF {
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
                 uint8_t *data;
-                std::string qname;
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                    qname = make_name(stack->a[i], ++n);
+                    std::string&& qname = make_name(stack->a[i], ++n);
                     LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i], qname);
