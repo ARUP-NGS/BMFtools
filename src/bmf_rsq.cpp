@@ -305,6 +305,7 @@ namespace BMF {
         write_stack(stack, settings);
         stack->n = 1;
         bam_destroy1(b);
+#if 0
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         if(settings->realign_pairs.size()) {
             LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something may be wrong....\n", settings->realign_pairs.size());
@@ -313,6 +314,7 @@ namespace BMF {
                 settings->realign_pairs.erase(pair.first);
             }
         }
+#endif
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
