@@ -51,13 +51,13 @@ namespace BMF {
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                    &same_stack_ucs, &same_stack_ucs_se};
 
-    inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
+    inline void bam2ffq(bam1_t *b, FILE *fp)
     {
         int i;
         uint8_t *rvdata;
         kstring_t ks{0, 0, nullptr};
         kputc('@', &ks);
-        kputs(qname.c_str(), &ks);
+        kputs(bam_get_qname(b), &ks);
         kputs(" PV:B:I", &ks);
         auto fa{(uint32_t *)dlib::array_tag(b, "FA")};
         auto pv{(uint32_t *)dlib::array_tag(b, "PV")};
@@ -105,6 +105,55 @@ namespace BMF {
             if(*n1 != *n2)
                 return *n1 < *n2;
         return 0; // If identical, don't switch. Should never happen.
+    }
+
+    inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
+    {
+        int i;
+        uint8_t *rvdata;
+        kstring_t ks{0, 0, nullptr};
+        kputc('@', &ks);
+        kputs(qname.c_str(), &ks);
+        kputs(" PV:B:I", &ks);
+        auto fa{(uint32_t *)dlib::array_tag(b, "FA")};
+        auto pv{(uint32_t *)dlib::array_tag(b, "PV")};
+        fa = (uint32_t *)dlib::array_tag(b, "FA");
+        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
+        kputs("\tFA:B:I", &ks);
+        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
+                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
+            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
+        kputc('\n', &ks);
+        uint8_t *seq(bam_get_seq(b));
+        char *seqbuf((char *)malloc(b->core.l_qseq + 1));
+        for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
+        seqbuf[i] = '\0';
+        if (b->core.flag & BAM_FREVERSE) { // reverse complement
+            for(i = 0; i < b->core.l_qseq>>1; ++i) {
+                const int8_t t = seqbuf[b->core.l_qseq - i - 1];
+                seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
+                seqbuf[i] = nuc_cmpl(t);
+            }
+            if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
+        }
+        seqbuf[b->core.l_qseq] = '\0';
+        assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
+        kputs(seqbuf, &ks);
+        kputs("\n+\n", &ks);
+        uint8_t *qual(bam_get_qual(b));
+        for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
+        if (b->core.flag & BAM_FREVERSE) { // reverse
+            for (i = 0; i < b->core.l_qseq>>1; ++i) {
+                const int8_t t = seqbuf[b->core.l_qseq - 1 - i];
+                seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
+                seqbuf[i] = t;
+            }
+        }
+        kputs(seqbuf, &ks), free(seqbuf);
+        kputc('\n', &ks);
+        fputs(ks.s, fp), free(ks.s);
     }
 
     void update_bam1(bam1_t *p, bam1_t *b)
@@ -187,7 +236,6 @@ namespace BMF {
             for(int i = 0; i < qlen; ++i) {
                 const int8_t ps(bam_seqi(pSeq, i));
                 const int8_t bs(bam_seqi(bSeq, i));
-                bs = bam_seqi(bSeq, i);
                 if(ps == bs) {
                     pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                     pFA[i] += bFA[i];
@@ -230,26 +278,27 @@ namespace BMF {
                 uint8_t *data;
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                     std::string&& qname = make_name(stack->a[i], ++n);
+                    LOG_DEBUG("Read name: \t%s\tGenerated name: \t%s\t.\n", bam_get_qname(stack->a[i]), qname.c_str());
                     //LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
                     } else {
                         // Make sure the read names/barcodes match.
-                        assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
+                        //assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
                         // Write read 1 out first.
                         if(stack->a[i]->core.flag & BAM_FREAD2) {
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                            bam2ffq(stack->a[i], settings->fqh, qname);
+                            //bam2ffq(stack->a[i], settings->fqh, qname);
+                            bam2ffq(stack->a[i], settings->fqh);
                         } else {
-                            bam2ffq(stack->a[i], settings->fqh, qname);
+                            //bam2ffq(stack->a[i], settings->fqh, qname);
+                            bam2ffq(stack->a[i], settings->fqh);
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                         }
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else {
-                    sam_write1(settings->out, settings->hdr, stack->a[i]);
-                }
+                } else sam_write1(settings->out, settings->hdr, stack->a[i]);
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
@@ -307,10 +356,9 @@ namespace BMF {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
-        if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey])) {
+        if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
-        }
         bam1_t *b = bam_init1();
         if(sam_read1(settings->in, settings->hdr, b) < 0)
             LOG_EXIT("Failed to read first record in bam file. Abort!\n");
@@ -333,10 +381,7 @@ namespace BMF {
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
-            } else {
-                // Keep adding bam records.
-                stack_insert(stack, b);
-            }
+            } stack_insert(stack, b);
         }
         flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         write_stack(stack, settings);
