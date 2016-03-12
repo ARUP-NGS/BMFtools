@@ -53,14 +53,14 @@ namespace BMF {
 
     inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
     {
-        char *qual, *seqbuf;
         int i;
-        uint8_t *seq, *rvdata;
-        uint32_t *pv, *fa;
-        int8_t t;
-        kstring_t ks = {0, 0, nullptr};
-        ksprintf(&ks, "@%s PV:B:I", qname.c_str());
-        pv = (uint32_t *)dlib::array_tag(b, "PV");
+        uint8_t *rvdata;
+        kstring_t ks{0, 0, nullptr};
+        kputc('@', &ks);
+        kputs(qname.c_str(), &ks);
+        kputs(" PV:B:I", &ks);
+        auto fa{(uint32_t *)dlib::array_tag(b, "FA")};
+        auto pv{(uint32_t *)dlib::array_tag(b, "PV")};
         fa = (uint32_t *)dlib::array_tag(b, "FA");
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
@@ -70,13 +70,13 @@ namespace BMF {
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
-        seq = bam_get_seq(b);
-        seqbuf = (char *)malloc(b->core.l_qseq + 1);
+        uint8_t *seq(bam_get_seq(b));
+        char *seqbuf((char *)malloc(b->core.l_qseq + 1));
         for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
         seqbuf[i] = '\0';
         if (b->core.flag & BAM_FREVERSE) { // reverse complement
             for(i = 0; i < b->core.l_qseq>>1; ++i) {
-                t = seqbuf[b->core.l_qseq - i - 1];
+                const int8_t t = seqbuf[b->core.l_qseq - i - 1];
                 seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
                 seqbuf[i] = nuc_cmpl(t);
             }
@@ -86,11 +86,11 @@ namespace BMF {
         assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
         kputs(seqbuf, &ks);
         kputs("\n+\n", &ks);
-        qual = (char *)bam_get_qual(b);
+        uint8_t *qual(bam_get_qual(b));
         for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
         if (b->core.flag & BAM_FREVERSE) { // reverse
             for (i = 0; i < b->core.l_qseq>>1; ++i) {
-                t = seqbuf[b->core.l_qseq - 1 - i];
+                const int8_t t = seqbuf[b->core.l_qseq - 1 - i];
                 seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
                 seqbuf[i] = t;
             }
@@ -107,18 +107,16 @@ namespace BMF {
         return 0; // If identical, don't switch. Should never happen.
     }
 
-    static inline void update_bam1(bam1_t *p, bam1_t *b)
+    void update_bam1(bam1_t *p, bam1_t *b)
     {
-        uint8_t *bdata, *pdata;
-        int n_changed;
-        bdata = bam_aux_get(b, "FM");
-        pdata = bam_aux_get(p, "FM");
+        uint8_t *bdata(bam_aux_get(b, "FM"));
+        uint8_t *pdata(bam_aux_get(p, "FM"));
         if(UNLIKELY(!bdata || !pdata)) {
             fprintf(stderr, "Required FM tag not found. Abort mission!\n");
             exit(EXIT_FAILURE);
         }
-        int bFM = bam_aux2i(bdata);
-        int pFM = bam_aux2i(pdata);
+        int bFM(bam_aux2i(bdata));
+        int pFM(bam_aux2i(pdata));
         if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
             memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
             assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
@@ -134,17 +132,17 @@ namespace BMF {
         // Handle NC (Number Changed) tag
         pdata = bam_aux_get(p, "NC");
         bdata = bam_aux_get(b, "NC");
-        n_changed = dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata);
+        int n_changed{dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata)};
         if(pdata) bam_aux_del(p, pdata);
 
-        uint32_t *const bPV = (uint32_t *)dlib::array_tag(b, "PV"); // Length of this should be b->l_qseq
-        uint32_t *const pPV = (uint32_t *)dlib::array_tag(p, "PV"); // Length of this should be b->l_qseq
-        uint32_t *const bFA = (uint32_t *)dlib::array_tag(b, "FA"); // Length of this should be b->l_qseq
-        uint32_t *const pFA = (uint32_t *)dlib::array_tag(p, "FA"); // Length of this should be b->l_qseq
-        uint8_t *const bSeq = (uint8_t *)bam_get_seq(b);
-        uint8_t *const pSeq = (uint8_t *)bam_get_seq(p);
-        uint8_t *const bQual = (uint8_t *)bam_get_qual(b);
-        uint8_t *const pQual = (uint8_t *)bam_get_qual(p);
+        uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
+        uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
+        uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA")); // Length of this should be b->l_qseq
+        uint32_t *pFA((uint32_t *)dlib::array_tag(p, "FA"));
+        uint8_t *bSeq(bam_get_seq(b));
+        uint8_t *pSeq(bam_get_seq(p));
+        uint8_t *bQual(bam_get_qual(b));
+        uint8_t *pQual(bam_get_qual(p));
         const int qlen = p->core.l_qseq;
 
         if(p->core.flag & (BAM_FREVERSE)) {
@@ -186,9 +184,9 @@ namespace BMF {
                 if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
             }
         } else {
-            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
-                ps = bam_seqi(pSeq, i);
+                const int8_t ps(bam_seqi(pSeq, i));
+                const int8_t bs(bam_seqi(bSeq, i));
                 bs = bam_seqi(bSeq, i);
                 if(ps == bs) {
                     pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
@@ -232,12 +230,12 @@ namespace BMF {
                 uint8_t *data;
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                     std::string&& qname = make_name(stack->a[i], ++n);
-                    LOG_DEBUG("Qname: %s.\n", qname.c_str());
+                    //LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i], qname);
+                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
                     } else {
                         // Make sure the read names/barcodes match.
-                        assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
+                        assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
                         // Write read 1 out first.
                         if(stack->a[i]->core.flag & BAM_FREAD2) {
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
@@ -346,6 +344,7 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         if(settings->realign_pairs.size()) {
+            LOG_DEBUG("# of unpaired reads: %lu.\n", settings->realign_pairs.size());
             for(auto pair: settings->realign_pairs) {
                 fprintf(settings->fqh, pair.second.c_str());
                 //LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
