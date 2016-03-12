@@ -5,25 +5,32 @@ namespace BMF {
     namespace {
         inline std::string make_name(bam1_t *b, size_t n) {
             std::string ret;
-            ret.resize(60uL);
+            ret.resize(70uL);
             uint8_t *data_su{bam_aux_get(b, "SU")};
             uint8_t *data_mu{bam_aux_get(b, "MU")};
             if(b->core.flag & BAM_FREAD1) {
                 stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
                              data_su ? bam_aux2i(data_su): b->core.pos,
                              data_mu ? bam_aux2i(data_mu): b->core.mpos, // Unclipped starts for self and mate
-                             b->core.tid, b->core.mtid, // Contigs
-                             !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
-                             b->core.l_qseq, bam_itag(b, "LM"), n // Read length of self and mate.
+                             b->core.tid,
+                             b->core.mtid, // Contigs
+                             (!!(b->core.flag & (BAM_FREVERSE))),
+                             (!!(b->core.flag & (BAM_FMREVERSE))), // Strandedness combinations
+                             b->core.l_qseq,
+                             bam_itag(b, "LM"),
+                             n // Read length of self and mate.
                              );
             } else {
                 stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
                              data_mu ? bam_aux2i(data_mu): b->core.mpos, // Unclipped starts for self and mate
                              data_su ? bam_aux2i(data_su): b->core.pos,
-                             bam_itag(b, "MU"), bam_itag(b, "SU"),
-                             b->core.mtid, b->core.tid,
-                             !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
-                             bam_itag(b, "LM"), b->core.l_qseq, n
+                             b->core.mtid,
+                             b->core.tid,
+                             (!!(b->core.flag & (BAM_FMREVERSE))), // Strandedness combinations
+                             (!!(b->core.flag & (BAM_FREVERSE))),
+                             bam_itag(b, "LM"),
+                             b->core.l_qseq,
+                             n // Read length of self and mate.
                              );
             }
             return ret;
