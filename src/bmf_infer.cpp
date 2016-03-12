@@ -3,11 +3,16 @@
 namespace BMF {
 
     std::string BamFisherSet::to_fastq() {
+        LOG_DEBUG("Calling to_fastq\n");
         int i;
         std::string seq;
         seq.resize(len);
-        std::vector<uint32_t> agrees(len);
-        std::vector<uint32_t> full_quals(len); // igamc calculated
+        sprintf((char *)seq.data(), "O HAI WURLD\n");
+        LOG_DEBUG(seq.c_str());
+        std::vector<uint32_t> agrees;
+        std::vector<uint32_t> full_quals; // igamc calculated
+        agrees.resize(len);
+        full_quals.resize(len);
         for(i = 0; i < len; ++i) {
             const int argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
             agrees[i] = votes[i * 5 + argmaxret];
@@ -21,6 +26,7 @@ namespace BMF {
                 max_observed_phreds[i] += 33;
             }
         }
+        LOG_DEBUG("Filled arrays\n");
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
         std::string pvbuf;
         pvbuf.resize(bufsize);
@@ -335,7 +341,9 @@ namespace BMF {
             }
             if(fn(b, *stack->a) == 0) {
                 // New stack -- flatten what we have and write it out.
+                LOG_DEBUG("Flattening stack.\n");
                 flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+                LOG_DEBUG("Writing stack.\n");
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -344,6 +352,7 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
+        LOG_DEBUG("Clean up after.\n");
         flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         write_stack(stack, settings);
         stack->n = 1;

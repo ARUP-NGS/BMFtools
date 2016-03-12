@@ -51,6 +51,7 @@ namespace BMF {
          * This is probably evil, but very, very efficient.
          */
         void make_name(bam1_t *b) {
+            LOG_DEBUG("Making thing.\n");
             if(is_read1) {
                 stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                              bam_itag(b, "SU"), bam_itag(b, "MU"), // Unclipped starts for self and mate
@@ -78,10 +79,12 @@ namespace BMF {
         len(b->core.l_qseq),
         phred_sums(len * 5),
         max_observed_phreds(0, len),
-        name('\0', 50uL),
         n(1),
         is_read1(!!(b->core.flag & BAM_FREAD1))
         {
+            votes.resize(len);
+            name.resize(70uL);
+            LOG_DEBUG("Made things!");
             update_qual(bam_get_qual(b));
             make_name(b);
 
