@@ -338,16 +338,13 @@ namespace BMF {
         write_stack(stack, settings);
         stack->n = 1;
         bam_destroy1(b);
-#if 0
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         if(settings->realign_pairs.size()) {
-            LOG_WARNING("There shoudn't be any orphaned reads left in real datasets, but there are %lu. Something may be wrong....\n", settings->realign_pairs.size());
             for(auto pair: settings->realign_pairs) {
                 fprintf(settings->fqh, pair.second.c_str());
-                LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
+                //LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
             }
         }
-#endif
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
