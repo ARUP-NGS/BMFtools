@@ -63,8 +63,8 @@ install: all
 src/%.o: src/%.cpp cstr_util.o
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
 
-%.o: %.c dlib/cstr_util.o
-	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) dlib/cstr_util.o $< -o $@
+%.o: %.c
+	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
 %.po: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
