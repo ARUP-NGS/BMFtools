@@ -23,7 +23,7 @@ namespace BMF {
 
     struct markrsq_conf_t {
         struct sort_conf_t {
-        	std::string pipe_name;
+            std::string pipe_name;
             std::string sortmem; // Memory per thread
             std::string tmp_prefix;
             uint32_t threads:8;
@@ -37,7 +37,7 @@ namespace BMF {
             }
         } s;
         struct rsq_conf_t {
-        	std::string pipe_name;
+            std::string pipe_name;
             uint32_t mismatch_limit:4; // Maximum number of barcode mismatches for a rescue
             uint32_t use_unclipped_start:1; // Use unclipped start for rescue rather than pos
             rsq_conf_t() :
@@ -57,34 +57,34 @@ namespace BMF {
      * opens named pipes for mark -> sort + sort -> rsq
      */
     FILE *pipe_call(markrsq_conf_t *conf) {
-    	if(conf->s.pipe_name.empty()) {
-    		conf->s.pipe_name.reserve(21uL);
-    		dlib::rand_string(const_cast<char *>(conf->s.pipe_name.data()), 20uL);
-    		conf->s.pipe_name.resize(20uL);
-    	}
-    	if(conf->r.pipe_name.empty()) {
-    		conf->r.pipe_name.reserve(21uL);
-    		dlib::rand_string(const_cast<char *>(conf->r.pipe_name.data()), 20uL);
-    		conf->r.pipe_name.resize(20uL);
-    	}
-    	kstring_t ks{0};
-    	ksprintf(&ks, "mkfifo %s", conf->s.pipe_name.c_str());
-    	int retcode;
-    	if((retcode = pclose(popen(ks.s, "w"))) != 0)
-    		LOG_EXIT("mkfifo call for sort failed. Abort!\n");
-    	ksprintf(&ks, "mkfifo %s", conf->r.pipe_name.c_str());
-    	if((retcode = pclose(popen(ks.s, "w"))) != 0)
-    		LOG_EXIT("mkfifo call for rsq failed. Abort!\n");
-    	ksprintf(&ks, "samtools sort -O bam -m%s -@%i -l%i - < %s > %s",
-    			 conf->s.sortmem.c_str(),
-    			 (int)conf->s.threads,
-				 (int)conf->s.level,
-				 conf->s.pipe_name.c_str(),
-				 conf->r.pipe_name.c_str()
-				 );
-    	std::string command(ks.s), free(ks.s);
-    	LOG_DEBUG("Pipe command: %s.\n", command.c_str());
-    	return popen(command.c_str(), "w");
+        if(conf->s.pipe_name.empty()) {
+            conf->s.pipe_name.reserve(21uL);
+            dlib::rand_string(const_cast<char *>(conf->s.pipe_name.data()), 20uL);
+            conf->s.pipe_name.resize(20uL);
+        }
+        if(conf->r.pipe_name.empty()) {
+            conf->r.pipe_name.reserve(21uL);
+            dlib::rand_string(const_cast<char *>(conf->r.pipe_name.data()), 20uL);
+            conf->r.pipe_name.resize(20uL);
+        }
+        kstring_t ks{0};
+        ksprintf(&ks, "mkfifo %s", conf->s.pipe_name.c_str());
+        int retcode;
+        if((retcode = pclose(popen(ks.s, "w"))) != 0)
+            LOG_EXIT("mkfifo call for sort failed. Abort!\n");
+        ksprintf(&ks, "mkfifo %s", conf->r.pipe_name.c_str());
+        if((retcode = pclose(popen(ks.s, "w"))) != 0)
+            LOG_EXIT("mkfifo call for rsq failed. Abort!\n");
+        ksprintf(&ks, "samtools sort -O bam -m%s -@%i -l%i - < %s > %s",
+                 conf->s.sortmem.c_str(),
+                 (int)conf->s.threads,
+                 (int)conf->s.level,
+                 conf->s.pipe_name.c_str(),
+                 conf->r.pipe_name.c_str()
+                 );
+        std::string command(ks.s), free(ks.s);
+        LOG_DEBUG("Pipe command: %s.\n", command.c_str());
+        return popen(command.c_str(), "w");
     }
 
     void markrsq_usage(int retcode)

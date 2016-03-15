@@ -29,7 +29,7 @@ DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib
 		   dlib/bed_util.c dlib/misc_util.c
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
-          src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \
+          src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
           src/bmf_err.c \
           lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
           src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
@@ -63,9 +63,8 @@ install: all
 src/%.o: src/%.cpp cstr_util.o
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
 
-
-%.o: %.c
-	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
+%.o: %.c dlib/cstr_util.o
+	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) dlib/cstr_util.o $< -o $@
 
 %.po: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
