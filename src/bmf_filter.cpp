@@ -58,10 +58,10 @@ namespace BMF {
     {
         while(in.next() >= 0) {
             if(bam_test(in.rec, (void *)param)) {
-                LOG_DEBUG("Writing to output file %s.\n", refused.fp->fn);
+                //LOG_DEBUG("Writing to output file %s.\n", refused.fp->fn);
                 refused.write(in.rec);
             } else {
-                LOG_DEBUG("Writing to output file %s.\n", out.fp->fn);
+                //LOG_DEBUG("Writing to output file %s.\n", out.fp->fn);
                 out.write(in.rec);
             }
         }
@@ -74,7 +74,7 @@ namespace BMF {
         if(strcmp(argv[1], "--help") == 0)
             return usage(argv, EXIT_SUCCESS);
         int c;
-        char out_mode[4] = "wb";
+        char out_mode[4]{"wb"};
         opts param = {0};
         char *bedpath = nullptr;
         int padding = DEFAULT_PADDING;

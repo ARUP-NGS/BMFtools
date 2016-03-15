@@ -26,10 +26,12 @@ namespace BMF {
             samFile *fp;
             bam_hdr_t *hdr;
             samFile *ofp;
+            size_t stack_start;
             mark_conf_t() :
                 fp(nullptr),
                 hdr(nullptr),
-                ofp(nullptr)
+                ofp(nullptr),
+                stack_start(10)
             {
             }
             ~mark_conf_t() {
@@ -65,26 +67,35 @@ namespace BMF {
                 use_unclipped_start(1)
             {
             }
+            ~rsq_conf_t() {
+                if(fp) sam_close(fp), fp = nullptr;
+                sam_close(ofp), ofp = nullptr;
+            }
         } r;
         FILE *pipe_call;
-        std::string final_outname;
         int level;
         markrsq_conf_t():
             m(),
             s(),
             r(),
             pipe_call(nullptr),
-            final_outname(""),
             level(6)
         {
         }
-        void open_pipes(char *infname);
+        void open_pipes(char *infname, char *outfname);
+        void mark_core();
+        void rsq_core();
+        void process(char *infname, char *outfname) {
+            open_pipes(infname, outfname);
+            mark_core();
+            rsq_core();
+        }
     };
 
     /*
      * opens named pipes for mark -> sort + sort -> rsq
      */
-    void markrsq_conf_t::open_pipes(char *infname) {
+    void markrsq_conf_t::open_pipes(char *infname, char *outfname) {
         if(s.pipe_name.empty()) {
             s.pipe_name.reserve(21uL);
             dlib::rand_string(const_cast<char *>(s.pipe_name.data()), 20uL);
@@ -126,7 +137,7 @@ namespace BMF {
         LOG_DEBUG("Pipe command: %s.\n", command.c_str());
         pipe_call = popen(command.c_str(), "w");
         r.fp = sam_open(r.pipe_name.c_str(), "r");
-        r.ofp = sam_open(final_outname.c_str(), ("wb"s + std::to_string(level)).c_str());
+        r.ofp = sam_open(outfname, ("wb"s + std::to_string(level)).c_str());
         sam_hdr_write(r.ofp, m.hdr);
     }
 
@@ -143,8 +154,31 @@ namespace BMF {
      * hashmap of information for read pairs for the rescue step.
      * Writes
      */
-    int mark_core(markrsq_conf_t* conf) {
-        return 0;
+    void markrsq_conf_t::mark_core() {
+        if(!m.fp || !m.hdr) LOG_EXIT("Open pipes before running mark_core!\n");
+
+        bam1_stack stack{(m.stack_start)};
+        int c;
+        bam1_t *b = bam_init1();
+        while((c = sam_read1(m.fp, m.hdr, b) >= 0)) {
+
+        }
+        bam_destroy1(b);
+
+        // end
+        sam_close(m.fp), m.fp = nullptr;
+        sam_close(m.ofp), m.ofp = nullptr;
+    }
+
+    void markrsq_conf_t::rsq_core() {
+        // Clean up after.
+        int ret;
+        if((ret = pclose(pipe_call)) != 0) {
+            LOG_EXIT("Pipe call failed: %i.\n", ret);
+        }
+        ~m();
+        ~s();
+        ~r();
     }
 
 int markrsq_main(int argc, char *argv[]) {
@@ -154,18 +188,19 @@ int markrsq_main(int argc, char *argv[]) {
     const struct option lopts[] = {
         {0, 0, 0, 0}
     };
-    while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, nullptr)) >= 0) {
+    char *outfname(nullptr);
+    while ((c = getopt_long(argc, argv, "m:o:T:l:u?h", lopts, nullptr)) >= 0) {
         switch (c) {
-            case 'T': /* */ break;
+            case 'm': conf.s.sortmem = optarg; break;
+            case 'T': conf.s.tmp_prefix = optarg; break;
+            case 'o': outfname = optarg; break;
+            case 'u': conf.r.use_unclipped_start = 1; break;
+            case 'l': conf.level = atoi(optarg) % 10; break;
             case 'h': case '?': markrsq_usage(EXIT_SUCCESS);
         }
     }
     if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
-    conf.open_pipes(argv[optind]);;
-    int mark_ret = mark_core(&conf);
-    if(mark_ret) {
-
-    }
+    conf.process(argv[optind], outfname ? outfname: "-");
     LOG_INFO("Successfully complete bmftools stack!\n");
     return 0;
 }
