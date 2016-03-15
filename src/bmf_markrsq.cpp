@@ -64,7 +64,7 @@ namespace BMF {
                 fp(nullptr),
                 ofp(nullptr),
                 mismatch_limit(2),
-                use_unclipped_start(1)
+                use_unclipped_start(0)
             {
             }
             ~rsq_conf_t() {
@@ -189,8 +189,10 @@ int markrsq_main(int argc, char *argv[]) {
         {0, 0, 0, 0}
     };
     char *outfname(nullptr);
-    while ((c = getopt_long(argc, argv, "m:o:T:l:u?h", lopts, nullptr)) >= 0) {
+    while ((c = getopt_long(argc, argv, "m:o:t:T:l:u?h", lopts, nullptr)) >= 0) {
         switch (c) {
+            case 'L': conf.r.mismatch_limit = atoi(optarg); break;
+            case 't': conf.s.threads = atoi(optarg); break;
             case 'm': conf.s.sortmem = optarg; break;
             case 'T': conf.s.tmp_prefix = optarg; break;
             case 'o': outfname = optarg; break;
