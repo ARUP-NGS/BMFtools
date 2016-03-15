@@ -2,7 +2,9 @@
 #define BMF_MARKRSQ_H
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
+#include "htslib/kstring.h"
 #include <unistd.h>
+#include <sys/stat.h>
 
 namespace BMF {
 

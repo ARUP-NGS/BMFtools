@@ -43,12 +43,11 @@ namespace BMF {
             std::string sortmem; // Memory per thread
             std::string tmp_prefix;
             uint32_t threads:8;
-            uint32_t level:4; // Output compression level
             sort_conf_t() :
+                pipe_name(""),
                 sortmem("500M"),
                 tmp_prefix(""),
-                threads(1),
-                level(0)
+                threads(1)
             {
             }
         } s;
@@ -108,24 +107,18 @@ namespace BMF {
             LOG_EXIT("Could not open input sam %s.\n", infname);
         if((m.hdr = sam_hdr_read(m.fp)) == nullptr)
             LOG_EXIT("Could not read input sam %s's header.\n", infname);
-        kstring_t ks{0};
-        ksprintf(&ks, "mkfifo %s", s.pipe_name.c_str());
-        int retcode;
-        if((retcode = pclose(popen(ks.s, "w"))) != 0)
-            LOG_EXIT("mkfifo call for sort failed with exit code %i. Abort!\n", retcode);
+        if(mkfifo(s.pipe_name.c_str(), 0666))
+            LOG_EXIT("Could not open pipe %s.\n", s.pipe_name.c_str());
         if((m.ofp = sam_open(s.pipe_name.c_str(), "wb0")) == nullptr)
             LOG_EXIT("Could not open temporary pipe with name %s from htslib.\n", s.pipe_name.c_str());
         sam_hdr_write(m.ofp, m.hdr);
-        ks.l = 0; // Clear kstring.
-        ksprintf(&ks, "mkfifo %s", r.pipe_name.c_str());
-        if((retcode = pclose(popen(ks.s, "w"))) != 0)
-            LOG_EXIT("mkfifo call for rsq failed with retcode %i. Abort!\n", retcode);
-        ks.l = 0; // Clear kstring.
-        ksprintf(&ks, "samtools sort -T%s -Obam -m%s -@%i -l%i -o %s %s",
+        if(mkfifo(r.pipe_name.c_str(), 0666))
+            LOG_EXIT("Could not open pipe %s.\n", r.pipe_name.c_str());
+        kstring_t ks = {0, 0, nullptr};
+        ksprintf(&ks, "samtools sort -T%s -Obam -m%s -@%i -l0 -o%s %s",
                  s.tmp_prefix.c_str(),
                  s.sortmem.c_str(),
                  (int)s.threads,
-                 (int)s.level,
                  r.pipe_name.c_str(),
                  s.pipe_name.c_str()
                  );
