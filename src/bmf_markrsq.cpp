@@ -97,21 +97,21 @@ namespace BMF {
      */
     void markrsq_conf_t::open_pipes(char *infname, char *outfname) {
         if(s.pipe_name.empty()) {
-            s.pipe_name.reserve(21uL);
-            dlib::rand_string(const_cast<char *>(s.pipe_name.data()), 20uL);
-            s.pipe_name.resize(20uL);
+            char buffer[32];
+            dlib::rand_string(buffer, 20uL);
+            s.pipe_name = buffer;
             s.pipe_name += infname; // Salt in case multiple instances are running in the same folder.
         }
         if(r.pipe_name.empty()) {
-            r.pipe_name.reserve(21uL);
-            dlib::rand_string(const_cast<char *>(r.pipe_name.data()), 20uL);
-            r.pipe_name.resize(20uL);
+            char buffer[32];
+            dlib::rand_string(buffer, 20uL);
+            r.pipe_name = buffer;
             r.pipe_name += infname; // Salt in case multiple instances are running in the same folder.
         }
         if(s.tmp_prefix.empty()) {
-            s.tmp_prefix.reserve(21uL);
-            dlib::rand_string(const_cast<char *>(s.tmp_prefix.data()), 20uL);
-            s.tmp_prefix.resize(20uL);
+            char buffer[32];
+            dlib::rand_string(buffer, 20uL);
+            s.tmp_prefix = buffer;
             s.tmp_prefix += infname; // Salt in case multiple instances are running in the same folder.
         }
         if((m.fp = sam_open(infname, "r")) == nullptr)
