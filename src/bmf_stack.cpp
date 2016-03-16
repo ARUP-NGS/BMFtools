@@ -341,7 +341,7 @@ namespace BMF {
         aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
                           : dlib::build_ref_hash(aux.normal.header);
         // Check for required tags.
-        for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"})
+        for(auto tag: {"FM", "FA", "PV", "FP", "DR"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
         int ret = stack_core(&aux);
         LOG_INFO("Successfully complete bmftools stack!\n");
