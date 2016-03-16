@@ -58,7 +58,7 @@ namespace BMF {
     }
 
     void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
-        LOG_DEBUG("Adding obs in pair. This should increment overlap!\n");
+        //LOG_DEBUG("Adding obs in pair. This should increment overlap!\n");
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
         size += bam_itag(plp.b, "FM");
         base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
@@ -87,6 +87,7 @@ namespace BMF {
             quality = 0;
             pvalue = 1.;
         }
+        //LOG_DEBUG("Finished adding obs\n");
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         const char refbase = aux->get_ref_base(ttid, tpos);
