@@ -72,6 +72,7 @@ namespace BMF {
         int mq_failed[2]{0};
         int improper_count[2]{0};
         int olap_count[2]{0};
+        std::string qname;
         for(int i = 0; i < tn_plp; ++i) {
             uint8_t *data;
              if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
@@ -89,7 +90,7 @@ namespace BMF {
              if((data = bam_aux_get(aux->tumor.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
                  ++af_failed[0]; continue;
              }
-             const std::string qname(bam_get_qname(aux->tumor.pileups[i].b));
+             qname = bam_get_qname(aux->tumor.pileups[i].b);
              if((found = tobs.find(qname)) == tobs.end()) {
                  //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
                  tobs.emplace(qname, aux->tumor.pileups[i]);
@@ -130,7 +131,7 @@ namespace BMF {
              if((data = bam_aux_get(aux->normal.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
                  ++af_failed[1]; continue;
              }
-             const std::string qname(bam_get_qname(aux->normal.pileups[i].b));
+             qname = bam_get_qname(aux->normal.pileups[i].b);
              if((found = nobs.find(qname)) == nobs.end()) {
                  nobs.emplace(qname, aux->normal.pileups[i]);
              } else {

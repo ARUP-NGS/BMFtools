@@ -389,7 +389,7 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         // What this really means is that the correctly collapsed reads just have a naming issue.
-        for(auto pair: settings->realign_pairs) fputs(settings->fqh, pair.second.c_str());
+        for(auto pair: settings->realign_pairs) fputs(pair.second.c_str(), settings->fqh);
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)

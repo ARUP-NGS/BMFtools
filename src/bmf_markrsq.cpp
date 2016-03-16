@@ -63,12 +63,14 @@ namespace BMF {
             samFile *ofp;
             uint32_t mismatch_limit:4; // Maximum number of barcode mismatches for a rescue
             uint32_t use_unclipped_start:1; // Use unclipped start for rescue rather than pos
+            size_t stack_start;
             rsq_conf_t() :
                 pipe_name(""),
                 fp(nullptr),
                 ofp(nullptr),
                 mismatch_limit(2),
-                use_unclipped_start(0)
+                use_unclipped_start(0),
+                stack_start(100uL)
             {
             }
             ~rsq_conf_t() {
@@ -89,11 +91,9 @@ namespace BMF {
         void open_pipes(char *infname, char *outfname);
         void mark_core();
         void rsq_core();
-        void map_out_rsq();
         void process(char *infname, char *outfname) {
             open_pipes(infname, outfname);
             mark_core();
-            map_out_rsq();
             rsq_core();
         }
     };
@@ -149,7 +149,7 @@ namespace BMF {
 
     /*
      * stack: stack of bam records which all share read names.
-     * return: "tid1:ucs1:tid2:ucs2:is_rev1:is_rev2:NumberSupplementary"
+     * return: "tid1:ucs1:tid2:ucs2:is_rev1:is_rev2"
      * SIDE EFFECTS: Adds all of the tags one could ever imagine wanting to each bam.
      */
     void bam1_stack::make_hashmap_key(std::string &ret) {
@@ -200,8 +200,7 @@ namespace BMF {
                                 tid2,
                                 ucs2,
                                 is_rev1,
-                                is_rev2,
-                                n - 2
+                                is_rev2
                                 );
         for(unsigned i = 0; i < n; ++i) {
             bam_aux_append((recs + i), "as", 'Z', ret.size() + 1, (uint8_t *)ret.data()); // Add the key as a tag
@@ -209,6 +208,7 @@ namespace BMF {
             bam_aux_append((recs + i), "S2", 'B', sizeof(int) * supplemental_coordinates2.size(), reinterpret_cast<uint8_t *>(supplemental_coordinates2.data()));
             bam_aux_append((recs + 1), "L1", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&r1len));
             bam_aux_append((recs + 1), "L2", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&r2len));
+            bam_aux_append((recs + i), "ns", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&n)); // Add the key as a tag
             if((recs + i)->core.flag & BAM_FREAD1) {
                 bam_aux_append((recs + i), "SU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs1));
                 bam_aux_append((recs + i), "MU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs2));
@@ -216,22 +216,6 @@ namespace BMF {
             } else {
                 bam_aux_append((recs + i), "SU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs2));
                 bam_aux_append((recs + i), "MU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs1));
-            }
-        }
-    }
-
-    void markrsq_conf_t::map_out_rsq() {
-        // Map the namesets to the collapsed name for each stack
-        std::unordered_map<std::string, std::string> name_map;
-        for(auto& kv: r.name_stack) { // I could pick which to merge together now and just chan
-            std::pair<std::vector<std::string>, std::string> to_map; // Temporary set --
-            const size_t stack_size = kv.second.size();
-            for(unsigned i = 0; i < stack_size; ++i) {
-                for(unsigned j = i + 1; j < stack_size; ++j) {
-                    if(dlib::strhd_thresh(kv.second[i], kv.second[j], r.mismatch_limit)) {
-
-                    }
-                }
             }
         }
     }
@@ -259,6 +243,7 @@ namespace BMF {
         std::string hash_key;
         hash_key.reserve(128uL);
         while((c = sam_read1(m.fp, m.hdr, b) >= 0)) {
+            if(b->core.flag & (BAM_FSECONDARY)) continue;
             if(name_ptr.empty()) {
                 name_ptr = bam_get_qname(b);
                 stack.add_rec(b);
@@ -283,6 +268,42 @@ namespace BMF {
     }
 
     void markrsq_conf_t::rsq_core() {
+        int c;
+        bam1_t *b = bam_init1();
+        std::unordered_map<std::string, std::unordered_map<std::string,bam1_stack>> stack_map;
+        std::string key;
+        std::string qname;
+        uint8_t *ztag;
+        while((c = sam_read1(r.fp, m.hdr, b)) >= 0) {
+            if((ztag = bam_aux_get(b, "as")) != nullptr) {
+                key = bam_aux2Z(ztag);
+            } else {
+                LOG_EXIT("Could not find required 'as' tag for rescuing. Abort!\n");
+            }
+            auto found = stack_map.find(key);
+            if(found == stack_map.end()) {
+                stack_map.emplace(key, std::unordered_map<std::string,bam1_stack>{{std::string(bam_get_qname(b)), bam1_stack{b}}});
+            } else {
+                qname = bam_get_qname(b);
+                auto found_name = found->second.find(qname);
+                if(found_name == found->second.end()) {
+                    found->second.emplace(qname, bam1_stack{b});
+                } else {
+                    found_name->second.add_rec(b);
+                    if(found_name->second.n == bam_itag(b, "ns")) {
+                        // Found all segments for this read name.
+                        int process = 1;
+                        for(auto& pair: found->second) {
+                            if(pair.second.n != bam_itag(pair.second[0], "ns")) {
+                                process = 0; break;
+                            }
+                        //flatten_stacks();
+                        //BE DONE
+                        }
+                    }
+                }
+            }
+        }
         // Clean up after.
         int ret;
         if((ret = pclose(pipe_call)) != 0) {

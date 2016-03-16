@@ -43,6 +43,13 @@ namespace BMF {
         m(start)
         {
         }
+        bam1_stack(bam1_t *b):
+        recs(static_cast<bam1_t *>(calloc(2, sizeof(bam1_t) * 2))),
+        n(1),
+        m(2)
+        {
+            add_rec(b);
+        }
         ~bam1_stack() {
             clear_stack_data();
             free(recs);
