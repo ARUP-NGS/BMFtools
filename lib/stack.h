@@ -162,7 +162,6 @@ static const char *stack_vcf_lines[] = {
                 }
                 LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
             }
-            LOG_DEBUG("Now doing normal!\n");
             while((normal.pileups = bam_plp_auto(normal.plp, &ntid, &npos, &nn_plp)) != 0) {
                 if(npos < start && ntid == bamtid) continue;
                 if(npos >= start) {
@@ -171,8 +170,8 @@ static const char *stack_vcf_lines[] = {
                 }
             }
             assert(npos == tpos && ntid == ttid);
-            LOG_DEBUG("Advanced to %i:%i/%i:%i.\n", ttid, bamtid, npos, start);
-            LOG_DEBUG("N pileups: %i, %i.\n", tn_plp, nn_plp);
+            //LOG_DEBUG("Advanced to %i:%i/%i:%i.\n", ttid, bamtid, npos, start);
+            //LOG_DEBUG("N pileups: %i, %i.\n", tn_plp, nn_plp);
         }
         int next_paired_pileup(int *ttid, int *tpos, int *tn_plp, int *ntid, int *npos, int *nn_plp, int stop) {
             if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0 &&
@@ -195,15 +194,15 @@ static const char *stack_vcf_lines[] = {
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
         }
         char get_ref_base(int tid, int pos) {
-            LOG_DEBUG("fai ptr %p.\n", (void *)fai);
+            //LOG_DEBUG("fai ptr %p.\n", (void *)fai);
             int len;
             if(tid != last_tid) {
-                LOG_DEBUG("Loading ref_seq\n");
+                //LOG_DEBUG("Loading ref_seq\n");
                 if(ref_seq) free(ref_seq);
                 ref_seq = fai_fetch(fai, tumor.header->target_name[tid], &len);
                 last_tid = tid;
             }
-            LOG_DEBUG("Returning ref base\n");
+            //LOG_DEBUG("Returning ref base\n");
             return ref_seq[pos];
         }
         ~stack_aux_t() {

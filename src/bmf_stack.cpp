@@ -101,23 +101,18 @@ namespace BMF {
         }
         for(auto& pair: tobs) {
             if(pair.second.get_size() < aux->conf.minFM) {
-                LOG_DEBUG("FM Fail\n");
                 ++fm_failed[0], pair.second.set_pass(0);
             }
             if(pair.second.get_agreed() < aux->conf.minFA) {
-                LOG_DEBUG("FA Fail\n");
                 ++fa_failed[0], pair.second.set_pass(0);
             }
             if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) {
-                LOG_DEBUG("FR Fail\n");
                 ++fr_failed[0], pair.second.set_pass(0);
             }
             if(pair.second.get_meanMQ() < aux->conf.minMQ) {
-                LOG_DEBUG("MQ Fail\n");
                 ++mq_failed[0], pair.second.set_pass(0);
             }
         }
-        LOG_DEBUG("Handle normal\n");
         for(int i = 0; i < nn_plp; ++i) {
             uint8_t *data;
              if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
@@ -144,17 +139,15 @@ namespace BMF {
                  found->second.add_obs(aux->normal.pileups[i]);
              }
         }
-        LOG_DEBUG("Filter tumor\n");
         for(auto& pair: nobs) {
             if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
             if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
             if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
         }
-        LOG_DEBUG("Making PairVCFPos.\n");
+        //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
         BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
-        LOG_DEBUG("Making bcf.\n");
         vcfline.to_bcf(ret, aux, ttid, tpos);
         bcf_update_format_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)fr_failed, 2);
         bcf_update_format_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)fa_failed, 2);
@@ -167,7 +160,6 @@ namespace BMF {
         //LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf.write(ret));
         aux->vcf.write(ret);
         bcf_clear(ret);
-        LOG_DEBUG("Finished processing matched pileups.\n");
     }
 
     /*
@@ -218,7 +210,6 @@ namespace BMF {
             }
             // Should I be failing FA/FM/PV before merging overlapping reads? NO.
             qname = bam_get_qname(plp.b);
-            LOG_DEBUG("Got qname %s.\n", qname.c_str());
             if((found = obs.find(qname)) == obs.end())
                 obs.emplace(std::make_pair(qname, BMF::UniqueObservation(plp)));
             else found->second.add_obs(plp);
@@ -256,8 +247,6 @@ namespace BMF {
                 const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
                 const int bamtid = (int)kh_key(aux->bed, key);
                 aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid);
-                LOG_DEBUG("tn_plp, tpos, ttid: %i,%i,%i\n", tn_plp, tpos, ttid);
-                LOG_DEBUG("nn_plp, npos, ntid: %i,%i,%i\n", nn_plp, npos, ntid);
                 process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
                 while(aux->next_paired_pileup(&ttid, &tpos, &tn_plp, &ntid, &npos, &nn_plp, stop))
                     process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
