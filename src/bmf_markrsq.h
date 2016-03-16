@@ -37,7 +37,7 @@ namespace BMF {
         bam1_t *operator [](size_t index) {
             return recs + index;
         }
-        bam1_stack(size_t start):
+        bam1_stack(size_t start=2uL):
         recs(static_cast<bam1_t *>(calloc(start, sizeof(bam1_t) * start))),
         n(0),
         m(start)

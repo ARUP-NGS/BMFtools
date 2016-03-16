@@ -54,7 +54,10 @@ namespace BMF {
             }
         } s;
         struct rsq_conf_t {
-            std::unordered_map<std::string, size_t> stack_sizes;
+            // key: make_hashmap_key output. value: Names of such reads
+            std::unordered_map<std::string, std::vector<std::string>> name_stack;
+            std::unordered_map<std::string, std::unordered_map<std::string, bam1_stack>> sig_groups;
+            // key1: hashmap key (same as stack sizes)
             std::string pipe_name;
             samFile *fp;
             samFile *ofp;
@@ -86,9 +89,11 @@ namespace BMF {
         void open_pipes(char *infname, char *outfname);
         void mark_core();
         void rsq_core();
+        void map_out_rsq();
         void process(char *infname, char *outfname) {
             open_pipes(infname, outfname);
             mark_core();
+            map_out_rsq();
             rsq_core();
         }
     };
@@ -145,6 +150,7 @@ namespace BMF {
     /*
      * stack: stack of bam records which all share read names.
      * return: "tid1:ucs1:tid2:ucs2:is_rev1:is_rev2:NumberSupplementary"
+     * SIDE EFFECTS: Adds all of the tags one could ever imagine wanting to each bam.
      */
     void bam1_stack::make_hashmap_key(std::string &ret) {
         std::vector<int> supplemental_coordinates1;
@@ -188,7 +194,7 @@ namespace BMF {
         if(r1len < 0) {
             LOG_EXIT("Could not find a primary read 1 alignment. Is the dataset paired?\n");
         }
-        dlib::safe_stringprintf(ret, "%i:%i:%i:%i:%i:%i%lu",
+        dlib::safe_stringprintf(ret, "%i:%i:%i:%i:%i:%i:%lu",
                                 tid1,
                                 ucs1,
                                 tid2,
@@ -210,6 +216,22 @@ namespace BMF {
             } else {
                 bam_aux_append((recs + i), "SU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs2));
                 bam_aux_append((recs + i), "MU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs1));
+            }
+        }
+    }
+
+    void markrsq_conf_t::map_out_rsq() {
+        // Map the namesets to the collapsed name for each stack
+        std::unordered_map<std::string, std::string> name_map;
+        for(auto& kv: r.name_stack) { // I could pick which to merge together now and just chan
+            std::pair<std::vector<std::string>, std::string> to_map; // Temporary set --
+            const size_t stack_size = kv.second.size();
+            for(unsigned i = 0; i < stack_size; ++i) {
+                for(unsigned j = i + 1; j < stack_size; ++j) {
+                    if(dlib::strhd_thresh(kv.second[i], kv.second[j], r.mismatch_limit)) {
+
+                    }
+                }
             }
         }
     }
@@ -246,13 +268,10 @@ namespace BMF {
                     stack.add_rec(b);
                 } else {
                     // Add to key hash
+                    // Hmm I could tell each stack when all of the needed records would be loaded. Huh.
                     stack.make_hashmap_key(hash_key);
-                    auto found = r.stack_sizes.find(hash_key);
-                    if(found == r.stack_sizes.end()) {
-                        ++found->second;
-                    } else {
-                        r.stack_sizes[hash_key] = 1;
-                    }
+                    r.name_stack[hash_key].emplace_back(name_ptr);
+                    name_ptr = bam_get_qname(b);
                 }
             }
         }
