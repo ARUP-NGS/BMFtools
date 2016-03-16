@@ -388,13 +388,8 @@ namespace BMF {
         stack->n = 1;
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
-        if(settings->realign_pairs.size()) {
-            LOG_DEBUG("# of unpaired reads: %lu.\n", settings->realign_pairs.size());
-            for(auto pair: settings->realign_pairs) {
-                fprintf(settings->fqh, pair.second.c_str());
-                //LOG_DEBUG("Now writing read %s to file.\n", pair.second.c_str());
-            }
-        }
+        // What this really means is that the correctly collapsed reads just have a naming issue.
+        for(auto pair: settings->realign_pairs) fputs(settings->fqh, pair.second.c_str());
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
