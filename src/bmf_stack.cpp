@@ -20,7 +20,7 @@ namespace BMF {
         fprintf(stderr,
                         "Builds a stack summary for base calls and performs simple filters"
                         " to produce a maximally permissive 'variant caller'.\n"
-                        "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
+                        "Usage:\nbmftools stack <opts> <tumor.srt.indexed.bam> <normal.srt.indexed.bam>\n"
                         "Optional arguments:\n"
                         "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
                         "-o, --outpath\tPath to output file. Defaults to stdout.\n"
@@ -75,6 +75,7 @@ namespace BMF {
         int olap_count[2] = {0};
         // Capturing found  by reference to avoid making unneeded temporary variables.
         std::for_each(aux->tumor.pileups, aux->tumor.pileups + tn_plp, [&](const bam_pileup1_t& plp) {
+            uint8_t *data;
             if(plp.is_del || plp.is_refskip) return;
             if(aux->conf.skip_flag & plp.b->core.flag) {
                 ++flag_failed[0];
@@ -87,7 +88,7 @@ namespace BMF {
             if(bam_itag(plp.b, "FP") == 0) {
                 ++fp_failed[0]; return;
             }
-            if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
+            if((data = bam_aux_get(plp.b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
                 ++af_failed[0]; return;
             }
             //LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
