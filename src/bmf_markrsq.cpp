@@ -54,6 +54,7 @@ namespace BMF {
             }
         } s;
         struct rsq_conf_t {
+            std::unordered_map<std::string, size_t> stack_sizes;
             std::string pipe_name;
             samFile *fp;
             samFile *ofp;
@@ -141,6 +142,78 @@ namespace BMF {
         sam_hdr_write(r.ofp, m.hdr);
     }
 
+    /*
+     * stack: stack of bam records which all share read names.
+     * return: "tid1:ucs1:tid2:ucs2:is_rev1:is_rev2:NumberSupplementary"
+     */
+    void bam1_stack::make_hashmap_key(std::string &ret) {
+        std::vector<int> supplemental_coordinates1;
+        std::vector<int> supplemental_coordinates2;
+#if !NDEBUG
+        for(unsigned i = 0; i < n; ++i) {
+            // All reads in stack should have the same name.
+            assert(strcmp(bam_get_qname(recs + i), bam_get_qname(recs + i)) == 0);
+        }
+#endif
+        int r1len = -1, r2len;
+        int ucs1(-1), ucs2(-1);
+        int tid1(-1), tid2(-1);
+        int is_rev1(-1), is_rev2(-1);
+        for(unsigned i = 0; i < n; ++i) {
+            if(((recs + i)->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) == 0) {// Primary alignment
+                if((recs + i)->core.flag & BAM_FREAD1) {
+                    r1len = (recs + i)->core.l_qseq;
+                    ucs1 = dlib::get_unclipped_start((recs + i));
+                    tid1 = (recs + i)->core.tid;
+                    is_rev1 = (recs + i)->core.flag & BAM_FREVERSE;
+                    is_rev2 = (recs + i)->core.flag & BAM_FMREVERSE;
+                } else {
+                    r2len = (recs + i)->core.l_qseq;
+                    ucs2 = dlib::get_unclipped_start((recs + i));
+                    tid2 = (recs + i)->core.tid;
+                }
+            }
+            else {
+                if((recs + i)->core.flag & BAM_FREAD1) {
+                    supplemental_coordinates1.reserve(supplemental_coordinates1.capacity() + 2);
+                    supplemental_coordinates1.push_back((recs + i)->core.tid);
+                    supplemental_coordinates1.push_back((recs + i)->core.pos);
+                } else {
+                    supplemental_coordinates2.reserve(supplemental_coordinates2.capacity() + 2);
+                    supplemental_coordinates2.push_back((recs + i)->core.tid);
+                    supplemental_coordinates2.push_back((recs + i)->core.pos);
+                }
+            }
+        }
+        if(r1len < 0) {
+            LOG_EXIT("Could not find a primary read 1 alignment. Is the dataset paired?\n");
+        }
+        dlib::safe_stringprintf(ret, "%i:%i:%i:%i:%i:%i%lu",
+                                tid1,
+                                ucs1,
+                                tid2,
+                                ucs2,
+                                is_rev1,
+                                is_rev2,
+                                n - 2
+                                );
+        for(unsigned i = 0; i < n; ++i) {
+            bam_aux_append((recs + i), "as", 'Z', ret.size() + 1, (uint8_t *)ret.data()); // Add the key as a tag
+            bam_aux_append((recs + i), "S1", 'B', sizeof(int) * supplemental_coordinates1.size(), reinterpret_cast<uint8_t *>(supplemental_coordinates1.data()));
+            bam_aux_append((recs + i), "S2", 'B', sizeof(int) * supplemental_coordinates2.size(), reinterpret_cast<uint8_t *>(supplemental_coordinates2.data()));
+            bam_aux_append((recs + 1), "L1", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&r1len));
+            bam_aux_append((recs + 1), "L2", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&r2len));
+            if((recs + i)->core.flag & BAM_FREAD1) {
+                bam_aux_append((recs + i), "SU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs1));
+                bam_aux_append((recs + i), "MU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs2));
+                // Add a tag to tell us where the supplementary alignments are?
+            } else {
+                bam_aux_append((recs + i), "SU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs2));
+                bam_aux_append((recs + i), "MU", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&ucs1));
+            }
+        }
+    }
+
     void markrsq_usage(int retcode)
     {
         fprintf(stderr,
@@ -160,8 +233,28 @@ namespace BMF {
         bam1_stack stack{(m.stack_start)};
         int c;
         bam1_t *b = bam_init1();
+        std::string name_ptr;
+        std::string hash_key;
+        hash_key.reserve(128uL);
         while((c = sam_read1(m.fp, m.hdr, b) >= 0)) {
-
+            if(name_ptr.empty()) {
+                name_ptr = bam_get_qname(b);
+                stack.add_rec(b);
+                continue;
+            } else {
+                if(strcmp(bam_get_qname(b), name_ptr.c_str()) == 0) {
+                    stack.add_rec(b);
+                } else {
+                    // Add to key hash
+                    stack.make_hashmap_key(hash_key);
+                    auto found = r.stack_sizes.find(hash_key);
+                    if(found == r.stack_sizes.end()) {
+                        ++found->second;
+                    } else {
+                        r.stack_sizes[hash_key] = 1;
+                    }
+                }
+            }
         }
         bam_destroy1(b);
 
@@ -176,9 +269,9 @@ namespace BMF {
         if((ret = pclose(pipe_call)) != 0) {
             LOG_EXIT("Pipe call failed: %i.\n", ret);
         }
-        ~m();
-        ~s();
-        ~r();
+        m.~mark_conf_t();
+        s.~sort_conf_t();
+        r.~rsq_conf_t();
     }
 
 int markrsq_main(int argc, char *argv[]) {
@@ -202,7 +295,7 @@ int markrsq_main(int argc, char *argv[]) {
         }
     }
     if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
-    conf.process(argv[optind], outfname ? outfname: "-");
+    conf.process(argv[optind], outfname ? outfname: const_cast<char *>("-"));
     LOG_INFO("Successfully complete bmftools stack!\n");
     return 0;
 }

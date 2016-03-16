@@ -5,6 +5,7 @@
 #include "htslib/kstring.h"
 #include <unistd.h>
 #include <sys/stat.h>
+#include <unordered_map>
 
 namespace BMF {
 
@@ -20,6 +21,7 @@ namespace BMF {
         uint32_t n; // Number currently in use
         uint32_t m; // Number allocated
         void add_rec(bam1_t *b) {
+            if(b->core.flag & BAM_FSECONDARY) return; // NO!
             if(n + 1 > m) {
                 const uint32_t old_m = m;
                 kroundup32(m);
@@ -45,6 +47,7 @@ namespace BMF {
             clear_stack_data();
             free(recs);
         }
+        void make_hashmap_key(std::string &ret);
     };
 }
 #endif
