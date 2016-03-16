@@ -109,6 +109,11 @@ namespace BMF {
         }
         std::vector<char> base_calls(base_set.begin(), base_set.end());
         const size_t n_base_calls = base_calls.size();
+#if !NDEBUG
+        std::string tmp;
+        for(auto call: base_calls) tmp.push_back((char)call);
+        LOG_DEBUG("N base calls: %i. string: %s\n", (int)n_base_calls, tmp.c_str());
+#endif
         // Sort lexicographically AFTER putting the reference base first.
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
@@ -125,6 +130,7 @@ namespace BMF {
         vrec->pos = tumor.pos;
         vrec->qual = 0;
         vrec->n_sample = 2;
+        LOG_DEBUG("Handle tumor ref\n");
         auto match = tumor.templates.find(refbase);
         if(match != tumor.templates.end()) {
             // Already 0-initialized if not found.
@@ -146,6 +152,7 @@ namespace BMF {
                                     overlap_counts[0] >= aux->conf.minOverlap);
             }
         }
+        LOG_DEBUG("Handle normal ref\n");
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
             counts[n_base_calls] = match->second.size();
             // auto without "reference" because auto is pointers.
@@ -171,6 +178,7 @@ namespace BMF {
         for(unsigned i = 1; i < n_base_calls; ++i) {
             kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
             if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
+                LOG_DEBUG("Add allele to normal\n");
                 counts[i + n_base_calls] = match->second.size();
                 for(auto uni: normal.templates[base_calls[i]]) {
                     if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
@@ -189,6 +197,7 @@ namespace BMF {
                                                         overlap_counts[i + n_base_calls] >= aux->conf.minOverlap);
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
+                LOG_DEBUG("Add allele to tumor\n");
                 counts[i] = match->second.size();
                 for(auto uni: tumor.templates[base_calls[i]]) {
                     if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
@@ -211,6 +220,7 @@ namespace BMF {
                 }
             }
         }
+        LOG_DEBUG("Allele string: %s.\n", allele_str.s);
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
         std::vector<float> rv_fractions(reverse_counts.size());
@@ -221,6 +231,7 @@ namespace BMF {
             allele_fractions[i] = (float)counts[i] / total_depth_tumor;
             allele_fractions[i + n_base_calls] = (float)counts[i + n_base_calls] / total_depth_normal;
         }
+        LOG_DEBUG("Now add tags\n");
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADP", static_cast<const void *>(counts.data()), counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
@@ -231,7 +242,7 @@ namespace BMF {
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), sizeof(ambig));
         bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
-        bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
+        //bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
 
 void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
