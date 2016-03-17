@@ -1,6 +1,8 @@
 #ifndef BMF_ERR_H
 #define BMF_ERR_H
 
+#define __STDC_LIMIT_MACROS
+
 #include <assert.h>
 #include <float.h>
 #include "htslib/faidx.h"

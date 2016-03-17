@@ -193,15 +193,15 @@ namespace BMF {
         fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu.\n", stats->realfm_sum);
         fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu.\n", stats->allrc_sum);
         fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu.\n", stats->realrc_sum);
-        fprintf(fp, "#RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-        fprintf(fp, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
-        fprintf(fp, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
-        fprintf(fp, "#Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+        fprintf(fp, "#RV fraction for all read families: %f.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+        fprintf(fp, "#RV fraction for real read families: %f.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+        fprintf(fp, "#Mean Family Size (all)\t%f\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+        fprintf(fp, "#Mean Family Size (real)\t%f\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
         if(stats->dr_counts) {
-            fprintf(fp, "#Duplex fraction of unique observations\t%0.12lf\n", (double)stats->dr_counts / stats->n_pass);
-            fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12lf\n", (double)stats->dr_sum / stats->allfm_sum);
-            fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12lf\n", stats->dr_rc_frac_sum / stats->dr_rc_sum);
-            fprintf(fp, "#Mean fraction of reverse reads within all duplex families\t%0.12lf\n", (double)stats->dr_rc_sum / stats->dr_sum);
+            fprintf(fp, "#Duplex fraction of unique observations\t%0.12f\n", (double)stats->dr_counts / stats->n_pass);
+            fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12f\n", (double)stats->dr_sum / stats->allfm_sum);
+            fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12f\n", stats->dr_rc_frac_sum / stats->dr_rc_sum);
+            fprintf(fp, "#Mean fraction of reverse reads within all duplex families\t%0.12f\n", (double)stats->dr_rc_sum / stats->dr_sum);
         }
         print_hashstats(stats, fp);
     }
