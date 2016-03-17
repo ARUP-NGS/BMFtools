@@ -30,7 +30,7 @@ FINALBAM=${tmpstr%.fastq*}.rsq.bam
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     bmftools mark -l 0 | \
     bmftools sort -l 0 -m $SORTMEM -@ $SORT_THREADS1 -k ucs -T tmpfileswtf | \
-    bmftools rsq -uf $TMPFQ -l 0 - - | \
+    bmftools rsq -usf $TMPFQ -l 0 - - | \
     samtools sort -O bam -T tmplastsort -@ $SORT_THREADS2 -m $SORTMEM -o $TMPBAM -
 
 # Align the records that were rescued and merge them back in.

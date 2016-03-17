@@ -58,7 +58,6 @@ namespace BMF {
     }
 
     void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
-        LOG_DEBUG("Adding obs in pair. This should increment overlap!\n");
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
         size += bam_itag(plp.b, "FM");
         base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
@@ -108,6 +107,11 @@ namespace BMF {
         }
         std::vector<char> base_calls(base_set.begin(), base_set.end());
         const size_t n_base_calls = base_calls.size();
+#if 0
+        std::string tmp;
+        for(auto call: base_calls) tmp.push_back((char)call);
+        LOG_DEBUG("N base calls: %i. string: %s\n", (int)n_base_calls, tmp.c_str());
+#endif
         // Sort lexicographically AFTER putting the reference base first.
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
@@ -212,9 +216,10 @@ namespace BMF {
         }
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
+        //LOG_DEBUG("Got total depths %i,%i.\n", total_depth_tumor, total_depth_normal);
         std::vector<float> rv_fractions(reverse_counts.size());
         std::vector<float> allele_fractions(reverse_counts.size());
-        for(unsigned i = 0; i < reverse_counts.size(); ++i) {
+        for(unsigned i = 0; i < n_base_calls; ++i) {
             rv_fractions[i] = (float)counts[i] / reverse_counts[i];
             rv_fractions[i + n_base_calls] = (float)counts[i + n_base_calls] / reverse_counts[i + n_base_calls];
             allele_fractions[i] = (float)counts[i] / total_depth_tumor;
@@ -225,6 +230,10 @@ namespace BMF {
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
+#if !NDEBUG
+        for(auto i: reverse_counts)
+            LOG_DEBUG("Reverse count: %i.\n", i);
+#endif
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());

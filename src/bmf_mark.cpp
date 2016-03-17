@@ -17,13 +17,13 @@ namespace BMF {
         dlib::add_sc_lens(b1, b2);
         dlib::add_fraction_aligned(b1, b2);
         dlib::add_qseq_len(b1, b2);
+        dlib::add_mate_SA_tag(b1, b2);
         // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
         ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
-        if(((mark_settings_t *)data)->min_insert_length) {
+        if(((mark_settings_t *)data)->min_insert_length)
             if(b1->core.isize && // Non-zero insert size
                std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length)
                 ret = 1; // Fail it!
-        }
         return ret;
     }
 

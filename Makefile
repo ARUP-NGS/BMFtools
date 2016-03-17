@@ -25,12 +25,15 @@ OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function 
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
 
+DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
+		   dlib/bed_util.c dlib/misc_util.c
+
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
-          src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c dlib/bed_util.c include/bedidx.c \
-          src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
-          lib/kingfisher.c dlib/bam_util.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
+          src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
+          src/bmf_err.c \
+          lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
           src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
-          lib/stack.c dlib/vcf_util.c dlib/misc_util.c src/bmf_filter.c dlib/math_util.c src/bmf_infer.c
+          lib/stack.c src/bmf_filter.c src/bmf_infer.c src/bmf_markrsq.c $(DLIB_SRC)
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
@@ -39,6 +42,7 @@ TEST_OBJS = $(TEST_SOURCES:.c=.dbo)
 P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
+DLIB_OBJS = $(DLIB_SRC:.c=.o)
 
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
@@ -53,22 +57,25 @@ install: all
 	$(INSTALL) bmftools_db $(bindir)/$(binprefix)bmftools_db
 	$(INSTALL) bmftools_p $(bindir)/$(binprefix)bmftools_p
 
-%.o: %.cpp
+%.o: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.o: %.c
+src/%.o: src/%.cpp cstr_util.o update_dlib
+	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
+
+%.o: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.po: %.cpp
+%.po: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.po: %.c
+%.po: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.dbo: %.cpp
+%.dbo: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
-%.dbo: %.c
+%.dbo: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 

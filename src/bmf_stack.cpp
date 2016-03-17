@@ -10,7 +10,7 @@ namespace BMF {
             "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
             "##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
             "##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
-            "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">"
+            "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
             "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">"
     };
 
@@ -20,7 +20,7 @@ namespace BMF {
         fprintf(stderr,
                         "Builds a stack summary for base calls and performs simple filters"
                         " to produce a maximally permissive 'variant caller'.\n"
-                        "Usage:\nbmftools stack <opts> <in.srt.indexed.bam>\n"
+                        "Usage:\nbmftools stack <opts> <tumor.srt.indexed.bam> <normal.srt.indexed.bam>\n"
                         "Optional arguments:\n"
                         "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
                         "-o, --outpath\tPath to output file. Defaults to stdout.\n"
@@ -60,87 +60,95 @@ namespace BMF {
     void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
                             const int& tn_plp, const int& tpos, const int& ttid,
                             const int& nn_plp, const int& npos, const int& ntid) {
-        std::string qname;
         // Build overlap hash
         std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
         std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
-        int flag_failed[2] = {0};
-        int af_failed[2] = {0};
-        int fa_failed[2] = {0};
-        int fm_failed[2] = {0};
-        int fr_failed[2] = {0};
-        int fp_failed[2] = {0};
-        int mq_failed[2] = {0};
-        int improper_count[2] = {0};
-        int olap_count[2] = {0};
-        // Capturing found  by reference to avoid making unneeded temporary variables.
-        std::for_each(aux->tumor.pileups, aux->tumor.pileups + tn_plp, [&](const bam_pileup1_t& plp) {
-            if(plp.is_del || plp.is_refskip) return;
-            if(aux->conf.skip_flag & plp.b->core.flag) {
-                ++flag_failed[0];
-                return;
-            }
-            if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
-                ++improper_count[0];
-                if(aux->conf.skip_improper) return;
-            }
-            if(bam_itag(plp.b, "FP") == 0) {
-                ++fp_failed[0]; return;
-            }
-            if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
-                ++af_failed[0]; return;
-            }
-            //LOG_DEBUG("Now changing qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
-            qname = bam_get_qname(plp.b);
-            //LOG_DEBUG("Changed qname (%s) to new qname (%s).\n", qname.c_str(), bam_get_qname(plp.b));
-            if((found = tobs.find(qname)) == tobs.end()) {
-                tobs.emplace(qname, plp);
-            } else {
-                ++olap_count[0];
-                //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
-                found->second.add_obs(plp);
-            }
-        });
-        for(auto& pair: tobs) {
-            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[0], pair.second.set_pass(0);
-            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[0], pair.second.set_pass(0);
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[0], pair.second.set_pass(0);
-            if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[0], pair.second.set_pass(0);
+        int flag_failed[2]{0};
+        int af_failed[2]{0};
+        int fa_failed[2]{0};
+        int fm_failed[2]{0};
+        int fr_failed[2]{0};
+        int fp_failed[2]{0};
+        int mq_failed[2]{0};
+        int improper_count[2]{0};
+        int olap_count[2]{0};
+        std::string qname;
+        for(int i = 0; i < tn_plp; ++i) {
+            uint8_t *data;
+             if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
+             if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
+                 ++flag_failed[0];
+                 continue;
+             }
+             if((aux->tumor.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
+                 ++improper_count[0];
+                 if(aux->conf.skip_improper) continue;
+             }
+             if(bam_itag(aux->tumor.pileups[i].b, "FP") == 0) {
+                 ++fp_failed[0]; continue;
+             }
+             if((data = bam_aux_get(aux->tumor.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
+                 ++af_failed[0]; continue;
+             }
+             qname = bam_get_qname(aux->tumor.pileups[i].b);
+             if((found = tobs.find(qname)) == tobs.end()) {
+                 //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
+                 tobs.emplace(qname, aux->tumor.pileups[i]);
+             } else {
+                 ++olap_count[0];
+                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
+                 found->second.add_obs(aux->tumor.pileups[i]);
+             }
         }
-        std::for_each(aux->normal.pileups, aux->normal.pileups + nn_plp, [&](const bam_pileup1_t& plp) {
-            if(plp.is_del || plp.is_refskip) return;
-            if(aux->conf.skip_flag & plp.b->core.flag) {
-                ++flag_failed[1];
-                return;
+        for(auto& pair: tobs) {
+            if(pair.second.get_size() < aux->conf.minFM) {
+                ++fm_failed[0], pair.second.set_pass(0);
             }
-            if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
-                ++improper_count[1];
-                if(aux->conf.skip_improper) return;
+            if(pair.second.get_agreed() < aux->conf.minFA) {
+                ++fa_failed[0], pair.second.set_pass(0);
             }
-            if(bam_itag(plp.b, "FP") == 0) {
-                ++fp_failed[1]; return;
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) {
+                ++fr_failed[0], pair.second.set_pass(0);
             }
-            if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
-                ++af_failed[1]; return;
+            if(pair.second.get_meanMQ() < aux->conf.minMQ) {
+                ++mq_failed[0], pair.second.set_pass(0);
             }
-            qname = bam_get_qname(plp.b);
-            if((found = nobs.find(qname)) == nobs.end()) {
-                nobs.emplace(qname, plp);
-            } else {
-                ++olap_count[1];
-                found->second.add_obs(plp);
-            }
-        });
+        }
+        for(int i = 0; i < nn_plp; ++i) {
+            uint8_t *data;
+             if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
+             if(aux->conf.skip_flag & aux->normal.pileups[i].b->core.flag) {
+                 ++flag_failed[1];
+                 continue;
+             }
+             if((aux->normal.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
+                 ++improper_count[1];
+                 if(aux->conf.skip_improper) continue;
+             }
+             if(bam_itag(aux->normal.pileups[i].b, "FP") == 0) {
+                 ++fp_failed[1]; continue;
+             }
+             if((data = bam_aux_get(aux->normal.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
+                 ++af_failed[1]; continue;
+             }
+             qname = bam_get_qname(aux->normal.pileups[i].b);
+             if((found = nobs.find(qname)) == nobs.end()) {
+                 nobs.emplace(qname, aux->normal.pileups[i]);
+             } else {
+                 ++olap_count[1];
+                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
+                 found->second.add_obs(aux->normal.pileups[i]);
+             }
+        }
         for(auto& pair: nobs) {
             if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
             if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
             if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
             if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
         }
-        LOG_DEBUG("Making PairVCFPos.\n");
+        //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
         BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
-        LOG_DEBUG("Making bcf.\n");
         vcfline.to_bcf(ret, aux, ttid, tpos);
         bcf_update_format_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)fr_failed, 2);
         bcf_update_format_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)fa_failed, 2);
@@ -153,7 +161,6 @@ namespace BMF {
         //LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf.write(ret));
         aux->vcf.write(ret);
         bcf_clear(ret);
-        LOG_DEBUG("Finished processing matched pileups.\n");
     }
 
     /*
@@ -204,7 +211,6 @@ namespace BMF {
             }
             // Should I be failing FA/FM/PV before merging overlapping reads? NO.
             qname = bam_get_qname(plp.b);
-            LOG_DEBUG("Got qname %s.\n", qname.c_str());
             if((found = obs.find(qname)) == obs.end())
                 obs.emplace(std::make_pair(qname, BMF::UniqueObservation(plp)));
             else found->second.add_obs(plp);
@@ -241,7 +247,7 @@ namespace BMF {
                 const int start = get_start(kh_val(aux->bed, key).intervals[i]);
                 const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
                 const int bamtid = (int)kh_key(aux->bed, key);
-                aux->pair_region_itr(bamtid, start, stop);
+                aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid);
                 process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
                 while(aux->next_paired_pileup(&ttid, &tpos, &tn_plp, &ntid, &npos, &nn_plp, stop))
                     process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
@@ -337,10 +343,12 @@ namespace BMF {
         if((aux.fai = fai_load(refpath)) == nullptr)
             LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header
+        LOG_DEBUG("Bedpath: %s.\n", bedpath);
         aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
                           : dlib::build_ref_hash(aux.normal.header);
+        if(!aux.bed) LOG_EXIT("COuld not open bedfile.\n");
         // Check for required tags.
-        for(auto tag: {"FM", "FA", "PV", "FP", "AF", "DR"})
+        for(auto tag: {"FM", "FA", "PV", "FP", "DR"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
         int ret = stack_core(&aux);
         LOG_INFO("Successfully complete bmftools stack!\n");

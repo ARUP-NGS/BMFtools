@@ -1,0 +1,8 @@
+for k, giter in groupby(af("old_sort.prersq.bam"), key=lambda x: (x.opt("SU"), x.opt("MU"), x.mate_is_reverse, x.is_reverse, x.tid, x.mpos, x.reference_id, x.pos, x.is_read2)):
+    if k[-1]:
+            read2s[":".join(map(str, k))] = list(giter)
+
+for k, giter in groupby(af("old_sort.prersq.bam"), key=lambda x: (x.opt("MU"), x.opt("SU"), x.is_reverse, x.mate_is_reverse, x.reference_id, x.pos, x.next_reference_id, x.mpos, x.is_read1)):
+    if k[-1]:
+            read1s[":".join(map(str, k))] = list(giter)
+
