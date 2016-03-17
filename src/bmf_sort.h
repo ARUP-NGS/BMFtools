@@ -20,7 +20,6 @@
 extern "C" {
 #endif
     int sort_main(int argc, char **argv);
-    extern char *rand_string(char *, size_t size);
 #ifdef __cplusplus
 }
 #endif

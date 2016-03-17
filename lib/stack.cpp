@@ -230,6 +230,10 @@ namespace BMF {
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
+#if !NDEBUG
+        for(auto i: reverse_counts)
+            LOG_DEBUG("Reverse count: %i.\n", i);
+#endif
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());

@@ -32,6 +32,26 @@ KHASH_MAP_INIT_STR(c2i, int)
 #define hdrln_free_char(p)
     KLIST_INIT(hdrln, char*, hdrln_free_char)
 
+    /*
+     * @func rand_string
+     * Stolen from stackoverflow.
+     * Fills the str with size random characters from the charset string
+     * and appends a terminal null character.
+     */
+    static char *rand_string(char *str, size_t size)
+    {
+        srand(time(NULL)); // Pick a seed!
+        const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKSTFUOMGZWTF";
+        if (size) {
+            --size;
+            for (size_t n = 0; n < size; n++) {
+                str[n] = charset[(int)(rand() % (int) (sizeof charset - 1))];
+            }
+            str[size] = '\0';
+        }
+        return str;
+    }
+
 
 static int strnum_cmp(const char *_a, const char *_b)
 {
