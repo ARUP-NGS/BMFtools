@@ -360,6 +360,7 @@ namespace BMF {
         });
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
+                //LOG_DEBUG("Iterating with i, j of %i, %i\n", i, j);
                 if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
                         stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
@@ -397,17 +398,23 @@ namespace BMF {
         // Start stack
         stack_insert(stack, b);
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
-            if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+            if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
             }
+            //LOG_DEBUG("Read a read!\n");
             if(fn(b, *stack->a) == 0) {
+                //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
                 flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
-            } stack_insert(stack, b);
+                //LOG_DEBUG("Flattened stack\n");
+            } else {
+                //LOG_DEBUG("Stack now has size %lu.\n", stack->n);
+                stack_insert(stack, b);
+            }
         }
         flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         write_stack(stack, settings);
@@ -420,7 +427,7 @@ namespace BMF {
 
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
-
+        LOG_DEBUG("Starting stack!\n");
         dlib::tmp_stack_t stack = {0};
         dlib::resize_stack(&stack, STACK_START);
         if(!stack.a)

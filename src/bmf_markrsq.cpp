@@ -143,7 +143,9 @@ namespace BMF {
         LOG_DEBUG("Pipe command: %s.\n", command.c_str());
         pipe_call = popen(command.c_str(), "w");
         r.fp = sam_open(r.pipe_name.c_str(), "r");
-        r.ofp = sam_open(outfname, (std::string("wb") + std::to_string(level)).c_str());
+        char mode[4];
+        sprintf(mode, "wb%i", level);
+        r.ofp = sam_open(outfname, mode);
         sam_hdr_write(r.ofp, m.hdr);
     }
 

@@ -103,11 +103,13 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
         case BMF_POS:
             key_a = bmfsort_core_key(a.b);
             key_b = bmfsort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
+            return (key_a != key_b) ? (key_a < key_b)
+                                    : (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
         case UCS:
             key_a = ucs_sort_core_key(a.b);
             key_b = ucs_sort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
+            return (key_a != key_b) ? (key_a < key_b)
+                                    : (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
     }
     return 0; // This never happens.
 }
