@@ -4,7 +4,7 @@
 ######################################
 
 
-CXXSTD=c++14
+CXXSTD=c++11
 CSTD=gnu99
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)

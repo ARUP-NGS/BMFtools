@@ -1,6 +1,10 @@
 #ifndef UNIQUE_OBS_H
 #define UNIQUE_OBS_H
 
+#include "dlib/bam_util.h"
+#include "dlib/bed_util.h"
+#include "dlib/misc_util.h"
+#include "dlib/vcf_util.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -11,10 +15,6 @@
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
-#include "dlib/bed_util.h"
-#include "dlib/bam_util.h"
-#include "dlib/misc_util.h"
-#include "dlib/vcf_util.h"
 
 #include <vector>
 #include <unordered_map>

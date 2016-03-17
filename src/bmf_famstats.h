@@ -1,5 +1,6 @@
 #ifndef BMF_FAMSTATS_H
 #define BMF_FAMSTATS_H
+#define __STDC_LIMIT_MACROS
 #include <getopt.h>
 #include "htslib/sam.h"
 #include "htslib/ksort.h"
