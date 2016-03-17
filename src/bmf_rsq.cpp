@@ -60,9 +60,8 @@ namespace BMF {
         kputc('@', &ks);
         kputs(bam_get_qname(b), &ks);
         kputs(" PV:B:I", &ks);
-        auto fa{(uint32_t *)dlib::array_tag(b, "FA")};
-        auto pv{(uint32_t *)dlib::array_tag(b, "PV")};
-        fa = (uint32_t *)dlib::array_tag(b, "FA");
+        auto fa((uint32_t *)dlib::array_tag(b, "FA"));
+        auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
@@ -116,9 +115,8 @@ namespace BMF {
         kputc('@', &ks);
         kputs(qname.c_str(), &ks);
         kputs(" PV:B:I", &ks);
-        auto fa{(uint32_t *)dlib::array_tag(b, "FA")};
-        auto pv{(uint32_t *)dlib::array_tag(b, "PV")};
-        fa = (uint32_t *)dlib::array_tag(b, "FA");
+        auto fa((uint32_t *)dlib::array_tag(b, "FA"));
+        auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);

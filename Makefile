@@ -57,25 +57,25 @@ install: all
 	$(INSTALL) bmftools_db $(bindir)/$(binprefix)bmftools_db
 	$(INSTALL) bmftools_p $(bindir)/$(binprefix)bmftools_p
 
-%.o: %.cpp
+%.o: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-src/%.o: src/%.cpp cstr_util.o
+src/%.o: src/%.cpp cstr_util.o update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
 
-%.o: %.c
+%.o: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.po: %.cpp
+%.po: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.po: %.c
+%.po: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.dbo: %.cpp
+%.dbo: %.cpp update_dlib
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
-%.dbo: %.c
+%.dbo: %.c update_dlib
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 
