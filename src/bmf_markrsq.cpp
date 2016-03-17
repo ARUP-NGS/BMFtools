@@ -290,15 +290,18 @@ namespace BMF {
                     found->second.emplace(qname, bam1_stack{b});
                 } else {
                     found_name->second.add_rec(b);
-                    if(found_name->second.n == bam_itag(b, "ns")) {
+                    if(found_name->second.n == (unsigned)bam_itag(b, "ns")) {
                         // Found all segments for this read name.
                         int process = 1;
                         for(auto& pair: found->second) {
-                            if(pair.second.n != bam_itag(pair.second[0], "ns")) {
-                                process = 0; break;
+                            if(pair.second.n != (unsigned)bam_itag(pair.second[0], "ns")) {
+                                process = 0;
+                                break;
                             }
-                        //flatten_stacks();
-                        //BE DONE
+                        }
+                        if(process) {
+                            //flatten_stacks(found->second);
+                            //stack_map.clear(key);
                         }
                     }
                 }

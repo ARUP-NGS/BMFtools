@@ -41,9 +41,10 @@ namespace BMF {
         FILE *fqh;
         samFile *in;
         samFile *out;
-        int cmpkey; // 0 for pos, 1 for unclipped start position
         int mmlim; // Mismatch failure threshold.
-        int is_se;
+        uint32_t cmpkey:1; // 0 for pos, 1 for unclipped start position
+        uint32_t is_se:1;
+        uint32_t write_supp:1; // Write reads with supplementary alignments
         bam_hdr_t *hdr; // BAM header
         std::unordered_map<std::string, std::string> realign_pairs;
     };
@@ -272,13 +273,14 @@ namespace BMF {
 
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
-        size_t n = 0;
+        //size_t n = 0;
+        uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
-                uint8_t *data;
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                    std::string&& qname = make_name(stack->a[i], ++n);
-                    LOG_DEBUG("Read name: \t%s\tGenerated name: \t%s\t.\n", bam_get_qname(stack->a[i]), qname.c_str());
+                    std::string&& qname = bam_get_qname(stack->a[i]);
+                    //std::string&& qname = make_name(stack->a[i], ++n);
+                    //LOG_DEBUG("Read name: \t%s\tGenerated name: \t%s\t.\n", bam_get_qname(stack->a[i]), qname.c_str());
                     //LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
@@ -298,7 +300,33 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else sam_write1(settings->out, settings->hdr, stack->a[i]);
+                } else if(settings->write_supp && (
+                        ((data = bam_aux_get(stack->a[i], "SA")) != nullptr) ||
+                        ((data = bam_aux_get(stack->a[i], "ms")) != nullptr)
+                        )) {
+                    // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
+                    std::string&& qname = bam_get_qname(stack->a[i]);
+                    if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+                        settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
+                    } else {
+                        // Make sure the read names/barcodes match.
+                        //assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
+                        // Write read 1 out first.
+                        if(stack->a[i]->core.flag & BAM_FREAD2) {
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                            //bam2ffq(stack->a[i], settings->fqh, qname);
+                            bam2ffq(stack->a[i], settings->fqh);
+                        } else {
+                            //bam2ffq(stack->a[i], settings->fqh, qname);
+                            bam2ffq(stack->a[i], settings->fqh);
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                        }
+                        // Clear entry, as there can only be two.
+                        settings->realign_pairs.erase(qname);
+                    }
+                } else {
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
@@ -413,6 +441,7 @@ namespace BMF {
                         "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n"
                         "Flags:\n"
                         "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
+                        "-s      Flag to write reads with supplementary alignments . Default: False.\n"
                         "-t      Mismatch limit. Default: 2\n"
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
@@ -435,8 +464,9 @@ namespace BMF {
 
         if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:f:t:su?h")) >= 0) {
             switch (c) {
+            case 's': settings.write_supp = 1; break;
             case 'u':
                 settings.cmpkey = UNCLIPPED;
                 LOG_INFO("Unclipped start position chosen for cmpkey.\n");
