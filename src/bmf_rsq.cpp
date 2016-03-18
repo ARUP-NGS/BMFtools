@@ -335,8 +335,8 @@ namespace BMF {
      */
     static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
     {
-        char *aname = (char *)bam_get_qname(a);
-        char *bname = (char *)bam_get_qname(b);
+        char *aname = bam_get_qname(a);
+        char *bname = bam_get_qname(b);
         int hd = 0;
         while(*aname)
             if(*aname++ != *bname++)
@@ -387,23 +387,14 @@ namespace BMF {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
-        if(sam_read1(settings->in, settings->hdr, b) < 0)
-            LOG_EXIT("Failed to read first record in bam file. Abort!\n");
-        // Zoom ahead to first primary alignment in bam.
-        while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-            sam_write1(settings->out, settings->hdr, b);
-            if(sam_read1(settings->in, settings->hdr, b))
-                LOG_EXIT("Could not read first primary alignment in bam (%s). Abort!\n", settings->in->fn);
-        }
         // Start stack
-        stack_insert(stack, b);
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
             }
             //LOG_DEBUG("Read a read!\n");
-            if(fn(b, *stack->a) == 0) {
+            if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
                 flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
@@ -422,16 +413,15 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         // What this really means is that the correctly collapsed reads just have a naming issue.
-        for(auto pair: settings->realign_pairs) fputs(pair.second.c_str(), settings->fqh);
+        LOG_DEBUG("Number of reads with inconsistent read names within pair: %lu.\n", settings->realign_pairs.size());
+        for(auto pair: settings->realign_pairs)
+            fputs(pair.second.c_str(), settings->fqh);
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
         LOG_DEBUG("Starting stack!\n");
-        dlib::tmp_stack_t stack = {0};
-        dlib::resize_stack(&stack, STACK_START);
-        if(!stack.a)
-            LOG_EXIT("Failed to start array of bam1_t structs...\n");
+        dlib::tmp_stack_t stack = {0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
         rsq_core(settings, &stack);
         free(stack.a);
     }
