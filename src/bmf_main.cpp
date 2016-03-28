@@ -60,8 +60,6 @@ int main(int argc, char *argv[])
         return BMF::stack_main(argc - 1, argv + 1);
     else if(strcmp(argv[1], "filter") == 0)
         return BMF::filter_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "infer") == 0)
-        return BMF::infer_main(argc - 1, argv + 1);
     fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
     return EXIT_FAILURE;
 }
