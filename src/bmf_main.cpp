@@ -11,7 +11,7 @@ static int bmftools_usage(int rc)
                     "err:                     Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:                Calculate family size statistics for a bam alignment file.\n"
                     "filter:                  Filter or split a bam file by a set of filters.\n"
-                    "hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
+                    //"hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
                     "mark:                    Add tags including unclippd start positions.\n"
                     "rsq:                     Rescue bmf-sorted or ucs-sorted bam alignments.\n"
                     "sdmp:                    Demultiplex secondary-index barcoded experiments.\n"
