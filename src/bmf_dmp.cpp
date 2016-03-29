@@ -8,6 +8,7 @@ namespace BMF {
                             "Performs molecular demultiplexing for inline barcoded experiments.\n"
                             "Usage: bmftools dmp <options> <Fq.R1.seq> <Fq.R2.seq>"
                             "\nFlags:\n"
+                            "-S: Run in single-end mode. (Ignores read 2)\n"
                             "-=: Emit interleaved final output to stdout.\n"
                             "-l: Number of nucleotides at the beginning of each read to "
                             "use for barcode. Final barcode length is twice this. REQUIRED.\n"
@@ -466,9 +467,11 @@ namespace BMF {
                 dmp_usage();
                 exit(EXIT_FAILURE);
             }
-            if(argc != optind + 1) {
+            if(argc < optind + 1) {
                 dmp_usage();
-                LOG_EXIT("Exactly one read fastq required for single-end. See usage.\n");
+            }
+            if(argc == optind + 2) {
+                LOG_WARNING("Note: two read paths were provided but single-end mode was selected.\n");
             }
             // Number of file handles
             settings.n_handles = dlib::ipow(4, settings.n_nucs);
