@@ -111,7 +111,10 @@ namespace BMF {
                 free(ks.s);
             }
         }
-        if(settings->is_se) return; // Don't dmp imaginary files....
+        if(settings->is_se) {
+            LOG_DEBUG("Only dmp'ing single end.\n");
+            return; // Don't dmp imaginary files....
+        }
         #pragma omp parallel for schedule(dynamic, 1)
         for(int i = 0; i < settings->n_handles; ++i) {
             LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -243,12 +246,78 @@ namespace BMF {
         }
     }
 
+
+    /*
+     * Pre-processes (pp) and splits fastqs with inline barcodes.
+     */
+    mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
+    {
+        uint64_t bin(0), count(0);
+        const int default_nlen(settings->blen + settings->offset + settings->homing_sequence_length);
+        LOG_DEBUG("Opening fastq file.\n", settings->input_r1_path);
+        if(!dlib::isfile(settings->input_r1_path))
+            LOG_EXIT("Could not open read paths: at least one is not a file.\n");
+        if(settings->rescaler_path)
+            settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
+        mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+        *splitter = init_splitter(settings);
+        gzFile fp(gzopen(settings->input_r1_path, "r"));
+        kseq_t *seq(kseq_init(fp));
+        // Manually process the first pair of reads so that we have the read length.
+        int pass_fail = 1;
+        if(kseq_read(seq) < 0) {
+                free_marksplit_settings(*settings);
+                splitter_destroy(splitter);
+                LOG_EXIT("Could not open fastqs for reading. Abort!\n");
+        }
+        LOG_DEBUG("Read length (inferred): %lu.\n", seq->seq.l);
+        check_rescaler(settings, seq->seq.l * 4 * 2 * NQSCORES);
+        tmp_mseq_t *tmp(init_tm_ptr(seq->seq.l, settings->blen));
+        int n_len(nlen_homing_se(seq, settings, default_nlen, &pass_fail));
+        mseq_t *rseq(mseq_rescale_init(seq, settings->rescaler, tmp, 0));
+        rseq->barcode[settings->blen] = '\0';
+        memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+        pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
+        // Get first barcode.
+        update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
+        bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+        assert(bin < (uint64_t)settings->n_handles);
+        mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode, 'F');
+        count = 0;
+        while(LIKELY(kseq_read(seq) >= 0)) {
+            if(UNLIKELY(++count % settings->notification_interval == 0))
+                LOG_INFO("Number of records processed: %lu.\n", count);
+            // Sets pass_fail and gets n_len
+            n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
+            // Update mseq
+            update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
+            // Update barcode
+            memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+            // Update QC Fail
+            pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
+            // Get bin
+            bin = BMF::get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+            assert(bin < (uint64_t)settings->n_handles);
+            // Write the processed read to the bin
+            mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode, 'F');
+        }
+        LOG_DEBUG("Cleaning up.\n");
+        for(int i = 0; i < splitter->n_handles; ++i)
+            gzclose(splitter->tmp_out_handles_r1[i]);
+        tm_destroy(tmp);
+        mseq_destroy(rseq);
+        kseq_destroy(seq);
+        gzclose(fp);
+        return splitter;
+    }
+
+
     /*
      * Pre-processes (pp) and splits fastqs with inline barcodes.
      */
     mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
     {
-        LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+        LOG_DEBUG("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
         if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
             LOG_EXIT("Hey, it looks like you're trying to use the same path for both r1 and r2. "
                     "At least try to fool me by making a symbolic link.\n");
@@ -467,32 +536,32 @@ namespace BMF {
         }
 
         // Run core
-        mark_splitter_t *splitter = pp_split_inline(&settings);
-        //mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings): pp_split_inline(&settings);
-        splitterhash_params_t *params;
-        char ffq_r1[500];
-        char ffq_r2[500];
+        mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings)
+                                                   : pp_split_inline(&settings);
+        splitterhash_params_t *params(init_splitterhash(&settings, splitter));
+        kstring_t ffq_r1{0,0,nullptr};
+        kstring_t ffq_r2{0,0,nullptr};
         if(!settings.run_hash_dmp) {
             LOG_INFO("mark/split complete.\n");
             goto cleanup;
         }
         if(!settings.ffq_prefix) make_outfname(&settings);
-        params = init_splitterhash(&settings, splitter);
         // Run cores.
         parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
         // Remove temporary split files.
-        sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
-        sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
+        ksprintf(&ffq_r1, "%s.R1.fq", settings.ffq_prefix);
+        ksprintf(&ffq_r2, "%s.R2.fq", settings.ffq_prefix);
         // Cat temporary files together.
         if(settings.to_stdout)
-            call_stdout(&settings, params, ffq_r1, ffq_r2);
-        else cat_fastqs(&settings, params, ffq_r1, ffq_r2);
+            call_stdout(&settings, params, ffq_r1.s, ffq_r2.s);
+        else cat_fastqs(&settings, params, ffq_r1.s, ffq_r2.s);
+        free(ffq_r1.s), free(ffq_r2.s);
         cleanup_hashdmp(&settings, params);
         splitterhash_destroy(params);
         cleanup:
         free_marksplit_settings(settings);
-        splitter_destroy(splitter);
+        if(splitter) splitter_destroy(splitter);
         LOG_INFO("Successfully completed bmftools dmp!\n");
         return EXIT_SUCCESS;
     }
