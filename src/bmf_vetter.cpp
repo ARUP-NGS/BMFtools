@@ -10,7 +10,7 @@ namespace BMF {
                         "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
                         "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
                         "Optional arguments:\n"
-                        "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
+                        "-b, --bedpath\tPath to bed file to only validate variants in said region. Defaults to analyzing all variants.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
