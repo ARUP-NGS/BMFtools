@@ -86,10 +86,10 @@ namespace BMF {
                         "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
                         "-b:\t\tPath to bed file for restricting analysis.\n"
                         "-d:\t\tFlag to only calculate error rates for duplex reads.\n"
-                        "-p:\t\tSet padding for bed region. Default: 50.\n"
+                        "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-F:\t\tRequire that the FP tag be present and nonzero.\n"
-                );
+                , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
     }
@@ -104,8 +104,8 @@ namespace BMF {
                         "-h/-?\t\tThis helpful help menu!\n"
                         "-o\t\tPath to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.\n"
                         "-a\t\tSet minimum mapping quality for inclusion.\n"
-                        "-p:\t\tSet padding for bed region. Default: 50.\n"
-                );
+                        "-p:\t\tSet padding for bed region. Default: %i.\n"
+                , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
     }
@@ -669,7 +669,7 @@ namespace BMF {
             }
         }
         fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum1 / counts1, (double)sum2 / counts2);
-        fprintf(fp, "#Global Sum/Count1 Sum/Count2\t%lu\t%lu\t%lu\t%lu\n", sum1, counts1, sum2, counts2);
+        fprintf(fp, "#Global Sum/Count\t%lu/%lu\t%lu/%lu\n", sum1, counts1, sum2, counts2);
     }
 
     void write_cycle_rates(FILE *fp, fullerr_t *f)

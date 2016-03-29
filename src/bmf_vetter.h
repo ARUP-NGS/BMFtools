@@ -27,7 +27,7 @@ namespace BMF {
 
     KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
-    const uint64_t DEFAULT_MAX_ALLELES = 20uL;
+    uint64_t NUM_PREALLOCATED_ALLELES = 4uL;
     const char *bmf_header_lines[] =  {
             "##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
             "##INFO=<ID=BMF_UNIOBS,Number=A,Type=Integer,Description=\"Number of unique observations supporting variant at position.\">",

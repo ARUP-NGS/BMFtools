@@ -239,11 +239,11 @@ namespace BMF {
         vrec->rid = -1;
         hts_itr_t *vcf_iter = nullptr;
 
-        std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> duplex_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> overlap_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> fail_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
         bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
         bam_plp_set_maxcnt(pileup, max_depth);
 
@@ -385,11 +385,11 @@ namespace BMF {
         vrec->rid = -1;
         hts_itr_t *vcf_iter = nullptr;
 
-        std::vector<int32_t> pass_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> uniobs_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> duplex_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> overlap_values(DEFAULT_MAX_ALLELES);
-        std::vector<int32_t> fail_values(DEFAULT_MAX_ALLELES);
+        std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
         bam_plp_t pileup(nullptr);
 
         for(int i = 0; i < aux->header->n_targets; ++i) {
@@ -525,10 +525,11 @@ namespace BMF {
         aux.minCount = 1;
         aux.max_depth = (1 << 18); // Default max depth
 
-        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hVw", lopts, nullptr)) >= 0) {
+        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVw", lopts, nullptr)) >= 0) {
             switch (c) {
             case 'B': output_bcf = 1; break;
             case 'a': aux.minFA = atoi(optarg); break;
+            case 'A': NUM_PREALLOCATED_ALLELES = strtoull(optarg, 0, 0); LOG_DEBUG("Num preallocated: %lu\n", NUM_PREALLOCATED_ALLELES); break;
             case 'c': aux.minCount = atoi(optarg); break;
             case 'D': aux.minDuplex = atoi(optarg); break;
             case 's': aux.minFM = atoi(optarg); break;
@@ -562,7 +563,7 @@ namespace BMF {
         strcpy(vcf_wmode, output_bcf ? "wb": "w");
         if(!outvcf) outvcf = strdup("-");
         if(strcmp(outvcf, "-") == 0) {
-            LOG_INFO("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
+            LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
         }
         // Open bam
         aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
