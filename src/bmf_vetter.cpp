@@ -559,7 +559,6 @@ namespace BMF {
             dlib::check_bam_tag_exit(argv[optind + 1], tag);
 
 
-
         strcpy(vcf_wmode, output_bcf ? "wb": "w");
         if(!outvcf) outvcf = strdup("-");
         if(strcmp(outvcf, "-") == 0) {
@@ -584,7 +583,8 @@ namespace BMF {
         // Add lines to header
         for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
             LOG_DEBUG("Adding header line %s.\n", bmf_header_lines[i]);
-            if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i])) LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
+            if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]))
+                LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
         }
         bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed ? bed: "FullGenomeAnalysis");
         { // New block so tmpstr is cleared
@@ -614,10 +614,9 @@ namespace BMF {
 
         // Open out vcf
         int ret = vet_core(&aux);
-        if(ret) {
-            fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
-                    __func__, __LINE__, ret);
-        } else LOG_INFO("Successfully completed bmftools vet!\n");
+        if(ret) fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
+                        __func__, __LINE__, ret);
+        else LOG_INFO("Successfully completed bmftools vet!\n");
         sam_close(aux.fp);
         bam_hdr_destroy(aux.header);
         vcf_close(aux.vcf_fp);
