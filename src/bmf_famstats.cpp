@@ -188,7 +188,7 @@ namespace BMF {
         fprintf(fp, "#Number failing filters: %lu.\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
         fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
         fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
-        fprintf(fp, "#Number failing flag filters: %lu.\n", stats->n_flag_fail);
+        fprintf(fp, "#Number failing flag filters (secondary, supplementary, read2, qcfail): %lu.\n", stats->n_flag_fail);
         fprintf(fp, "#Summed FM (total founding reads): %lu.\n", stats->allfm_sum);
         fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu.\n", stats->realfm_sum);
         fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu.\n", stats->allrc_sum);
@@ -210,8 +210,8 @@ namespace BMF {
 
     static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settings_t *settings)
     {
-        //Since R1 and R2
-        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+        if(b->core.flag & BAM_FREAD2) continue; // Silently skip all read 2s since they have the same FM values.
+        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL)) ||
                 b->core.qual < settings->minMQ) {
             ++s->n_flag_fail;
             return;
