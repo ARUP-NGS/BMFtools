@@ -149,8 +149,9 @@ namespace BMF {
         uint64_t flag;
         uint64_t nskipped;
         uint64_t nread;
-        unsigned minMQ;
-        unsigned minPV;
+        uint32_t minMQ:16;
+        uint32_t minPV:16;
+        double minFR;
     };
 
     fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, unsigned minMQ, uint32_t minPV);

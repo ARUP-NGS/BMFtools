@@ -89,6 +89,7 @@ namespace BMF {
                         "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-F:\t\tRequire that the FP tag be present and nonzero.\n"
+                        "-f:\t\tRequire that the fraction of family members agreed on a  base be <FLOAT> or greater. Default: 0.0\n"
                 , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
@@ -283,7 +284,7 @@ namespace BMF {
         char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
-        uint32_t *cigar, *pv_array;
+        uint32_t *cigar, *pv_array, *fa_array;
         khiter_t k;
         if(f->refcontig) {
             for(int i = 0; i < hdr->n_targets; ++i) {
@@ -297,23 +298,44 @@ namespace BMF {
         while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
             if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
             pv_array = (uint32_t *)dlib::array_tag(b, "PV");
+            fa_array = (uint32_t *)dlib::array_tag(b, "FA");
             FM = bam_itag(b, "FM");
             drdata = bam_aux_get(b, "DR");
             fpdata = bam_aux_get(b, "FP");
             DR = dlib::int_tag_zero(drdata);
             FP = dlib::int_tag_zero(fpdata);
             // Pass reads without FP tag.
-            if((b->core.flag & 1796) || // UNMAPPED, SECONDARY, QCFAIL, DUP
-                    b->core.qual < f->minMQ || //  minMQ
-                    (f->refcontig && tid_to_study != b->core.tid) ||
-                    ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // improper pair
-                (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of  region
-                ((f->flag & REQUIRE_DUPLEX) && !DR) || // Requires  duplex
-                ((f->flag & REFUSE_DUPLEX) && DR) ||
-                ((f->flag & REQUIRE_FP_PASS) && FP == 0)) /* Fails barcode QC */ {
-                    ++f->nskipped;
-                    //LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
-                    continue;
+            if(b->core.flag & (BAM_FSECONDARY | BAM_FUNMAP | BAM_FQCFAIL | BAM_FDUP)) {
+                ++f->nskipped;
+                continue;
+            }
+            if(b->core.qual < f->minMQ) {
+                ++f->nskipped;
+                continue;
+            }
+            if(f->refcontig && tid_to_study != b->core.tid) {
+                continue;
+                ++f->nskipped;
+            }
+            if((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) {
+                ++f->nskipped;
+                continue;
+            }
+            if(f->bed && dlib::bed_test(b, f->bed) == 0) {
+                ++f->nskipped;
+                continue;
+            }
+            if((f->flag & REQUIRE_DUPLEX) && !DR) {
+                ++f->nskipped;
+                continue;
+            }
+            if((f->flag & REFUSE_DUPLEX) && DR) {
+                ++f->nskipped;
+                continue;
+            }
+            if((f->flag & REQUIRE_FP_PASS) && FP == 0) {
+                ++f->nskipped;
+                continue;
             }
             seq = (uint8_t *)bam_get_seq(b);
             cigar = bam_get_cigar(b);
@@ -321,8 +343,7 @@ namespace BMF {
             if(b->core.tid != last_tid) {
                 cond_free(ref);
                 LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-                ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
-                if(!ref)
+                if((ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen)) == nullptr)
                     LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
                 last_tid = b->core.tid;
             }
@@ -342,6 +363,8 @@ namespace BMF {
                         for(ind = 0; ind < length; ++ind) {
                             if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
                                 continue;
+                            if(((double)fa_array[b->core.l_qseq - 1 - ind - rc] / FM) < f->minFR)
+                                continue;
                             s = bam_seqi(seq, ind + rc);
                             //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -352,6 +375,8 @@ namespace BMF {
                     } else {
                         for(ind = 0; ind < length; ++ind) {
                             if(pv_array[ind + rc] < f->minPV)
+                                continue;
+                            if(((double)fa_array[ind + rc] / FM) < f->minFR)
                                 continue;
                             s = bam_seqi(seq, ind + rc);
                             //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
@@ -1128,7 +1153,10 @@ namespace BMF {
             case 'P': flag |= REQUIRE_PROPER; break;
             case 'S': minPV = strtoul(optarg, nullptr, 0); break;
             case 'F': flag |= REQUIRE_FP_PASS; break;
-            case 'f': minFR = atof(optarg); break;
+            case 'f':
+                minFR = atof(optarg);
+                if(minFR < 0.0 || minFR > 1.0) LOG_EXIT("minFR must be between 0 and 1. Given: %f.\n", minFR);
+                break;
             case '?': case 'h': return err_fm_usage(EXIT_SUCCESS);
             }
         }
