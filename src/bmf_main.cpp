@@ -11,15 +11,14 @@ static int bmftools_usage(int rc)
                     "err:                     Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:                Calculate family size statistics for a bam alignment file.\n"
                     "filter:                  Filter or split a bam file by a set of filters.\n"
-                    "infer:                   Heuristically use full alignment signatures but no barcodes for duplicate identification and meta-analysis/collapsing.\n"
-                    "hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
+                    //"hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
                     "mark:                    Add tags including unclippd start positions.\n"
-                    "rsq:                     Rescue bmf-sorted or ucs-sorted bam alignments.\n"
+                    "rsq:                     Rescue reads with using positional inference to collapse to unique observations in spite of errors in the barcode sequence.\n"
                     "sdmp:                    Demultiplex secondary-index barcoded experiments.\n"
                     "sort:                    Sort for bam rescue.\n"
                     "stack:                   A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
                     "target:                  Calculates on-target rate.\n"
-                    "vet:                     Curate variant calls from another variant caller (.vcf) and a bam alignment.\n"
+                    "vet:                     Curate variant calls from another variant caller (.vcf) and an indexed alignment file.\n"
             );
     exit(rc);
 }
