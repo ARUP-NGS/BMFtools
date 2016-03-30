@@ -39,7 +39,8 @@ namespace BMF {
                         "Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>\n\n"
                         "Flags:\n-l     Sets bam compression level. (Valid: 1-9). Default: 0.\n"
                         "-q    Skip read pairs which fail.\n"
-                        "-i    Skip read pairs whose insert size is less than this number.\n"
+                        "-d    Set bam compression level to default (6).\n"
+                        "-i    Skip read pairs whose insert size is less than <INT>.\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
                         "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
                 );
@@ -51,16 +52,19 @@ namespace BMF {
         char wmode[4]{"wb0"};
         int c;
         mark_settings_t settings{0};
-        while ((c = getopt(argc, argv, "l:i:q?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:i:dq?h")) >= 0) {
             switch (c) {
             case 'q':
                 settings.remove_qcfail = 1; break;
             case 'i':
                 settings.min_insert_length = (uint32_t)atoi(optarg); break;
             case 'l':
-                    wmode[2] = atoi(optarg)%10 + '0';
-                    LOG_DEBUG("Now emitting output with compression level %c.\n", wmode[2]);
-                    break;
+                wmode[2] = atoi(optarg)%10 + '0';
+                LOG_DEBUG("Now emitting output with compression level %c.\n", wmode[2]);
+                break;
+            case 'd':
+                sprintf(wmode, "wb");
+                break;
             case '?': case 'h': mark_usage(); // Exits. No need for a break.
             }
         }
