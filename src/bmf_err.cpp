@@ -845,7 +845,7 @@ namespace BMF {
         free(e);
     }
 
-    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minMQ, uint32_t minPV) {
+    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minMQ, uint32_t minPV, double minFR) {
         fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
         if(bedpath && *bedpath) {
             ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
@@ -858,6 +858,8 @@ namespace BMF {
         ret->hash2 = kh_init(obs);
         ret->flag = flag;
         ret->minMQ = minMQ;
+        ret->minPV = minPV;
+        ret->minFR = minFR;
         return ret;
     }
 
@@ -1114,7 +1116,8 @@ namespace BMF {
         char *bedpath = nullptr;
         int flag = 0, padding = -1, minMQ = 0, c;
         uint32_t minPV = 0;
-        while ((c = getopt(argc, argv, "S:p:b:r:o:a:Fh?dP")) >= 0) {
+        double minFR = 0.;
+        while ((c = getopt(argc, argv, "S:p:b:r:o:a:f:Fh?dP")) >= 0) {
             switch (c) {
             case 'a': minMQ = atoi(optarg); break;
             case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -1125,6 +1128,7 @@ namespace BMF {
             case 'P': flag |= REQUIRE_PROPER; break;
             case 'S': minPV = strtoul(optarg, nullptr, 0); break;
             case 'F': flag |= REQUIRE_FP_PASS; break;
+            case 'f': minFR = atof(optarg); break;
             case '?': case 'h': return err_fm_usage(EXIT_SUCCESS);
             }
         }
@@ -1154,7 +1158,7 @@ namespace BMF {
         if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
             dlib::check_bam_tag_exit(argv[optind + 1], "DR");
 
-        fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minMQ, minPV);
+        fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minMQ, minPV, minFR);
         // Get read length from the first
         bam_hdr_destroy(header); header = nullptr;
         err_fm_core(argv[optind + 1], fai, f, &open_fmt);
