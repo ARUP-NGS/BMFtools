@@ -65,7 +65,7 @@ namespace BMF {
 
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
-        char mode[4]("wT");
+        char mode[4] = "wT";
         if(level > 0) sprintf(mode, "wb%i", level % 10);
         FILE *in_handle(dlib::open_ifp(infname));
         gzFile out_handle(gzopen(outfname, mode));

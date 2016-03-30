@@ -210,7 +210,7 @@ namespace BMF {
 
     static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settings_t *settings)
     {
-        if(b->core.flag & BAM_FREAD2) continue; // Silently skip all read 2s since they have the same FM values.
+        if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
         if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL)) ||
                 b->core.qual < settings->minMQ) {
             ++s->n_flag_fail;
