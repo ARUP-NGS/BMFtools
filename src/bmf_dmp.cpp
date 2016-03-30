@@ -58,7 +58,7 @@ namespace BMF {
     char *make_salted_fname(char *base)
     {
         int has_period = 0;
-        for(int i = 0; *base; ++i) {
+        for(int i = 0; base[i]; ++i) {
             if(base[i] == '.') {
                 has_period = 1; break;
             }
