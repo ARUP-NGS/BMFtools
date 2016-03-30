@@ -273,7 +273,7 @@ namespace BMF {
             }
         }
 #if !NDEBUG
-        fprintf(stderr, "#HD\tCount\n")
+        fprintf(stderr, "#HD\tCount\n");
         for(khiter_t ki = kh_begin(hds); ki != kh_end(hds); ++ki)
             if(kh_exist(hds, ki))
                 fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
