@@ -84,13 +84,19 @@ Caps quality scores from PV tags to facilitate working with barcode-agnostic too
 Filters or splits a bam file based on a set of filters. These can be inverted with -v (analogous to grep).
 
 Filters:
-Fail reads with insufficient mapping quality.
-Fail reads with insufficient family size.
-Fail read pairs by aligned fraction.
-Fail reads outside of a bed region.
-Fail reads with a family size below given parameter.
-Fail reads without all bits in given parameter in the sam flag field.
-Fail reads with any bits in given parameter in the sam flag field.
+  * Fail reads with insufficient mapping quality.
+
+  * Fail reads with insufficient family size.
+
+  * Fail read pairs by aligned fraction.
+
+  * Fail reads outside of a bed region.
+
+  * Fail reads with a family size below given parameter.
+
+  * Fail reads without all bits in given parameter in the sam flag field.
+
+  * Fail reads with any bits in given parameter in the sam flag field.
 
 ####bmftools vet
 Curates SNV calls from a tumor/normal variant call file using barcode metadata from the bams used to produce the variant call file.
