@@ -1421,7 +1421,8 @@ int bam_merge(int argc, char *argv[])
     char** fn = NULL;
     int fn_size = 0;
 
-    sam_global_args ga = {0};
+    sam_global_args ga;
+    memset(&ga, 0, sizeof(sam_global_args));
     static const struct option lopts[] = {
         SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),
         { NULL, 0, NULL, 0 }

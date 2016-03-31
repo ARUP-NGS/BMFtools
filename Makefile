@@ -114,7 +114,7 @@ clean: mostlyclean
 		cd htslib && make clean && cd ..
 
 update_dlib:
-	cd dlib && git pull origin master && cd ..
+	cd dlib && git checkout master && git pull origin master && cd ..
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
