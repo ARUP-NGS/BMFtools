@@ -33,7 +33,7 @@ SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdm
           src/bmf_err.c \
           lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
           src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
-          lib/stack.c src/bmf_filter.c src/bmf_infer.c src/bmf_markrsq.c $(DLIB_SRC)
+          lib/stack.c src/bmf_filter.c src/bmf_markrsq.c $(DLIB_SRC)
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
@@ -114,7 +114,7 @@ clean: mostlyclean
 		cd htslib && make clean && cd ..
 
 update_dlib:
-	cd dlib && git pull origin master && cd ..
+	cd dlib && git checkout master && git pull origin master && cd ..
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \

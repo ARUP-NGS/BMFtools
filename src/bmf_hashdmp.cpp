@@ -3,7 +3,7 @@
 namespace BMF {
 
     namespace {
-        const size_t buf_set_size = 50000;
+        size_t buf_set_size = 50000;
     }
 
     void hashdmp_usage() {
@@ -22,7 +22,7 @@ namespace BMF {
 
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
     {
-        tmpvars_t *ret = (tmpvars_t *)malloc(sizeof(tmpvars_t));
+        tmpvars_t *ret((tmpvars_t *)calloc(1, sizeof(tmpvars_t)));
         ret->blen = blen;
         ret->readlen = readlen;
         ret->bs_ptr = bs_ptr;
@@ -35,7 +35,7 @@ namespace BMF {
 
 
 
-    int hash_dmp_main(int argc, char *argv[])
+    int hashdmp_main(int argc, char *argv[])
     {
         if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
         char *outfname = nullptr, *infname = nullptr;
@@ -58,70 +58,17 @@ namespace BMF {
         if(argc - 1 == optind) infname = argv[optind];
         else LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
         stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level)
-                          : hash_dmp_core (infname, outfname, level);
+                          : hash_dmp_core(infname, outfname, level);
         LOG_INFO("Successfully complete bmftools hashdmp!\n");
         return EXIT_SUCCESS;
     }
-
-
-    void duplex_hash_process(kingfisher_hash_t *hfor, kingfisher_hash_t *cfor, kingfisher_hash_t *tmp_hkf, kingfisher_hash_t *crev, kingfisher_hash_t *hrev, gzFile out_handle, tmpvars_t *tmp)
-    {
-        kstring_t ks = {0, 0, nullptr};
-        size_t buf_record_count = 0;
-
-        HASH_ITER(hh, hfor, cfor, tmp_hkf) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
-            HASH_FIND_STR(hrev, cfor->id, crev);
-            if(crev) {
-                zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
-                destroy_kf(cfor->value), destroy_kf(crev->value);
-                HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-                free(crev); free(cfor);
-            } else {
-                dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
-                destroy_kf(cfor->value);
-                HASH_DEL(hfor, cfor);
-                free(cfor);
-            }
-        }
-        if(buf_record_count) gzputs(out_handle, (const char *)ks.s);
-        free(ks.s);
-    }
-
-    void se_hash_process(kingfisher_hash_t *hash, kingfisher_hash_t *current_entry, kingfisher_hash_t *tmp_hk, gzFile out_handle, tmpvars_t *tmp, uint64_t *count,
-            uint64_t *non_duplex_fm)
-    {
-        size_t buf_record_count = 0;
-        LOG_DEBUG("Beginning se_hash_process with count %lu.\n", *count);
-        kstring_t ks = {0, 0, nullptr};
-        HASH_ITER(hh, hash, current_entry, tmp_hk) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
-            if(++(*count) % 1000000 == 0) LOG_DEBUG("Number of records written: %lu.\n", *count);
-            if(non_duplex_fm && current_entry->value->length > 1) ++*non_duplex_fm;
-            dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
-            destroy_kf(current_entry->value);
-            HASH_DEL(hash, current_entry);
-            free(current_entry);
-        }
-        if(buf_record_count) gzputs(out_handle, (const char *)ks.s);
-        free(ks.s);
-    }
-
 
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
         char mode[4] = "wT";
         if(level > 0) sprintf(mode, "wb%i", level % 10);
-        FILE *in_handle = dlib::open_ifp(infname);
-        gzFile out_handle = gzopen(outfname, mode);
+        FILE *in_handle(dlib::open_ifp(infname));
+        gzFile out_handle(gzopen(outfname, mode));
         if(!in_handle) {
             if(dlib::isfile(infname)) {
                 LOG_DEBUG("It's a file, but it's empty....\n");
@@ -131,8 +78,8 @@ namespace BMF {
             LOG_EXIT("[E:%s] Could not open %s for reading. Abort mission!\n", infname);
             exit(EXIT_FAILURE);
         }
-        gzFile fp = gzdopen(fileno(in_handle), "r");
-        kseq_t *seq = kseq_init(fp);
+        gzFile fp(gzdopen(fileno(in_handle), "r"));
+        kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l = kseq_read(seq);
         if(l < 0) {
@@ -140,8 +87,8 @@ namespace BMF {
                     __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
             exit(EXIT_FAILURE);
         }
-        char *bs_ptr = barcode_mem_view(seq);
-        const int blen = infer_barcode_length(bs_ptr);
+        char *bs_ptr(barcode_mem_view(seq));
+        const int blen(infer_barcode_length(bs_ptr));
     #if !NDEBUG
         fprintf(stderr, "[D:%s] Barcode length (inferred): %i.\n", __func__, blen);
     #endif
@@ -175,29 +122,52 @@ namespace BMF {
         }
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
         count = 0;
-        se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp, &count, nullptr);
+        uint64_t buf_record_count(0);
+        kstring_t ks{0, 0, nullptr};
+        HASH_ITER(hh, hash, current_entry, tmp_hk) {
+            if(buf_record_count++ == buf_set_size) {
+                count += buf_record_count;
+                buf_record_count = 0;
+                gzputs(out_handle, (const char *)ks.s);
+                ks.l = 0;
+            }
+            dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
+            destroy_kf(current_entry->value);
+            HASH_DEL(hash, current_entry);
+            free(current_entry);
+        }
+        count += buf_record_count;
+        buf_record_count = 0;
+        gzputs(out_handle, (const char *)ks.s);
         // Demultiplex and write out.
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
+        free(ks.s);
         gzclose(fp);
         gzclose(out_handle);
         kseq_destroy(seq);
         tmpvars_destroy(tmp);
     }
+#if !NDEBUG
+    KHASH_MAP_INIT_INT(hd, uint64_t)
+#endif
 
     void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     {
+#if !NDEBUG
+        khash_t(hd) *hds = kh_init(hd);
+#endif
         char mode[4] = "wT"; // Defaults to uncompressed "transparent" gzip output.
         if(level > 0) sprintf(mode, "wb%i", level % 10);
         LOG_DEBUG("Writing stranded hash dmp information with mode: '%s'.\n", mode);
-        gzFile out_handle = gzopen(outfname, mode);
-        gzFile fp = gzopen((infname && *infname) ? infname: "-", "r");
+        gzFile out_handle(gzopen(outfname, mode));
+        gzFile fp(gzopen((infname && *infname) ? infname: "-", "r"));
         if(!fp) {
             fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
             exit(EXIT_FAILURE);
         }
-        kseq_t *seq = kseq_init(fp);
+        kseq_t *seq(kseq_init(fp));
         // Initialized kseq
-        int l = kseq_read(seq);
+        int l(kseq_read(seq));
         if(l < 0) {
             fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
                     __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
@@ -264,6 +234,8 @@ namespace BMF {
         LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
 #if !NDEBUG
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
+        khiter_t ki;
+        int hamming_distance, khr;
 #endif
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
@@ -277,28 +249,55 @@ namespace BMF {
                 ks.l = 0;
             }
             HASH_FIND_STR(hrev, cfor->id, crev);
-            if(!crev) {
+            if(crev) {
+#if !NDEBUG
+                hamming_distance = kf_hamming(cfor->value, crev->value);
+                if((ki = kh_get(hd, hds, hamming_distance)) == kh_end(hds)) {
+                    ki = kh_put(hd, hds, hamming_distance, &khr);
+                    kh_val(hds, ki) = 1;
+                } else ++kh_val(hds, ki);
+#endif
+                ++duplex;
+                zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
+                destroy_kf(cfor->value); destroy_kf(crev->value);
+                HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
+                cond_free(crev); cond_free(cfor);
+
+            } else {
                 ++non_duplex;
                 if(cfor->value->length > 1) ++non_duplex_fm;
                 dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
                 destroy_kf(cfor->value);
                 HASH_DEL(hfor, cfor);
                 free(cfor);
-            } else {
-                ++duplex;
-                zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
-                destroy_kf(cfor->value); destroy_kf(crev->value);
-                HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-                cond_free(crev); cond_free(cfor);
             }
         }
+#if !NDEBUG
+        fprintf(stderr, "#HD\tCount\n");
+        for(khiter_t ki = kh_begin(hds); ki != kh_end(hds); ++ki)
+            if(kh_exist(hds, ki))
+                fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
+        kh_destroy(hd, hds);
+#endif
         gzputs(out_handle, (const char *)ks.s);
-        free(ks.s);
         LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);
-        //duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
-        se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp, &non_duplex, &non_duplex_fm);
+        HASH_ITER(hh, hrev, crev, tmp_hkr) {
+            if(buf_record_count++ == buf_set_size) {
+                buf_record_count = 0;
+                gzputs(out_handle, (const char *)ks.s);
+                ks.l = 0;
+            }
+            ++non_duplex;
+            if(crev->value->length > 1) ++non_duplex_fm;
+            dmp_process_write(crev->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
+            destroy_kf(crev->value);
+            HASH_DEL(hrev, crev);
+            free(crev);
+        }
+        gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Cleaning up.\n");
         LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu. Non-duplex families: %lu\n", duplex, non_duplex, non_duplex_fm);
+        free(ks.s);
         gzclose(fp); gzclose(out_handle);
         kseq_destroy(seq);
         tmpvars_destroy(tmp);

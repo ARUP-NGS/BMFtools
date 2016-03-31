@@ -47,7 +47,7 @@ namespace BMF {
             exit(EXIT_FAILURE);
         }
         kstring_t ks = {0, 0, nullptr};
-        splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
+        splitterhash_params_t *ret = (splitterhash_params_t *)calloc(1, sizeof(splitterhash_params_t));
         ret->n = splitter_ptr->n_handles;
         if(settings_ptr->is_se) {
             ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
@@ -56,7 +56,7 @@ namespace BMF {
                 ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
                 ks.l = 0;
                 ksprintf(&ks, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
-                ret->outfnames_r1[i] = ks.s;
+                ret->outfnames_r1[i] = ks_release(&ks);
             }
         } else {
             ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
@@ -73,19 +73,23 @@ namespace BMF {
                 ksprintf(&ks, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
                 ret->outfnames_r2[i] = strdup(ks.s);
             }
+            free(ks.s);
         }
-        free(ks.s);
         return ret;
     }
 
 
     void splitter_destroy(mark_splitter_t *var)
     {
-        for(int i = 0; i < var->n_handles; i++) {
-            cond_free(var->fnames_r1[i]); cond_free(var->fnames_r2[i]);
-        }
+        for(int i = 0; i < var->n_handles; i++)
+            cond_free(var->fnames_r1);
+        if(var->fnames_r2)
+            for(int i = 0; i < var->n_handles; ++i)
+                cond_free(var->fnames_r2[i]);
+
         cond_free(var->tmp_out_handles_r1);
         cond_free(var->tmp_out_handles_r2);
+        LOG_DEBUG("Freeing final var at %p.\n", (void *)var);
         cond_free(var);
     }
 
@@ -117,11 +121,11 @@ namespace BMF {
     mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
     {
         mark_splitter_t ret = {
-            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r1
+            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
             nullptr, // tmp_out_handles_r2
             settings_ptr->n_nucs, // n_nucs
             (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
-            (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
+            (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
             nullptr  // infnames_r2
         };
         kstring_t ks = {0, 0, nullptr};
@@ -131,6 +135,7 @@ namespace BMF {
             ret.fnames_r1[i] = dlib::kstrdup(&ks);
             ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
         }
+        free(ks.s);
         return ret;
     }
 
