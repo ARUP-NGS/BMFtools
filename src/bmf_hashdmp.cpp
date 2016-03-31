@@ -65,8 +65,8 @@ namespace BMF {
 
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
-        char mode[4] = "wT";
-        if(level > 0) sprintf(mode, "wb%i", level % 10);
+        char mode[4];
+        sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
         FILE *in_handle(dlib::open_ifp(infname));
         gzFile out_handle(gzopen(outfname, mode));
         if(!in_handle) {
@@ -296,7 +296,10 @@ namespace BMF {
         }
         gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Cleaning up.\n");
-        LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu. Non-duplex families: %lu\n", duplex, non_duplex, non_duplex_fm);
+        LOG_INFO("Number of duplex observations: %lu.\t"
+                 "Number of non-duplex observations: %lu.\t"
+                 "Non-duplex families: %lu\n",
+                 duplex, non_duplex, non_duplex_fm);
         free(ks.s);
         gzclose(fp); gzclose(out_handle);
         kseq_destroy(seq);
