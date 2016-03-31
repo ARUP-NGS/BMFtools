@@ -13,6 +13,20 @@ cd BMFtools
 make
 ```
 
+### Use
+
+```bash
+bmftools
+```
+
+```bash
+bmftools <--help/-h>
+```
+
+```bash
+bmftools <subcommand> <-h>
+```
+
 ### Tools
 
 Name | Use |
@@ -27,7 +41,7 @@ bmftools mark| Add unclipped start position as annotation for both read and mate
 bmftools rsq| Rescue bmf-sorted or ucs-sorted bam alignments.|
 bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
 bmftools sort| Sort for bam rescue.|
-bmftools stack| A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.|
+bmftools stack| A maximally-permissive variant caller using molecular barcode metadata analogous to samtools mpileup.|
 bmftools target| Calculates on-target rate.|
 bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
 
@@ -36,7 +50,6 @@ These tools are divided into four categories:
   2. Manipulation
   3. Analysis
   4. Utilities
-
 
 ### Core Functionality
 
@@ -64,63 +77,45 @@ Uses positional information to collapse reads with the same alignment signatures
 Caps quality scores from PV tags to facilitate working with barcode-agnostic tools.
 
 ####bmftools filter
-Filters or splits a bam file based on a set of filters.
+Filters or splits a bam file based on a set of filters. These can be inverted with -v (analogous to grep).
 
 Filters:
 Fail reads with insufficient mapping quality.
 Fail reads with insufficient family size.
-Fail read pairs where both .
+Fail read pairs by aligned fraction.
 Fail reads outside of a bed region.
 Fail reads with a family size below given parameter.
 Fail reads without all bits in given parameter in the sam flag field.
 Fail reads with any bits in given parameter in the sam flag field.
 
 ####bmftools vet
+Curates SNV calls from a tumor/normal variant call file using barcode metadata from the bams used to produce the variant call file.
 
 ### Analysis
 
 ####bmftools depth
+Calculates depth of coverage across a bed file using barcode metadata.
+
 ####bmftools target
+Calculates on-target fraction for bed file using barcode metadata.
+
 ####bmftools err
+Calculates error rates by a variety of parameters.
+Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
+
 ####bmftools famstats
+Calculates summary statistics related to family size and demultiplexing.
+
 ####bmftools stack
+A maximally-permissive variant caller using molecular barcode metadata analogous to samtools mpileup.
 
 ### Utilities
 
 ####bmftools mark
+Adds auxiliary tags to reads for their mates' information. Required for bmftools rsq.
+
 ####bmftools sort
-
-
-Name | Use |
-:---:|:----|
-bmftools cap| Postprocess a tagged BAM for BMF-agnostic tools.|
-bmftools depth| Calculates depth of coverage over a set of bed intervals.|
-bmftools dmp| Demultiplex inline barcoded experiments.|
-bmftools err| Calculate error rates based on cycle, base call, and quality score.|
-bmftools famstats| Calculate family size statistics for a bam alignment file.|
-bmftools filter| Filter or split a bam file by a set of filters.|
-bmftools mark| Add unclipped start position as annotation for both read and mate.|
-bmftools rsq| Rescue bmf-sorted or ucs-sorted bam alignments.|
-bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
-bmftools sort| Sort for bam rescue.|
-bmftools stack| A simple variant caller using molecular barcode metadata.|
-bmftools target| Calculates on-target rate.|
-bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
-
-
-### Use
-
-```bash
-bmftools
-```
-
-```bash
-bmftools <--help/-h>
-```
-
-```bash
-bmftools <subcommand> <-h>
-```
+Sorts reads based on positional information to preprocess for bmftools rsq.
 
 
 ## BMF Tags
