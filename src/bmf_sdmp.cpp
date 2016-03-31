@@ -17,9 +17,7 @@ namespace BMF {
                             "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>\n"
                             "Flags:\n"
                             "-i: Index fastq path. REQUIRED.\n"
-                            "-t: Homopolymer failure threshold. A molecular barcode with"
-                            " a homopolymer of length >= this limit is flagged as QC fail."
-                            "Default: 10.\n"
+                            "-t: Homopolymer failure threshold. A molecular barcode with a homopolymer of length >= this limit is flagged as QC fail. Default: 10\n"
                             "-o: Temporary fastq file prefix.\n"
                             "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                             "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
@@ -42,28 +40,18 @@ namespace BMF {
 
     static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
     {
-        if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
-            fprintf(stderr, "[E:%s]Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n",
-                    __func__, settings->input_r1_path, settings->input_r2_path);
-            exit(EXIT_FAILURE);
-        }
-        else
-            fprintf(stderr, "[%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
+        LOG_DEBUG("Path to index fq: %s.\n", settings->index_fq_path);
         gzFile fp_read1, fp_read2, fp_index;
         kseq_t *seq1 = nullptr, *seq2 = nullptr, *seq_index = nullptr;
         int l1, l2, l_index;
-        mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+        mark_splitter_t *splitter_ptr = (mark_splitter_t *)calloc(1, sizeof(mark_splitter_t));
         *splitter_ptr = init_splitter(settings);
-        if(!dlib::isfile(settings->input_r1_path) ||
-           !dlib::isfile(settings->input_r2_path) ||
-           !dlib::isfile(settings->index_fq_path)) {
-            fprintf(stderr, "[E:%s] At least one input path ('%s', '%s', '%s') is not a file. Abort!\n", __func__,
-                    settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
-            exit(EXIT_FAILURE);
-        }
+        for(auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
+            if(!dlib::isfile(path))
+                LOG_EXIT("%s is not a file. Abort!\n", path);
         // Open fastqs
-        fprintf(stderr, "[%s] Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
-                __func__, settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+        LOG_DEBUG("Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
+                  settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
         fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
         seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
         l1 = kseq_read(seq1), l2 = kseq_read(seq2);
@@ -75,13 +63,8 @@ namespace BMF {
         uint64_t bin = 0;
         int pass_fail = 1;
         tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
-    #if !NDEBUG
-        fprintf(stderr, "[D:%s] About to check for failed opening.\n", __func__);
-    #endif
-        if(l1 < 0 || l2 < 0 || l_index < 0) {
-            fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
-            exit(EXIT_FAILURE);
-        }
+        if(l1 < 0 || l2 < 0 || l_index < 0)
+            LOG_EXIT("Could not read input fastqs. Abort mission!\n");
         check_rescaler(settings, NQSCORES * 2 * 4 * seq1->seq.l);
         mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
         mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
@@ -96,13 +79,10 @@ namespace BMF {
         mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
         mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
         uint64_t count = 0;
-    #if !NDEBUG
-        fprintf(stderr, "[D:%s] About to start looping.\n", __func__);
-    #endif
         while(LIKELY((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0))
                 && (l_index = kseq_read(seq_index)) >= 0) {
             if(UNLIKELY(++count % settings->notification_interval == 0))
-                fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+                LOG_INFO("Number of records processed: %lu.\n", count);
             memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
             memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
             memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
@@ -127,9 +107,6 @@ namespace BMF {
 
     static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings)
     {
-    #if !NDEBUG
-        fprintf(stderr, "[D:%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
-    #endif
         gzFile fp, fp_index;
         kseq_t *seq = nullptr, *seq_index = nullptr;
         int l, l_index;
@@ -137,9 +114,8 @@ namespace BMF {
         *splitter_ptr = init_splitter(settings);
         if(!dlib::isfile(settings->input_r1_path) ||
            !dlib::isfile(settings->index_fq_path)) {
-            fprintf(stderr, "[E:%s] At least one input path ('%s', '%s') is not a file. Abort!\n", __func__,
-                    settings->input_r1_path, settings->index_fq_path);
-            exit(EXIT_FAILURE);
+            LOG_EXIT("At least one input path ('%s', '%s') is not a file. Abort!\n",
+                     settings->input_r1_path, settings->index_fq_path);
         }
         // Open fastqs
         fp = gzopen(settings->input_r1_path, "r"), fp_index = gzopen(settings->index_fq_path, "r");
@@ -147,10 +123,8 @@ namespace BMF {
         l = kseq_read(seq), l_index = kseq_read(seq_index);
 
         tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt);
-        if(l < 0 || l_index < 0) {
-            fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
-            exit(EXIT_FAILURE);
-        }
+        if(l < 0 || l_index < 0)
+            LOG_EXIT("Could not read input fastqs. Abort mission!\n");
         mseq_t *rseq = mseq_init(seq, settings->rescaler, 0);
         memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode

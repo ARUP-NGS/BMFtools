@@ -12,10 +12,11 @@
 #include "lib/mseq.h"
 #include "lib/rescaler.h"
 #include "lib/splitter.h"
+#include "dlib/bam_util.h"
 #include "dlib/char_util.h"
+#include "dlib/compiler_util.h"
 #include "dlib/cstr_util.h"
 #include "dlib/mem_util.h"
-#include "dlib/compiler_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define HASH_DMP_OFFSET 14
@@ -64,6 +65,7 @@ namespace BMF {
 
     void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
     void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
+    int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2);
 
     static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
     {

@@ -17,7 +17,7 @@ namespace BMF {
 
     KHASH_MAP_INIT_STR(dmp, kingfisher_t *)
     void hash_dmp_core(char *infname, char *outfname, int level);
-    int hash_dmp_main(int argc, char *argv[]);
+    int hashdmp_main(int argc, char *argv[]);
     void stranded_hash_dmp_core(char *infname, char *outfname, int level);
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
