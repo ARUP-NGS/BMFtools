@@ -28,37 +28,23 @@ int main(int argc, char *argv[])
     if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
         return bmftools_usage(EXIT_FAILURE);
     if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        LOG_INFO("BMFtools version: '%s'.\n", VERSION);
+        fprintf(stderr,"BMFtools version: '%s'.\n", VERSION);
         exit(EXIT_SUCCESS);
     }
-    if(strcmp(argv[1], "sort") == 0)
-        return sort_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "dmp") == 0)
-        return BMF::dmp_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "sdmp") == 0)
-        return BMF::sdmp_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "rsq") == 0)
-        return BMF::rsq_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "hashdmp") == 0)
-        return BMF::hash_dmp_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "famstats") == 0)
-        return BMF::famstats_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "vet") == 0)
-        return BMF::vetter_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "err") == 0)
-        return BMF::err_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "mark") == 0)
-        return BMF::mark_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "cap") == 0)
-        return BMF::cap_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "target") == 0)
-        return BMF::target_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "depth") == 0)
-        return BMF::depth_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "stack") == 0)
-        return BMF::stack_main(argc - 1, argv + 1);
-    else if(strcmp(argv[1], "filter") == 0)
-        return BMF::filter_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "sort") == 0) return sort_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "dmp") == 0) return BMF::dmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "sdmp") == 0) return BMF::sdmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "rsq") == 0) return BMF::rsq_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "hashdmp") == 0) return BMF::hashdmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "famstats") == 0) return BMF::famstats_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "vet") == 0) return BMF::vet_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "err") == 0) return BMF::err_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "mark") == 0) return BMF::mark_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "cap") == 0) return BMF::cap_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "target") == 0) return BMF::target_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "depth") == 0) return BMF::depth_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "stack") == 0) return BMF::stack_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "filter") == 0) return BMF::filter_main(argc - 1, argv + 1);
     fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
     return EXIT_FAILURE;
 }

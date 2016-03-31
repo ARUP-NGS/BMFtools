@@ -23,7 +23,7 @@
 
 namespace BMF {
 
-    int vetter_main(int, char **);
+    int vet_main(int, char **);
 
     KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 

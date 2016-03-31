@@ -35,7 +35,7 @@ namespace BMF {
 
 
 
-    int hash_dmp_main(int argc, char *argv[])
+    int hashdmp_main(int argc, char *argv[])
     {
         if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
         char *outfname = nullptr, *infname = nullptr;

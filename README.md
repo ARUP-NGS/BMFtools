@@ -31,6 +31,82 @@ bmftools stack| A maximally-permissive yet statistically-thorough variant caller
 bmftools target| Calculates on-target rate.|
 bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
 
+These tools are divided into four categories:
+  1. Core functionality
+  2. Manipulation
+  3. Analysis
+  4. Utilities
+
+
+### Core Functionality
+
+####bmftools dmp/sdmp
+bmftools dmp and sdmp perform **molecular** demultiplexing of barcoded experiments, for inline and secondary index chemistries, respectively.
+
+First, these tools add the barcodes to the comment fields of the fastqs and split the records into subsets based on the first characters in the barcode.
+Then, reads with exactly-matching barcode are collapsed into a unique observation, with a meta-analysis performed on each base call.
+
+Since there can be errors in reading the barcode,
+`bmftools rsq` is made available for using positional information to rescue reads with mismatches into their proper families.
+
+bmftools dmp collapses templates where both strands were sequenced, whereas sdmp lacks strand information.
+
+Note: It is **STRONGLY** recommended that for the secondary-index chemistry that you mask adapter sequence in the molecular barcode reads.
+When the secondary-index barcode read consists primarily or entirely of adapter, this informs us that the chemistry did not perform as expected.
+This preprocessing will "N" those bases, marking the reads as QC fail with the FP integer tag (0 for fail, 1 for pass).
+
+####bmftools rsq
+Uses positional information to collapse reads with the same alignment signatures (start/stop/
+
+### Manipulation
+
+####bmftools cap
+Caps quality scores from PV tags to facilitate working with barcode-agnostic tools.
+
+####bmftools filter
+Filters or splits a bam file based on a set of filters.
+
+Filters:
+Fail reads with insufficient mapping quality.
+Fail reads with insufficient family size.
+Fail read pairs where both .
+Fail reads outside of a bed region.
+Fail reads with a family size below given parameter.
+Fail reads without all bits in given parameter in the sam flag field.
+Fail reads with any bits in given parameter in the sam flag field.
+
+####bmftools vet
+
+### Analysis
+
+####bmftools depth
+####bmftools target
+####bmftools err
+####bmftools famstats
+####bmftools stack
+
+### Utilities
+
+####bmftools mark
+####bmftools sort
+
+
+Name | Use |
+:---:|:----|
+bmftools cap| Postprocess a tagged BAM for BMF-agnostic tools.|
+bmftools depth| Calculates depth of coverage over a set of bed intervals.|
+bmftools dmp| Demultiplex inline barcoded experiments.|
+bmftools err| Calculate error rates based on cycle, base call, and quality score.|
+bmftools famstats| Calculate family size statistics for a bam alignment file.|
+bmftools filter| Filter or split a bam file by a set of filters.|
+bmftools mark| Add unclipped start position as annotation for both read and mate.|
+bmftools rsq| Rescue bmf-sorted or ucs-sorted bam alignments.|
+bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
+bmftools sort| Sort for bam rescue.|
+bmftools stack| A simple variant caller using molecular barcode metadata.|
+bmftools target| Calculates on-target rate.|
+bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
+
 
 ### Use
 
@@ -74,19 +150,3 @@ Requires read fastqs and an additional fastq containing barcodes.
 
 (Secondary-index DeMultiPlex)
 
-Barcodes are contained in the additional (typically "Read 2" of 3) fastq, with optional "salting" from the the start of the insert reads.
-Note: It is **STRONGLY** recommended that for the secondary-index chemistry that you mask adapter sequence in the molecular barcode reads.
-When the secondary-index barcode read consists primarily or entirely of adapter, this informs us that the chemistry did not perform as expected.
-
-This preprocessing will "N" those bases, marking the reads as QC fail with the FP integer tag (0 for fail, 1 for pass).
-
-####Inline (Loeb-like) barcoding
-Requires only read fastqs, as the barcodes are inline.
-> bmftools dmp
-
-(DeMultiPlex)
-
-Barcodes are inline in the start of each read. Because the adapters are enzymatically filled-in, we end with one barcode for each double-stranded template molecule, while the secondary index barcoding ends with 2. This provides better error correction and more accurate diversity quantitation, but the fraction of collapsed reads with duplex observations is rather low, making it potentially less cost-effective.
-
-The requirement of the homing sequence at the expected location gives us confidence that the preceding bases are the random N-mer and not artefactual.
-This QC step reduces but does not eliminate the value of masking adapter for inline compared to secondary index chemistry.

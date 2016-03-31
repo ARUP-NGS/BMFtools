@@ -11,6 +11,8 @@ namespace BMF {
                         "Usage: bmftools filter <-l output_compression_level> in.bam out.bam\n"
                         "Use - for stdin or stdout.\n"
                         "Flags:\n"
+                        "-m\t\tFail reads with mapping quality < parameter.\n"
+                        "-a\t\tFail read pairs where both reads' aligned fraction < parameter.\n"
                         "-F\t\tSkip all reads with any bits in parameter set.\n"
                         "-f\t\tSkip reads not sharing all bits in parameter set.\n"
                         "-b\t\tPath to bed file with which to filter.\n"
@@ -26,6 +28,7 @@ namespace BMF {
         uint32_t minFM:14;
         uint32_t minMQ:8;
         uint32_t v:1;
+        uint32_t is_se:1;
         uint32_t skip_flag:16;
         uint32_t require_flag:16;
         float minAF;
@@ -43,13 +46,33 @@ namespace BMF {
                 b->core.qual >= options->minMQ &&
                 ((b->core.flag & options->skip_flag) == 0) &&
                 (b->core.flag & options->require_flag) == options->require_flag &&
-                (options->bed ? dlib::bed_test(b, options->bed):1);
+                (options->bed ? dlib::bed_test(b, options->bed):1) &&
+                (bam_itag(b, "MF") >= options->minAF || bam_itag(b, "AF") >= options->minAF);
     }
+
+
+    /* If FM tag absent, it's treated as if it were 1.
+     * Fail reads with FM < minFM, MQ < minMQ, a flag with any skip bits set,
+     * a flag without all required bits set, and, if a bed file is provided,
+     * reads outside of the bed region.
+    */
+        static inline int test_core_se(bam1_t *b, opts *options) {
+            uint8_t *data;
+            return ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM)) &&
+                    b->core.qual >= options->minMQ &&
+                    ((b->core.flag & options->skip_flag) == 0) &&
+                    (b->core.flag & options->require_flag) == options->require_flag &&
+                    (options->bed ? dlib::bed_test(b, options->bed):1) &&
+                    dlib::bam_frac_align(b) >= options->minAF;
+        }
 
     /*
      * Return a 0 status to pass, a 1 to fail, in order to match for_each.
      */
     int bam_test(bam1_t *b, void *options) {
+    	if(((opts *)options)->is_se)
+            return ((opts *)options)->v ? test_core_se(b, (opts *)options)
+                                        : !test_core_se(b, (opts *)options);
         return ((opts *)options)->v ? test_core(b, (opts *)options)
                                     : !test_core(b, (opts *)options);
     }
@@ -79,7 +102,7 @@ namespace BMF {
         char *bedpath = nullptr;
         int padding = DEFAULT_PADDING;
         std::string refused_path("");
-        while((c = getopt(argc, argv, "s:a:r:P:b:m:F:f:l:hv?")) > -1) {
+        while((c = getopt(argc, argv, "s:a:r:P:b:m:F:f:l:hAv?")) > -1) {
             switch(c) {
             case 'a': param.minAF = atof(optarg); break;
             case 'P': padding = atoi(optarg); break;
@@ -99,10 +122,11 @@ namespace BMF {
             LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
         }
         dlib::BamHandle in(argv[optind]);
-        if(bedpath) {
-            param.bed = dlib::parse_bed_hash(bedpath, in.header, padding);
-        } else {
-            LOG_DEBUG("param.bed pointer: %p.\n", (void *)param.bed);
+        param.bed = bedpath ? dlib::parse_bed_hash(bedpath, in.header, padding)
+                            : nullptr;
+        if(param.minAF > 0 && param.is_se == 0) {
+            dlib::check_bam_tag_exit(argv[optind], "AF");
+            dlib::check_bam_tag_exit(argv[optind], "MF");
         }
         dlib::BamHandle out(argv[optind + 1], in.header, out_mode);
         // Core
