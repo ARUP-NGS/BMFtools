@@ -232,9 +232,10 @@ namespace BMF {
                 if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
             }
         } else {
+            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
-                const int8_t ps(bam_seqi(pSeq, i));
-                const int8_t bs(bam_seqi(bSeq, i));
+                ps = bam_seqi(pSeq, i);
+                bs = bam_seqi(bSeq, i);
                 if(ps == bs) {
                     pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                     pFA[i] += bFA[i];
