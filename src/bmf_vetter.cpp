@@ -489,7 +489,7 @@ namespace BMF {
         return aux->bed ? vet_core_bed(aux): vet_core_nobed(aux);
     }
 
-    int vetter_main(int argc, char *argv[])
+    int vet_main(int argc, char *argv[])
     {
         if(argc < 3) vetter_usage(EXIT_FAILURE);
         const struct option lopts[] = {

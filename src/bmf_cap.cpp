@@ -51,21 +51,23 @@ namespace BMF {
     }
 
     static inline int cap_bam_q(bam1_t *b, cap_settings_t *settings) {
-        uint32_t *const PV = (uint32_t *)dlib::array_tag(b, "PV");
-        uint32_t *const FA = (uint32_t *)dlib::array_tag(b, "FA");
+        uint32_t *const PV((uint32_t *)dlib::array_tag(b, "PV"));
+        uint32_t *const FA((uint32_t *)dlib::array_tag(b, "FA"));
         const int FM = bam_itag(b, "FM");
         if(FM < (int)settings->minFM)
             return 1;
         char *qual = (char *)bam_get_qual(b);
-        int i;
-        const int l_qseq = b->core.l_qseq;
+        int i = 0;
         // If the thresholds are failed, set the quality to 2 to make them
-        if(b->core.flag & BAM_FREVERSE)
-            for(i = 0; i < l_qseq; ++i)
-                qual[l_qseq - 1 - i] = (PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac) ? settings->cap: 2;
-        else
-            for(i = 0; i < l_qseq; ++i)
+        if(b->core.flag & BAM_FREVERSE) {
+            int l_qseq = b->core.l_qseq;
+            for(; l_qseq >= 0; ++i)
+                qual[--l_qseq] = (PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac) ? settings->cap: 2;
+        }
+        else {
+            for(; i < b->core.l_qseq; ++i)
                 qual[i] = (PV[i] >= settings->minPV && (double)FA[i] / FM >= settings->minFrac) ? settings->cap: 2;
+        }
         return 0;
     }
 

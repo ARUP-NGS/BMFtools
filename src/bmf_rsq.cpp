@@ -66,7 +66,7 @@ namespace BMF {
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+                 bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
@@ -459,9 +459,10 @@ namespace BMF {
 
         if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "l:f:t:su?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:f:t:SHush?")) >= 0) {
             switch (c) {
             case 's': settings.write_supp = 1; break;
+            case 'S': settings.is_se = 1; break;
             case 'u':
                 settings.cmpkey = UNCLIPPED;
                 LOG_INFO("Unclipped start position chosen for cmpkey.\n");
@@ -469,7 +470,7 @@ namespace BMF {
             case 't': settings.mmlim = atoi(optarg); break;
             case 'f': fqname = optarg; break;
             case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
-            case '?': case 'h': return rsq_usage(EXIT_SUCCESS);
+            case '?': case 'h': case 'H': return rsq_usage(EXIT_SUCCESS);
             }
         }
         if (optind + 2 > argc)
