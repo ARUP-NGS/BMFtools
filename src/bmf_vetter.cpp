@@ -213,10 +213,6 @@ namespace BMF {
             //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
             vcf_idx = tbx_index_load(aux->vcf_fp->fn);
             if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
-            if(vcf_idx) {
-                tbx_destroy(vcf_idx);
-                vcf_idx = nullptr;
-            }
             break;
         case bcf:
             bcf_idx = bcf_index_load(aux->vcf_fp->fn);
@@ -268,12 +264,11 @@ namespace BMF {
                 int n_duplex = 0;
                 while(read_bcf(aux, vcf_iter, vrec) >= 0) {
                     if(!bcf_is_snp(vrec)) {
-                        LOG_DEBUG("Variant isn't a snp. Skip!\n");
+                        //LOG_DEBUG("Variant isn't a snp. Skip!\n");
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue; // Only handle simple SNVs
                     }
                     if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
-                        LOG_DEBUG("Outside of bed region.\n");
                         if(aux->write_outside_bed) bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue; // Only handle simple SNVs
                     }
@@ -421,22 +416,32 @@ namespace BMF {
                     continue; // Only handle simple SNVs
                 }
                 bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
-                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, vrec->pos + 1);
+                LOG_DEBUG("Querying for tid and pos %i, %i.\n", vrec->rid, vrec->pos);
+                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 1,vrec->pos + 1000);
                 LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(pileup) bam_plp_destroy(pileup);
                 pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, max_depth);
+                bam_plp_reset(pileup);
                 plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                 LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 assert(tid == vrec->rid);
                 while (pos < vrec->pos &&
                        ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
                     assert(tid == vrec->rid);
-                    //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                    LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                     /* Zoom ahead until you're at the correct position */
                 }
                 assert(tid == vrec->rid);
                 if(pos != vrec->pos) {
-                    LOG_EXIT("Pos isnot correct (%i rather than expected %i). n_plp: %i.\n", pos, vrec->pos);
+                    LOG_DEBUG("Try again\n");
+                    bam_plp_reset(pileup);
+                    while (pos < vrec->pos &&
+                           ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
+                        assert(tid == vrec->rid);
+                        LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                        /* Zoom ahead until you're at the correct position */
+                    }
+                    LOG_EXIT("Pos is not correct (%i rather than expected %i). n_plp: %i.\n", pos, vrec->pos, n_plp);
                 }
                 //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(!plp) {
@@ -583,7 +588,7 @@ namespace BMF {
         // Open bed file
         // if no bed provided, do whole genome.
         if(bed) aux.bed = dlib::parse_bed_hash(bed, aux.header, padding);
-        else LOG_EXIT("No bed file provided. Required. Abort!\n");
+        //else LOG_EXIT("No bed file provided. Required. Abort!\n");
 
         if((aux.vcf_fp = vcf_open(argv[optind], "r")) == nullptr) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
         if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == nullptr) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
