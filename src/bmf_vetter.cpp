@@ -10,7 +10,7 @@ namespace BMF {
                         "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
                         "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
                         "Optional arguments:\n"
-                        "-b, --bedpath\tPath to bed file to only validate variants in said region. Defaults to analyzing all variants.\n"
+                        "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
@@ -53,7 +53,7 @@ namespace BMF {
         uint32_t skip_flag; // Skip reads with any bits set to true
     };
 
-    static int max_depth = (1 << 18); // 262144
+    static int max_depth = (1 << 20); // 262144
 
 
     void vetter_error(const char *message, int retcode)
@@ -187,7 +187,7 @@ namespace BMF {
                 }
             }
             pass_values[j] = n_obs[j] >= aux->minCount && n_duplex[j] >= aux->minDuplex && n_overlaps[j] >= aux->minOverlap;
-            LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
+            //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
 
         }
         for(int i = 0; i < n_plp; ++i)
@@ -242,20 +242,20 @@ namespace BMF {
         std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
-        bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-        bam_plp_set_maxcnt(pileup, max_depth);
-
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
         for(khiter_t& ki: keys) {
+
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
                 int tid, start, stop, pos = -1;
+                bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+                bam_plp_set_maxcnt(pileup, max_depth);
 
                 // Handle coordinates
                 tid = kh_key(aux->bed, ki);
                 // rid is set to -1 before use. This won't be triggered.
                 start = get_start(kh_val(aux->bed, ki).intervals[j]);
                 stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-                LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
+                //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
                 vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
@@ -286,16 +286,16 @@ namespace BMF {
                         stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
                     }
                     */
-                    LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
+                    //LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
                     bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
                     if (aux->iter) hts_itr_destroy(aux->iter);
                     aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos + 500);
-                    LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
+                    //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
                     plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-                    LOG_DEBUG("Finished pileup.\n");
+                    //LOG_DEBUG("Finished pileup.\n");
                     while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) &&
                             ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
-                        LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                        //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                         /* Zoom ahead until you're at the correct position */
                     }
                     if(!plp) {
@@ -307,10 +307,11 @@ namespace BMF {
                             LOG_WARNING("No reads at position. Skip this variant.\n");
                         } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                     }
-                    LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
+                    //LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
                     if(pos != vrec->pos || tid != vrec->rid) {
-                        LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
-                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n", aux->header->target_name[vrec->rid], vrec->pos + 1);
+                        //LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
+                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n",
+                                    aux->header->target_name[vrec->rid], vrec->pos + 1);
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue;
                     }
@@ -334,10 +335,10 @@ namespace BMF {
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                 }
-                if(vcf_iter) tbx_itr_destroy(vcf_iter);
+                if(vcf_iter) hts_itr_destroy(vcf_iter);
+                bam_plp_destroy(pileup);
             }
         }
-        bam_plp_destroy(pileup);
         if(bcf_idx) hts_idx_destroy(bcf_idx);
         if(vcf_idx) tbx_destroy(vcf_idx);
         if(aux->iter) hts_itr_destroy(aux->iter);
@@ -347,6 +348,9 @@ namespace BMF {
     }
 
     int vet_core_nobed(vetter_aux_t *aux) {
+#if !NDEBUG
+        int n_skipped = 0;
+#endif
         int n_plp;
         const bam_pileup1_t *plp;
         tbx_t *vcf_idx = nullptr;
@@ -398,7 +402,7 @@ namespace BMF {
 
             // Handle coordinates
             // rid is set to -1 before use. This won't be triggered.
-            LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", tid + 1, aux->header->target_name[tid], start, stop);
+            //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", tid + 1, aux->header->target_name[tid], start, stop);
 
             // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
             vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
@@ -419,8 +423,7 @@ namespace BMF {
                     continue; // Only handle simple SNVs
                 }
                 bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
-                if (aux->iter) hts_itr_destroy(aux->iter);
-                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos + 500);
+                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos, vrec->pos + 1);
                 LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(pileup) bam_plp_destroy(pileup);
                 pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, max_depth);
@@ -429,26 +432,33 @@ namespace BMF {
                 assert(tid == vrec->rid);
                 while (pos < vrec->pos &&
                        ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
-                    LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                    assert(tid == vrec->rid);
+                    //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                     /* Zoom ahead until you're at the correct position */
                 }
                 assert(tid == vrec->rid);
-                LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
+                if(pos != vrec->pos) {
+                    LOG_EXIT("Pos isnot correct (%i rather than expected %i). n_plp: %i.\n", pos, vrec->pos);
+                }
+                //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(!plp) {
                     if(n_plp == -1) {
                         LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
                                     aux->header->target_name[tid], start, stop, n_plp, pos, tid);
                     }
                     else if(n_plp == 0) {
-                        LOG_DEBUG("Vrec rid: %i. Vrec pos: %i. tid: %i. pos: %i.\n", vrec->rid, vrec->pos, tid, pos);
+                        //LOG_DEBUG("Vrec rid: %i. Vrec pos: %i. tid: %i. pos: %i.\n", vrec->rid, vrec->pos, tid, pos);
                         LOG_WARNING("No reads at position. Skip this variant.\n");
+#if !NDEBUG
+                        ++n_skipped;
+#endif
                         ++pos;
                         continue;
                     } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                 }
-                LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
+                //LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
                 if(pos != vrec->pos || tid != vrec->rid) {
-                    LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
+                    //LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
                     LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n", aux->header->target_name[vrec->rid], vrec->pos + 1);
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                     continue;
@@ -472,12 +482,13 @@ namespace BMF {
 
                 // Pass or fail them individually.
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
+                hts_itr_destroy(aux->iter);
             }
             if(vcf_iter) tbx_itr_destroy(vcf_iter);
         }
+        LOG_DEBUG("Number skipped for having no reads at position: %i.\n", n_skipped);
         if(bcf_idx) hts_idx_destroy(bcf_idx);
         if(vcf_idx) tbx_destroy(vcf_idx);
-        if(aux->iter) hts_itr_destroy(aux->iter);
         hts_idx_destroy(idx);
         bcf_destroy(vrec);
         return EXIT_SUCCESS;
@@ -574,7 +585,7 @@ namespace BMF {
         // Open bed file
         // if no bed provided, do whole genome.
         if(bed) aux.bed = dlib::parse_bed_hash(bed, aux.header, padding);
-        //else LOG_EXIT("No bed file provided. Required. Abort!\n");
+        else LOG_EXIT("No bed file provided. Required. Abort!\n");
 
         if((aux.vcf_fp = vcf_open(argv[optind], "r")) == nullptr) LOG_EXIT("Could not open input vcf (%s).\n", argv[optind]);
         if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == nullptr) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
