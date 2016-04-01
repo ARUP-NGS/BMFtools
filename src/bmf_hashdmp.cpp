@@ -75,17 +75,18 @@ namespace BMF {
                 gzclose(out_handle);
                 return;
             }
-            LOG_EXIT("[E:%s] Could not open %s for reading. Abort mission!\n", infname);
-            exit(EXIT_FAILURE);
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", infname);
         }
         gzFile fp(gzdopen(fileno(in_handle), "r"));
         kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l = kseq_read(seq);
         if(l < 0) {
-            fprintf(stderr, "[E:%s]: Could not open fastq file (%s). Abort mission!\n",
-                    __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
-            exit(EXIT_FAILURE);
+            gzclose(fp);
+            fclose(in_handle);
+            gzclose(out_handle);
+            kseq_destroy(seq);
+            return;
         }
         char *bs_ptr(barcode_mem_view(seq));
         const int blen(infer_barcode_length(bs_ptr));
@@ -162,16 +163,16 @@ namespace BMF {
         gzFile out_handle(gzopen(outfname, mode));
         gzFile fp(gzopen((infname && *infname) ? infname: "-", "r"));
         if(!fp) {
-            fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
-            exit(EXIT_FAILURE);
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", infname);
         }
         kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l(kseq_read(seq));
         if(l < 0) {
-            fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
-                    __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
-            exit(EXIT_FAILURE);
+            gzclose(out_handle);
+            gzclose(fp);
+            kseq_destroy(seq);
+            return;
         }
         char *bs_ptr = barcode_mem_view(seq);
         int blen = infer_barcode_length(bs_ptr);
