@@ -65,10 +65,12 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                 bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i",
+                 bam_itag(b, "FM"), bam_itag(b, "FP"));
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "NC")) != nullptr)
+            ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
