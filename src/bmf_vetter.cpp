@@ -355,10 +355,12 @@ namespace BMF {
             //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
             vcf_idx = tbx_index_load(aux->vcf_fp->fn);
             if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
+            /*
             if(vcf_idx) {
                 tbx_destroy(vcf_idx);
                 vcf_idx = nullptr;
             }
+            */
             break;
         case bcf:
             bcf_idx = bcf_index_load(aux->vcf_fp->fn);
@@ -368,11 +370,9 @@ namespace BMF {
             LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
             break; // This never happens -- LOG_EXIT exits.
         }
-        /*
         if(!(vcf_idx || bcf_idx)) {
             LOG_EXIT("Require an indexed variant file. Abort!\n");
         }
-        */
         bcf1_t *vrec = bcf_init();
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
@@ -454,7 +454,6 @@ namespace BMF {
 #if !NDEBUG
                         ++n_skipped;
 #endif
-                        ++pos;
                         continue;
                     } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                 }
