@@ -254,9 +254,8 @@ namespace BMF {
                 //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-                vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
-                                   : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                             : nullptr;
+                vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                                   : nullptr;
                 //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
                 int n_disagreed = 0;
