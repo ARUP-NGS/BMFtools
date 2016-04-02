@@ -316,8 +316,6 @@ namespace BMF {
             }
             pos = b->core.pos;
             is_rev = b->core.flag & BAM_FREVERSE;
-            LOG_DEBUG("Max err count in hashmap: %lu.\n", get_max_err(hash));
-            LOG_DEBUG("Max obs count in hashmap: %lu.\n", get_max_obs(hash));
             if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
                 k = kh_put(obs, hash, FM, &khr);
                 memset(&kh_val(hash, k), 0, sizeof(obserr_t));
@@ -1125,8 +1123,7 @@ namespace BMF {
         if (argc != optind+2)
             return err_region_usage(EXIT_FAILURE);
 
-        fai = fai_load(argv[optind]);
-        if(!fai) {
+        if((fai = fai_load(argv[optind])) == nullptr) {
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
         }
 

@@ -239,7 +239,6 @@ namespace BMF {
 #endif
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
-        size_t buf_record_count = 0;
         kstring_t ks = {0, 0, nullptr};
         // Demultiplex and empty the hash.
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
