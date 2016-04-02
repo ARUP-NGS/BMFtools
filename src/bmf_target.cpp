@@ -7,7 +7,7 @@ namespace BMF {
         fprintf(stderr,
                         "Calculates the fraction of on-target reads."
                         "Usage: bmftools target <opts> <in.bam> \n"
-                        "Required arguments:"
+                        "Required arguments:\n"
                         "-b\tPath to bed.\n"
                         "Optional arguments:\n"
                         "-m\tSet minimum mapping quality for inclusion.\n"

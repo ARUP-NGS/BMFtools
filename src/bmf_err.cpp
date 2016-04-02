@@ -345,6 +345,7 @@ namespace BMF {
                 LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
                 if((ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen)) == nullptr)
                     LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+                LOG_DEBUG("Fetched.\n");
                 last_tid = b->core.tid;
             }
             pos = b->core.pos;

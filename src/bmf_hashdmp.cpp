@@ -139,7 +139,6 @@ namespace BMF {
         }
         count += buf_record_count;
         buf_record_count = 0;
-        gzputs(out_handle, (const char *)ks.s);
         // Demultiplex and write out.
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
         free(ks.s);
@@ -244,11 +243,6 @@ namespace BMF {
         kstring_t ks = {0, 0, nullptr};
         // Demultiplex and empty the hash.
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
             HASH_FIND_STR(hrev, cfor->id, crev);
             if(crev) {
 #if !NDEBUG
@@ -269,6 +263,8 @@ namespace BMF {
                 if(cfor->value->length > 1) ++non_duplex_fm;
                 dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
                 destroy_kf(cfor->value);
+                gzputs(out_handle, (const char *)ks.s);
+                ks.l = 0;
                 HASH_DEL(hfor, cfor);
                 free(cfor);
             }
@@ -280,22 +276,17 @@ namespace BMF {
                 fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
         kh_destroy(hd, hds);
 #endif
-        gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);
         HASH_ITER(hh, hrev, crev, tmp_hkr) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
             ++non_duplex;
             if(crev->value->length > 1) ++non_duplex_fm;
             dmp_process_write(crev->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
             destroy_kf(crev->value);
+            gzputs(out_handle, (const char *)ks.s);
+            ks.l = 0;
             HASH_DEL(hrev, crev);
             free(crev);
         }
-        gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Cleaning up.\n");
         LOG_INFO("Number of duplex observations: %lu.\t"
                  "Number of non-duplex observations: %lu.\t"

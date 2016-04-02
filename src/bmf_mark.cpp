@@ -92,10 +92,13 @@ namespace BMF {
             LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
 
-        int ret = dlib::bam_pair_apply_function(in, out,
-                                                add_multiple_tags, (void *)&settings, wmode);
+        dlib::BamHandle inHandle(in);
+        dlib::BamHandle outHandle(out, inHandle.header, "wb");
+        dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                 &add_multiple_tags, &settings);
+
         LOG_INFO("Successfully complete bmftools mark.\n");
-        return ret;
+        return EXIT_SUCCESS;
     }
 
 }
