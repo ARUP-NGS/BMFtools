@@ -319,11 +319,11 @@ namespace BMF {
     namespace {
         KHASH_MAP_INIT_INT(hd, uint64_t)
     }
-#endif
 
     static inline void fillhds(khash_t(hd) *hash, dlib::tmp_stack_t *stack, int mmlim)
     {
     }
+#endif
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
     {

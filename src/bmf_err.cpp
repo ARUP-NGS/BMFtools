@@ -538,8 +538,8 @@ namespace BMF {
     void write_base_rates(FILE *fp, fullerr_t *f)
     {
         fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
+        int i;
         for(uint64_t l = 0; l < f->l; ++l) {
-            int i;
             fprintf(fp, "%lu\t", l + 1);
             for(i = 0; i < 4; ++i) {
                 LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
@@ -631,9 +631,9 @@ namespace BMF {
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
                 //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
                 f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
-                                                                     : 0;
+                                                                        : 0;
                 f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
-                                                                     : 0;
+                                                                        : 0;
             }
         }
     }
@@ -672,20 +672,20 @@ namespace BMF {
                     fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
                 }
                 if(j != NQSCORES - 1) {
-                    fprintf(ep, ","); fprintf(cp, ",");
+                    fputc(',', ep); fputc(',', cp);
                 }
             }
-            fprintf(ep, "|"); fprintf(cp, "|");
+            fputc('|', ep); fputc('|', cp);
             for(j = 0; j < NQSCORES; ++j) {
                 for(i = 0; i < 4; ++i) {
                     fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
                     fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
                 }
                 if(j != NQSCORES - 1) {
-                    fprintf(ep, ","); fprintf(cp, ",");
+                    fputc(',', ep); fputc(',', cp);
                 }
             }
-            fprintf(ep, "\n"); fprintf(cp, "\n");
+            fputc('\n', ep); fputc('\n', cp);
         }
         fclose(dictwrite);
     }
