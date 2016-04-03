@@ -8,7 +8,6 @@ namespace BMF {
 
     int err_main_main(int argc, char *argv[]);
     int err_fm_main(int argc, char *argv[]);
-    int err_cycle_main(int argc, char *argv[]);
     int err_region_main(int argc, char *argv[]);
 
     RegionErr::RegionErr(region_set_t set, int i):
@@ -112,24 +111,6 @@ namespace BMF {
     }
 
 
-    int err_cycle_usage(int exit_status)
-    {
-        fprintf(stderr,
-                        "Calculates error rate by cycle.\n"
-                        "Usage: bmftools err cycle <opts> <reference.fasta> <input.csrt.bam>\n"
-                        "Flags:\n"
-                        "-h/-?\t\tThis helpful help menu!\n"
-                        "-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
-                        "-a\t\tSet minimum mapping quality for inclusion.\n"
-                        "-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
-                        "-b:\t\tPath to bed file for restricting analysis.\n"
-                        "-p:\t\tSet padding for bed region. Default: 50.\n"
-                        "-P:\t\tOnly include proper pairs.\n"
-                );
-        exit(exit_status);
-        return exit_status; // This never happens.
-    }
-
 
     void write_final(FILE *fp, fullerr_t *e)
     {
@@ -148,20 +129,6 @@ namespace BMF {
                 if(qn != NQSCORES - 1) fprintf(fp, ",");
             }
             fputc('\n', fp);
-        }
-    }
-
-    void err_cycle_report(FILE *fp, cycle_err_t *ce)
-    {
-        LOG_DEBUG("Beginning err cycle report.\n");
-        fprintf(fp, "#Cycle number\tRead 1 error\tRead 2 error\tRead 1 error counts"
-                "\tRead 1 observation counts\tRead 2 error counts\tRead 2 observation counts\n");
-        for(int i = 0; i < ce->rlen; ++i) {
-            fprintf(fp, "%i\t%0.12f\t%lu\t%lu\t%0.12f\t%lu\t%lu\n",
-                    i + 1,
-                    (double)ce->r1[i].err / ce->r1[i].obs,
-                    ce->r1[i].err, ce->r1[i].obs,
-                    (double)ce->r2[i].err / ce->r2[i].obs, ce->r2[i].err, ce->r2[i].obs);
         }
     }
 
@@ -341,16 +308,14 @@ namespace BMF {
             cigar = bam_get_cigar(b);
             hash = (b->core.flag & BAM_FREAD1) ? f->hash1: f->hash2;
             if(b->core.tid != last_tid) {
+                last_tid = b->core.tid;
                 cond_free(ref);
                 LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-                if((ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen)) == nullptr)
-                    LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
-                last_tid = b->core.tid;
+                ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
+                if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
             }
             pos = b->core.pos;
             is_rev = b->core.flag & BAM_FREVERSE;
-            //LOG_DEBUG("Max err count in hashmap: %lu.\n", get_max_err(hash));
-            //LOG_DEBUG("Max obs count in hashmap: %lu.\n", get_max_obs(hash));
             if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
                 k = kh_put(obs, hash, FM, &khr);
                 memset(&kh_val(hash, k), 0, sizeof(obserr_t));
@@ -403,96 +368,6 @@ namespace BMF {
         bam_hdr_destroy(hdr), sam_close(fp);
     }
 
-
-    cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
-                                char *bedpath, char *refcontig, int padding, unsigned minMQ, int flag)
-    {
-        bam1_t *b = bam_init1();
-        samFile *fp = sam_open_format(fname, "r", open_fmt);
-        bam_hdr_t *hdr = sam_hdr_read(fp);
-        if (!hdr)
-            LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-        const int32_t rlen = b->core.l_qseq;
-        cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
-        int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
-        uint8_t *seq, *fpdata;
-        uint32_t *cigar;
-        obserr_t *arr;
-        char *ref = nullptr; // Will hold the sequence for a  chromosome
-        if(ce->refcontig) {
-            for(int i = 0; i < hdr->n_targets; ++i) {
-                if(!strcmp(hdr->target_name[i], ce->refcontig)) {
-                    tid_to_study = i; break;
-                }
-            }
-            if(tid_to_study < 0)
-                LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
-        }
-        while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-            if(++ce->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", ce->nread);
-            // Filter
-            if((b->core.flag & 1796) /* unmapped, secondary, qc fail, duplicate*/||
-                b->core.qual < ce->minMQ ||
-                (ce->refcontig && tid_to_study != b->core.tid) ||
-                ((ce->flag & REQUIRE_FP_PASS) && ((fpdata = bam_aux_get(b, "FP")) != nullptr) && bam_aux2i(fpdata) == 0) ||
-                ((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||
-                (ce->bed && dlib::bed_test(b, ce->bed) == 0) /* Outside of region */) {
-                ++ce->nskipped;
-                /* LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b)); */
-                continue;
-            }
-            seq = (uint8_t *)bam_get_seq(b);
-            cigar = bam_get_cigar(b);
-            if(b->core.tid != last_tid) {
-                cond_free(ref);
-                LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-                ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
-                if(!ref) {
-                    LOG_EXIT("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
-                }
-                last_tid = b->core.tid;
-            }
-            pos = b->core.pos;
-            is_rev = b->core.flag & BAM_FREVERSE;
-            arr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;
-            for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                length = bam_cigar_oplen(cigar[i]);
-                switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    if(is_rev) {
-                        for(ind = 0; ind < length; ++ind) {
-                            s = bam_seqi(seq, ind + rc);
-                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                            cycle = rlen - 1 - ind - rc;
-                            ++arr[cycle].obs;
-                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
-                        }
-                    } else {
-                        for(ind = 0; ind < length; ++ind) {
-                            s = bam_seqi(seq, ind + rc);
-                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                            cycle = ind + rc;
-                            ++arr[cycle].obs;
-                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++arr[cycle].err;
-                        }
-                    }
-                    rc += length; fc += length;
-                    break;
-                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                    rc += length;
-                    break;
-                case BAM_CREF_SKIP: case BAM_CDEL:
-                    fc += length;
-                    break;
-                }
-            }
-        }
-        LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", ce->nread, ce->nskipped);
-        cond_free(ref);
-        bam_destroy1(b);
-        bam_hdr_destroy(hdr), sam_close(fp);
-        return ce;
-    }
 
     void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
     {
@@ -663,8 +538,8 @@ namespace BMF {
     void write_base_rates(FILE *fp, fullerr_t *f)
     {
         fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
+        int i;
         for(uint64_t l = 0; l < f->l; ++l) {
-            int i;
             fprintf(fp, "%lu\t", l + 1);
             for(i = 0; i < 4; ++i) {
                 LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
@@ -756,9 +631,9 @@ namespace BMF {
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
                 //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
                 f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
-                                                                     : 0;
+                                                                        : 0;
                 f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
-                                                                     : 0;
+                                                                        : 0;
             }
         }
     }
@@ -797,20 +672,20 @@ namespace BMF {
                     fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
                 }
                 if(j != NQSCORES - 1) {
-                    fprintf(ep, ","); fprintf(cp, ",");
+                    fputc(',', ep); fputc(',', cp);
                 }
             }
-            fprintf(ep, "|"); fprintf(cp, "|");
+            fputc('|', ep); fputc('|', cp);
             for(j = 0; j < NQSCORES; ++j) {
                 for(i = 0; i < 4; ++i) {
                     fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
                     fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
                 }
                 if(j != NQSCORES - 1) {
-                    fprintf(ep, ","); fprintf(cp, ",");
+                    fputc(',', ep); fputc(',', cp);
                 }
             }
-            fprintf(ep, "\n"); fprintf(cp, "\n");
+            fputc('\n', ep); fputc('\n', cp);
         }
         fclose(dictwrite);
     }
@@ -897,33 +772,6 @@ namespace BMF {
         free(fm);
     }
 
-    cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag)
-    {
-        cycle_err_t *ret = (cycle_err_t *)calloc(1, sizeof(cycle_err_t));
-        if(bedpath && *bedpath) {
-            ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
-            ret->bedpath = strdup(bedpath);
-        }
-        if(refcontig && *refcontig) {
-            ret->refcontig = strdup(refcontig);
-        }
-        ret->rlen = rlen;
-        ret->r1 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
-        ret->r2 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
-        ret->minMQ = minMQ;
-        ret->flag = flag;
-        return ret;
-    }
-
-    void cycle_destroy(cycle_err_t *c)
-    {
-        if(c->bed) kh_destroy(bed, c->bed), c->bed = nullptr;
-        cond_free(c->bedpath);
-        cond_free(c->refcontig);
-        cond_free(c->r1); cond_free(c->r2);
-        free(c);
-    }
-
 
     int err_usage(int exit_status)
     {
@@ -934,8 +782,6 @@ namespace BMF {
                         "\t\tProvides a variety of ways of slicing the data.\n"
                         "\tfm:\n"
                         "\t\tCalculates error rates by family size.\n"
-                        "\tcycle:\n"
-                        "\t\tCalculates error rates by cycle.\n"
                         "\tregion:\n"
                         "\t\tCalculates error rates by bed region.\n"
                 );
@@ -952,8 +798,6 @@ namespace BMF {
             return err_main_main(argc - 1, argv + 1);
         if(strcmp(argv[1], "fm") == 0)
             return err_fm_main(argc - 1, argv + 1);
-        if(strcmp(argv[1], "cycle") == 0)
-            return err_cycle_main(argc - 1, argv + 1);
         if(strcmp(argv[1], "region") == 0)
             return err_region_main(argc - 1, argv + 1);
         LOG_EXIT("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
@@ -1066,54 +910,6 @@ namespace BMF {
         write_global_rates(global_fp, f); fclose(global_fp);
         fullerr_destroy(f);
         LOG_INFO("Successfully completed bmftools err main!\n");
-        return EXIT_SUCCESS;
-    }
-
-    int err_cycle_main(int argc, char *argv[])
-    {
-        htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
-
-        if(argc < 2) return err_cycle_usage(EXIT_FAILURE);
-
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return err_cycle_usage(EXIT_SUCCESS);
-
-        FILE *ofp = nullptr;
-        int padding = -1, minMQ = 0, flag = 0, c;
-        char *bedpath = nullptr, *outpath = nullptr, *refcontig = nullptr;
-        while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
-            switch (c) {
-            case 'a': minMQ = atoi(optarg); break;
-            case 'o': outpath = optarg; break;
-            case 'r': refcontig = strdup(optarg); break;
-            case 'b': bedpath = strdup(optarg); break;
-            case 'p': padding = atoi(optarg); break;
-            case 'P': flag |= REQUIRE_PROPER; break;
-            case '?': case 'h': return err_cycle_usage(EXIT_SUCCESS);
-            }
-        }
-
-        if(padding < 0 && bedpath) {
-            LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
-        }
-
-        if(!outpath) {
-            LOG_WARNING("Output path not set. Defaulting to stdout.\n");
-        }
-        ofp = dlib::open_ofp(outpath);
-
-        if (argc != optind+2)
-            return err_cycle_usage(EXIT_FAILURE);
-
-        faidx_t *fai = fai_load(argv[optind]);
-
-        cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ, flag);
-        err_cycle_report(ofp, ce); fclose(ofp);
-        cycle_destroy(ce);
-        fai_destroy(fai);
-        cond_free(refcontig);
-        cond_free(bedpath);
-        LOG_INFO("Successfully completed bmftools err cycle!\n");
         return EXIT_SUCCESS;
     }
 
@@ -1327,8 +1123,7 @@ namespace BMF {
         if (argc != optind+2)
             return err_region_usage(EXIT_FAILURE);
 
-        fai = fai_load(argv[optind]);
-        if(!fai) {
+        if((fai = fai_load(argv[optind])) == nullptr) {
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
         }
 

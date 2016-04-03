@@ -92,8 +92,6 @@ Filters:
 
   * Fail reads outside of a bed region.
 
-  * Fail reads with a family size below given parameter.
-
   * Fail reads without all bits in given parameter in the sam flag field.
 
   * Fail reads with any bits in given parameter in the sam flag field.
