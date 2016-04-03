@@ -7,7 +7,15 @@ namespace BMF {
             // I might add more options later, hence the use of the bitfield.
             uint32_t remove_qcfail:1;
             uint32_t min_insert_length:8;
+            double min_frac_unambiguous;
+            mark_settings_t() :
+                remove_qcfail(0),
+                min_insert_length(0),
+                min_frac_unambiguous(0.0)
+            {
+            }
         };
+
     }
 
     static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
@@ -15,15 +23,15 @@ namespace BMF {
         int ret = 0;
         dlib::add_unclipped_mate_starts(b1, b2);
         dlib::add_sc_lens(b1, b2);
-        dlib::add_fraction_aligned(b1, b2);
         dlib::add_qseq_len(b1, b2);
-        dlib::add_mate_SA_tag(b1, b2);
+        //dlib::add_mate_SA_tag(b1, b2);
         // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
         ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
         if(((mark_settings_t *)data)->min_insert_length)
-            if(b1->core.isize && // Non-zero insert size
-               std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length)
-                ret = 1; // Fail it!
+            if(b1->core.isize)
+                ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
+        if(((mark_settings_t *)data)->min_frac_unambiguous)
+            ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
         return ret;
     }
 
@@ -41,6 +49,7 @@ namespace BMF {
                         "-q    Skip read pairs which fail.\n"
                         "-d    Set bam compression level to default (6).\n"
                         "-i    Skip read pairs whose insert size is less than <INT>.\n"
+                        "-u    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
                         "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
                 );
@@ -51,9 +60,11 @@ namespace BMF {
     {
         char wmode[4]{"wb0"};
         int c;
-        mark_settings_t settings{0};
-        while ((c = getopt(argc, argv, "l:i:dq?h")) >= 0) {
+        mark_settings_t settings;
+        while ((c = getopt(argc, argv, "l:i:u:dq?h")) >= 0) {
             switch (c) {
+            case 'u':
+                settings.min_frac_unambiguous = atof(optarg); break;
             case 'q':
                 settings.remove_qcfail = 1; break;
             case 'i':
@@ -80,10 +91,13 @@ namespace BMF {
             LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
 
-        int ret = dlib::bam_pair_apply_function(in, out,
-                                                add_multiple_tags, (void *)&settings, wmode);
+        dlib::BamHandle inHandle(in);
+        dlib::BamHandle outHandle(out, inHandle.header, "wb");
+        dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                 &add_multiple_tags, &settings);
+
         LOG_INFO("Successfully complete bmftools mark.\n");
-        return ret;
+        return EXIT_SUCCESS;
     }
 
 }

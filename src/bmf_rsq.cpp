@@ -2,41 +2,6 @@
 
 namespace BMF {
 
-    namespace {
-        inline std::string make_name(bam1_t *b, size_t n) {
-            std::string ret;
-            ret.reserve(70uL);
-            uint8_t *data_su{bam_aux_get(b, "SU")};
-            uint8_t *data_mu{bam_aux_get(b, "MU")};
-            if(b->core.flag & BAM_FREAD1) {
-                dlib::safe_stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
-                                        data_su ? bam_aux2i(data_su): b->core.pos,
-                                        data_mu ? bam_aux2i(data_mu): b->core.mpos, // Unclipped starts for self and mate
-                                        b->core.tid,
-                                        b->core.mtid, // Contigs
-                                        (!!(b->core.flag & (BAM_FREVERSE))),
-                                        (!!(b->core.flag & (BAM_FMREVERSE))), // Strandedness combinations
-                                        b->core.l_qseq,
-                                        bam_itag(b, "LM"),
-                                        n // Read length of self and mate.
-                                        );
-            } else {
-                dlib::safe_stringprintf(ret, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i:%lu",
-                                        data_mu ? bam_aux2i(data_mu): b->core.mpos, // Unclipped starts for self and mate
-                                        data_su ? bam_aux2i(data_su): b->core.pos,
-                                        b->core.mtid,
-                                        b->core.tid,
-                                        (!!(b->core.flag & (BAM_FMREVERSE))), // Strandedness combinations
-                                        (!!(b->core.flag & (BAM_FREVERSE))),
-                                        bam_itag(b, "LM"),
-                                        b->core.l_qseq,
-                                        n // Read length of self and mate.
-                                        );
-            }
-            return ret;
-        }
-    }
-
     struct rsq_aux_t {
         FILE *fqh;
         samFile *in;
@@ -65,10 +30,12 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                 bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i",
+                 bam_itag(b, "FM"), bam_itag(b, "FP"));
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "NC")) != nullptr)
+            ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -232,9 +199,10 @@ namespace BMF {
                 if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
             }
         } else {
+            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
-                const int8_t ps(bam_seqi(pSeq, i));
-                const int8_t bs(bam_seqi(bSeq, i));
+                ps = bam_seqi(pSeq, i);
+                bs = bam_seqi(bSeq, i);
                 if(ps == bs) {
                     pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                     pFA[i] += bFA[i];
@@ -277,21 +245,15 @@ namespace BMF {
             if(stack->a[i]) {
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                     std::string&& qname = bam_get_qname(stack->a[i]);
-                    //std::string&& qname = make_name(stack->a[i], ++n);
-                    //LOG_DEBUG("Read name: \t%s\tGenerated name: \t%s\t.\n", bam_get_qname(stack->a[i]), qname.c_str());
-                    //LOG_DEBUG("Qname: %s.\n", qname.c_str());
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
                     } else {
                         // Make sure the read names/barcodes match.
-                        //assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
                         // Write read 1 out first.
                         if(stack->a[i]->core.flag & BAM_FREAD2) {
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                            //bam2ffq(stack->a[i], settings->fqh, qname);
                             bam2ffq(stack->a[i], settings->fqh);
                         } else {
-                            //bam2ffq(stack->a[i], settings->fqh, qname);
                             bam2ffq(stack->a[i], settings->fqh);
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                         }
@@ -330,39 +292,47 @@ namespace BMF {
         }
     }
 
-    /*
-     * Returns true if hd <= mmlim, 0 otherwise.
-     */
-    static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
-    {
-        char *aname = bam_get_qname(a);
-        char *bname = bam_get_qname(b);
+    inline int stringhd(char *a, char *b) {
         int hd = 0;
-        while(*aname)
-            if(*aname++ != *bname++)
+        while(*a) hd += (*a++ != *b++);
+        return hd;
+    }
+
+    inline int string_linear(char *a, char *b, int mmlim) {
+        int hd = 0;
+        while(*a)
+            if(*a++ != *b++)
                 if(++hd > mmlim)
                     return 0;
         return 1;
     }
 
-    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    /*
+     * Returns true if hd <= mmlim, 0 otherwise.
+     */
+    static inline int hd_test(bam1_t *a, bam1_t *b, int mmlim)
     {
-        // Sort by read names to make sure that any progressive rescuing ends at the same name.
-        std::sort(stack->a, &stack->a[stack->n], [](const bam1_t *a, const bam1_t *b) {
-            if(a) {
-                return b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0;
-            } else {
-                return b ? 1: 0;
-            }
-            // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
-            // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
-            // Compares strings otherwise.
-        });
+        return string_linear(bam_get_qname(a), bam_get_qname(b), mmlim);
+    }
+
+#if !NDEBUG
+    namespace {
+        KHASH_MAP_INIT_INT(hd, uint64_t)
+    }
+
+    static inline void fillhds(khash_t(hd) *hash, dlib::tmp_stack_t *stack, int mmlim)
+    {
+    }
+#endif
+
+    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
+    {
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
-                //LOG_DEBUG("Iterating with i, j of %i, %i\n", i, j);
-                if(hd_linear(stack->a[i], stack->a[j], settings->mmlim) &&
-                        stack->a[i]->core.l_qseq == stack->a[j]->core.l_qseq) {
+                if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
+                    continue;
+                if(hd_test(stack->a[i], stack->a[j], mmlim)) {
+                    assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     update_bam1(stack->a[j], stack->a[i]);
                     bam_destroy1(stack->a[i]);
@@ -387,6 +357,9 @@ namespace BMF {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
+#if HASHCOUNT
+        khash_t(hd) *hd = kh_init(hd);
+#endif
         // Start stack
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
@@ -397,7 +370,10 @@ namespace BMF {
             if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
-                flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+#if HASHCOUNT
+                fillhds(hd, stack, settings->mmlim);
+#endif
+                flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -407,9 +383,16 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
-        flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+#if HASHCOUNT
+        for(khiter_t ki = kh_begin(hd); ki != kh_end(hd); ++ki)
+            if(kh_exist(hd, ki))
+                fprintf(stdout, "%i:%lu\n", kh_key(hd, ki), kh_val(hd, ki));
+        kh_destroy(hd, hd);
+#endif
+
+        flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
         write_stack(stack, settings);
-        stack->n = 1;
+        stack->n = 0;
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         // What this really means is that the correctly collapsed reads just have a naming issue.
