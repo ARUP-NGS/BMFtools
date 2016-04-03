@@ -283,7 +283,7 @@ namespace BMF {
                     //LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
                     bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
                     if (aux->iter) hts_itr_destroy(aux->iter);
-                    aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos + 500);
+                    aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
                     //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
                     plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                     //LOG_DEBUG("Finished pileup.\n");
@@ -416,13 +416,13 @@ namespace BMF {
                 }
                 bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
                 LOG_DEBUG("Querying for tid and pos %i, %i.\n", vrec->rid, vrec->pos);
-                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 1,vrec->pos + 1000);
-                LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
+                aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
+                //LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(pileup) bam_plp_destroy(pileup);
                 pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, max_depth);
                 bam_plp_reset(pileup);
                 plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-                LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
+                //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 assert(tid == vrec->rid);
                 while (pos < vrec->pos &&
                        ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
