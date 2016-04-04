@@ -83,8 +83,17 @@ namespace BMF {
         if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
     }
 
-    static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int blen, int mask, int homing_len) {
-
+    static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
+        if(!kfp->length++)
+            kfp->pass_fail = pass + '0';
+        uint32_t posdata;
+        for(int i = offset; i < seq->seq.l; ++i) {
+            posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
+            ++kfp->nuc_counts[posdata];
+            kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
+            if(seq->qual.s[i] > kfp->max_phreds[posdata])
+                kfp->max_phreds[posdata] = seq->qual.s[i];
+        }
     }
 
     static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen)
