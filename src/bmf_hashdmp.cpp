@@ -1,6 +1,9 @@
 #include "bmf_hashdmp.h"
 
 namespace BMF {
+    void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
+                                char *homing, int blen, int threshold, int level=1, int mask=0,
+                                int max_blen=-1);
 
 
     void hashdmp_usage() {
@@ -34,7 +37,7 @@ namespace BMF {
 
     int hashdmp_main(int argc, char *argv[])
     {
-        if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
+        if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
         char *outfname = nullptr, *infname = nullptr;
         int c;
         int stranded_analysis = 1;
@@ -61,18 +64,27 @@ namespace BMF {
     }
 
 
-    int hash_inmem_main(int argc, char *argv[])
+    int hashdmp_inmem_main(int argc, char *argv[])
     {
-        if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
-        char *outfname = nullptr, *infname = nullptr;
+        if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
+        char *outfname1 = const_cast<char *>("-"), *infname1 = nullptr;
+        char *outfname2 = const_cast<char *>("-"), *infname2 = nullptr;
+        char *homing = nullptr;
         int c;
-        int stranded_analysis = 1;
-        int level = -1;
-        while ((c = getopt(argc, argv, "l:o:sh?")) >= 0) {
+        int blen = -1;
+        int max_blen = -1;
+        int mask = 0;
+        int threshold = 10;
+        int level = 0; // uncompressed
+        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:sh?")) >= 0) {
             switch(c) {
-                case 'l': level = atoi(optarg)%10; break;
-                case 'o': outfname = optarg; break;
-                case 's': stranded_analysis = 0; break;
+                case '1': outfname1 = optarg; break;
+                case '2': outfname2 = optarg; break;
+                case 'm': mask = atoi(optarg); break;
+                case 'v': max_blen = atoi(optarg); break;
+                case 'l': blen = atoi(optarg); break;
+                case 'L': level = atoi(optarg) % 10; break;
+                case 's': homing = optarg; break;
                 case '?': case 'h': hashdmp_usage(); return EXIT_SUCCESS;
             }
         }
@@ -81,10 +93,15 @@ namespace BMF {
             hashdmp_usage();
             exit(EXIT_FAILURE);
         }
-        if(argc - 1 == optind) infname = argv[optind];
-        else LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
-        stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level)
-                          : hash_dmp_core(infname, outfname, level);
+        if(argc - 2 == optind) {
+            infname1 = argv[optind];
+            infname2 = argv[optind + 1];
+        } else LOG_EXIT("Require exactly two input fastqs.\n");
+        if(blen < 0) LOG_EXIT("Barcode length required.");
+        if(!homing) LOG_EXIT("Homing sequence required.\n");
+        hash_inmem_inline_core(infname1, infname2, outfname1, outfname2,
+                               homing, blen, threshold, level, mask,
+                               max_blen);
         LOG_INFO("Successfully complete bmftools hashdmp!\n");
         return EXIT_SUCCESS;
     }
@@ -107,8 +124,8 @@ namespace BMF {
     }
 
     void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
-                                char *homing, int blen, int threshold, int level=1, int mask=0,
-                                int max_blen=-1) {
+                                char *homing, int blen, int threshold, int level, int mask,
+                                int max_blen) {
         if(max_blen < 0) max_blen = blen;
         char mode[4];
         sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
