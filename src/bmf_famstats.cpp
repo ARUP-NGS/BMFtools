@@ -92,96 +92,6 @@ namespace BMF {
     }
 
 
-    int famstats_target_usage(int exit_status)
-    {
-        fprintf(stderr,
-                        "Calculates the fraction of raw reads on target.\n"
-                        "Usage: bmftools famstats target <opts> <in.bam>\n"
-                        "Flags:\n-b Path to bed file.\n"
-                        "-p padding. Number of bases around bed regions to pad. Default: %i.\n"
-                        "-h, -?: Return usage.\n"
-                , DEFAULT_PADDING);
-        exit(exit_status);
-        return exit_status;
-    }
-
-
-    int famstats_target_main(int argc, char *argv[])
-    {
-        int c;
-        khash_t(bed) *bed = nullptr;
-        char *bedpath = nullptr;
-        uint32_t padding = (uint32_t)-1;
-        uint64_t notification_interval = 1000000;
-
-        if(argc < 4) return famstats_target_usage(EXIT_SUCCESS);
-
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-            return famstats_target_usage(EXIT_SUCCESS);
-
-        while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
-            switch (c) {
-            case 'b':
-                bedpath = strdup(optarg);
-                break;
-            case 'p':
-                padding = strtoul(optarg, nullptr, 0);
-                break;
-            case 'n':
-                notification_interval = strtoull(optarg, nullptr, 0);
-                break;
-            case '?': case 'h':
-                return famstats_target_usage(EXIT_SUCCESS);
-            }
-        }
-
-
-        if(padding == (uint32_t)-1) {
-            padding = DEFAULT_PADDING;
-            LOG_INFO("Padding not set. Set to default value (%u).\n", DEFAULT_PADDING);
-        }
-
-        if (argc != optind+1)
-            return famstats_target_usage(EXIT_FAILURE);
-
-        if(!bedpath) {
-            fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
-            return famstats_target_usage(EXIT_FAILURE);
-        }
-
-        dlib::BamHandle handle(argv[optind]);
-        // If bedfile provided, use it. If not, calculate by contig. Why? Why not?
-        if(!bedpath) {
-            LOG_EXIT("Can't calculate on-target without a bed file. Abort!\n");
-        }
-        bed = dlib::parse_bed_hash(bedpath, handle.header, padding);
-        uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
-        uint8_t *fpdata = nullptr;
-        while(LIKELY(handle.next() >= 0)) {
-            if(UNLIKELY(++count % notification_interval == 0))
-                LOG_INFO("Number of records processed: %lu.\n", count);
-            if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FSUPPLEMENTARY))) {
-                ++n_flag_skipped;
-                continue;
-            } else if((fpdata = bam_aux_get(handle.rec, "FP")) != nullptr && !bam_aux2i(fpdata)) {
-                ++n_fp_skipped;
-                continue;
-            }
-            const int FM = bam_aux2i(bam_aux_get(handle.rec, "FM"));
-            total_fm += FM;
-            if(dlib::bed_test(handle.rec, bed)) fm_target += FM;
-        }
-        LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n",
-                 count, n_flag_skipped, n_fp_skipped);
-        dlib::bed_destroy_hash(bed);
-        cond_free(bedpath);
-        fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
-                (double)fm_target / total_fm, total_fm, fm_target);
-        LOG_INFO("Successfully complete bmftools famstats target.\n");
-        return EXIT_SUCCESS;
-    }
-
-
     static void print_stats(famstats_t *stats, FILE *fp)
     {
         fprintf(fp, "#Number passing filters: %lu.\n", stats->n_pass);
@@ -280,10 +190,9 @@ namespace BMF {
     {
         fprintf(stderr,
                         "Calculates various utilities regarding family size on a given bam.\n"
-                        "Usage: bmftools famstats\n"
+                        "Usage: bmftools famstats <subcommand> <subcommand opts>\n"
                         "Subcommands: \nfm\tFamily Size stats\n"
                         "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
-                        "target\tFraction of raw reads on target.\n"
                 );
         exit(exit_status);
         return exit_status;
@@ -407,8 +316,6 @@ namespace BMF {
             return famstats_fm_main(argc - 1, argv + 1);
         if(strcmp(argv[1], "frac") == 0)
             return famstats_frac_main(argc - 1, argv + 1);
-        if(strcmp(argv[1], "target") == 0)
-            return famstats_target_main(argc - 1, argv + 1);
         fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
         return famstats_usage_exit(EXIT_FAILURE);
     }

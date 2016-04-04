@@ -7,6 +7,10 @@
 
 ### Installation
 
+Requirements:
+gcc4.9+
+samtools 1.2+
+
 ```bash
 git clone https://github.com/ARUP-NGS/BMFtools --recursive
 cd BMFtools
@@ -80,13 +84,17 @@ Caps quality scores from PV tags to facilitate working with barcode-agnostic too
 Filters or splits a bam file based on a set of filters. These can be inverted with -v (analogous to grep).
 
 Filters:
-Fail reads with insufficient mapping quality.
-Fail reads with insufficient family size.
-Fail read pairs by aligned fraction.
-Fail reads outside of a bed region.
-Fail reads with a family size below given parameter.
-Fail reads without all bits in given parameter in the sam flag field.
-Fail reads with any bits in given parameter in the sam flag field.
+  * Fail reads with insufficient mapping quality.
+
+  * Fail reads with insufficient family size.
+
+  * Fail read pairs by aligned fraction.
+
+  * Fail reads outside of a bed region.
+
+  * Fail reads without all bits in given parameter in the sam flag field.
+
+  * Fail reads with any bits in given parameter in the sam flag field.
 
 ####bmftools vet
 Curates SNV calls from a tumor/normal variant call file using barcode metadata from the bams used to produce the variant call file.
@@ -134,14 +142,4 @@ NF | Mean number of differences between reads and consensus per read in family |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array |
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
 SC | Soft-clipped length | Integer |
-
-## Barcoding methods
-
-Essentially, the process is *molecular* **d**e**m**ulti**p**lexing.
-
-####Secondary Index Barcoding 
-Requires read fastqs and an additional fastq containing barcodes.
-> bmftools sdmp
-
-(Secondary-index DeMultiPlex)
 

@@ -30,9 +30,8 @@ FINALBAM=${tmpstr%.fastq*}.rsq.bam
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     bmftools mark -l 0 | \
-    bmftools sort -l 0 -m $SORTMEM -@ $SORT_THREADS1 -k ucs -T tmpfileswtf -o $PRERSQBAM
-
-bmftools rsq -usf $TMPFQ -l 0 $PRERSQBAM - | \
+    bmftools sort -l 0 -m $SORTMEM -@ $SORT_THREADS1 -k ucs -T tmpfileswtf | \
+    bmftools rsq -usf $TMPFQ -l 0 - - | \
     samtools sort -O bam -T tmplastsort -@ $SORT_THREADS2 -m $SORTMEM -o $TMPBAM -
 
 # Align the records that were rescued and merge them back in.

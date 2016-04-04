@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
     if(strcmp(argv[1], "sdmp") == 0) return BMF::sdmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "rsq") == 0) return BMF::rsq_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "hashdmp") == 0) return BMF::hashdmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "inmem") == 0) return BMF::hashdmp_inmem_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "famstats") == 0) return BMF::famstats_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "vet") == 0) return BMF::vet_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "err") == 0) return BMF::err_main(argc - 1, argv + 1);

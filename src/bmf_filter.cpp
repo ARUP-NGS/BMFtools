@@ -70,7 +70,7 @@ namespace BMF {
      * Return a 0 status to pass, a 1 to fail, in order to match for_each.
      */
     int bam_test(bam1_t *b, void *options) {
-    	if(((opts *)options)->is_se)
+        if(((opts *)options)->is_se)
             return ((opts *)options)->v ? test_core_se(b, (opts *)options)
                                         : !test_core_se(b, (opts *)options);
         return ((opts *)options)->v ? test_core(b, (opts *)options)

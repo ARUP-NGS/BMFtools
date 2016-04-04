@@ -1,10 +1,10 @@
 #include "bmf_hashdmp.h"
 
 namespace BMF {
+    void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
+                                char *homing, int blen, int threshold, int level=0, int mask=0,
+                                int max_blen=-1);
 
-    namespace {
-        size_t buf_set_size = 50000;
-    }
 
     void hashdmp_usage() {
         fprintf(stderr,
@@ -19,6 +19,28 @@ namespace BMF {
                         "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
                 );
     }
+    void inmem_usage() {
+        fprintf(stderr,
+                        "Molecularly demultiplexes marked temporary fastqs into final unique observation records.\n"
+                        "bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.\n"
+                        "For samples which can't fit into memory, use bmftools dmp or sdmp, which subsets the sample,"
+                        " reducing memory requirements while keeping the constant-time hashmap collapsing.\n"
+                        "Usage: bmftools inmem <opts> -1 <out.r1.fastq> -2 <out.r2.fastq> <r1.fastq> <r2.fastq>.\n"
+                        "Flags:\n"
+                        "-s\tHoming sequence -- REQUIRED.\n"
+                        "-1\tPath to ountput fastq for read 1. Set to '-' for stdout. "
+                        "Setting both r1 and r2 to stdout results in interleaved output."
+                        "-2\tPath to output fastq for read 2. Set to '-' for stdout. "
+                        "-l\tBarcode length. If using variable-length barcodes, this is the minimum barcode length.\n"
+                        "-v\tMaximum barcode length. (Set only if using variable-length barcodes.)\n"
+                        "-m\tSkip the first <INT> bases from each inline barcode. (Default: 0)\n"
+                        "-L\tOutput fastq compression level (Default: uncompressed).\n"
+                        "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
+                );
+    }
+    /*                case '1': outfname1 = optarg; break
+                case 'L': level = atoi(optarg) % 10; break;
+                case 's': homing = optarg; break; */
 
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
     {
@@ -37,7 +59,7 @@ namespace BMF {
 
     int hashdmp_main(int argc, char *argv[])
     {
-        if(argc == 1) hashdmp_usage(), exit(EXIT_SUCCESS);
+        if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
         char *outfname = nullptr, *infname = nullptr;
         int c;
         int stranded_analysis = 1;
@@ -63,10 +85,262 @@ namespace BMF {
         return EXIT_SUCCESS;
     }
 
+
+    int hashdmp_inmem_main(int argc, char *argv[])
+    {
+        if(argc == 1) inmem_usage(), exit(EXIT_FAILURE);
+        char *outfname1 = const_cast<char *>("-"), *infname1 = nullptr;
+        char *outfname2 = const_cast<char *>("-"), *infname2 = nullptr;
+        char *homing = nullptr;
+        int c;
+        int blen = -1;
+        int max_blen = -1;
+        int mask = 0;
+        int threshold = 10;
+        int level = 0; // uncompressed
+        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:sh?")) >= 0) {
+            switch(c) {
+                case '1': outfname1 = optarg; break;
+                case '2': outfname2 = optarg; break;
+                case 'm': mask = atoi(optarg); break;
+                case 'v': max_blen = atoi(optarg); break;
+                case 'l': blen = atoi(optarg); break;
+                case 'L': level = atoi(optarg) % 10; break;
+                case 's': homing = optarg; break;
+                case '?': case 'h': inmem_usage(); return EXIT_SUCCESS;
+            }
+        }
+        if(argc < 2) {
+            fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
+            hashdmp_usage();
+            exit(EXIT_FAILURE);
+        }
+        if(argc - 2 == optind) {
+            infname1 = argv[optind];
+            infname2 = argv[optind + 1];
+        } else LOG_EXIT("Require exactly two input fastqs.\n");
+        if(blen < 0) LOG_EXIT("Barcode length required.");
+        if(!homing) LOG_EXIT("Homing sequence required.\n");
+        hash_inmem_inline_core(infname1, infname2, outfname1, outfname2,
+                               homing, blen, threshold, level, mask,
+                               max_blen);
+        LOG_INFO("Successfully complete bmftools hashdmp!\n");
+        return EXIT_SUCCESS;
+    }
+
+    namespace {
+        size_t buf_set_size = 50000;
+        class hashtmp_t {
+            kstring_t barcode;
+            ~hashtmp_t() {
+                if(barcode.s) free(barcode.s);
+            }
+        };
+    }
+
+    inline int get_blen(char *seq, char *homing, int homing_len, int blen, int max_blen, int mask) {
+        for(int i = blen; i <= max_blen; ++i)
+            if(memcmp(seq + i, homing, homing_len) == 0)
+                return i - mask;
+        return -1;
+    }
+
+    void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
+                                char *homing, int blen, int threshold, int level, int mask,
+                                int max_blen) {
+        if(max_blen < 0) max_blen = blen;
+        char mode[4];
+        sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+        FILE *in_handle1(dlib::open_ifp(in1));
+        FILE *in_handle2(dlib::open_ifp(in2));
+        gzFile out_handle1(gzopen(out1, mode));
+        gzFile out_handle2(gzopen(out2, mode));
+        const int homing_len = strlen(homing);
+        if(!in_handle1) {
+            if(dlib::isfile(in1)) {
+                LOG_DEBUG("%s a file, but it's empty....\n", in1);
+                gzclose(out_handle1);
+                return;
+            }
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", in1);
+        }
+        if(!in_handle2) {
+             if(dlib::isfile(in2)) {
+                LOG_DEBUG("%s a file, but it's empty....\n", in2);
+                gzclose(out_handle2);
+                 return;
+             }
+             LOG_EXIT("Could not open %s for reading. Abort mission!\n", in2);
+         }
+        gzFile fp1(gzdopen(fileno(in_handle1), "r"));
+        gzFile fp2(gzdopen(fileno(in_handle2), "r"));
+        kseq_t *seq1(kseq_init(fp1));
+        kseq_t *seq2(kseq_init(fp2));
+        kingfisher_hash_t *hash1f = nullptr, *hash2f = nullptr, *hash1r = nullptr, *hash2r = nullptr;
+        kingfisher_hash_t *ce1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+        kingfisher_hash_t *ce2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+        kingfisher_hash_t *tmp_hk1 = ce1, *tmp_hk2 = ce2; // Save the pointer location for later comparison.
+        kstring_t barcode = {0, 32, (char *)malloc(32uL * sizeof(char))};
+        int flip;
+        unsigned blen1, blen2;
+        char pass;
+        while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
+            flip = switch_test(seq1, seq2, mask);
+            pass = 1;
+            blen1 = get_blen(seq1->seq.s, homing, homing_len, blen, max_blen, mask);
+            blen2 = get_blen(seq2->seq.s, homing, homing_len, blen, max_blen, mask);
+            if(flip) {
+                if(blen2 >= 0) {
+                    memcpy(barcode.s, seq2->seq.s + mask, blen2);
+                } else {
+                    pass = 0;
+                    blen2 = blen - mask;
+                    memset(barcode.s, 'N', blen2);
+                }
+                barcode.l = blen2;
+                //barcode.s[barcode.l] = '\0';
+                if(blen1 >= 0) {
+                    while(blen1 + blen2 >= barcode.m) {
+                        kroundup32(barcode.m);
+                        barcode.s = (char *)realloc(barcode.s, barcode.m);
+                    }
+                    memcpy(barcode.s + barcode.l, seq1->seq.s + mask, blen2);
+                } else {
+                    pass = 0;
+                    blen1 = blen - mask;
+                    memset(barcode.s + barcode.l, 'N', blen1);
+                }
+                barcode.l = barcode.l + blen1;
+                barcode.s[barcode.l] = '\0';
+                HASH_FIND_STR(hash1r, barcode.s, tmp_hk1);
+                HASH_FIND_STR(hash2r, barcode.s, tmp_hk2);
+                pass &= test_hp(barcode.s, threshold);
+                assert(!tmp_hk1 ? !tmp_hk2: true); // Make sure that both have the same keyset.
+                if(!tmp_hk1) {
+                    // Create
+                    tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+                    tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+                    tmp_hk1->value = init_kfp(seq2->seq.l - blen2 - homing_len);
+                    tmp_hk2->value = init_kfp(seq1->seq.l - blen1 - homing_len);
+                    memcpy(tmp_hk1->id, barcode.s, barcode.l);
+                    memcpy(tmp_hk2->id, barcode.s, barcode.l);
+                    tmp_hk1->id[barcode.l] = '\0';
+                    tmp_hk2->id[barcode.l] = '\0';
+                    pushback_inmem(tmp_hk1->value, seq2, blen1 + mask + homing_len, pass);
+                    pushback_inmem(tmp_hk2->value, seq1, blen2 + mask + homing_len, pass);
+                    HASH_ADD_STR(hash1r, id, tmp_hk2);
+                    HASH_ADD_STR(hash2r, id, tmp_hk1);
+                } else {
+                    pushback_inmem(tmp_hk2->value, seq1, blen1 + mask + homing_len, pass);
+                    pushback_inmem(tmp_hk1->value, seq2, blen2 + mask + homing_len, pass);
+                }
+            } else {
+                if(blen1 >= 0) {
+                    memcpy(barcode.s, seq1->seq.s + mask, blen1);
+                } else {
+                    pass = 0;
+                    blen1 = blen - mask;
+                    memset(barcode.s, 'N', blen1);
+                }
+                barcode.l = blen1;
+                barcode.s[barcode.l] = '\0';
+                if(blen2 >= 0) {
+                    while(blen1 + blen2 >= barcode.m) {
+                        kroundup32(barcode.m);
+                        barcode.s = (char *)realloc(barcode.s, barcode.m);
+                    }
+                    memcpy(barcode.s + barcode.l, seq2->seq.s + mask, blen2);
+                } else {
+                    pass = 0;
+                    blen2 = blen - mask;
+                    memset(barcode.s + barcode.l, 'N', blen2);
+                }
+                barcode.l = barcode.l + blen2;
+                barcode.s[barcode.l] = '\0';
+                HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
+                pass &= test_hp(barcode.s, threshold);
+                if(!tmp_hk1) {
+                    // Create
+                    tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+                    tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+                    tmp_hk1->value = init_kfp(seq1->seq.l - blen1 - homing_len);
+                    tmp_hk2->value = init_kfp(seq2->seq.l - blen2 - homing_len);
+                    memcpy(tmp_hk1->id, barcode.s, barcode.l);
+                    memcpy(tmp_hk2->id, barcode.s, barcode.l);
+                    tmp_hk1->id[barcode.l] = '\0';
+                    tmp_hk2->id[barcode.l] = '\0';
+                    pushback_inmem(tmp_hk1->value, seq1, blen1 + mask + homing_len, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, blen2 + mask + homing_len, pass);
+                    HASH_ADD_STR(hash1r, id, tmp_hk1);
+                    HASH_ADD_STR(hash2r, id, tmp_hk2);
+                } else {
+                    HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
+                    assert(!!tmp_hk2);
+                    pushback_inmem(tmp_hk1->value, seq1, blen1 + mask + homing_len, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, blen2 + mask + homing_len, pass);
+                }
+            }
+        }
+        free(barcode.s);
+        fclose(in_handle1), in_handle1 = nullptr;
+        fclose(in_handle2), in_handle1 = nullptr;
+        gzclose(fp1), fp1 = nullptr;
+        gzclose(fp2), fp2 = nullptr;
+        kseq_destroy(seq1), seq1 = nullptr;
+        kseq_destroy(seq2), seq2 = nullptr;
+
+        kstring_t ks1{0};
+        kstring_t ks2{0};
+        tmpbuffers_t tmp;
+        HASH_ITER(hh, hash1f, ce1, tmp_hk1) {
+            HASH_FIND_STR(hash1r, ce1->id, tmp_hk1);
+            HASH_FIND_STR(hash2f, ce1->id, ce2);
+            if(tmp_hk1) {
+                assert(ce2);
+                HASH_FIND_STR(hash2r, ce1->id, tmp_hk2);
+                assert(tmp_hk2);
+                zstranded_process_write(ce1->value, tmp_hk1->value, &ks1, &tmp);
+                destroy_kf(tmp_hk1->value);
+                HASH_DEL(hash1r, tmp_hk1);
+                zstranded_process_write(ce2->value, tmp_hk2->value, &ks2, &tmp);
+                destroy_kf(tmp_hk2->value);
+                HASH_DEL(hash2r, tmp_hk2);
+            } else {
+                dmp_process_write(ce1->value, &ks1, &tmp, 0);
+                dmp_process_write(ce2->value, &ks2, &tmp, 0);
+            }
+            destroy_kf(ce1->value);
+            HASH_DEL(hash1f, ce1);
+            destroy_kf(ce2->value);
+            HASH_DEL(hash2f, ce2);
+            gzputs(out_handle1, const_cast<const char *>(ks1.s));
+            ks1.l = 0;
+            gzputs(out_handle2, const_cast<const char *>(ks2.s));
+            ks2.l = 0;
+        }
+        HASH_ITER(hh, hash1r, ce1, tmp_hk1) {
+            HASH_FIND_STR(hash2r, ce1->id, ce2);
+            dmp_process_write(ce1->value, &ks1, &tmp, 0);
+            HASH_DEL(hash1r, ce1);
+            gzputs(out_handle1, const_cast<const char *>(ks1.s));
+            ks1.l = 0;
+            destroy_kf(ce1->value);
+            dmp_process_write(ce2->value, &ks2, &tmp, 0);
+            gzputs(out_handle2, const_cast<const char *>(ks2.s));
+            ks2.l = 0;
+            destroy_kf(ce2->value);
+            HASH_DEL(hash2r, ce2);
+        }
+        gzclose(out_handle1);
+        gzclose(out_handle2);
+        free(ks1.s);
+        free(ks2.s);
+    }
+
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
-        char mode[4] = "wT";
-        if(level > 0) sprintf(mode, "wb%i", level % 10);
+        char mode[4];
+        sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
         FILE *in_handle(dlib::open_ifp(infname));
         gzFile out_handle(gzopen(outfname, mode));
         if(!in_handle) {
@@ -75,17 +349,18 @@ namespace BMF {
                 gzclose(out_handle);
                 return;
             }
-            LOG_EXIT("[E:%s] Could not open %s for reading. Abort mission!\n", infname);
-            exit(EXIT_FAILURE);
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", infname);
         }
         gzFile fp(gzdopen(fileno(in_handle), "r"));
         kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l = kseq_read(seq);
         if(l < 0) {
-            fprintf(stderr, "[E:%s]: Could not open fastq file (%s). Abort mission!\n",
-                    __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
-            exit(EXIT_FAILURE);
+            gzclose(fp);
+            fclose(in_handle);
+            gzclose(out_handle);
+            kseq_destroy(seq);
+            return;
         }
         char *bs_ptr(barcode_mem_view(seq));
         const int blen(infer_barcode_length(bs_ptr));
@@ -138,7 +413,6 @@ namespace BMF {
         }
         count += buf_record_count;
         buf_record_count = 0;
-        gzputs(out_handle, (const char *)ks.s);
         // Demultiplex and write out.
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
         free(ks.s);
@@ -162,16 +436,16 @@ namespace BMF {
         gzFile out_handle(gzopen(outfname, mode));
         gzFile fp(gzopen((infname && *infname) ? infname: "-", "r"));
         if(!fp) {
-            fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
-            exit(EXIT_FAILURE);
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", infname);
         }
         kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l(kseq_read(seq));
         if(l < 0) {
-            fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
-                    __func__, strcmp(infname, "-") == 0 ? "stdin": infname);
-            exit(EXIT_FAILURE);
+            gzclose(out_handle);
+            gzclose(fp);
+            kseq_destroy(seq);
+            return;
         }
         char *bs_ptr = barcode_mem_view(seq);
         int blen = infer_barcode_length(bs_ptr);
@@ -239,15 +513,9 @@ namespace BMF {
 #endif
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
-        size_t buf_record_count = 0;
         kstring_t ks = {0, 0, nullptr};
         // Demultiplex and empty the hash.
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
             HASH_FIND_STR(hrev, cfor->id, crev);
             if(crev) {
 #if !NDEBUG
@@ -268,6 +536,8 @@ namespace BMF {
                 if(cfor->value->length > 1) ++non_duplex_fm;
                 dmp_process_write(cfor->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
                 destroy_kf(cfor->value);
+                gzputs(out_handle, (const char *)ks.s);
+                ks.l = 0;
                 HASH_DEL(hfor, cfor);
                 free(cfor);
             }
@@ -279,24 +549,22 @@ namespace BMF {
                 fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
         kh_destroy(hd, hds);
 #endif
-        gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);
         HASH_ITER(hh, hrev, crev, tmp_hkr) {
-            if(buf_record_count++ == buf_set_size) {
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
             ++non_duplex;
             if(crev->value->length > 1) ++non_duplex_fm;
             dmp_process_write(crev->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
             destroy_kf(crev->value);
+            gzputs(out_handle, (const char *)ks.s);
+            ks.l = 0;
             HASH_DEL(hrev, crev);
             free(crev);
         }
-        gzputs(out_handle, (const char *)ks.s);
         LOG_DEBUG("Cleaning up.\n");
-        LOG_INFO("Number of duplex observations: %lu. Number of non-duplex observations: %lu. Non-duplex families: %lu\n", duplex, non_duplex, non_duplex_fm);
+        LOG_INFO("Number of duplex observations: %lu.\t"
+                 "Number of non-duplex observations: %lu.\t"
+                 "Non-duplex families: %lu\n",
+                 duplex, non_duplex, non_duplex_fm);
         free(ks.s);
         gzclose(fp); gzclose(out_handle);
         kseq_destroy(seq);
