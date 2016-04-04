@@ -260,10 +260,7 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else if(settings->write_supp && (
-                        ((data = bam_aux_get(stack->a[i], "SA")) != nullptr) ||
-                        ((data = bam_aux_get(stack->a[i], "ms")) != nullptr)
-                        )) {
+                } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -327,9 +324,9 @@ namespace BMF {
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
     {
-        std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
-                return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
-        });
+        //std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
+        //        return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+        //});
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
