@@ -2,7 +2,7 @@
 
 namespace BMF {
     void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
-                                char *homing, int blen, int threshold, int level=1, int mask=0,
+                                char *homing, int blen, int threshold, int level=0, int mask=0,
                                 int max_blen=-1);
 
 
@@ -19,6 +19,28 @@ namespace BMF {
                         "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
                 );
     }
+    void inmem_usage() {
+        fprintf(stderr,
+                        "Molecularly demultiplexes marked temporary fastqs into final unique observation records.\n"
+                        "bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.\n"
+                        "For samples which can't fit into memory, use bmftools dmp or sdmp, which subsets the sample,"
+                        " reducing memory requirements while keeping the constant-time hashmap collapsing.\n"
+                        "Usage: bmftools inmem <opts> -1 <out.r1.fastq> -2 <out.r2.fastq> <r1.fastq> <r2.fastq>.\n"
+                        "Flags:\n"
+                        "-s\tHoming sequence -- REQUIRED.\n"
+                        "-1\tPath to ountput fastq for read 1. Set to '-' for stdout. "
+                        "Setting both r1 and r2 to stdout results in interleaved output."
+                        "-2\tPath to output fastq for read 2. Set to '-' for stdout. "
+                        "-l\tBarcode length. If using variable-length barcodes, this is the minimum barcode length.\n"
+                        "-v\tMaximum barcode length. (Set only if using variable-length barcodes.)\n"
+                        "-m\tSkip the first <INT> bases from each inline barcode. (Default: 0)\n"
+                        "-L\tOutput fastq compression level (Default: uncompressed).\n"
+                        "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
+                );
+    }
+    /*                case '1': outfname1 = optarg; break
+                case 'L': level = atoi(optarg) % 10; break;
+                case 's': homing = optarg; break; */
 
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
     {
@@ -66,7 +88,7 @@ namespace BMF {
 
     int hashdmp_inmem_main(int argc, char *argv[])
     {
-        if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
+        if(argc == 1) inmem_usage(), exit(EXIT_FAILURE);
         char *outfname1 = const_cast<char *>("-"), *infname1 = nullptr;
         char *outfname2 = const_cast<char *>("-"), *infname2 = nullptr;
         char *homing = nullptr;
@@ -85,7 +107,7 @@ namespace BMF {
                 case 'l': blen = atoi(optarg); break;
                 case 'L': level = atoi(optarg) % 10; break;
                 case 's': homing = optarg; break;
-                case '?': case 'h': hashdmp_usage(); return EXIT_SUCCESS;
+                case '?': case 'h': inmem_usage(); return EXIT_SUCCESS;
             }
         }
         if(argc < 2) {
