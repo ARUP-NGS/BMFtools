@@ -86,9 +86,8 @@ namespace BMF {
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
         if(!kfp->length++)
             kfp->pass_fail = pass + '0';
-        uint32_t posdata;
-        for(int i = offset; i < seq->seq.l; ++i) {
-            posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
+        uint32_t posdata, i;
+        for(i = offset, posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5; i < seq->seq.l; ++i) {
             ++kfp->nuc_counts[posdata];
             kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
             if(seq->qual.s[i] > kfp->max_phreds[posdata])
