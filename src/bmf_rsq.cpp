@@ -324,9 +324,9 @@ namespace BMF {
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
     {
-        //std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
-        //        return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
-        //});
+        std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
+                return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+        });
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
@@ -352,7 +352,7 @@ namespace BMF {
     {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-        std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
+        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
@@ -481,6 +481,7 @@ namespace BMF {
         if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
+        LOG_DEBUG("Write mode: %s.\n", wmode);
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)
             LOG_EXIT("fail to read/write input files\n");

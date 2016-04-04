@@ -10,9 +10,8 @@ except ImportError:
 import numpy as np
 
 def get_tags(read):
-    tag_strs = read.comment.split("\t")[1:]
     ret = {}
-    for tag in tag_strs:
+    for tag in read.comment.split("\t")[1:]:
         if tag[3] == 'i':
             ret[tag[:2]] = int(tag.split(":")[2])
         elif tag[3] == 'f':
@@ -42,7 +41,6 @@ def main():
         assert tags["FM"] == 1
         assert tags["FP"] == 0
         assert tags["DR"] == 0
-
 
 
     return 
