@@ -137,7 +137,7 @@ namespace BMF {
         gzFile fp2(gzdopen(fileno(in_handle2), "r"));
         kseq_t *seq1(kseq_init(fp1));
         kseq_t *seq2(kseq_init(fp2));
-        kingfisher_hash_t *hash1 = nullptr, *hash2 = nullptr;
+        kingfisher_hash_t *hash1f = nullptr, *hash2f = nullptr, *hash1r = nullptr, *hash2r = nullptr;
         kingfisher_hash_t *ce1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
         kingfisher_hash_t *ce2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
         kingfisher_hash_t *tmp_hk1 = ce1, *tmp_hk2 = ce2; // Save the pointer location for later comparison.
@@ -173,8 +173,8 @@ namespace BMF {
                 }
                 barcode.l = barcode.l + blen1;
                 barcode.s[barcode.l] = '\0';
-                HASH_FIND_STR(hash1, barcode.s, tmp_hk1);
-                HASH_FIND_STR(hash2, barcode.s, tmp_hk2);
+                HASH_FIND_STR(hash1r, barcode.s, tmp_hk1);
+                HASH_FIND_STR(hash2r, barcode.s, tmp_hk2);
                 pass &= test_hp(barcode.s, threshold);
                 assert(!tmp_hk1 ? !tmp_hk2: true); // Make sure that both have the same keyset.
                 if(!tmp_hk1) {
@@ -189,8 +189,8 @@ namespace BMF {
                     tmp_hk2->id[barcode.l] = '\0';
                     pushback_inmem(tmp_hk1->value, seq2, blen1, mask, homing_len);
                     pushback_inmem(tmp_hk2->value, seq1, blen2, mask, homing_len);
-                    HASH_ADD_STR(hash1, id, tmp_hk2);
-                    HASH_ADD_STR(hash2, id, tmp_hk1);
+                    HASH_ADD_STR(hash1r, id, tmp_hk2);
+                    HASH_ADD_STR(hash2r, id, tmp_hk1);
                 } else {
                     pushback_inmem(tmp_hk2->value, seq1, blen1, mask, homing_len);
                     pushback_inmem(tmp_hk1->value, seq2, blen2, mask, homing_len);
@@ -218,10 +218,8 @@ namespace BMF {
                 }
                 barcode.l = barcode.l + blen2;
                 barcode.s[barcode.l] = '\0';
-                HASH_FIND_STR(hash1, barcode.s, tmp_hk1);
-                HASH_FIND_STR(hash2, barcode.s, tmp_hk2);
+                HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 pass &= test_hp(barcode.s, threshold);
-                assert(!tmp_hk1 ? !tmp_hk2: 1); // Make sure that both have the same keyset.
                 if(!tmp_hk1) {
                     // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -234,15 +232,70 @@ namespace BMF {
                     tmp_hk2->id[barcode.l] = '\0';
                     pushback_inmem(tmp_hk1->value, seq1, blen1, mask, homing_len);
                     pushback_inmem(tmp_hk2->value, seq2, blen2, mask, homing_len);
-                    HASH_ADD_STR(hash1, id, tmp_hk1);
-                    HASH_ADD_STR(hash2, id, tmp_hk2);
+                    HASH_ADD_STR(hash1r, id, tmp_hk1);
+                    HASH_ADD_STR(hash2r, id, tmp_hk2);
                 } else {
+                    HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
+                    assert(!!tmp_hk2);
                     pushback_inmem(tmp_hk1->value, seq1, blen1, mask, homing_len);
                     pushback_inmem(tmp_hk2->value, seq2, blen2, mask, homing_len);
                 }
             }
         }
         free(barcode.s);
+        fclose(in_handle1), in_handle1 = nullptr;
+        fclose(in_handle2), in_handle1 = nullptr;
+        gzclose(fp1), fp1 = nullptr;
+        gzclose(fp2), fp2 = nullptr;
+        kseq_destroy(seq1), seq1 = nullptr;
+        kseq_destroy(seq2), seq2 = nullptr;
+
+        kstring_t ks1{0};
+        kstring_t ks2{0};
+        tmpbuffers_t tmp;
+        HASH_ITER(hh, hash1f, ce1, tmp_hk1) {
+            HASH_FIND_STR(hash1r, ce1->id, tmp_hk1);
+            HASH_FIND_STR(hash2f, ce1->id, ce2);
+            if(tmp_hk1) {
+                assert(ce2);
+                HASH_FIND_STR(hash2r, ce1->id, tmp_hk2);
+                assert(tmp_hk2);
+                zstranded_process_write(ce1->value, tmp_hk1->value, &ks1, &tmp);
+                destroy_kf(tmp_hk1->value);
+                HASH_DEL(hash1r, tmp_hk1);
+                zstranded_process_write(ce2->value, tmp_hk2->value, &ks2, &tmp);
+                destroy_kf(tmp_hk2->value);
+                HASH_DEL(hash2r, tmp_hk2);
+            } else {
+                dmp_process_write(ce1->value, &ks1, &tmp, 0);
+                dmp_process_write(ce2->value, &ks2, &tmp, 0);
+            }
+            destroy_kf(ce1->value);
+            HASH_DEL(hash1f, ce1);
+            destroy_kf(ce2->value);
+            HASH_DEL(hash2f, ce2);
+            gzputs(out_handle1, const_cast<const char *>(ks1.s));
+            ks1.l = 0;
+            gzputs(out_handle2, const_cast<const char *>(ks2.s));
+            ks2.l = 0;
+        }
+        HASH_ITER(hh, hash1r, ce1, tmp_hk1) {
+            HASH_FIND_STR(hash2r, ce1->id, ce2);
+            dmp_process_write(ce1->value, &ks1, &tmp, 0);
+            HASH_DEL(hash1r, ce1);
+            gzputs(out_handle1, const_cast<const char *>(ks1.s));
+            ks1.l = 0;
+            destroy_kf(ce1->value);
+            dmp_process_write(ce2->value, &ks2, &tmp, 0);
+            gzputs(out_handle2, const_cast<const char *>(ks2.s));
+            ks2.l = 0;
+            destroy_kf(ce2->value);
+            HASH_DEL(hash2r, ce2);
+        }
+        gzclose(out_handle1);
+        gzclose(out_handle2);
+        free(ks1.s);
+        free(ks2.s);
     }
 
     void hash_dmp_core(char *infname, char *outfname, int level)
