@@ -328,8 +328,8 @@ namespace BMF {
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
     {
         std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
-                return a ? (b ? 0: 1): b ? strcmp(a, b): 0;
-        };
+                return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+        });
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
