@@ -237,8 +237,11 @@ namespace BMF {
     }
 
 
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings);
+
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
+        if(settings->is_se) return write_stack_se(stack, settings);
         //size_t n = 0;
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
@@ -260,10 +263,7 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else if(settings->write_supp && (
-                        ((data = bam_aux_get(stack->a[i], "SA")) != nullptr) ||
-                        ((data = bam_aux_get(stack->a[i], "ms")) != nullptr)
-                        )) {
+                } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -284,6 +284,23 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
+                } else {
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
+            }
+        }
+    }
+
+
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    {
+        //size_t n = 0;
+        uint8_t *data;
+        for(unsigned i = 0; i < stack->n; ++i) {
+            if(stack->a[i]) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                    bam2ffq(stack->a[i], settings->fqh);
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
@@ -355,7 +372,7 @@ namespace BMF {
     {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-        std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
+        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
@@ -398,8 +415,7 @@ namespace BMF {
         stack->n = 0;
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
-        // What this really means is that the correctly collapsed reads just have a naming issue.
-        LOG_DEBUG("Number of reads with inconsistent read names within pair: %lu.\n", settings->realign_pairs.size());
+        LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
         for(auto pair: settings->realign_pairs)
             fputs(pair.second.c_str(), settings->fqh);
     }
@@ -423,6 +439,7 @@ namespace BMF {
                         "Flags:\n"
                         "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
                         "-s      Flag to write reads with supplementary alignments . Default: False.\n"
+                        "-S      Flag to indicate that this rescue is for single-end data.\n"
                         "-t      Mismatch limit. Default: 2\n"
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
@@ -484,6 +501,7 @@ namespace BMF {
         if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
+        LOG_DEBUG("Write mode: %s.\n", wmode);
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)
             LOG_EXIT("fail to read/write input files\n");
