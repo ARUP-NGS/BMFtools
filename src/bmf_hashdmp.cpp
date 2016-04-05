@@ -475,8 +475,8 @@ namespace BMF {
 
         // Add reads to the hash
         while(LIKELY((l = kseq_read(seq)) >= 0)) {
-            if(UNLIKELY(++count % 1000000 == 0))
 #if !NDEBUG
+            if(UNLIKELY(++count % 1000000 == 0))
                 fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
                         *infname == '-' ? "stdin" : infname, count);
 #endif
