@@ -23,6 +23,7 @@ namespace BMF {
         int ret = 0;
         dlib::add_unclipped_mate_starts(b1, b2);
         dlib::add_mate_SA_tag(b1, b2);
+        dlib::add_qseq_len(b1, b2);
         // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
         ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
         if(((mark_settings_t *)data)->min_insert_length)

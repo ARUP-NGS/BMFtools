@@ -395,7 +395,9 @@ namespace BMF {
                 HASH_ADD_STR(hash, id, tmp_hk);
             } else pushback_kseq(tmp_hk->value, seq, blen);
         }
+#if !NDEBUG
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
+#endif
         count = 0;
         uint64_t buf_record_count(0);
         kstring_t ks{0, 0, nullptr};
@@ -414,7 +416,9 @@ namespace BMF {
         count += buf_record_count;
         buf_record_count = 0;
         // Demultiplex and write out.
+#if !NDEBUG
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
+#endif
         free(ks.s);
         gzclose(fp);
         gzclose(out_handle);
@@ -479,8 +483,10 @@ namespace BMF {
         // Add reads to the hash
         while(LIKELY((l = kseq_read(seq)) >= 0)) {
             if(UNLIKELY(++count % 1000000 == 0))
+#if !NDEBUG
                 fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
                         *infname == '-' ? "stdin" : infname, count);
+#endif
             if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
                 ++fcount;
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
@@ -561,10 +567,10 @@ namespace BMF {
             free(crev);
         }
         LOG_DEBUG("Cleaning up.\n");
-        LOG_INFO("Number of duplex observations: %lu.\t"
-                 "Number of non-duplex observations: %lu.\t"
-                 "Non-duplex families: %lu\n",
-                 duplex, non_duplex, non_duplex_fm);
+        LOG_DEBUG("Number of duplex observations: %lu.\t"
+                  "Number of non-duplex observations: %lu.\t"
+                  "Non-duplex families: %lu\n",
+                  duplex, non_duplex, non_duplex_fm);
         free(ks.s);
         gzclose(fp); gzclose(out_handle);
         kseq_destroy(seq);

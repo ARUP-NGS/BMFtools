@@ -52,7 +52,6 @@ namespace BMF {
          * This is probably evil, but very, very efficient.
          */
         void make_name(bam1_t *b) {
-            LOG_DEBUG("Making thing.\n");
             if(is_read1) {
                 stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                              dlib::get_unclipped_start(b), bam_itag(b, "MU"), // Unclipped starts for self and mate
@@ -76,20 +75,6 @@ namespace BMF {
         std::string const& get_name() {
             return name;
         }
-        BamFisherSet(bam1_t *b) :
-        len(b->core.l_qseq),
-        phred_sums(len * 5),
-        max_observed_phreds(0, len),
-        n(1),
-        is_read1(!!(b->core.flag & BAM_FREAD1))
-        {
-            votes.resize(len);
-            name.resize(70uL);
-            LOG_DEBUG("Made things!");
-            update_qual(bam_get_qual(b));
-            make_name(b);
-
-        }
         void add_rec(bam1_t *b) {
             assert(b->core.l_qseq == len);
             uint8_t *seq = bam_get_seq(b);
@@ -101,6 +86,18 @@ namespace BMF {
                 ++votes[ind];
             }
             ++n;
+        }
+        BamFisherSet(bam1_t *b) :
+        len(b->core.l_qseq),
+        phred_sums(len * 5),
+        max_observed_phreds(0, len),
+        n(1),
+        is_read1(!!(b->core.flag & BAM_FREAD1))
+        {
+            votes.resize(len * 5);
+            name.resize(70uL);
+            update_qual(bam_get_qual(b));
+            make_name(b);
         }
         std::string to_fastq();
     };
