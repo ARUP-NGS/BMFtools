@@ -439,6 +439,7 @@ namespace BMF {
                         "Flags:\n"
                         "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
                         "-s      Flag to write reads with supplementary alignments . Default: False.\n"
+                        "-S      Flag to indicate that this rescue is for single-end data.\n"
                         "-t      Mismatch limit. Default: 2\n"
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
