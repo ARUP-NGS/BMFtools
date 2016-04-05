@@ -24,8 +24,9 @@ namespace BMF {
         samFile *in;
         samFile *out;
         int cmpkey; // 0 for pos, 1 for unclipped start position
-        int mmlim; // Mismatch failure threshold.
-        int is_se;
+        uint32_t mmlim:16; // Mismatch failure threshold.
+        uint32_t is_se:1;
+        uint32_t write_supp:1;
         bam_hdr_t *hdr; // BAM header
         std::unordered_map<std::string, std::string> realign_pairs;
     };
@@ -109,6 +110,9 @@ namespace BMF {
     public:
 
     BamFisherKing(dlib::tmp_stack_t *stack) {
+            std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
+                return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
+            });
             std::for_each(stack->a, stack->a + stack->n, [&](bam1_t *b) {
                 auto found = sets.find(b->core.l_qseq);
                 if(found == sets.end()) {

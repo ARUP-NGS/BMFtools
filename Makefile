@@ -60,22 +60,22 @@ install: all
 %.o: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-src/%.o: src/%.cpp cstr_util.o update_dlib
+src/%.o: src/%.cpp cstr_util.o
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
 
-%.o: %.c update_dlib
+%.o: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.po: %.cpp update_dlib
+%.po: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.po: %.c update_dlib
+%.po: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.dbo: %.cpp update_dlib
+%.dbo: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
-%.dbo: %.c update_dlib
+%.dbo: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 

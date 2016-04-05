@@ -50,7 +50,7 @@ namespace BMF {
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
-        for(auto& set: sets) {
+        for(auto&& set: sets) {
             auto found = settings->realign_pairs.find(set.second.get_name());
             if(found == settings->realign_pairs.end()) {
                 settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
@@ -296,7 +296,23 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else sam_write1(settings->out, settings->hdr, stack->a[i]);
+                } else {
+                    if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
+                        qname = bam_get_qname(stack->a[i]);
+                        // Make sure the read names/barcodes match.
+                        assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
+                        // Write read 1 out first.
+                        if(stack->a[i]->core.flag & BAM_FREAD2) {
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh);
+                        } else {
+                            bam2ffq(stack->a[i], settings->fqh);
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                        }
+                        // Clear entry, as there can only be two.
+                        settings->realign_pairs.erase(qname);
+                    } else sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
@@ -304,10 +320,6 @@ namespace BMF {
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, infer_aux_t *settings)
     {
-        // Sort by read names to make sure that any progressive rescuing ends at the same name.
-        // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
-        // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
-        // Compares strings otherwise.
         BamFisherKing king(stack);
         king.add_to_hash(settings);
     }
@@ -388,7 +400,6 @@ namespace BMF {
 
     int infer_main(int argc, char *argv[])
     {
-        LOG_EXIT("Not Implemented.\n");
         int c;
         char wmode[4] = "wb";
 
@@ -400,7 +411,7 @@ namespace BMF {
 
         if(argc < 3) return infer_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:f:t:Sau?h")) >= 0) {
             switch (c) {
             case 'u':
                 settings.cmpkey = UNCLIPPED;
@@ -409,6 +420,7 @@ namespace BMF {
             case 't': settings.mmlim = atoi(optarg); break;
             case 'f': fqname = optarg; break;
             case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
+            case 'S': settings.write_supp = 1; break;
             case '?': case 'h': return infer_usage(EXIT_SUCCESS);
             }
         }
@@ -426,9 +438,7 @@ namespace BMF {
             LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
         if(settings.cmpkey == UNCLIPPED)
-            for(const char *tag: {"MU"})
-                dlib::check_bam_tag_exit(argv[optind], tag);
-        //dlib::check_bam_tag_exit(argv[optind], "LM");
+            dlib::check_bam_tag_exit(argv[optind], "MU");
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 
