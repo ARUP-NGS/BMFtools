@@ -388,6 +388,7 @@ namespace BMF {
 
     int infer_main(int argc, char *argv[])
     {
+        LOG_EXIT("Not Implemented.\n");
         int c;
         char wmode[4] = "wb";
 
