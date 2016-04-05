@@ -138,6 +138,33 @@ namespace BMF {
         return arr_max_u32(kfp->phred_sums, index);
     }
 
+    std::vector<double> get_igamc_threshold(int family_size, int max_phred=MAX_PV, double delta=0.002) {
+        std::vector<double> ret;
+        double query = delta;
+        int last_pv = -1, current_pv = -1;
+        while((last_pv = -10 * log10(igamc_pvalues(family_size, query))) < 0)
+            query += delta;
+        assert(last_pv == 0);
+        current_pv = 0;
+        ret.push_back(query);
+        while(current_pv <= MAX_PV) {
+            query += delta;
+            current_pv = -10 * log10(igamc_pvalues(family_size, query));
+            if(current_pv != last_pv) {
+                ret.push_back(query);
+                last_pv = current_pv;
+                assert((unsigned)current_pv + 1 == ret.size());
+            }
+        }
+        return ret;
+    }
+    std::vector<std::vector<double>> get_igamc_thresholds(int max_family_size, int max_phred=MAX_PV, double delta=0.002) {
+        std::vector<std::vector<double>> ret;
+        while(ret.size() < max_family_size)
+            ret.emplace_back(get_igamc_threshold(ret.size() + 1, max_phred, delta));
+        return ret;
+    }
+
 } /* namespace BMF */
 
 
