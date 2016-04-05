@@ -237,8 +237,11 @@ namespace BMF {
     }
 
 
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings);
+
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
+        if(settings->is_se) return write_stack_se(stack, settings);
         //size_t n = 0;
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
@@ -281,6 +284,23 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
+                } else {
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
+            }
+        }
+    }
+
+
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    {
+        //size_t n = 0;
+        uint8_t *data;
+        for(unsigned i = 0; i < stack->n; ++i) {
+            if(stack->a[i]) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                    bam2ffq(stack->a[i], settings->fqh);
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
@@ -395,8 +415,7 @@ namespace BMF {
         stack->n = 0;
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
-        // What this really means is that the correctly collapsed reads just have a naming issue.
-        LOG_DEBUG("Number of reads with inconsistent read names within pair: %lu.\n", settings->realign_pairs.size());
+        LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
         for(auto pair: settings->realign_pairs)
             fputs(pair.second.c_str(), settings->fqh);
     }
