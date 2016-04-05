@@ -426,9 +426,9 @@ namespace BMF {
             LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
         if(settings.cmpkey == UNCLIPPED)
-            for(const char *tag: {"SU", "MU"})
+            for(const char *tag: {"MU"})
                 dlib::check_bam_tag_exit(argv[optind], tag);
-        dlib::check_bam_tag_exit(argv[optind], "LM");
+        //dlib::check_bam_tag_exit(argv[optind], "LM");
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 

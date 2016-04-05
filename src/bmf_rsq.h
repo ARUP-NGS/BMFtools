@@ -52,7 +52,7 @@ namespace BMF {
             assert(b->core.mtid == p->core.mtid);
             assert(b->core.mtid == p->core.mtid);
             assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
-            assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
+            //assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
             return 1;
         }
         return 0;

@@ -285,6 +285,9 @@ namespace BMF {
                         settings->realign_pairs.erase(qname);
                     }
                 } else {
+                    uint8_t *data;
+                    data = bam_aux_get(stack->a[i], "MU");
+                    bam_aux_del(stack->a[i], data);
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
@@ -491,7 +494,7 @@ namespace BMF {
 
 
         if(settings.cmpkey == UNCLIPPED)
-            for(const char *tag: {"SU", "MU"})
+            for(const char *tag: {"MU"})
                 dlib::check_bam_tag_exit(argv[optind], tag);
         for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
             dlib::check_bam_tag_exit(argv[optind], tag);

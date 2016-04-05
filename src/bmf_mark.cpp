@@ -22,8 +22,6 @@ namespace BMF {
     {
         int ret = 0;
         dlib::add_unclipped_mate_starts(b1, b2);
-        dlib::add_sc_lens(b1, b2);
-        dlib::add_qseq_len(b1, b2);
         dlib::add_mate_SA_tag(b1, b2);
         // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
         ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
@@ -41,7 +39,7 @@ namespace BMF {
                         "Meant primarily for piping to avoid I/O. Default compression is therefore 0. Typical compression for writing to disk: 6.\n"
                         "\tSU: Self Unclipped start.\n"
                         "\tMU: Mate Unclipped start.\n"
-                        "\tLM: Mate length.\n"
+                        "\tms: Mate SA Tag. Supplemental Alignment tag. (Only if the mate has an SA tag).\n"
                         "Required for bmftools rsq using unclipped start.\n"
                         "Required for bmftools infer.\n"
                         "Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>\n\n"
