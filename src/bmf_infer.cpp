@@ -5,20 +5,20 @@ namespace BMF {
     CONST static inline int same_infer_pos_se(bam1_t *b, bam1_t *p)
     {
         return bmfsort_se_key(b) == bmfsort_se_key(p) &&
-        		b->core.l_qseq == b->core.l_qseq;
+                b->core.l_qseq == b->core.l_qseq;
     }
 
     CONST static inline int same_infer_ucs_se(bam1_t *b, bam1_t *p)
     {
         return ucs_se_sort_key(b) == ucs_se_sort_key(p)  &&
-        		b->core.l_qseq == b->core.l_qseq;
+                b->core.l_qseq == b->core.l_qseq;
     }
 
     CONST static inline int same_infer_pos(bam1_t *b, bam1_t *p)
     {
         return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
                 bmfsort_mate_key(b) == bmfsort_mate_key(p) &&
-				sort_rlen_key(b) == sort_rlen_key(p));
+                sort_rlen_key(b) == sort_rlen_key(p));
     }
 
     CONST static inline int same_infer_ucs(bam1_t *b, bam1_t *p)
@@ -37,24 +37,21 @@ namespace BMF {
     #else
         return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
                 ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
-				sort_rlen_key(b) == sort_rlen_key(p));
+                sort_rlen_key(b) == sort_rlen_key(p));
     #endif
     }
 
     std::string BamFisherSet::to_fastq() {
-        LOG_DEBUG("Calling to_fastq\n");
         int i, argmaxret;
         std::string seq;
         seq.resize(len);
         sprintf((char *)seq.data(), "'O HAI WURLD'\n");
-        LOG_DEBUG(seq.c_str());
         std::vector<uint32_t> agrees;
         std::vector<uint32_t> full_quals; // igamc calculated
         agrees.resize(len);
         full_quals.resize(len);
         for(i = 0; i < len; ++i) {
             argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
-            LOG_DEBUG("Accessing index %i in agrees, %i in votes and %i as argmaxret\n", i, i * 5 + argmaxret, argmaxret);
             agrees[i] = votes[i * 5 + argmaxret];
             full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[i * 5 + argmaxret])));
             // Mask unconfident base calls
@@ -66,7 +63,6 @@ namespace BMF {
                 max_observed_phreds[i] += 33;
             }
         }
-        LOG_DEBUG("Filled arrays\n");
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
         std::string pvbuf;
         pvbuf.reserve(bufsize);
@@ -83,28 +79,24 @@ namespace BMF {
         pvbuf.resize(pvks.l);
         fabuf.resize(faks.l);
         std::string ret;
-        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 32);
-        LOG_DEBUG("ret before rewrite: %s.\n", ret.c_str());
-        LOG_DEBUG("name before rewrite: %s.\n", get_name().c_str());
-        LOG_DEBUG("pv before rewrite: %s.\n", pvbuf.c_str());
-        LOG_DEBUG("fa before rewrite: %s.\n", fabuf.c_str());
-        LOG_DEBUG("seq before rewrite: %s.\n", seq.c_str());
-        LOG_DEBUG("Votes sum: %lu.\n", std::accumulate(full_quals.begin(), full_quals.end(), 0));
-        LOG_DEBUG("max_observed_phreds before rewrite: %s.\n", max_observed_phreds.c_str());
+        ret.resize(pvks.l + faks.l + name.size() + len * 2 + 32);
         // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
-        dlib::safe_stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                                get_name().c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+        //LOG_DEBUG("Name: %s.\n", name.c_str());
+        kstring_t tmp{0};
+        ksprintf(&tmp, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
+                name.c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+        ret = tmp.s, free(tmp.s);
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
         for(auto&& set: sets) {
-            auto found = settings->realign_pairs.find(set.second.get_name());
+            auto found = settings->realign_pairs.find(set.second.name);
             if(found == settings->realign_pairs.end()) {
-                settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
+                settings->realign_pairs.emplace(set.second.name, set.second.to_fastq());
             } else {
                 assert(memcmp(found->second.c_str() + 1,
-                              set.second.get_name().c_str(),
-                              set.second.get_name().size()) == 0);
+                              set.second.name.c_str(),
+                              set.second.name.size()) == 0);
                 if(set.second.get_is_read1()) {
                     fputs(set.second.to_fastq().c_str(), settings->fqh);
                     fputs(found->second.c_str(), settings->fqh);
@@ -405,9 +397,9 @@ namespace BMF {
             }
             if(fn(b, *stack->a) == 0) {
                 // New stack -- flatten what we have and write it out.
-                LOG_DEBUG("Flattening stack.\n");
+                //LOG_DEBUG("Flattening stack.\n");
                 flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
-                LOG_DEBUG("Writing stack.\n");
+                //LOG_DEBUG("Writing stack.\n");
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -491,12 +483,13 @@ namespace BMF {
 
         if(settings.cmpkey == UNCLIPPED)
             dlib::check_bam_tag_exit(argv[optind], "MU");
-        dlib::check_bam_tag_exit(argv[optind], "LM");
+        //dlib::check_bam_tag_exit(argv[optind], "LM");
+        LOG_INFO("Finished checking appropriately\n");
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 
-        if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
-            LOG_EXIT("input SAM does not have header. Abort!\n");
+        if (!settings.in || settings.hdr == nullptr || settings.hdr->n_targets == 0)
+            LOG_EXIT("input SAM does not have header or is malformed. Abort!\n");
 
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)

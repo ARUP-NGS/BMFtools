@@ -33,13 +33,16 @@ namespace BMF {
 
     // Once a set of reads have been selected, their data is put into this class for collapsing.
     class BamFisherSet {
+    uint32_t n:31;
+    uint32_t is_read1:1;
     const int32_t len;
+    const int32_t unclipped_start;
     std::vector<uint32_t> phred_sums; // Length: 5 * readlen
     std::vector<uint32_t> votes; // Length: 5 * readlen
     std::string max_observed_phreds; // Held in memory -33, write out as readable string.
-    std::string name;
-    uint32_t n:31;
-    uint32_t is_read1:1;
+    public:
+        std::string name;
+    private:
         void update_qual(uint8_t *qual) {
             for(int i = 0; i < len; ++i)
                 if(max_observed_phreds[i] < qual[i])
@@ -52,28 +55,29 @@ namespace BMF {
          * This is probably evil, but very, very efficient.
          */
         void make_name(bam1_t *b) {
+            kstring_t ks{0};
+            LOG_DEBUG("Unclipped start: %i.\n", unclipped_start);
             if(is_read1) {
-                stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                             dlib::get_unclipped_start(b), bam_itag(b, "MU"), // Unclipped starts for self and mate
-                             b->core.tid, b->core.mtid, // Contigs
-                             !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
-                             b->core.l_qseq, bam_itag(b, "LM") // Read length of self and mate.
-                             );
+                ksprintf(&ks, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                         unclipped_start, bam_itag(b, "MU"), // Unclipped starts for self and mate
+                         b->core.tid, b->core.mtid, // Contigs
+                         !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
+                         b->core.l_qseq, bam_itag(b, "LM") // Read length of self and mate.
+                         );
             } else {
-                stringprintf(name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
-                             bam_itag(b, "MU"), dlib::get_unclipped_start(b),
-                             b->core.mtid, b->core.tid,
-                             !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
-                             bam_itag(b, "LM"), b->core.l_qseq
-                             );
+                ksprintf(&ks, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                         bam_itag(b, "MU"), unclipped_start,
+                         b->core.mtid, b->core.tid,
+                         !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),
+                         bam_itag(b, "LM"), b->core.l_qseq
+                         );
             }
+            name = ks.s;
+            free(ks.s);
         }
     public:
         uint32_t get_is_read1() {
             return is_read1;
-        }
-        std::string const& get_name() {
-            return name;
         }
         void add_rec(bam1_t *b) {
             assert(b->core.l_qseq == len);
@@ -83,21 +87,25 @@ namespace BMF {
             for(int i = 0; i < len; ++i) {
                 const int ind = i * 5 + seqnt2num(bam_seqi(seq, i));
                 phred_sums[ind] += qual[i];
+                //LOG_DEBUG("Incrementing votes at index %i for read index %i  with seqnt2num %i.\n", ind, i, seqnt2num(bam_seqi(seq, i)));
                 ++votes[ind];
             }
             ++n;
         }
         BamFisherSet(bam1_t *b) :
-        len(b->core.l_qseq),
-        phred_sums(len * 5),
-        max_observed_phreds(0, len),
         n(1),
-        is_read1(!!(b->core.flag & BAM_FREAD1))
+        is_read1(!!(b->core.flag & BAM_FREAD1)),
+        len(b->core.l_qseq),
+        unclipped_start(is_read1 ? dlib::get_unclipped_start(b): bam_itag(b, "MU")),
+        phred_sums(len * 5)
         {
+            LOG_DEBUG("Unclipped start: %i. Return from function: %i.\n", unclipped_start, is_read1 ? dlib::get_unclipped_start(b): bam_itag(b, "MU"));
+            assert((b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) == 0);
+            max_observed_phreds.resize(len);
             votes.resize(len * 5);
-            name.resize(70uL);
             update_qual(bam_get_qual(b));
             make_name(b);
+            add_rec(b);
         }
         std::string to_fastq();
     };
