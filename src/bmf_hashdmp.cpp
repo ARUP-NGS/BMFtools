@@ -129,7 +129,6 @@ namespace BMF {
     }
 
     namespace {
-        size_t buf_set_size = 50000;
         class hashtmp_t {
             kstring_t barcode;
             ~hashtmp_t() {
@@ -397,22 +396,16 @@ namespace BMF {
         }
         fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
         count = 0;
-        uint64_t buf_record_count(0);
         kstring_t ks{0, 0, nullptr};
         HASH_ITER(hh, hash, current_entry, tmp_hk) {
-            if(buf_record_count++ == buf_set_size) {
-                count += buf_record_count;
-                buf_record_count = 0;
-                gzputs(out_handle, (const char *)ks.s);
-                ks.l = 0;
-            }
+            ++count;
             dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
+            gzputs(out_handle, (const char *)ks.s);
+            ks.l = 0;
             destroy_kf(current_entry->value);
             HASH_DEL(hash, current_entry);
             free(current_entry);
         }
-        count += buf_record_count;
-        buf_record_count = 0;
         // Demultiplex and write out.
         fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
         free(ks.s);
