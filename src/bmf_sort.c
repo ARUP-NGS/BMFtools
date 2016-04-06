@@ -1,5 +1,8 @@
 #include "bmf_sort.h"
 
+
+typedef bam1_t *bam1_p;
+
 static int cmpkey = BMF_POS;
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
@@ -87,31 +90,71 @@ typedef struct {
 
 #define __pos_cmp(a, b) ((a).pos > (b).pos || ((a).pos == (b).pos && ((a).i > (b).i || ((a).i == (b).i && (a).idx > (b).idx))))
 
+
+// Function to compare reads and determine which one is < the other (single-end).
+static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
+{
+    int t;
+    switch(cmpkey) {
+        case QNAME:
+            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
+        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
+        case BMF_POS:
+            return bmfsort_se_key(a) < bmfsort_se_key(b);
+        case UCS:
+            return ucs_se_sort_key(a) < ucs_se_sort_key(b);
+    }
+    return 0; // This should never happen
+}
+
+
+// Function to compare reads and determine which one is < the other
+static inline int bam1_lt(const bam1_p a, const bam1_p b)
+{
+    int t;
+    uint64_t key_a, key_b;
+    switch(cmpkey) {
+        case QNAME:
+            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
+        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
+        case BMF_POS:
+            key_a = bmfsort_core_key(a);
+            key_b = bmfsort_core_key(b);
+            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
+        case UCS:
+            key_a = ucs_sort_core_key(a);
+            key_b = ucs_sort_core_key(b);
+            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
+    }
+    return 0; // This never happens.
+}
+
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-
     int t;
     uint64_t key_a, key_b;
-    if(!a.b) return 1;
-    if(!b.b) return 0;
     switch(cmpkey) {
         case QNAME:
+            if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
             t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
-            return (t < 0 || (t == 0 && (a.b->core.flag&0xc0) < (b.b->core.flag&0xc0)));
-        case SAMTOOLS: return bmfsort_core_key(a.b) < bmfsort_core_key(b.b);
+            return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
+        case SAMTOOLS:
+            return __pos_cmp(a, b);
         case BMF_POS:
+            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
             key_a = bmfsort_core_key(a.b);
             key_b = bmfsort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b)
-                                    : (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
+            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
         case UCS:
+            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
             key_a = ucs_sort_core_key(a.b);
             key_b = ucs_sort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b)
-                                    : (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
+            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
     }
-    return 0; // This never happens.
+    return -1; // This never happens.
 }
 
 KSORT_INIT(heap, heap1_t, heap_lt)
@@ -1524,7 +1567,6 @@ end:
 
 #include <pthread.h>
 
-typedef bam1_t *bam1_p;
 
 static int change_SO(bam_hdr_t *h, const char *so)
 {
@@ -1558,44 +1600,6 @@ static int change_SO(bam_hdr_t *h, const char *so)
     free(h->text);
     h->text = newtext;
     return 0;
-}
-
-static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
-{
-    int t;
-    switch(cmpkey) {
-        case QNAME:
-            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF_POS:
-            return bmfsort_se_key(a) < bmfsort_se_key(b);
-        case UCS:
-            return ucs_se_sort_key(a) < ucs_se_sort_key(b);
-    }
-    return 0; // This should never happen
-}
-
-// Function to compare reads and determine which one is < the other
-static inline int bam1_lt(const bam1_p a, const bam1_p b)
-{
-    int t;
-    uint64_t key_a, key_b;
-    switch(cmpkey) {
-        case QNAME:
-            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF_POS:
-            key_a = bmfsort_core_key(a);
-            key_b = bmfsort_core_key(b);
-            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
-        case UCS:
-            key_a = ucs_sort_core_key(a);
-            key_b = ucs_sort_core_key(b);
-            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
-    }
-    return 0; // This never happens.
 }
 
 KSORT_INIT(sort, bam1_p, bam1_lt) // Original samtools sort
@@ -1938,6 +1942,6 @@ int sort_main(int argc, char *argv[])
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);
-    LOG_INFO("Successfully complete bmftools sort!\n");
+    if(!ret) LOG_INFO("Successfully complete bmftools sort!\n");
     return ret;
 }

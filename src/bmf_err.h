@@ -7,7 +7,6 @@
 #include <float.h>
 #include "htslib/faidx.h"
 #include "dlib/bam_util.h"
-#include "dlib/mem_util.h"
 #include "dlib/bed_util.h"
 #include "dlib/logging_util.h"
 #include "lib/kingfisher.h"
@@ -74,19 +73,6 @@ namespace BMF {
         }
     };
 
-    struct cycle_err_t {
-        int32_t minMQ;
-        int32_t rlen;
-        obserr_t *r1;
-        obserr_t *r2;
-        uint64_t nskipped;
-        uint64_t nread;
-        char *refcontig;
-        char *bedpath;
-        int flag;
-        khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
-    };
-
     class RegionExpedition {
     public:
         samFile *fp;
@@ -133,9 +119,6 @@ namespace BMF {
             return fp ? fp->fn: nullptr;
         }
     };
-
-    cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
-    void cycle_destroy(cycle_err_t *c);
 
     KHASH_MAP_INIT_INT(obs, obserr_t)
     KHASH_SET_INIT_INT(obs_union)

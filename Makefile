@@ -30,7 +30,7 @@ DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
           src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
-          src/bmf_err.c \
+          src/bmf_err.c src/bmf_infer.c\
           lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
           src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vetter.c src/bmf_sort.c src/bmf_stack.c \
           lib/stack.c src/bmf_filter.c src/bmf_markrsq.c $(DLIB_SRC)
@@ -57,25 +57,25 @@ install: all
 	$(INSTALL) bmftools_db $(bindir)/$(binprefix)bmftools_db
 	$(INSTALL) bmftools_p $(bindir)/$(binprefix)bmftools_p
 
-%.o: %.cpp update_dlib
+%.o: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-src/%.o: src/%.cpp cstr_util.o update_dlib
+src/%.o: src/%.cpp cstr_util.o
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(DLIB_OBJS) $< -o $@
 
-%.o: %.c update_dlib
+%.o: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
-%.po: %.cpp update_dlib
+%.po: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.po: %.c update_dlib
+%.po: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.dbo: %.cpp update_dlib
+%.dbo: %.cpp
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
-%.dbo: %.c update_dlib
+%.dbo: %.c
 	gcc -c $(CFLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 

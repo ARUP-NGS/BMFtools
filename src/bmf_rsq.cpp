@@ -237,8 +237,11 @@ namespace BMF {
     }
 
 
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings);
+
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
+        if(settings->is_se) return write_stack_se(stack, settings);
         //size_t n = 0;
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
@@ -260,10 +263,7 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else if(settings->write_supp && (
-                        ((data = bam_aux_get(stack->a[i], "SA")) != nullptr) ||
-                        ((data = bam_aux_get(stack->a[i], "ms")) != nullptr)
-                        )) {
+                } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -284,6 +284,26 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
+                } else {
+                    uint8_t *data;
+                    data = bam_aux_get(stack->a[i], "MU");
+                    bam_aux_del(stack->a[i], data);
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
+            }
+        }
+    }
+
+
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    {
+        //size_t n = 0;
+        uint8_t *data;
+        for(unsigned i = 0; i < stack->n; ++i) {
+            if(stack->a[i]) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                    bam2ffq(stack->a[i], settings->fqh);
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
@@ -306,32 +326,51 @@ namespace BMF {
                     return 0;
         return 1;
     }
-
     /*
      * Returns true if hd <= mmlim, 0 otherwise.
      */
-    static inline int hd_test(bam1_t *a, bam1_t *b, int mmlim)
-    {
-        return string_linear(bam_get_qname(a), bam_get_qname(b), mmlim);
-    }
+#define hd_test(a, b, mmlim) stringhd(bam_get_qname(a), bam_get_qname(b)) < mmlim)
 
 #if !NDEBUG
     namespace {
         KHASH_MAP_INIT_INT(hd, uint64_t)
     }
 
-    static inline void fillhds(khash_t(hd) *hash, dlib::tmp_stack_t *stack, int mmlim)
-    {
-    }
 #endif
 
+#if !NDEBUG
+    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim, khash_t(hd) *readhds)
+#else
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
+#endif
     {
+        std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
+                return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+        });
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
-                if(hd_test(stack->a[i], stack->a[j], mmlim)) {
+                if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
+#if !NDEBUG
+                    const int readhd = read_hd(stack->a[i], stack->a[j]);
+                    if(readhd > 10) {
+                        char buf1[200];
+                        char buf2[200];
+                        dlib::bam_seq_cpy(buf1, stack->a[i]);
+                        dlib::bam_seq_cpy(buf2, stack->a[j]);
+                        LOG_DEBUG("Encountered large read hd %i. Seq1: %s. Seq2: %s. Name1: %s. Name2: %s. Name HD: %i\n",
+                                  readhd, buf1, buf2, bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]), stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])));
+                        assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim);
+                    }
+                    khiter_t k = kh_get(hd, readhds, readhd);
+                    int khr;
+                    if(k == kh_end(readhds)) {
+                        LOG_DEBUG("Encountered new hd for reads: %i.\n", readhd);
+                        k = kh_put(hd, readhds, readhd, &khr);
+                        kh_val(readhds, k) = 1;
+                    } else ++kh_val(readhds, k);
+#endif
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     update_bam1(stack->a[j], stack->a[i]);
@@ -350,16 +389,16 @@ namespace BMF {
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
+#if !NDEBUG
+        khash_t(hd) *read_hds = kh_init(hd);
+#endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-        std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
+        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
-#if HASHCOUNT
-        khash_t(hd) *hd = kh_init(hd);
-#endif
         // Start stack
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
@@ -370,10 +409,11 @@ namespace BMF {
             if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
-#if HASHCOUNT
-                fillhds(hd, stack, settings->mmlim);
-#endif
+#if !NDEBUG
+                flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
+#else
                 flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+#endif
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -383,20 +423,20 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
-#if HASHCOUNT
-        for(khiter_t ki = kh_begin(hd); ki != kh_end(hd); ++ki)
-            if(kh_exist(hd, ki))
-                fprintf(stdout, "%i:%lu\n", kh_key(hd, ki), kh_val(hd, ki));
-        kh_destroy(hd, hd);
-#endif
-
+#if !NDEBUG
+        flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
+        for(khiter_t ki = kh_begin(read_hds); ki != kh_end(read_hds); ++ki)
+            if(kh_exist(read_hds, ki))
+                fprintf(stdout, "%i:%lu\n", kh_key(read_hds, ki), kh_val(read_hds, ki));
+        kh_destroy(hd, read_hds);
+#else
         flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+#endif
         write_stack(stack, settings);
         stack->n = 0;
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
-        // What this really means is that the correctly collapsed reads just have a naming issue.
-        LOG_DEBUG("Number of reads with inconsistent read names within pair: %lu.\n", settings->realign_pairs.size());
+        LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
         for(auto pair: settings->realign_pairs)
             fputs(pair.second.c_str(), settings->fqh);
     }
@@ -420,6 +460,7 @@ namespace BMF {
                         "Flags:\n"
                         "-f      Path for the fastq for reads that need to be realigned. REQUIRED.\n"
                         "-s      Flag to write reads with supplementary alignments . Default: False.\n"
+                        "-S      Flag to indicate that this rescue is for single-end data.\n"
                         "-t      Mismatch limit. Default: 2\n"
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
@@ -471,9 +512,9 @@ namespace BMF {
 
 
         if(settings.cmpkey == UNCLIPPED)
-            for(const char *tag: {"SU", "MU"})
+            for(const char *tag: {"MU"})
                 dlib::check_bam_tag_exit(argv[optind], tag);
-        for(const char *tag: {"FM", "FA", "PV", "FP", "RV", "LM"})
+        for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
             dlib::check_bam_tag_exit(argv[optind], tag);
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
@@ -481,6 +522,7 @@ namespace BMF {
         if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
+        LOG_DEBUG("Write mode: %s.\n", wmode);
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)
             LOG_EXIT("fail to read/write input files\n");

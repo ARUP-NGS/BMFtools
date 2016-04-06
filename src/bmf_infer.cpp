@@ -2,19 +2,56 @@
 
 namespace BMF {
 
+    CONST static inline int same_infer_pos_se(bam1_t *b, bam1_t *p)
+    {
+        return bmfsort_se_key(b) == bmfsort_se_key(p) &&
+                b->core.l_qseq == b->core.l_qseq;
+    }
+
+    CONST static inline int same_infer_ucs_se(bam1_t *b, bam1_t *p)
+    {
+        return ucs_se_sort_key(b) == ucs_se_sort_key(p)  &&
+                b->core.l_qseq == b->core.l_qseq;
+    }
+
+    CONST static inline int same_infer_pos(bam1_t *b, bam1_t *p)
+    {
+        return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
+                bmfsort_mate_key(b) == bmfsort_mate_key(p) &&
+                sort_rlen_key(b) == sort_rlen_key(p));
+    }
+
+    CONST static inline int same_infer_ucs(bam1_t *b, bam1_t *p)
+    {
+    #if !NDEBUG
+        if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
+           ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
+            assert(b->core.tid == p->core.tid);
+            assert(b->core.mtid == p->core.mtid);
+            assert(b->core.mtid == p->core.mtid);
+            assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
+            //assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
+            return 1;
+        }
+        return 0;
+    #else
+        return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
+                ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
+                sort_rlen_key(b) == sort_rlen_key(p));
+    #endif
+    }
+
     std::string BamFisherSet::to_fastq() {
-        LOG_DEBUG("Calling to_fastq\n");
-        int i;
+        int i, argmaxret;
         std::string seq;
         seq.resize(len);
-        sprintf((char *)seq.data(), "O HAI WURLD\n");
-        LOG_DEBUG(seq.c_str());
+        sprintf((char *)seq.data(), "'O HAI WURLD'\n");
         std::vector<uint32_t> agrees;
         std::vector<uint32_t> full_quals; // igamc calculated
         agrees.resize(len);
         full_quals.resize(len);
         for(i = 0; i < len; ++i) {
-            const int argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
+            argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
             agrees[i] = votes[i * 5 + argmaxret];
             full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[i * 5 + argmaxret])));
             // Mask unconfident base calls
@@ -26,13 +63,12 @@ namespace BMF {
                 max_observed_phreds[i] += 33;
             }
         }
-        LOG_DEBUG("Filled arrays\n");
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
         std::string pvbuf;
-        pvbuf.resize(bufsize);
+        pvbuf.reserve(bufsize);
         kstring_t pvks = {0, bufsize, (char *)pvbuf.data()}; // Does not own!
         std::string fabuf;
-        fabuf.resize(bufsize);
+        fabuf.reserve(bufsize);
         kstring_t faks = {0, bufsize, (char *)pvbuf.data()};
         ksprintf(&pvks, "PV:B:I");
         ksprintf(&faks, "FA:B:I");
@@ -43,21 +79,24 @@ namespace BMF {
         pvbuf.resize(pvks.l);
         fabuf.resize(faks.l);
         std::string ret;
-        ret.resize(pvks.l + faks.l + get_name().size() + len * 2 + 32);
+        ret.resize(pvks.l + faks.l + name.size() + len * 2 + 32);
         // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
-        stringprintf(ret, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                     get_name().c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+        //LOG_DEBUG("Name: %s.\n", name.c_str());
+        kstring_t tmp{0};
+        ksprintf(&tmp, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
+                name.c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
+        ret = tmp.s, free(tmp.s);
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
-        for(auto& set: sets) {
-            auto found = settings->realign_pairs.find(set.second.get_name());
+        for(auto&& set: sets) {
+            auto found = settings->realign_pairs.find(set.second.name);
             if(found == settings->realign_pairs.end()) {
-                settings->realign_pairs.emplace(set.second.get_name(), set.second.to_fastq());
+                settings->realign_pairs.emplace(set.second.name, set.second.to_fastq());
             } else {
                 assert(memcmp(found->second.c_str() + 1,
-                              set.second.get_name().c_str(),
-                              set.second.get_name().size()) == 0);
+                              set.second.name.c_str(),
+                              set.second.name.size()) == 0);
                 if(set.second.get_is_read1()) {
                     fputs(set.second.to_fastq().c_str(), settings->fqh);
                     fputs(found->second.c_str(), settings->fqh);
@@ -79,8 +118,8 @@ namespace BMF {
      *
      * */
 
-    static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
-                                                                   &same_stack_ucs, &same_stack_ucs_se};
+    static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_infer_pos, &same_infer_pos_se,
+                                                                   &same_infer_ucs, &same_infer_ucs_se};
 
     std::string get_SO(bam_hdr_t *hdr) {
         char *end, *so_start;
@@ -113,8 +152,13 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
         kputs("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
+        ksprintf(&ks, "\tFM:i:%i",
+                bam_itag(b, "FM"));
+        if((rvdata = bam_aux_get(b, "FP")) != nullptr)
+            ksprintf(&ks, "\tFP:i:%i", bam_aux2i(rvdata));
+        else kputs("\tFP:i:1", &ks);
+        if((rvdata = bam_aux_get(b, "NC")) != nullptr)
+            ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
@@ -296,7 +340,23 @@ namespace BMF {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else sam_write1(settings->out, settings->hdr, stack->a[i]);
+                } else {
+                    if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
+                        qname = bam_get_qname(stack->a[i]);
+                        // Make sure the read names/barcodes match.
+                        assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size()) == 0);
+                        // Write read 1 out first.
+                        if(stack->a[i]->core.flag & BAM_FREAD2) {
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh);
+                        } else {
+                            bam2ffq(stack->a[i], settings->fqh);
+                            fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                        }
+                        // Clear entry, as there can only be two.
+                        settings->realign_pairs.erase(qname);
+                    } else sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
             }
         }
@@ -304,10 +364,6 @@ namespace BMF {
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, infer_aux_t *settings)
     {
-        // Sort by read names to make sure that any progressive rescuing ends at the same name.
-        // return a ? (b ? (int)(strcmp(bam_get_qname(a), bam_get_qname(b)) < 0): 0): (b ? 1: 0);
-        // Returns 0 if comparing two nulls, and returns true that a nullptr lt a valued name
-        // Compares strings otherwise.
         BamFisherKing king(stack);
         king.add_to_hash(settings);
     }
@@ -327,23 +383,23 @@ namespace BMF {
         if(sam_read1(settings->in, settings->hdr, b) < 0)
             LOG_EXIT("Failed to read first record in bam file. Abort!\n");
         // Zoom ahead to first primary alignment in bam.
-        while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+        while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
             sam_write1(settings->out, settings->hdr, b);
-            if(sam_read1(settings->in, settings->hdr, b))
+            if(sam_read1(settings->in, settings->hdr, b) < 0)
                 LOG_EXIT("Could not read first primary alignment in bam (%s). Abort!\n", settings->in->fn);
         }
         // Start stack
         stack_insert(stack, b);
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
-            if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+            if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
             }
             if(fn(b, *stack->a) == 0) {
                 // New stack -- flatten what we have and write it out.
-                LOG_DEBUG("Flattening stack.\n");
+                //LOG_DEBUG("Flattening stack.\n");
                 flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
-                LOG_DEBUG("Writing stack.\n");
+                //LOG_DEBUG("Writing stack.\n");
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -399,7 +455,7 @@ namespace BMF {
 
         if(argc < 3) return infer_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "l:f:t:au?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:f:t:Sau?h")) >= 0) {
             switch (c) {
             case 'u':
                 settings.cmpkey = UNCLIPPED;
@@ -408,6 +464,7 @@ namespace BMF {
             case 't': settings.mmlim = atoi(optarg); break;
             case 'f': fqname = optarg; break;
             case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
+            case 'S': settings.write_supp = 1; break;
             case '?': case 'h': return infer_usage(EXIT_SUCCESS);
             }
         }
@@ -425,14 +482,14 @@ namespace BMF {
             LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
         if(settings.cmpkey == UNCLIPPED)
-            for(const char *tag: {"SU", "MU"})
-                dlib::check_bam_tag_exit(argv[optind], tag);
-        dlib::check_bam_tag_exit(argv[optind], "LM");
+            dlib::check_bam_tag_exit(argv[optind], "MU");
+        //dlib::check_bam_tag_exit(argv[optind], "LM");
+        LOG_INFO("Finished checking appropriately\n");
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 
-        if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
-            LOG_EXIT("input SAM does not have header. Abort!\n");
+        if (!settings.in || settings.hdr == nullptr || settings.hdr->n_targets == 0)
+            LOG_EXIT("input SAM does not have header or is malformed. Abort!\n");
 
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)

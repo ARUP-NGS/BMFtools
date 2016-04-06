@@ -14,7 +14,6 @@
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
-#include "dlib/mem_util.h"
 #include "htslib/sam.h"
 #include "sam_opts.h"
 

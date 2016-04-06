@@ -196,14 +196,16 @@ namespace BMF {
         if(r1len < 0) {
             LOG_EXIT("Could not find a primary read 1 alignment. Is the dataset paired?\n");
         }
-        dlib::safe_stringprintf(ret, "%i:%i:%i:%i:%i:%i:%lu",
-                                tid1,
-                                ucs1,
-                                tid2,
-                                ucs2,
-                                is_rev1,
-                                is_rev2
-                                );
+        kstring_t ks{0};
+        ksprintf(&ks, "%i:%i:%i:%i:%i:%i",
+                 tid1,
+                 ucs1,
+                 tid2,
+                 ucs2,
+                 is_rev1,
+                 is_rev2
+                 );
+        ret = ks.s, free(ks.s);
         for(unsigned i = 0; i < n; ++i) {
             bam_aux_append((recs + i), "as", 'Z', ret.size() + 1, (uint8_t *)ret.data()); // Add the key as a tag
             bam_aux_append((recs + i), "S1", 'B', sizeof(int) * supplemental_coordinates1.size(), reinterpret_cast<uint8_t *>(supplemental_coordinates1.data()));

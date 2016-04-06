@@ -28,8 +28,6 @@ namespace BMF {
                             "-d: Flag to run hash dmp. Default: False.\n"
                             "-p: Number of threads to use if running hash_dmp. Default: %i.\n"
                             "-v: Set notification interval for split. Default: 1000000.\n"
-                            "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
-                            "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                             "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
                             "-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
                             "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
