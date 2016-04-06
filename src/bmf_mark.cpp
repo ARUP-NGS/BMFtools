@@ -29,8 +29,7 @@ namespace BMF {
         if(((mark_settings_t *)data)->min_insert_length)
             if(b1->core.isize)
                 ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
-        if(((mark_settings_t *)data)->min_frac_unambiguous)
-            ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
+        ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
         return ret;
     }
 
