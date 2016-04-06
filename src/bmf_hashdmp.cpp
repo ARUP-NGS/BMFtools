@@ -1,5 +1,14 @@
 #include "bmf_hashdmp.h"
 
+#if 0
+#define pushback_inmem(kf, ks, offset, pass) \
+    do {\
+        LOG_DEBUG("Calling pushback_inmem.\n");\
+        pushback_inmem(kf, ks, offset, pass);\
+    } while(0)
+#endif
+
+
 namespace BMF {
     void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
                                 char *homing, int blen, int threshold, int level=0, int mask=0,
@@ -182,6 +191,7 @@ namespace BMF {
         kstring_t barcode = {0, 32, (char *)malloc(32uL * sizeof(char))};
         int flip;
         unsigned blen1, blen2;
+        unsigned offset1, offset2;
         char pass;
         while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
             flip = switch_test(seq1, seq2, mask);
@@ -216,25 +226,31 @@ namespace BMF {
                 HASH_FIND_STR(hash2r, barcode.s, tmp_hk2);
                 pass &= test_hp(barcode.s, threshold);
                 assert(!tmp_hk1 ? !tmp_hk2: true); // Make sure that both have the same keyset.
+                offset1 = blen1 + homing_len + mask;
+                offset2 = blen2 + homing_len + mask;
+                //LOG_DEBUG("Current barcode: %s. Offsets (1/2) (%i/%i). len: %i\n", barcode.s, offset1, offset2, strlen(barcode.s));
                 if(!tmp_hk1) {
-                    // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-                    tmp_hk1->value = init_kfp(seq2->seq.l - blen2 - homing_len);
-                    tmp_hk2->value = init_kfp(seq1->seq.l - blen1 - homing_len);
+                    tmp_hk1->value = init_kfp(seq2->seq.l - offset2);
+                    tmp_hk2->value = init_kfp(seq1->seq.l - offset1);
+                    //LOG_DEBUG("length - offset - blen1: %i. 2: %i\n", seq1->seq.l - homing_len - mask - blen1, seq2->seq.l - homing_len - mask - blen2);
+                    //LOG_DEBUG("blens: %i, %i\n", blen1, blen2);
                     //LOG_DEBUG("Copying barcode to kingfisher_hash_t struct.\n");
                     memcpy(tmp_hk1->id, barcode.s, barcode.l);
                     memcpy(tmp_hk2->id, barcode.s, barcode.l);
                     tmp_hk1->id[barcode.l] = '\0';
                     tmp_hk2->id[barcode.l] = '\0';
-                    //LOG_DEBUG("Barcode in struct: %s, %s.\n", tmp_hk1->id, tmp_hk2->id);
-                    pushback_inmem(tmp_hk1->value, seq2, blen1 + mask + homing_len, pass);
-                    pushback_inmem(tmp_hk2->value, seq1, blen2 + mask + homing_len, pass);
-                    HASH_ADD_STR(hash1r, id, tmp_hk2);
-                    HASH_ADD_STR(hash2r, id, tmp_hk1);
+                    /*LOG_DEBUG("Barcode in struct: %s, %s.\n", tmp_hk1->id, tmp_hk2->id);
+                    */
+                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
+                    //LOG_DEBUG("Finished pushing back!\n");
+                    HASH_ADD_STR(hash1r, id, tmp_hk1);
+                    HASH_ADD_STR(hash2r, id, tmp_hk2);
                 } else {
-                    pushback_inmem(tmp_hk2->value, seq1, blen1 + mask + homing_len, pass);
-                    pushback_inmem(tmp_hk1->value, seq2, blen2 + mask + homing_len, pass);
+                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
                 }
             } else {
                 if(blen1 != (unsigned)-1) {
@@ -264,29 +280,33 @@ namespace BMF {
                 barcode.l = barcode.l + blen2;
                 barcode.s[barcode.l] = '\0';
                 //LOG_DEBUG("barcode: %s.\n", barcode.s);
-                HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 pass &= test_hp(barcode.s, threshold);
+                offset1 = blen1 + homing_len + mask;
+                offset2 = blen2 + homing_len + mask;
+                HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 if(!tmp_hk1) {
                     // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-                    tmp_hk1->value = init_kfp(seq1->seq.l - blen1 - homing_len);
-                    tmp_hk2->value = init_kfp(seq2->seq.l - blen2 - homing_len);
+                    tmp_hk1->value = init_kfp(seq1->seq.l - offset1);
+                    tmp_hk2->value = init_kfp(seq2->seq.l - offset2);
                     //LOG_DEBUG("Copying barcode into struct.\n");
                     memcpy(tmp_hk1->id, barcode.s, barcode.l);
                     memcpy(tmp_hk2->id, barcode.s, barcode.l);
                     tmp_hk1->id[barcode.l] = '\0';
                     tmp_hk2->id[barcode.l] = '\0';
                     //LOG_DEBUG("Copying barcode into struct (%s, %s)\n", tmp_hk1->id, tmp_hk2->id);
-                    pushback_inmem(tmp_hk1->value, seq1, blen1 + mask + homing_len, pass);
-                    pushback_inmem(tmp_hk2->value, seq2, blen2 + mask + homing_len, pass);
-                    HASH_ADD_STR(hash1r, id, tmp_hk1);
-                    HASH_ADD_STR(hash2r, id, tmp_hk2);
+                    //LOG_DEBUG("blens: %i, %i. offsets: %i, %i\n", blen1, blen2, offset1, offset2);
+                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
+                    HASH_ADD_STR(hash1f, id, tmp_hk1);
+                    HASH_ADD_STR(hash2f, id, tmp_hk2);
                 } else {
                     HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
                     assert(!!tmp_hk2);
-                    pushback_inmem(tmp_hk1->value, seq1, blen1 + mask + homing_len, pass);
-                    pushback_inmem(tmp_hk2->value, seq2, blen2 + mask + homing_len, pass);
+                    //LOG_DEBUG("Pushing back noflip\n");
+                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                 }
             }
         }

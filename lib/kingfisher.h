@@ -29,7 +29,6 @@ namespace BMF {
 
     const double MIN_FRAC_AGREED = 0.5; // Minimum fraction of bases agreed in a family to not "N" the base.
 
-
     struct tmpbuffers_t {
         char name_buffer[120];
         char PVBuffer[1000];
@@ -83,10 +82,19 @@ namespace BMF {
     }
 
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
+        //LOG_DEBUG("seq.l:%lu. offset: %i. kfp->readlen: %i\n", seq->seq.l, offset, kfp->readlen);
+        assert(kfp->readlen + offset == seq->seq.l);
         if(!kfp->length++)
             kfp->pass_fail = pass + '0';
         uint32_t posdata, i;
-        for(i = offset, posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5; i < seq->seq.l; ++i) {
+        for(i = offset; i < seq->seq.l; ++i) {
+            posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
+            assert(posdata < (unsigned)kfp->readlen * 5);
+#if 0
+            if(posdata >= (unsigned)kfp->readlen * 5){
+                LOG_DEBUG("readlen: %i. posdata: %u. i: %i. nuc2num: %i. offset: %i\n", kfp->readlen, posdata, i, nuc2num(seq->seq.s[i]), offset);
+            }
+#endif
             ++kfp->nuc_counts[posdata];
             kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
             if(seq->qual.s[i] > kfp->max_phreds[posdata])
