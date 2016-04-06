@@ -36,6 +36,8 @@ namespace BMF {
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "NC")) != nullptr)
             ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "DR")) != nullptr)
+            ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -132,6 +134,7 @@ namespace BMF {
         }
         int bFM(bam_aux2i(bdata));
         int pFM(bam_aux2i(pdata));
+        int pTMP;
         if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
             memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
             assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
@@ -140,16 +143,21 @@ namespace BMF {
         bam_aux_del(p, pdata);
         bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
         if((pdata = bam_aux_get(p, "RV")) != nullptr) {
-            const int pRV = bam_aux2i(pdata) + bam_itag(b, "RV");
+            pTMP = bam_aux2i(pdata) + bam_itag(b, "RV");
             bam_aux_del(p, pdata);
-            bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
+            bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pTMP);
         }
         // Handle NC (Number Changed) tag
         pdata = bam_aux_get(p, "NC");
         bdata = bam_aux_get(b, "NC");
         int n_changed{dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata)};
         if(pdata) bam_aux_del(p, pdata);
-
+        pdata = bam_aux_get(p, "DR");
+        if(bam_aux2i(pdata) == 0 && pTMP != pFM && pTMP != 0) {
+            pTMP = 1;
+            bam_aux_del(p, pdata);
+            bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
+        }
         uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
         uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
         uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA")); // Length of this should be b->l_qseq
