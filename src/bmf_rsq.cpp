@@ -326,14 +326,10 @@ namespace BMF {
                     return 0;
         return 1;
     }
-
     /*
      * Returns true if hd <= mmlim, 0 otherwise.
      */
-    static inline int hd_test(bam1_t *a, bam1_t *b, int mmlim)
-    {
-        return string_linear(bam_get_qname(a), bam_get_qname(b), mmlim);
-    }
+#define hd_test(a, b, mmlim) stringhd(bam_get_qname(a), bam_get_qname(b)) < mmlim)
 
 #if !NDEBUG
     namespace {
