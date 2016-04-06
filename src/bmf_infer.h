@@ -51,14 +51,14 @@ namespace BMF {
         void make_name(bam1_t *b) {
             LOG_DEBUG("Unclipped start: %i.\n", unclipped_start);
             if(is_read1) {
-                ksprintf(&name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                ksprintf(&name, "@collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                          unclipped_start, bam_itag(b, "MU"), // Unclipped starts for self and mate
                          b->core.tid, b->core.mtid, // Contigs
                          !!(b->core.flag & (BAM_FREVERSE)), !!(b->core.flag & (BAM_FMREVERSE)), // Strandedness combinations
                          b->core.l_qseq, bam_itag(b, "LM") // Read length of self and mate.
                          );
             } else {
-                ksprintf(&name, "collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
+                ksprintf(&name, "@collapsed:%i:%i:%i:%i:%i:%i:%i:%i",
                          bam_itag(b, "MU"), unclipped_start,
                          b->core.mtid, b->core.tid,
                          !!(b->core.flag & (BAM_FMREVERSE)), !!(b->core.flag & (BAM_FREVERSE)),

@@ -42,6 +42,8 @@ bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
 
+samtools index $FINALBAM
+
 # Clean up
 
 rm $TMPFQ $TMPBAM

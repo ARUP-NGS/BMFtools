@@ -42,6 +42,7 @@ namespace BMF {
     }
 
     std::string BamFisherSet::to_fastq() {
+        size_t l_name = name.l;
         int i, argmaxret, posdata;
         kstring_t seq = {0, (size_t)len + 1, (char *)malloc((len + 1) * sizeof(char))};
         std::vector<uint32_t> agrees;
@@ -67,21 +68,22 @@ namespace BMF {
         seq.s[i] = '\0';
         seq.l = i + 1;
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
-        kstring_t pvks = {0, bufsize, (char *)malloc(bufsize)};
         kstring_t faks = {0, bufsize, (char *)malloc(bufsize)};
-        ksprintf(&pvks, "PV:B:I");
-        ksprintf(&faks, "FA:B:I");
+        kputsn(" PV:B:I", 7, &name);
+        ks_resize(&faks, len * 4);
         for(i = 0; i < len; ++i) {
-            ksprintf(&pvks, ",%u", full_quals[i]);
+            ksprintf(&name, ",%u", full_quals[i]);
             ksprintf(&faks, ",%u", agrees[i]);
         }
         // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
         //LOG_DEBUG("Name: %s.\n", name.c_str());
-        kstring_t tmp{0};
-        ksprintf(&tmp, "@%s %s\t%s\tFM:i:%u\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                name.s, pvks.s, faks.s, n, seq.s, max_observed_phreds);
-        std::string ret = tmp.s;
-        free(tmp.s), free(pvks.s), free(faks.s), free(seq.s);
+        kputsn("\tFA:B:I", sizeof("\tFA:B:I"), &name);
+        kputsn(faks.s, faks.l, &name);
+        ksprintf(&name, "\tFM:i:%u\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
+                 n, seq.s, max_observed_phreds);
+        std::string ret = name.s;
+        name.l = l_name, name.s[name.l] = '\0';
+        free(faks.s), free(seq.s);
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
