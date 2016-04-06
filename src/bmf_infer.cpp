@@ -42,61 +42,57 @@ namespace BMF {
     }
 
     std::string BamFisherSet::to_fastq() {
-        int i, argmaxret;
-        std::string seq;
-        seq.resize(len);
-        sprintf((char *)seq.data(), "'O HAI WURLD'\n");
+        int i, argmaxret, posdata;
+        kstring_t seq = {0, (size_t)len + 1, (char *)malloc((len + 1) * sizeof(char))};
         std::vector<uint32_t> agrees;
         std::vector<uint32_t> full_quals; // igamc calculated
         agrees.resize(len);
         full_quals.resize(len);
         for(i = 0; i < len; ++i) {
             argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
-            agrees[i] = votes[i * 5 + argmaxret];
-            full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[i * 5 + argmaxret])));
+            posdata = i * 5 + argmaxret;
+            agrees[i] = votes[posdata];
+            full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[posdata])));
             // Mask unconfident base calls
             if(full_quals[i] < 2 || (double)agrees[i] / n < MIN_FRAC_AGREED) {
-                seq[i] = 'N';
+                seq.s[i] = 'N';
                 max_observed_phreds[i] = '#';
             } else {
-                seq[i] = num2nuc(argmaxret);
-                max_observed_phreds[i] += 33;
+                seq.s[i] = num2nuc(argmaxret);
+                // Since we can guarantee posdata will be >= i, it's safe to do this.
+                max_observed_phreds[i] = max_observed_phreds[posdata] + 33;
             }
         }
+        max_observed_phreds[i] = '\0';
+        seq.s[i] = '\0';
+        seq.l = i + 1;
         const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
-        std::string pvbuf;
-        pvbuf.reserve(bufsize);
-        kstring_t pvks = {0, bufsize, (char *)pvbuf.data()}; // Does not own!
-        std::string fabuf;
-        fabuf.reserve(bufsize);
-        kstring_t faks = {0, bufsize, (char *)pvbuf.data()};
+        kstring_t pvks = {0, bufsize, (char *)malloc(bufsize)};
+        kstring_t faks = {0, bufsize, (char *)malloc(bufsize)};
         ksprintf(&pvks, "PV:B:I");
         ksprintf(&faks, "FA:B:I");
-        for(int i = 0; i < len; ++i) {
+        for(i = 0; i < len; ++i) {
             ksprintf(&pvks, ",%u", full_quals[i]);
             ksprintf(&faks, ",%u", agrees[i]);
         }
-        pvbuf.resize(pvks.l);
-        fabuf.resize(faks.l);
-        std::string ret;
-        ret.resize(pvks.l + faks.l + name.size() + len * 2 + 32);
         // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
         //LOG_DEBUG("Name: %s.\n", name.c_str());
         kstring_t tmp{0};
-        ksprintf(&tmp, "@%s %s\t%s\tFM:i:%i\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                name.c_str(), pvbuf.c_str(), fabuf.c_str(), n, seq.c_str(), max_observed_phreds.c_str());
-        ret = tmp.s, free(tmp.s);
+        ksprintf(&tmp, "@%s %s\t%s\tFM:i:%u\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
+                name.s, pvks.s, faks.s, n, seq.s, max_observed_phreds);
+        std::string ret = tmp.s;
+        free(tmp.s), free(pvks.s), free(faks.s), free(seq.s);
         return ret;
     }
     void BamFisherKing::add_to_hash(infer_aux_t *settings) {
         for(auto&& set: sets) {
-            auto found = settings->realign_pairs.find(set.second.name);
+            auto found = settings->realign_pairs.find(set.second.name.s);
             if(found == settings->realign_pairs.end()) {
-                settings->realign_pairs.emplace(set.second.name, set.second.to_fastq());
+                settings->realign_pairs.emplace(set.second.name.s, set.second.to_fastq());
             } else {
                 assert(memcmp(found->second.c_str() + 1,
-                              set.second.name.c_str(),
-                              set.second.name.size()) == 0);
+                              set.second.name.s,
+                              set.second.name.l) == 0);
                 if(set.second.get_is_read1()) {
                     fputs(set.second.to_fastq().c_str(), settings->fqh);
                     fputs(found->second.c_str(), settings->fqh);
