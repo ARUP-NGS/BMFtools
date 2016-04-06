@@ -188,8 +188,9 @@ namespace BMF {
             pass = 1;
             blen1 = get_blen(seq1->seq.s, homing, homing_len, blen, max_blen, mask);
             blen2 = get_blen(seq2->seq.s, homing, homing_len, blen, max_blen, mask);
+            //LOG_DEBUG("blens{1:%i, 2:%i}.\n", blen1, blen2);
             if(flip) {
-                if(blen2 >= 0) {
+                if(blen2 != (unsigned)-1) {
                     memcpy(barcode.s, seq2->seq.s + mask, blen2);
                 } else {
                     pass = 0;
@@ -198,7 +199,7 @@ namespace BMF {
                 }
                 barcode.l = blen2;
                 //barcode.s[barcode.l] = '\0';
-                if(blen1 >= 0) {
+                if(blen1 != (unsigned)-1) {
                     while(blen1 + blen2 >= barcode.m) {
                         kroundup32(barcode.m);
                         barcode.s = (char *)realloc(barcode.s, barcode.m);
@@ -221,10 +222,12 @@ namespace BMF {
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk1->value = init_kfp(seq2->seq.l - blen2 - homing_len);
                     tmp_hk2->value = init_kfp(seq1->seq.l - blen1 - homing_len);
+                    //LOG_DEBUG("Copying barcode to kingfisher_hash_t struct.\n");
                     memcpy(tmp_hk1->id, barcode.s, barcode.l);
                     memcpy(tmp_hk2->id, barcode.s, barcode.l);
                     tmp_hk1->id[barcode.l] = '\0';
                     tmp_hk2->id[barcode.l] = '\0';
+                    //LOG_DEBUG("Barcode in struct: %s, %s.\n", tmp_hk1->id, tmp_hk2->id);
                     pushback_inmem(tmp_hk1->value, seq2, blen1 + mask + homing_len, pass);
                     pushback_inmem(tmp_hk2->value, seq1, blen2 + mask + homing_len, pass);
                     HASH_ADD_STR(hash1r, id, tmp_hk2);
@@ -234,8 +237,10 @@ namespace BMF {
                     pushback_inmem(tmp_hk1->value, seq2, blen2 + mask + homing_len, pass);
                 }
             } else {
-                if(blen1 >= 0) {
+                if(blen1 != (unsigned)-1) {
+                    //LOG_DEBUG("blen1 %u (Copying seq1 to barcode).\n", blen1);
                     memcpy(barcode.s, seq1->seq.s + mask, blen1);
+                    //LOG_DEBUG("Successfully memcpied\n");
                 } else {
                     pass = 0;
                     blen1 = blen - mask;
@@ -243,9 +248,10 @@ namespace BMF {
                 }
                 barcode.l = blen1;
                 barcode.s[barcode.l] = '\0';
-                if(blen2 >= 0) {
+                if(blen2 != (unsigned)-1) {
                     while(blen1 + blen2 >= barcode.m) {
                         kroundup32(barcode.m);
+                        //LOG_DEBUG("barcode.m: %lu.\n", barcode.m);
                         barcode.s = (char *)realloc(barcode.s, barcode.m);
                     }
                     memcpy(barcode.s + barcode.l, seq2->seq.s + mask, blen2);
@@ -254,8 +260,10 @@ namespace BMF {
                     blen2 = blen - mask;
                     memset(barcode.s + barcode.l, 'N', blen2);
                 }
+                //LOG_DEBUG("blen2: %u. blen1: %u.\n", blen2, blen1);
                 barcode.l = barcode.l + blen2;
                 barcode.s[barcode.l] = '\0';
+                //LOG_DEBUG("barcode: %s.\n", barcode.s);
                 HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 pass &= test_hp(barcode.s, threshold);
                 if(!tmp_hk1) {
@@ -264,10 +272,12 @@ namespace BMF {
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk1->value = init_kfp(seq1->seq.l - blen1 - homing_len);
                     tmp_hk2->value = init_kfp(seq2->seq.l - blen2 - homing_len);
+                    //LOG_DEBUG("Copying barcode into struct.\n");
                     memcpy(tmp_hk1->id, barcode.s, barcode.l);
                     memcpy(tmp_hk2->id, barcode.s, barcode.l);
                     tmp_hk1->id[barcode.l] = '\0';
                     tmp_hk2->id[barcode.l] = '\0';
+                    //LOG_DEBUG("Copying barcode into struct (%s, %s)\n", tmp_hk1->id, tmp_hk2->id);
                     pushback_inmem(tmp_hk1->value, seq1, blen1 + mask + homing_len, pass);
                     pushback_inmem(tmp_hk2->value, seq2, blen2 + mask + homing_len, pass);
                     HASH_ADD_STR(hash1r, id, tmp_hk1);

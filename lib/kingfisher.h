@@ -14,9 +14,8 @@
 #include "lib/splitter.h"
 #include "dlib/bam_util.h"
 #include "dlib/char_util.h"
-#include "dlib/compiler_util.h"
+#include "dlib/misc_util.h"
 #include "dlib/cstr_util.h"
-#include "dlib/mem_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define HASH_DMP_OFFSET 14

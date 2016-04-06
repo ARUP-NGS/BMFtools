@@ -15,7 +15,7 @@
 #include "dlib/io_util.h"
 #include "dlib/logging_util.h"
 #include "dlib/math_util.h"
-#include "dlib/mem_util.h"
+#include "dlib/misc_util.h"
 #include "dlib/nix_util.h"
 #include "lib/mseq.h"
 #include "lib/binner.h"

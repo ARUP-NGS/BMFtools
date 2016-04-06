@@ -6,7 +6,7 @@
 #include "htslib/kseq.h"
 #include "dlib/cstr_util.h"
 #include "dlib/compiler_util.h"
-#include "dlib/mem_util.h"
+#include "dlib/misc_util.h"
 #include "lib/rescaler.h"
 
 
