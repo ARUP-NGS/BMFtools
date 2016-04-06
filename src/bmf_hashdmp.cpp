@@ -479,6 +479,9 @@ namespace BMF {
         if(!fp) {
             LOG_EXIT("Could not open %s for reading. Abort mission!\n", infname);
         }
+        if(!out_handle) {
+            LOG_EXIT("Could not open %s for reading. Abort mission!\n", outfname);
+        }
         kseq_t *seq(kseq_init(fp));
         // Initialized kseq
         int l(kseq_read(seq));
@@ -519,7 +522,7 @@ namespace BMF {
 
         // Add reads to the hash
         while(LIKELY((l = kseq_read(seq)) >= 0)) {
-#if 0
+#if !NDEBUG
             if(UNLIKELY(++count % 1000000 == 0))
                 fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
                         *infname == '-' ? "stdin" : infname, count);

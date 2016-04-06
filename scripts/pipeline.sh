@@ -11,7 +11,10 @@ MAX_BLEN=13
 r1=$1
 r2=$2
 HOMING="TGACT"
-PREFIX_LEN="4"
+if [ -z "$PREFIX_LEN"]
+then
+    PREFIX_LEN="4"
+fi
 TMP_PREF="tmpfileswtf"
 tmpstr=${1%.fq*}
 FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
