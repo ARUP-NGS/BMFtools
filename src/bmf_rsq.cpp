@@ -372,7 +372,6 @@ namespace BMF {
                 //assert(mucs == bam_itag(stack->a[j], "MU"));
                 assert(stack->a[i]);
                 assert(stack->a[j]);
-                assert(same_stack_ucs(stack->a[i], stack->a[j]));
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
