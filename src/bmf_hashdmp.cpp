@@ -29,8 +29,8 @@ namespace BMF {
                         "Flags:\n"
                         "-s\tHoming sequence -- REQUIRED.\n"
                         "-1\tPath to ountput fastq for read 1. Set to '-' for stdout. "
-                        "Setting both r1 and r2 to stdout results in interleaved output."
-                        "-2\tPath to output fastq for read 2. Set to '-' for stdout. "
+                        "Setting both r1 and r2 to stdout results in interleaved output.\n"
+                        "-2\tPath to output fastq for read 2. Set to '-' for stdout.\n"
                         "-l\tBarcode length. If using variable-length barcodes, this is the minimum barcode length.\n"
                         "-v\tMaximum barcode length. (Set only if using variable-length barcodes.)\n"
                         "-m\tSkip the first <INT> bases from each inline barcode. (Default: 0)\n"
@@ -98,7 +98,7 @@ namespace BMF {
         int mask = 0;
         int threshold = 10;
         int level = 0; // uncompressed
-        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:sh?")) >= 0) {
+        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:s:h?")) >= 0) {
             switch(c) {
                 case '1': outfname1 = optarg; break;
                 case '2': outfname2 = optarg; break;
