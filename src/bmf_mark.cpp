@@ -20,6 +20,8 @@ namespace BMF {
 
     static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
     {
+        if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
+            LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
         int ret = 0;
         dlib::add_unclipped_mate_starts(b1, b2);
         dlib::add_mate_SA_tag(b1, b2);

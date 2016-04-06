@@ -50,12 +50,13 @@ namespace BMF {
     {
     #if !NDEBUG
         if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
-           ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
+           ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
+           sort_rlen_key(b) == sort_rlen_key(p)) {
             assert(b->core.tid == p->core.tid);
             assert(b->core.mtid == p->core.mtid);
-            assert(b->core.mtid == p->core.mtid);
+            assert(b->core.l_qseq == p->core.l_qseq);
             assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
-            //assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
+            assert(bam_itag(b, "LM") == bam_itag(p, "LM"));
             return 1;
         }
         return 0;

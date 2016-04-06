@@ -347,12 +347,28 @@ namespace BMF {
         std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
                 return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
         });
+#if 0
+        const uint64_t key = stack->a[0] ? ucs_sort_core_key(stack->a[0]) : -1;
+        const int tid = stack->a[0]->core.tid;
+        LOG_DEBUG("Get cs\n");
+        const int ucs = dlib::get_unclipped_start(stack->a[0]);
+        LOG_DEBUG("Get mucs\n");
+        const int mucs = bam_itag(stack->a[0], "MU");
+        //LOG_DEBUG("%lu", key);
+#endif
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
+                //assert(key == ucs_sort_core_key(stack->a[j]));
+                //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
+                //assert(tid == stack->a[j]->core.tid);
+                //assert(mucs == bam_itag(stack->a[j], "MU"));
+                assert(stack->a[i]);
+                assert(stack->a[j]);
+                assert(same_stack_ucs(stack->a[i], stack->a[j]));
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
-#if !NDEBUG
+#if 0
                     const int readhd = read_hd(stack->a[i], stack->a[j]);
                     if(readhd > 10) {
                         char buf1[200];
