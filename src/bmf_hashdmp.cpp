@@ -241,6 +241,12 @@ namespace BMF {
                     memcpy(tmp_hk2->id, barcode.s, barcode.l);
                     tmp_hk1->id[barcode.l] = '\0';
                     tmp_hk2->id[barcode.l] = '\0';
+                    memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
+                    tmp_hk1->value->barcode[0] = '@';
+                    tmp_hk1->value->barcode[barcode.l + 1] = '\0';
+                    memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
+                    tmp_hk2->value->barcode[0] = '@';
+                    tmp_hk2->value->barcode[barcode.l + 1] = '\0';
                     /*LOG_DEBUG("Barcode in struct: %s, %s.\n", tmp_hk1->id, tmp_hk2->id);
                     */
                     pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
@@ -297,6 +303,12 @@ namespace BMF {
                     tmp_hk2->id[barcode.l] = '\0';
                     //LOG_DEBUG("Copying barcode into struct (%s, %s)\n", tmp_hk1->id, tmp_hk2->id);
                     //LOG_DEBUG("blens: %i, %i. offsets: %i, %i\n", blen1, blen2, offset1, offset2);
+                    memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
+                    tmp_hk1->value->barcode[barcode.l + 1] = '\0';
+                    tmp_hk1->value->barcode[0] = '@';
+                    memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
+                    tmp_hk2->value->barcode[barcode.l + 1] = '\0';
+                    tmp_hk2->value->barcode[0] = '@';
                     pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
                     pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                     HASH_ADD_STR(hash1f, id, tmp_hk1);
@@ -317,20 +329,22 @@ namespace BMF {
         gzclose(fp2), fp2 = nullptr;
         kseq_destroy(seq1), seq1 = nullptr;
         kseq_destroy(seq2), seq2 = nullptr;
+        LOG_DEBUG("Loaded all records into memory.\n");
 
         kstring_t ks1{0};
         kstring_t ks2{0};
         tmpbuffers_t tmp;
+        kingfisher_hash_t *t2 = nullptr;
         HASH_ITER(hh, hash1f, ce1, tmp_hk1) {
-            HASH_FIND_STR(hash1r, ce1->id, tmp_hk1);
+            HASH_FIND_STR(hash1r, ce1->id, t2);
             HASH_FIND_STR(hash2f, ce1->id, ce2);
-            if(tmp_hk1) {
+            if(t2) {
                 assert(ce2);
                 HASH_FIND_STR(hash2r, ce1->id, tmp_hk2);
                 assert(tmp_hk2);
-                zstranded_process_write(ce1->value, tmp_hk1->value, &ks1, &tmp);
-                destroy_kf(tmp_hk1->value);
-                HASH_DEL(hash1r, tmp_hk1);
+                zstranded_process_write(ce1->value, t2->value, &ks1, &tmp);
+                destroy_kf(t2->value);
+                HASH_DEL(hash1r, t2);
                 zstranded_process_write(ce2->value, tmp_hk2->value, &ks2, &tmp);
                 destroy_kf(tmp_hk2->value);
                 HASH_DEL(hash2r, tmp_hk2);

@@ -83,7 +83,7 @@ namespace BMF {
 
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
         //LOG_DEBUG("seq.l:%lu. offset: %i. kfp->readlen: %i\n", seq->seq.l, offset, kfp->readlen);
-        assert(kfp->readlen + offset == seq->seq.l);
+        assert(kfp->readlen + offset == (int64_t)seq->seq.l);
         if(!kfp->length++)
             kfp->pass_fail = pass + '0';
         uint32_t posdata, i;
