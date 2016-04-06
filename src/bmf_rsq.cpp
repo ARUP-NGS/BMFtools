@@ -150,27 +150,27 @@ namespace BMF {
         // Handle NC (Number Changed) tag
         pdata = bam_aux_get(p, "NC");
         bdata = bam_aux_get(b, "NC");
-        int n_changed{dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata)};
+        int n_changed(dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata));
         if(pdata) bam_aux_del(p, pdata);
-        pdata = bam_aux_get(p, "DR");
-        if(bam_aux2i(pdata) == 0 && pTMP != pFM && pTMP != 0) {
+        // If the collapsed observation is now duplex but wasn't before, this updates the DR tag.
+        if(pTMP != pFM && pTMP != 0 && (pdata = bam_aux_get(p, "DR")) != nullptr && bam_aux2i(pdata) == 0) {
             pTMP = 1;
             bam_aux_del(p, pdata);
             bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
         }
         uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
         uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
-        uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA")); // Length of this should be b->l_qseq
+        uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA"));
         uint32_t *pFA((uint32_t *)dlib::array_tag(p, "FA"));
         uint8_t *bSeq(bam_get_seq(b));
         uint8_t *pSeq(bam_get_seq(p));
         uint8_t *bQual(bam_get_qual(b));
         uint8_t *pQual(bam_get_qual(p));
         const int qlen = p->core.l_qseq;
+        int8_t ps, bs;
 
         if(p->core.flag & (BAM_FREVERSE)) {
             int qleni1;
-            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
                 qleni1 = qlen - i - 1;
                 ps = bam_seqi(pSeq, qleni1);
@@ -207,7 +207,6 @@ namespace BMF {
                 if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
             }
         } else {
-            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
                 ps = bam_seqi(pSeq, i);
                 bs = bam_seqi(bSeq, i);
@@ -232,13 +231,14 @@ namespace BMF {
                     pQual[i] = bQual[i];
                     ++n_changed;
                 }
-                if(pPV[i] < 3) {
+                if(pPV[i] > 2) {
+                    if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+                } else {
                     pFA[i] = 0;
                     pPV[i] = 0;
                     pQual[i] = 2;
                     n_base(pSeq, i);
-                    continue;
-                } else if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+                }
             }
         }
         bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);

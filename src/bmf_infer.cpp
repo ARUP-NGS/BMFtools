@@ -121,23 +121,6 @@ namespace BMF {
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_infer_pos, &same_infer_pos_se,
                                                                    &same_infer_ucs, &same_infer_ucs_se};
 
-    std::string get_SO(bam_hdr_t *hdr) {
-        char *end, *so_start;
-        std::string ret;
-        if (strncmp(hdr->text, "@HD", 3) != 0) goto NA;
-        if ((end = strchr(hdr->text, '\n')) == 0) goto NA;
-        *end = '\0';
-
-        if((so_start = strstr(hdr->text, "SO:")) == nullptr) goto NA;
-        ret = std::string(so_start + strlen("SO:"));
-        *end = '\n';
-        return ret;
-
-        NA:
-        LOG_WARNING("Sort order not found. Returning N/A.\n");
-        return std::string("N/A");
-    }
-
     inline void bam2ffq(bam1_t *b, FILE *fp)
     {
         char *qual, *seqbuf;
@@ -375,9 +358,9 @@ namespace BMF {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
-        if(strcmp(get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey])) {
+        if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey])) {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                     get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+                     dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         }
         bam1_t *b = bam_init1();
         if(sam_read1(settings->in, settings->hdr, b) < 0)
