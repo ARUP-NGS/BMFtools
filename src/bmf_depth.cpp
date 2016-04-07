@@ -250,8 +250,8 @@ namespace BMF {
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
         size_t capture_size = 0;
-        std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> dmp_capture_counts(n);
+        std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str = {0, 0, nullptr};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
@@ -310,9 +310,9 @@ namespace BMF {
                         } else ++kh_val(aux[i]->depth_hash, k);
                         counts[i] += n_plp[i];
                         aux[i]->dmp_counts[arr_ind] = n_plp[i];
-                        raw_capture_counts[i] += n_plp[i];
+                        dmp_capture_counts[i] += n_plp[i];
                         aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
-                        dmp_capture_counts[i] += aux[i]->raw_counts[arr_ind];
+                        raw_capture_counts[i] += aux[i]->raw_counts[arr_ind];
                         aux[i]->singleton_counts[arr_ind] = plp_singleton_sum(plp[i], n_plp[i]);
                         singleton_capture_counts[i] += aux[i]->singleton_counts[arr_ind];
                     }
@@ -357,10 +357,10 @@ namespace BMF {
             fprintf(stderr, "Errors in BED line '%s'\n", str.s);
         }
         for(i = 0; i < n; ++i){
-            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
             ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton Fraction: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / dmp_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton Fraction: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / raw_capture_counts[i]);
         }
         ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
         for(i = 0; i < n; ++i) {

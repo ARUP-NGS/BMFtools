@@ -67,7 +67,7 @@ namespace BMF {
         max_observed_phreds[i] = '\0';
         seq.s[i] = '\0';
         seq.l = i + 1;
-        kstring_t faks = {0, 5 * len, (char *)malloc(5 * len)};
+        kstring_t faks = {0, 5uL * len, (char *)malloc(5 * len)};
         kputsn(" PV:B:I", sizeof(" PV:B:I"), &name);
         for(i = 0; i < len; ++i) {
             ksprintf(&name, ",%u", full_quals[i]);
