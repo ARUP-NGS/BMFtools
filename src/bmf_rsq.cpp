@@ -38,6 +38,8 @@ namespace BMF {
             ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "DR")) != nullptr)
             ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "NP")) != nullptr)
+            ksprintf(&ks, "\tNP:i:%i", bam_aux2i(rvdata));
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -74,54 +76,6 @@ namespace BMF {
             if(*n1 != *n2)
                 return *n1 < *n2;
         return 0; // If identical, don't switch. Should never happen.
-    }
-
-    inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
-    {
-        int i;
-        uint8_t *rvdata;
-        kstring_t ks{0, 0, nullptr};
-        kputc('@', &ks);
-        kputs(qname.c_str(), &ks);
-        kputs(" PV:B:I", &ks);
-        auto fa((uint32_t *)dlib::array_tag(b, "FA"));
-        auto pv((uint32_t *)dlib::array_tag(b, "PV"));
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputs("\tFA:B:I", &ks);
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
-        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
-            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
-        kputc('\n', &ks);
-        uint8_t *seq(bam_get_seq(b));
-        char *seqbuf((char *)malloc(b->core.l_qseq + 1));
-        for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
-        seqbuf[i] = '\0';
-        if (b->core.flag & BAM_FREVERSE) { // reverse complement
-            for(i = 0; i < b->core.l_qseq>>1; ++i) {
-                const int8_t t = seqbuf[b->core.l_qseq - i - 1];
-                seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
-                seqbuf[i] = nuc_cmpl(t);
-            }
-            if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
-        }
-        seqbuf[b->core.l_qseq] = '\0';
-        assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
-        kputs(seqbuf, &ks);
-        kputs("\n+\n", &ks);
-        uint8_t *qual(bam_get_qual(b));
-        for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
-        if (b->core.flag & BAM_FREVERSE) { // reverse
-            for (i = 0; i < b->core.l_qseq>>1; ++i) {
-                const int8_t t = seqbuf[b->core.l_qseq - 1 - i];
-                seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
-                seqbuf[i] = t;
-            }
-        }
-        kputs(seqbuf, &ks), free(seqbuf);
-        kputc('\n', &ks);
-        fputs(ks.s, fp), free(ks.s);
     }
 
     void update_bam1(bam1_t *p, bam1_t *b)
