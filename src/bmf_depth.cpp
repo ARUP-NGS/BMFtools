@@ -204,7 +204,6 @@ namespace BMF {
             depth_usage(EXIT_FAILURE);
         memset(&str, 0, sizeof(kstring_t));
         n = argc - optind;
-        fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
         aux = (depth_aux_t **)calloc(n, sizeof(depth_aux_t*));
         idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
         for (i = 0; i < n; ++i) {

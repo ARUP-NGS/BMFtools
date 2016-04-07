@@ -67,10 +67,8 @@ namespace BMF {
         max_observed_phreds[i] = '\0';
         seq.s[i] = '\0';
         seq.l = i + 1;
-        const size_t bufsize = (5 * len + 10); // 6 minimum. Let's give 4 extra just in case?
-        kstring_t faks = {0, bufsize, (char *)malloc(bufsize)};
-        kputsn(" PV:B:I", 7, &name);
-        ks_resize(&faks, len * 4);
+        kstring_t faks = {0, 5 * len, (char *)malloc(5 * len)};
+        kputsn(" PV:B:I", sizeof(" PV:B:I"), &name);
         for(i = 0; i < len; ++i) {
             ksprintf(&name, ",%u", full_quals[i]);
             ksprintf(&faks, ",%u", agrees[i]);
@@ -79,8 +77,9 @@ namespace BMF {
         //LOG_DEBUG("Name: %s.\n", name.c_str());
         kputsn("\tFA:B:I", sizeof("\tFA:B:I"), &name);
         kputsn(faks.s, faks.l, &name);
-        ksprintf(&name, "\tFM:i:%u\tFP:i:1\tRV:i:0\n%s\n+\n%s\n",
-                 n, seq.s, max_observed_phreds);
+        ksprintf(&name, "\tFM:i:%u\t", n);
+        kputsn("FP:i:1\tRV:i:0\n", sizeof("FP:i:1\tRV:i:0\n"), &name);
+        ksprintf(&name, "%s\n+\n%s\n", seq.s, max_observed_phreds);
         std::string ret = name.s;
         name.l = l_name, name.s[name.l] = '\0';
         free(faks.s), free(seq.s);
