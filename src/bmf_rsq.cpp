@@ -158,6 +158,16 @@ namespace BMF {
             bam_aux_del(p, pdata);
             bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
         }
+        if((pdata = bam_aux_get(p, "NP")) != nullptr) {
+            bdata = bam_aux_get(b, "NP");
+            pTMP = bam_aux2i(pdata) + (bdata ? bam_aux2i(bdata) : 1);
+            bam_aux_del(p, pdata);
+            bam_aux_append(p, "NP", 'i', sizeof(int), (uint8_t *)&pTMP);
+        } else {
+            bdata = bam_aux_get(b, "NP");
+            pTMP = (bdata ? bam_aux2i(bdata) : 1) + 1;
+            bam_aux_append(p, "NP", 'i', sizeof(int), (uint8_t *)&pTMP);
+        }
         uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
         uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
         uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA"));
