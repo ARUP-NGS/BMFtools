@@ -307,7 +307,6 @@ namespace BMF {
     namespace {
         KHASH_MAP_INIT_INT(hd, uint64_t)
     }
-
 #endif
 
 #if !NDEBUG
