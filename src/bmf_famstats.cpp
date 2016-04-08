@@ -37,6 +37,7 @@ namespace BMF {
         uint64_t dr_rc_sum;
         double dr_rc_frac_sum;
         khash_t(fm) *fm;
+        khash_t(fm) *np;
         khash_t(rc) *rc;
         khiter_t ki;
         uint8_t *data;
@@ -89,6 +90,23 @@ namespace BMF {
         });
         for(i = 0; i < stats->rc->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+
+        // Handle stats->np
+        fms.resize(stats->np->n_occupied);
+        size_t n_rsq_fams = 0;
+        for(i = 0, ki = kh_begin(stats->np); ki != kh_end(stats->np); ++ki) {
+            if(kh_exist(stats->np, ki)) {
+                fms[i++] = {kh_val(stats->np, ki), kh_key(stats->np, ki)};
+                n_rsq_fams += kh_val(stats->np, ki);
+            }
+        }
+        std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
+            return a.fm < b.fm;
+        });
+        fprintf(fp, "#Number of families that were rescued: %lu.\n", n_rsq_fams);
+        fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
+        for(i = 0; i < stats->rc->n_occupied; ++i)
+            fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
     }
 
 
@@ -120,14 +138,17 @@ namespace BMF {
 
     static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settings_t *settings)
     {
+        uint8_t *data;
         if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
         if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL)) ||
                 b->core.qual < settings->minMQ) {
             ++s->n_flag_fail;
             return;
         }
-        const int FM = bam_itag(b, "FM");
-        const int RV = bam_itag(b, "RV");
+        const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
+        const int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
+        const int NP = ((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1);
+        if(FM == 0) LOG_EXIT("Missing required FM tag. Abort!\n");
         if(FM < settings->minFM) {
             ++s->n_fm_fail;
             return;
@@ -157,8 +178,12 @@ namespace BMF {
         if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
             s->ki = kh_put(rc, s->rc, RV, &khr), kh_val(s->rc, s->ki) = 1;
         else ++kh_val(s->rc, s->ki);
+        // Same, but for NP
+        if((s->ki = kh_get(fm, s->np, NP)) == kh_end(s->np))
+            s->ki = kh_put(fm, s->np, NP, &khr), kh_val(s->np, s->ki) = 1;
+        else ++kh_val(s->np, s->ki);
 
-        // If the Duplex Read tag is present, incrememnt duplex read counts
+        // If the Duplex Read tag is present, increment duplex read counts
         uint8_t *dr_data = bam_aux_get(b, "DR");
         if(dr_data && bam_aux2i(dr_data)) {
             s->dr_sum += FM;

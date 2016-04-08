@@ -357,10 +357,11 @@ namespace BMF {
             fprintf(stderr, "Errors in BED line '%s'\n", str.s);
         }
         for(i = 0; i < n; ++i){
-            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
             ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton Fraction: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / raw_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (raw): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / raw_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (dmp): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / dmp_capture_counts[i]);
         }
         ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
         for(i = 0; i < n; ++i) {
