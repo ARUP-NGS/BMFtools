@@ -21,8 +21,7 @@ namespace BMF {
         vrec->rid = tid;
         vrec->pos = pos;
         vrec->qual = 0;
-        kstring_t allele_str = {0, 0, nullptr};
-        ks_resize(&allele_str, 20uL);
+        kstring_t allele_str = {0, 10uL, (char *)malloc(10uL * sizeof(char))};
         kputc(refbase, &allele_str);
         auto match = templates.find(refbase);
         if(match == templates.end()) {
