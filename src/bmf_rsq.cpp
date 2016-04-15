@@ -338,6 +338,15 @@ namespace BMF {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
+#if !NDEBUG
+                    const int namehd = stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
+                    khiter_t k;
+                    if((k = kh_get(fm, readhds, namehd)) == kh_end(readhds)) {
+                        int tmp;
+                        k = kh_put(fm, readhds, namehd, &tmp);
+                        kh_val(readhds, k) = 1;
+                    } else ++kh_val(readhds, k);
+#endif
 #if 0
                     const int readhd = read_hd(stack->a[i], stack->a[j]);
                     if(readhd > 10) {
