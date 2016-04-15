@@ -33,8 +33,10 @@ namespace BMF {
                 ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
         ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
 #if !NDEBUG
-        if(ret) {
-            LOG_DEBUG("Eliminating read pair.\n");
+        if(((mark_settings_t *)data)->remove_qcfail) {
+            if(bam_itag(b1, "FP") == 0) {
+                assert(ret);
+            }
         }
 #endif
         return ret;

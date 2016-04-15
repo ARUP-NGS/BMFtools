@@ -18,7 +18,6 @@ namespace BMF {
 
 
     KHASH_MAP_INIT_INT64(fm, uint64_t)
-    KHASH_MAP_INIT_INT64(rc, uint64_t)
 
 
     struct famstats_t {
@@ -38,7 +37,7 @@ namespace BMF {
         double dr_rc_frac_sum;
         khash_t(fm) *fm;
         khash_t(fm) *np;
-        khash_t(rc) *rc;
+        khash_t(fm) *rc;
         khiter_t ki;
         uint8_t *data;
     };
@@ -90,9 +89,10 @@ namespace BMF {
         });
         for(i = 0; i < stats->rc->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-
+#if !NDEBUG
         // Handle stats->np
         fms.resize(stats->np->n_occupied);
+        LOG_DEBUG("n_occupied: %lu.\n", stats->np->n_occupied);
         size_t n_rsq_fams = 0;
         for(i = 0, ki = kh_begin(stats->np); ki != kh_end(stats->np); ++ki) {
             if(kh_exist(stats->np, ki)) {
@@ -107,6 +107,7 @@ namespace BMF {
         fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
         for(i = 0; i < stats->rc->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+#endif
     }
 
 
@@ -175,13 +176,15 @@ namespace BMF {
             s->ki = kh_put(fm, s->fm, FM, &khr), kh_val(s->fm, s->ki) = 1;
         else ++kh_val(s->fm, s->ki); // Otherwise increment counts
         // Same, but for RV
-        if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
-            s->ki = kh_put(rc, s->rc, RV, &khr), kh_val(s->rc, s->ki) = 1;
+        if((s->ki = kh_get(fm, s->rc, RV)) == kh_end(s->rc))
+            s->ki = kh_put(fm, s->rc, RV, &khr), kh_val(s->rc, s->ki) = 1;
         else ++kh_val(s->rc, s->ki);
         // Same, but for NP
-        if((s->ki = kh_get(fm, s->np, NP)) == kh_end(s->np))
-            s->ki = kh_put(fm, s->np, NP, &khr), kh_val(s->np, s->ki) = 1;
-        else ++kh_val(s->np, s->ki);
+        if(NP > 0) {
+            if((s->ki = kh_get(fm, s->np, NP)) == kh_end(s->np))
+                s->ki = kh_put(fm, s->np, NP, &khr), kh_val(s->np, s->ki) = 1;
+            else ++kh_val(s->np, s->ki);
+        }
 
         // If the Duplex Read tag is present, increment duplex read counts
         uint8_t *dr_data = bam_aux_get(b, "DR");
@@ -200,7 +203,8 @@ namespace BMF {
         famstats_t *s = (famstats_t*)calloc(1, sizeof(famstats_t));
         int ret;
         s->fm = kh_init(fm);
-        s->rc = kh_init(rc);
+        s->rc = kh_init(fm);
+        s->np = kh_init(fm);
         s->data = nullptr;
         while (LIKELY((ret = handle.next()) >= 0)) {
             famstats_fm_loop(s, handle.rec, settings);
@@ -271,7 +275,8 @@ namespace BMF {
         s = famstats_fm_core(handle, &settings);
         print_stats(s, stdout);
         kh_destroy(fm, s->fm);
-        kh_destroy(rc, s->rc);
+        kh_destroy(fm, s->np);
+        kh_destroy(fm, s->rc);
         free(s);
         LOG_INFO("Successfully complete bmftools famstats fm.\n");
         return EXIT_SUCCESS;
