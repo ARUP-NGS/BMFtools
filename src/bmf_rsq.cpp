@@ -341,9 +341,9 @@ namespace BMF {
 #if !NDEBUG
                     const int namehd = stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     khiter_t k;
-                    if((k = kh_get(fm, readhds, namehd)) == kh_end(readhds)) {
+                    if((k = kh_get(hd, readhds, namehd)) == kh_end(readhds)) {
                         int tmp;
-                        k = kh_put(fm, readhds, namehd, &tmp);
+                        k = kh_put(hd, readhds, namehd, &tmp);
                         kh_val(readhds, k) = 1;
                     } else ++kh_val(readhds, k);
 #endif
@@ -472,7 +472,7 @@ namespace BMF {
 
         rsq_aux_t settings = {0};
         settings.mmlim = 2;
-        settings.cmpkey = POSITION;
+        settings.cmpkey = cmpkey::POSITION;
 
         char *fqname = nullptr;
 
@@ -483,7 +483,7 @@ namespace BMF {
             case 's': settings.write_supp = 1; break;
             case 'S': settings.is_se = 1; break;
             case 'u':
-                settings.cmpkey = UNCLIPPED;
+                settings.cmpkey = cmpkey::UNCLIPPED;
                 LOG_INFO("Unclipped start position chosen for cmpkey.\n");
                 break;
             case 't': settings.mmlim = atoi(optarg); break;
@@ -506,7 +506,7 @@ namespace BMF {
             LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
 
-        if(settings.cmpkey == UNCLIPPED)
+        if(settings.cmpkey == cmpkey::UNCLIPPED)
             for(const char *tag: {"MU"})
                 dlib::check_bam_tag_exit(argv[optind], tag);
         for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
