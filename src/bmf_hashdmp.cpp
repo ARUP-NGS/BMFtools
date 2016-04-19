@@ -250,13 +250,16 @@ namespace BMF {
                     memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
                     tmp_hk2->value->barcode[0] = '@';
                     tmp_hk2->value->barcode[barcode.l + 1] = '\0';
+                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
                     HASH_ADD_STR(hash1r, id, tmp_hk1);
                     HASH_ADD_STR(hash2r, id, tmp_hk2);
                     //LOG_DEBUG("Finished pushing back!\n");
+                } else {
+                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
                 }
                 //LOG_DEBUG("Pushback flip. %s offsets: %i, %i\n", barcode.s, offset1, offset2);
-                pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
-                pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
             } else {
                 if(blen1 != (unsigned)-1) {
                     //LOG_DEBUG("blen1 %u (Copying seq1 to barcode).\n", blen1);
@@ -312,15 +315,17 @@ namespace BMF {
                     tmp_hk2->value->barcode[0] = '@';
                     HASH_ADD_STR(hash1f, id, tmp_hk1);
                     HASH_ADD_STR(hash2f, id, tmp_hk2);
+                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                 } else {
                     HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
                     assert(!!tmp_hk2);
+                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                     //LOG_DEBUG("Pushing back noflip\n");
                 }
                 //LOG_DEBUG("Pushback noflip\n");
                 LOG_DEBUG("Pushback flip. barcode: %s. Barcode in struct: %s. offsets: %i, %i\n", barcode.s, tmp_hk1->id, offset1, offset2);
-                pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
-                pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
             }
         }
         free(barcode.s);

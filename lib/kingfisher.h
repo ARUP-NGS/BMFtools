@@ -92,7 +92,9 @@ namespace BMF {
         if(!pass) offset = seq->seq.l - kfp->readlen;
         for(i = offset; i < seq->seq.l; ++i) {
             posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
-            assert(posdata < (unsigned)kfp->readlen * 5);
+            if(posdata >= (unsigned)kfp->readlen * 5) {
+                LOG_EXIT("posdata: %u. offset: %i. readlen: %i. pass: %i\n", posdata, offset, kfp->readlen, pass);
+            }
 #if 0
             if(posdata >= (unsigned)kfp->readlen * 5){
                 LOG_DEBUG("readlen: %i. posdata: %u. i: %i. nuc2num: %i. offset: %i\n", kfp->readlen, posdata, i, nuc2num(seq->seq.s[i]), offset);
