@@ -231,7 +231,7 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 //LOG_DEBUG("Current barcode: %s. Offsets (1/2) (%i/%i). len: %i\n", barcode.s, offset1, offset2, strlen(barcode.s));
                 if(!tmp_hk1) {
-                    if(UNLIKELY(++barcode_count % 1000000 == 0))
+                    if(UNLIKELY(++barcode_count % 100000 == 0))
                         LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -250,17 +250,13 @@ namespace BMF {
                     memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
                     tmp_hk2->value->barcode[0] = '@';
                     tmp_hk2->value->barcode[barcode.l + 1] = '\0';
-                    /*LOG_DEBUG("Barcode in struct: %s, %s.\n", tmp_hk1->id, tmp_hk2->id);
-                    */
-                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
-                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
-                    //LOG_DEBUG("Finished pushing back!\n");
                     HASH_ADD_STR(hash1r, id, tmp_hk1);
                     HASH_ADD_STR(hash2r, id, tmp_hk2);
-                } else {
-                    pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
-                    pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
+                    //LOG_DEBUG("Finished pushing back!\n");
                 }
+                //LOG_DEBUG("Pushback flip. %s offsets: %i, %i\n", barcode.s, offset1, offset2);
+                pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
             } else {
                 if(blen1 != (unsigned)-1) {
                     //LOG_DEBUG("blen1 %u (Copying seq1 to barcode).\n", blen1);
@@ -294,7 +290,7 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 if(!tmp_hk1) {
-                    if(UNLIKELY(++barcode_count % 1000000 == 0))
+                    if(UNLIKELY(++barcode_count % 100000 == 0))
                         LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                     // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -314,17 +310,17 @@ namespace BMF {
                     memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
                     tmp_hk2->value->barcode[barcode.l + 1] = '\0';
                     tmp_hk2->value->barcode[0] = '@';
-                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
-                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                     HASH_ADD_STR(hash1f, id, tmp_hk1);
                     HASH_ADD_STR(hash2f, id, tmp_hk2);
                 } else {
                     HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
                     assert(!!tmp_hk2);
                     //LOG_DEBUG("Pushing back noflip\n");
-                    pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
-                    pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                 }
+                //LOG_DEBUG("Pushback noflip\n");
+                LOG_DEBUG("Pushback flip. barcode: %s. Barcode in struct: %s. offsets: %i, %i\n", barcode.s, tmp_hk1->id, offset1, offset2);
+                pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
             }
         }
         free(barcode.s);
