@@ -325,7 +325,7 @@ namespace BMF {
                     //LOG_DEBUG("Pushing back noflip\n");
                 }
                 //LOG_DEBUG("Pushback noflip\n");
-                LOG_DEBUG("Pushback flip. barcode: %s. Barcode in struct: %s. offsets: %i, %i\n", barcode.s, tmp_hk1->id, offset1, offset2);
+                //LOG_DEBUG("Pushback flip. barcode: %s. Barcode in struct: %s. offsets: %i, %i\n", barcode.s, tmp_hk1->id, offset1, offset2);
             }
         }
         free(barcode.s);

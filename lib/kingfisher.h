@@ -82,19 +82,23 @@ namespace BMF {
     }
 
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
-#if !NDEBUG
+#if 0
         //LOG_DEBUG("seq.l:%lu. offset: %i. kfp->readlen: %i\n", seq->seq.l, offset, kfp->readlen);
-        //assert(kfp->readlen + offset == (int64_t)seq->seq.l || kfp->pass_fail == '0');
+        if(!(kfp->readlen + offset == (int64_t)seq->seq.l || kfp->pass_fail == '0')) {
+            LOG_DEBUG("len: %i. \n", kfp->length);
+        }
 #endif
-        if(!kfp->length++)
+        if(!kfp->length++) {
             kfp->pass_fail = pass + '0';
+        } else {
+            if(kfp->readlen + offset != (int64_t)seq->seq.l) {
+                if(pass) return; // Don't bother, it's an error.
+                offset = seq->seq.l - kfp->readlen;
+            }
+        }
         uint32_t posdata, i;
-        if(!pass) offset = seq->seq.l - kfp->readlen;
         for(i = offset; i < seq->seq.l; ++i) {
             posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
-            if(posdata >= (unsigned)kfp->readlen * 5) {
-                LOG_EXIT("posdata: %u. offset: %i. readlen: %i. pass: %i\n", posdata, offset, kfp->readlen, pass);
-            }
 #if 0
             if(posdata >= (unsigned)kfp->readlen * 5){
                 LOG_DEBUG("readlen: %i. posdata: %u. i: %i. nuc2num: %i. offset: %i\n", kfp->readlen, posdata, i, nuc2num(seq->seq.s[i]), offset);
