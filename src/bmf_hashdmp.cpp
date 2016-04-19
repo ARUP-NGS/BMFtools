@@ -159,6 +159,19 @@ namespace BMF {
         if(max_blen < 0) max_blen = blen;
         char mode[4];
         sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+        if(level > 0) {
+            if(strcmp(out1, "-") && strcmp(strrchr(out1, '\0') - 3, ".gz") != 0) {
+                LOG_WARNING("Output gzip compressed but filename not terminated with .gz. FYI\n");
+            } else if(strcmp(out2, "-") && strcmp(strrchr(out2, '\0') - 3, ".gz") != 0) {
+                LOG_WARNING("Output gzip compressed but filename not terminated with .gz. FYI\n");
+            }
+        } else {
+            if(strcmp(out1, "-") && strcmp(strrchr(out1, '\0') - 3, ".gz") == 0) {
+                LOG_WARNING("Output filename stats with .gz but output is not compressed. FYI\n");
+            } else if(strcmp(out2, "-") && strcmp(strrchr(out2, '\0') - 3, ".gz") == 0) {
+                LOG_WARNING("Output filename stats with .gz but output is not compressed. FYI\n");
+            }
+        }
         FILE *in_handle1(dlib::open_ifp(in1));
         FILE *in_handle2(dlib::open_ifp(in2));
         gzFile out_handle1(gzopen(out1, mode));
