@@ -193,6 +193,7 @@ namespace BMF {
         unsigned blen1, blen2;
         unsigned offset1, offset2;
         char pass;
+        size_t barcode_count{0};
         while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
             flip = switch_test(seq1, seq2, mask);
             pass = 1;
@@ -230,6 +231,7 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 //LOG_DEBUG("Current barcode: %s. Offsets (1/2) (%i/%i). len: %i\n", barcode.s, offset1, offset2, strlen(barcode.s));
                 if(!tmp_hk1) {
+                    ++barcode_count;
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk1->value = init_kfp(seq2->seq.l - offset2);
@@ -291,6 +293,7 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 if(!tmp_hk1) {
+                    ++barcode_count;
                     // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -321,6 +324,8 @@ namespace BMF {
                     pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                 }
             }
+            if(UNLIKELY(barcode_count % 1000000 == 0))
+                LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
         }
         free(barcode.s);
         fclose(in_handle1), in_handle1 = nullptr;
@@ -363,12 +368,12 @@ namespace BMF {
         }
         HASH_ITER(hh, hash1r, ce1, tmp_hk1) {
             HASH_FIND_STR(hash2r, ce1->id, ce2);
-            dmp_process_write(ce1->value, &ks1, &tmp, 0);
+            dmp_process_write(ce1->value, &ks1, &tmp, 1);
             HASH_DEL(hash1r, ce1);
             gzputs(out_handle1, const_cast<const char *>(ks1.s));
             ks1.l = 0;
             destroy_kf(ce1->value);
-            dmp_process_write(ce2->value, &ks2, &tmp, 0);
+            dmp_process_write(ce2->value, &ks2, &tmp, 1);
             gzputs(out_handle2, const_cast<const char *>(ks2.s));
             ks2.l = 0;
             destroy_kf(ce2->value);
@@ -601,7 +606,7 @@ namespace BMF {
         HASH_ITER(hh, hrev, crev, tmp_hkr) {
             ++non_duplex;
             if(crev->value->length > 1) ++non_duplex_fm;
-            dmp_process_write(crev->value, &ks, tmp->buffers, 0); // No reverse strand found. \='{
+            dmp_process_write(crev->value, &ks, tmp->buffers, 1); // Only reverse strand found. \='{
             destroy_kf(crev->value);
             gzputs(out_handle, (const char *)ks.s);
             ks.l = 0;
