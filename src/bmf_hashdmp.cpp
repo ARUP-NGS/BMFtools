@@ -231,7 +231,8 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 //LOG_DEBUG("Current barcode: %s. Offsets (1/2) (%i/%i). len: %i\n", barcode.s, offset1, offset2, strlen(barcode.s));
                 if(!tmp_hk1) {
-                    ++barcode_count;
+                    if(UNLIKELY(++barcode_count % 1000000 == 0))
+                        LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk1->value = init_kfp(seq2->seq.l - offset2);
@@ -293,7 +294,8 @@ namespace BMF {
                 offset2 = blen2 + homing_len + mask;
                 HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
                 if(!tmp_hk1) {
-                    ++barcode_count;
+                    if(UNLIKELY(++barcode_count % 1000000 == 0))
+                        LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                     // Create
                     tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -324,8 +326,6 @@ namespace BMF {
                     pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
                 }
             }
-            if(UNLIKELY(barcode_count % 1000000 == 0))
-                LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
         }
         free(barcode.s);
         fclose(in_handle1), in_handle1 = nullptr;
