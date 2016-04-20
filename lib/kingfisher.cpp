@@ -26,6 +26,7 @@ namespace BMF {
         }
         ksprintf(ks, "@%s ", kfp->barcode + 1);
         kfill_both(kfp->readlen, bufs->agrees, bufs->cons_quals, ks);
+        bufs->cons_seq_buffer[kfp->readlen] = '\0';
         ksprintf(ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%0.6f\tDR:i:0\n%s\n+\n",
                 kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
                 (double) diffs / kfp->length, bufs->cons_seq_buffer);
@@ -108,6 +109,7 @@ namespace BMF {
         ksprintf(ks, "@%s ", kfpf->barcode + 1);
         // Add read name
         kfill_both(kfpf->readlen, bufs->agrees, bufs->cons_quals, ks);
+        bufs->cons_seq_buffer[kfpf->readlen] = '\0';
         ksprintf(ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->pass_fail,
                  FM, kfpr->length, (double) diffs / FM, kfpf->length && kfpr->length,
                  bufs->cons_seq_buffer);
