@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <zlib.h>
-#include <inttypes.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
 #include "htslib/kstring.h"

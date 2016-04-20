@@ -1,4 +1,7 @@
 #include "bmf_depth.h"
+#include "dlib/compiler_util.h"
+#include "dlib/misc_util.h"
+#include "dlib/io_util.h"
 
 namespace BMF {
 

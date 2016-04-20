@@ -11,13 +11,18 @@ MAX_BLEN=13
 r1=$1
 r2=$2
 HOMING="TGACT"
+if [ -z "$PREFIX_LEN"]
+then
+    PREFIX_LEN="4"
+fi
+TMP_PREF="tmpfileswtf"
 tmpstr=${1%.fq*}
 FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
 
 # Perform inline barcode demultiplexing.
 R1=${FINAL_FQ_PREFIX}.R1.fq.gz
 R2=${FINAL_FQ_PREFIX}.R2.fq.gz
-time bmftools inmem -L4 -l${BLEN} -v${MAX_BLEN} -s${HOMING} $r1 $r2 -1 $R1 -2 $R2
+time bmftools inmem -L1 -l${BLEN} -v${MAX_BLEN} -s${HOMING} $r1 $r2 -1 $R1 -2 $R2
 tmpstr=${R1%.fq*}
 TMPFQ=${tmpstr%.fastq*}.tmp.fq
 TMPBAM=${tmpstr%.fastq*}.tmp.bam

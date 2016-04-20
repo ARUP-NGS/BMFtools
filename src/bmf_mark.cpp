@@ -1,3 +1,4 @@
+#include <getopt.h>
 #include "dlib/bam_util.h"
 
 namespace BMF {
