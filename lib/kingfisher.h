@@ -1,20 +1,14 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
 
-#include <stdio.h>
 #include <math.h>
 #include <zlib.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
 #include "htslib/kstring.h"
 #include "include/igamc_cephes.h"
-#include "lib/mseq.h"
-#include "lib/rescaler.h"
+//#include "lib/mseq.h"
 #include "lib/splitter.h"
-#include "dlib/bam_util.h"
-#include "dlib/char_util.h"
-#include "dlib/misc_util.h"
-#include "dlib/cstr_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define HASH_DMP_OFFSET 14

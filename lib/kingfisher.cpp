@@ -1,5 +1,8 @@
 #include "kingfisher.h"
 
+#include "dlib/bam_util.h"
+#include "dlib/io_util.h"
+
 namespace BMF {
 
     #define dmp_pos(kfp, bufs, argmaxret, i, index, diffcount)\

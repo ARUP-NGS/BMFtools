@@ -1,5 +1,14 @@
 #include "bmf_dmp.h"
 
+#include <getopt.h>
+#include <math.h>
+#include <omp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zlib.h>
+
 namespace BMF {
 
     void dmp_usage()

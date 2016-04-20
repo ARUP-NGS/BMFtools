@@ -1,5 +1,8 @@
 #include "bmf_err.h"
 
+#include "dlib/io_util.h"
+#include "lib/rescaler.h"
+
 namespace BMF {
 
     namespace {
