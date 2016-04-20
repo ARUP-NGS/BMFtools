@@ -59,7 +59,6 @@ namespace BMF {
     };
 
 
-
     void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
     void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
     int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2);
@@ -129,22 +128,19 @@ namespace BMF {
      */
     CONST static inline int arr_max_u32(uint32_t *arr, int index)
     {
-        const uint32_t i5 = index * 5;
-        if(arr[i5] > arr[i5 + 1] &&
-            arr[i5] > arr[i5 + 2] &&
-            arr[i5] > arr[i5 + 3] &&
-            arr[i5] > arr[i5 + 4])
-            return 0;
-        else if(arr[i5 + 1] > arr[i5 + 2] &&
-                arr[i5 + 1] > arr[i5 + 3] &&
-                arr[i5 + 1] > arr[i5 + 4])
-            return 1;
-        else if(arr[i5 + 2] > arr[i5 + 3] &&
-                arr[i5 + 2] > arr[i5 + 4])
-            return 2;
-        else if(arr[i5 + 3] > arr[i5 + 4])
-            return 3;
-        return 4; // 'N'
+        arr += index * 5;
+        if(*arr > arr[1]) {
+            if(*arr > arr[2]) {
+                if(*arr > arr[3]) return *arr > arr[4] ? 0: 4;
+                else return arr[3] > arr[4] ? 3: 4;
+            } else return (arr[2] > arr[3]) ? (arr[2] > arr[4] ? 2: 4): (arr[3] > arr[4] ? 3: 4);
+        }
+        if(arr[1] > arr[2]) {
+            if(arr[1] > arr[3]) {
+                return arr[1] > arr[4] ? 1: 4;
+            } else return arr[3] > arr[4] ? 3: 4;
+        }
+        return (arr[2] > arr[3]) ? (arr[2] > arr[4] ? 2: 4): (arr[3] > arr[4] ? 3: 4);
     }
 
 
