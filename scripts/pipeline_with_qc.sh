@@ -2,6 +2,7 @@
 set -e
 set -x
 REF="/mounts/genome/human_g1k_v37.fasta"
+BED="/mnt/d3/ctDNA_V3_hotspot_SNVs_ROI_with_Colo829_dopes.bed"
 SORTMEM="4G"
 SORT_THREADS1="2"
 SORT_THREADS2="2"
@@ -43,6 +44,13 @@ bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
 
 samtools index $FINALBAM
+
+# QC
+
+#bmftools_db depth -sb $BED -p 50 $PRERSQBAM > ${PRERSQBAM}.doc.bed
+bmftools_db depth -sb $BED -p 50 $FINALBAM > ${FINALBAM}.doc.bed
+bmftools_db famstats fm $PRERSQBAM > ${PRERSQBAM}.famstats.txt
+bmftools_db famstats fm $FINALBAM > ${FINALBAM}.famstats.txt
 
 # Clean up
 
