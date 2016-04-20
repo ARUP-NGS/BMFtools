@@ -1,14 +1,8 @@
 #ifndef SPLITTER_H
 #define SPLITTER_H
 
-#include <stdlib.h>
-#include <string.h>
+#include <stdint.h>
 #include <zlib.h>
-#include "dlib/cstr_util.h"
-#include "dlib/compiler_util.h"
-#include "dlib/misc_util.h"
-#include "lib/binner.h"
-#include "htslib/kstring.h"
 
 namespace BMF {
 

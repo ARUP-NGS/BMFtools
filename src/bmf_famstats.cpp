@@ -1,4 +1,6 @@
-#include "bmf_famstats.h"
+#include <getopt.h>
+#include "dlib/bam_util.h"
+#include <algorithm>
 
 namespace BMF {
 

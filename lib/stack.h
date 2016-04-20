@@ -2,24 +2,10 @@
 #define UNIQUE_OBS_H
 
 #include "dlib/bam_util.h"
-#include "dlib/bed_util.h"
-#include "dlib/misc_util.h"
 #include "dlib/vcf_util.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <getopt.h>
-#include "include/igamc_cephes.h"
-#include "htslib/khash.h"
-#include "htslib/vcf.h"
-#include "htslib/faidx.h"
-#include "htslib/sam.h"
-#include "htslib/vcf.h"
-#include "htslib/tbx.h"
+#include <tgmath.h>
 
-#include <vector>
 #include <unordered_map>
-#include <unordered_set>
-#include <algorithm>
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 

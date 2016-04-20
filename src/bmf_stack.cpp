@@ -1,5 +1,8 @@
 #include "bmf_stack.h"
 
+#include <getopt.h>
+#include <algorithm>
+
 namespace BMF {
 
     const char *vcf_header_lines[] =  {

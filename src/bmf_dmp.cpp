@@ -9,6 +9,9 @@
 #include <string.h>
 #include <zlib.h>
 
+#include "lib/binner.h"
+#include "dlib/nix_util.h"
+
 namespace BMF {
 
     void dmp_usage()

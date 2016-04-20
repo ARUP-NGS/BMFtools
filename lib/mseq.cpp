@@ -1,6 +1,5 @@
 #include "mseq.h"
 
-#include <stdio.h>
 #include "dlib/misc_util.h"
 
 namespace BMF {
