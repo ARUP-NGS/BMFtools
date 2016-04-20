@@ -174,8 +174,8 @@ namespace BMF {
         }
         FILE *in_handle1(dlib::open_ifp(in1));
         FILE *in_handle2(dlib::open_ifp(in2));
-        gzFile out_handle1(gzopen(out1, mode));
-        gzFile out_handle2(gzopen(out2, mode));
+        gzFile out_handle1(dlib::open_gzfile(out1, mode));
+        gzFile out_handle2(dlib::open_gzfile(out2, mode));
         const int homing_len = strlen(homing);
         if(!in_handle1) {
             if(dlib::isfile(in1)) {
