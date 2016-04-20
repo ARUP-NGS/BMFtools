@@ -1,7 +1,16 @@
 #include "bmf_vetter.h"
 
+#include <getopt.h>
+#include <algorithm>
+
+#include "dlib/bam_util.h"
+#include "dlib/vcf_util.h"
+#include "include/igamc_cephes.h"
+#include "htslib/tbx.h"
+
 namespace BMF {
 
+    KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
     void vetter_usage(int retcode)
     {
