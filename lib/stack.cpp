@@ -1,5 +1,10 @@
 #include "stack.h"
 
+#include <stdint.h>
+#include <algorithm>
+#include "include/igamc_cephes.h"
+#include "dlib/misc_util.h"
+
 namespace BMF {
     /*
      * TODO:

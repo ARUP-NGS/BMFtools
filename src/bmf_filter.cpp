@@ -1,5 +1,4 @@
 #include "dlib/bam_util.h"
-#include "dlib/bed_util.h"
 #include <getopt.h>
 #include <functional>
 

@@ -7,6 +7,8 @@
 #include <omp.h>
 #include <stdlib.h>
 #include "bmf_dmp.h"
+#include "lib/binner.h"
+#include "dlib/nix_util.h"
 
 namespace BMF {
 

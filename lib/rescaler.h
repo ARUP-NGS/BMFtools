@@ -1,8 +1,6 @@
 #ifndef ARRAY_PARSER_H
 #define ARRAY_PARSER_H
-#include <string.h>
 #include <assert.h>
-#include "dlib/char_util.h"
 #include "dlib/io_util.h"
 
 #define NQSCORES 39uL // Number of q scores in sequencing.

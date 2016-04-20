@@ -1,8 +1,6 @@
 #ifndef BINNER_H
 #define BINNER_H
 #include <stdint.h>
-#include <inttypes.h>
-#include "dlib/char_util.h"
 #include "dlib/compiler_util.h"
 #include "dlib/math_util.h"
 

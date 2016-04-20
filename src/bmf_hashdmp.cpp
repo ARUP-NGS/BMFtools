@@ -1,3 +1,5 @@
+//#include "dlib/misc_util.h"
+#include "bmf_dmp.h"
 #include "bmf_hashdmp.h"
 
 #if 0
@@ -596,7 +598,8 @@ namespace BMF {
                 zstranded_process_write(cfor->value, crev->value, &ks, tmp->buffers); // Found from both strands!
                 destroy_kf(cfor->value); destroy_kf(crev->value);
                 HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-                cond_free(crev); cond_free(cfor);
+                if(crev) free(crev), crev = nullptr;
+                if(cfor) free(cfor), cfor = nullptr;
 
             } else {
                 ++non_duplex;

@@ -1,4 +1,8 @@
 #include "bmf_infer.h"
+#include <getopt.h>
+#include "dlib/sort_util.h"
+#include "lib/kingfisher.h"
+
 
 namespace BMF {
 

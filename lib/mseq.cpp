@@ -1,5 +1,7 @@
 #include "mseq.h"
 
+#include "dlib/misc_util.h"
+
 namespace BMF {
 
     void mseq_destroy(mseq_t *mvar)

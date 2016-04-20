@@ -1,4 +1,10 @@
 #include "bmf_rsq.h"
+#include <string.h>
+#include <getopt.h>
+#include "dlib/char_util.h"
+#include "include/igamc_cephes.h" /// for igamc
+//#include <unordered_map>
+#include <algorithm>
 
 namespace BMF {
 
