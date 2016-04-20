@@ -135,7 +135,7 @@ namespace BMF {
                 return arr[1] > arr[4] ? 1: 4;
             } else goto label34;
         }
-        label24: return (arr[2] > arr[3]) ? (arr[2] > arr[4] ? 2: 4): (arr[3] > arr[4] ? 3: 4);
+        label24: if(arr[2] > arr[3]) return (arr[2] > arr[4] ? 2: 4);
         label34: return arr[3] > arr[4] ? 3: 4;
     }
 
