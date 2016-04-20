@@ -1,14 +1,14 @@
 #include "bmf_depth.h"
+
 #include <ctype.h>
+#include <zlib.h>
 #include <unordered_set>
 #include <algorithm>
 #include <vector>
-#include <zlib.h>
-
+#include "htslib/kseq.h"
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
 #include "dlib/io_util.h"
-#include "htslib/kseq.h"
 
 namespace BMF {
 

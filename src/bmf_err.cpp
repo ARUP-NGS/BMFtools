@@ -1,10 +1,7 @@
 #include <assert.h>
-#include <float.h>
-#include <string>
-#include <vector>
 #include <algorithm>
-#include "dlib/bam_util.h"
 #include "htslib/faidx.h"
+#include "dlib/bam_util.h"
 #include "lib/kingfisher.h"
 #include "lib/rescaler.h"
 

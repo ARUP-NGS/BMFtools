@@ -4,8 +4,6 @@
 #include "lib/kingfisher.h"
 #include "bmf_hashdmp.h"
 
-extern int64_t ipow(int32_t, int32_t);
-
 typedef void (*hash_dmp_fn)(char *, char *, int);
 
 #define RANDSTR_SIZE 20
@@ -33,7 +31,6 @@ namespace BMF {
      */
     CONST static inline int test_hp(char *barcode, int threshold)
     {
-        assert(barcode && *barcode);
         int run = 0; char last = '\0';
         while(*barcode) {
             if(*barcode == 'N') {

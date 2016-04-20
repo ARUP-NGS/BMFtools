@@ -1,13 +1,12 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
-
 #include <math.h>
 #include <zlib.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
 #include "htslib/kstring.h"
-#include "include/igamc_cephes.h"
 #include "dlib/cstr_util.h"
+#include "include/igamc_cephes.h"
 #include "lib/splitter.h"
 
 #ifndef MAX_PV

@@ -1,6 +1,6 @@
 #include <getopt.h>
-#include "dlib/bam_util.h"
 #include <algorithm>
+#include "dlib/bam_util.h"
 
 namespace BMF {
 

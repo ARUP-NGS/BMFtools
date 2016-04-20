@@ -1,6 +1,5 @@
 #ifndef SPLITTER_H
 #define SPLITTER_H
-
 #include <stdint.h>
 #include <zlib.h>
 

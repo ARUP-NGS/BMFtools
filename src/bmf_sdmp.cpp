@@ -9,6 +9,8 @@
 #include "bmf_dmp.h"
 #include "lib/binner.h"
 #include "dlib/nix_util.h"
+#include "dlib/io_util.h"
+#include "lib/mseq.h"
 
 namespace BMF {
 

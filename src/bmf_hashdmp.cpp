@@ -1,14 +1,7 @@
-//#include "dlib/misc_util.h"
+#include <assert.h>
 #include "bmf_dmp.h"
-#include "bmf_hashdmp.h"
-
-#if 0
-#define pushback_inmem(kf, ks, offset, pass) \
-    do {\
-        LOG_DEBUG("Calling pushback_inmem.\n");\
-        pushback_inmem(kf, ks, offset, pass);\
-    } while(0)
-#endif
+#include "dlib/io_util.h"
+#include "lib/mseq.h"
 
 
 namespace BMF {

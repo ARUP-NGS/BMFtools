@@ -1,11 +1,10 @@
 #ifndef UNIQUE_OBS_H
 #define UNIQUE_OBS_H
-
+#include <cmath>
+#include <unordered_map>
 #include "dlib/bam_util.h"
 #include "dlib/vcf_util.h"
-#include <tgmath.h>
 
-#include <unordered_map>
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
