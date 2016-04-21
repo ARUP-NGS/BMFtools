@@ -91,7 +91,6 @@ namespace BMF {
         });
         for(i = 0; i < stats->rc->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-#if !NDEBUG
         // Handle stats->np
         fms.resize(stats->np->n_occupied);
         LOG_DEBUG("n_occupied: %lu.\n", stats->np->n_occupied);
@@ -107,9 +106,8 @@ namespace BMF {
         });
         fprintf(fp, "#Number of families that were rescued: %lu.\n", n_rsq_fams);
         fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
-        for(i = 0; i < stats->rc->n_occupied; ++i)
+        for(i = 0; i < stats->np->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-#endif
     }
 
 
