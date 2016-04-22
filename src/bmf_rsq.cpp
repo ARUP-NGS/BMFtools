@@ -27,21 +27,20 @@ namespace BMF {
     {
         int i;
         uint8_t *rvdata;
-        kstring_t ks{0, 0, nullptr};
-        kputc('@', &ks);
+        kstring_t ks{0, 120uL, (char *)malloc(120uL)};
+        ks.l = 1, ks.s[0] ='@', ks.s[1] = '\0';
         kputs(bam_get_qname(b), &ks);
-        kputs(" PV:B:I", &ks);
+        kputsn(" PV:B:I", 7uL, &ks);
         auto fa((uint32_t *)dlib::array_tag(b, "FA"));
         auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputs("\tFA:B:I", &ks);
+        kputsn("\tFA:B:I", 7uL, &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i",
-                 bam_itag(b, "FM"), bam_itag(b, "FP"));
-        bam_if_add(rvdata, b, "RV", ks);
-        bam_if_add(rvdata, b, "NC", ks);
-        bam_if_add(rvdata, b, "DR", ks);
-        bam_if_add(rvdata, b, "NP", ks);
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i", bam_itag(b, "FM"), bam_itag(b, "FP"));
+        write_tag_if_found(rvdata, b, "RV", ks);
+        write_tag_if_found(rvdata, b, "NC", ks);
+        write_tag_if_found(rvdata, b, "DR", ks);
+        write_tag_if_found(rvdata, b, "NP", ks);
         /*
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
@@ -83,12 +82,14 @@ namespace BMF {
         fputs(ks.s, fp), free(ks.s);
     }
 
+
     inline int switch_names(char *n1, char *n2) {
         for(;*n1;++n1, ++n2)
             if(*n1 != *n2)
                 return *n1 < *n2;
         return 0; // If identical, don't switch. Should never happen.
     }
+
 
     void update_bam1(bam1_t *p, bam1_t *b)
     {
@@ -220,7 +221,22 @@ namespace BMF {
     }
 
 
-    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings);
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    {
+        //size_t n = 0;
+        uint8_t *data;
+        for(unsigned i = 0; i < stack->n; ++i) {
+            if(stack->a[i]) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                    bam2ffq(stack->a[i], settings->fqh);
+                } else {
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
+            }
+        }
+    }
+
 
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
@@ -279,22 +295,6 @@ namespace BMF {
     }
 
 
-    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
-    {
-        //size_t n = 0;
-        uint8_t *data;
-        for(unsigned i = 0; i < stack->n; ++i) {
-            if(stack->a[i]) {
-                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                    bam2ffq(stack->a[i], settings->fqh);
-                } else {
-                    sam_write1(settings->out, settings->hdr, stack->a[i]);
-                }
-                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-            }
-        }
-    }
-
     inline int stringhd(char *a, char *b) {
         int hd = 0;
         while(*a) hd += (*a++ != *b++);
@@ -309,6 +309,7 @@ namespace BMF {
                     return 0;
         return 1;
     }
+
 
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
     {
