@@ -129,7 +129,7 @@ namespace BMF {
         if(stats->dr_counts) {
             fprintf(fp, "#Duplex fraction of unique observations\t%0.12f\n", (double)stats->dr_counts / stats->n_pass);
             fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12f\n", (double)stats->dr_sum / stats->allfm_sum);
-            fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12f\n", stats->dr_rc_frac_sum / stats->dr_rc_sum);
+            fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12f\n", stats->dr_rc_frac_sum / stats->dr_counts);
             fprintf(fp, "#Mean fraction of reverse reads within all duplex families\t%0.12f\n", (double)stats->dr_rc_sum / stats->dr_sum);
         }
         print_hashstats(stats, fp);

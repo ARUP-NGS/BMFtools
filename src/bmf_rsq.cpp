@@ -38,6 +38,11 @@ namespace BMF {
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i",
                  bam_itag(b, "FM"), bam_itag(b, "FP"));
+        bam_if_add(rvdata, b, "RV", ks);
+        bam_if_add(rvdata, b, "NC", ks);
+        bam_if_add(rvdata, b, "DR", ks);
+        bam_if_add(rvdata, b, "NP", ks);
+        /*
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "NC")) != nullptr)
@@ -46,6 +51,7 @@ namespace BMF {
             ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "NP")) != nullptr)
             ksprintf(&ks, "\tNP:i:%i", bam_aux2i(rvdata));
+        */
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -122,12 +128,11 @@ namespace BMF {
             bdata = bam_aux_get(b, "NP");
             pTMP = bam_aux2i(pdata) + (bdata ? bam_aux2i(bdata) : 1);
             bam_aux_del(p, pdata);
-            bam_aux_append(p, "NP", 'i', sizeof(int), (uint8_t *)&pTMP);
         } else {
             bdata = bam_aux_get(b, "NP");
             pTMP = (bdata ? bam_aux2i(bdata) : 1) + 1;
-            bam_aux_append(p, "NP", 'i', sizeof(int), (uint8_t *)&pTMP);
         }
+        bam_aux_append(p, "NP", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&pTMP));
         uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
         uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
         uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA"));
