@@ -304,35 +304,12 @@ namespace BMF {
                     return 0;
         return 1;
     }
-    /*
-     * Returns true if hd <= mmlim, 0 otherwise.
-     */
-#define hd_test(a, b, mmlim) stringhd(bam_get_qname(a), bam_get_qname(b)) < mmlim)
 
-#if !NDEBUG
-    namespace {
-        KHASH_MAP_INIT_INT(hd, uint64_t)
-    }
-#endif
-
-#if !NDEBUG
-    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim, khash_t(hd) *readhds)
-#else
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
-#endif
     {
         std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
                 return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
         });
-#if 0
-        const uint64_t key = stack->a[0] ? ucs_sort_core_key(stack->a[0]) : -1;
-        const int tid = stack->a[0]->core.tid;
-        LOG_DEBUG("Get cs\n");
-        const int ucs = dlib::get_unclipped_start(stack->a[0]);
-        LOG_DEBUG("Get mucs\n");
-        const int mucs = bam_itag(stack->a[0], "MU");
-        //LOG_DEBUG("%lu", key);
-#endif
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 //assert(key == ucs_sort_core_key(stack->a[j]));
@@ -344,34 +321,6 @@ namespace BMF {
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
-#if !NDEBUG
-                    const int namehd = stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-                    khiter_t k;
-                    if((k = kh_get(hd, readhds, namehd)) == kh_end(readhds)) {
-                        int tmp;
-                        k = kh_put(hd, readhds, namehd, &tmp);
-                        kh_val(readhds, k) = 1;
-                    } else ++kh_val(readhds, k);
-#endif
-#if 0
-                    const int readhd = read_hd(stack->a[i], stack->a[j]);
-                    if(readhd > 10) {
-                        char buf1[200];
-                        char buf2[200];
-                        dlib::bam_seq_cpy(buf1, stack->a[i]);
-                        dlib::bam_seq_cpy(buf2, stack->a[j]);
-                        LOG_DEBUG("Encountered large read hd %i. Seq1: %s. Seq2: %s. Name1: %s. Name2: %s. Name HD: %i\n",
-                                  readhd, buf1, buf2, bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]), stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])));
-                        assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim);
-                    }
-                    khiter_t k = kh_get(hd, readhds, readhd);
-                    int khr;
-                    if(k == kh_end(readhds)) {
-                        LOG_DEBUG("Encountered new hd for reads: %i.\n", readhd);
-                        k = kh_put(hd, readhds, readhd, &khr);
-                        kh_val(readhds, k) = 1;
-                    } else ++kh_val(readhds, k);
-#endif
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     update_bam1(stack->a[j], stack->a[i]);
@@ -390,9 +339,6 @@ namespace BMF {
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
-#if !NDEBUG
-        khash_t(hd) *read_hds = kh_init(hd);
-#endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
@@ -410,11 +356,7 @@ namespace BMF {
             if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
-#if !NDEBUG
-                flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
-#else
                 flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -424,15 +366,7 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
-#if !NDEBUG
-        flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
-        for(khiter_t ki = kh_begin(read_hds); ki != kh_end(read_hds); ++ki)
-            if(kh_exist(read_hds, ki))
-                fprintf(stdout, "%i:%lu\n", kh_key(read_hds, ki), kh_val(read_hds, ki));
-        kh_destroy(hd, read_hds);
-#else
         flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
         write_stack(stack, settings);
         stack->n = 0;
         bam_destroy1(b);

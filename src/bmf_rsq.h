@@ -35,7 +35,7 @@ namespace BMF {
 
     CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
     {
-    #if !NDEBUG
+#if !NDEBUG
         if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
            ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
            sort_rlen_key(b) == sort_rlen_key(p)) {
@@ -47,11 +47,11 @@ namespace BMF {
             return 1;
         }
         return 0;
-    #else
+#else
         return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
                 ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
                 sort_rlen_key(b) == sort_rlen_key(p));
-    #endif
+#endif
     }
 
     CONST static inline int read_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)

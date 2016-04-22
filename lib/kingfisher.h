@@ -1,5 +1,6 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
+#include <assert.h>
 #include <math.h>
 #include <zlib.h>
 #include "htslib/khash.h"
@@ -75,12 +76,6 @@ namespace BMF {
     }
 
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
-#if 0
-        //LOG_DEBUG("seq.l:%lu. offset: %i. kfp->readlen: %i\n", seq->seq.l, offset, kfp->readlen);
-        if(!(kfp->readlen + offset == (int64_t)seq->seq.l || kfp->pass_fail == '0')) {
-            LOG_DEBUG("len: %i. \n", kfp->length);
-        }
-#endif
         if(!kfp->length++) {
             kfp->pass_fail = pass + '0';
         } else {
@@ -92,11 +87,7 @@ namespace BMF {
         uint32_t posdata, i;
         for(i = offset; i < seq->seq.l; ++i) {
             posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
-#if 0
-            if(posdata >= (unsigned)kfp->readlen * 5){
-                LOG_DEBUG("readlen: %i. posdata: %u. i: %i. nuc2num: %i. offset: %i\n", kfp->readlen, posdata, i, nuc2num(seq->seq.s[i]), offset);
-            }
-#endif
+            assert(posdata < (unsigned)kfp->readlen * 5);
             ++kfp->nuc_counts[posdata];
             kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
             if(seq->qual.s[i] > kfp->max_phreds[posdata])

@@ -421,9 +421,7 @@ namespace BMF {
         }
         char *bs_ptr(barcode_mem_view(seq));
         const int blen(infer_barcode_length(bs_ptr));
-    #if !NDEBUG
-        fprintf(stderr, "[D:%s] Barcode length (inferred): %i.\n", __func__, blen);
-    #endif
+        LOG_DEBUG("Barcode length (inferred): %i.\n", blen);
         tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
         memcpy(tmp->key, bs_ptr, blen);
         tmp->key[blen] = '\0';
@@ -452,9 +450,7 @@ namespace BMF {
                 HASH_ADD_STR(hash, id, tmp_hk);
             } else pushback_kseq(tmp_hk->value, seq, blen);
         }
-#if !NDEBUG
-        fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
-#endif
+        LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
         count = 0;
         kstring_t ks{0, 0, nullptr};
         HASH_ITER(hh, hash, current_entry, tmp_hk) {
@@ -568,15 +564,15 @@ namespace BMF {
         }
         uint64_t rcount = count - fcount;
         LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
-#if !NDEBUG
-        fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
-        khiter_t ki;
-        int hamming_distance, khr;
-#endif
+        LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
         kstring_t ks = {0, 0, nullptr};
         // Demultiplex and empty the hash.
+#if !NDEBUG
+        khiter_t ki;
+        int hamming_distance, khr;
+#endif
         HASH_ITER(hh, hfor, cfor, tmp_hkf) {
             HASH_FIND_STR(hrev, cfor->id, crev);
             if(crev) {
