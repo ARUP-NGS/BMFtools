@@ -1,7 +1,8 @@
 #define __STDC_LIMIT_MACROS
-#include "htslib/sam.h"
-#include "src/bmf_target.h" // Provides bed, compiler utils
-#include "bam.h"
+#include <assert.h>
+#include <stdint.h>
+//#include "htslib/sam.h"
+#include "src/bmf_target.h"
 
 int main(int c, char **argv)
 {

@@ -13,8 +13,6 @@ namespace BMF {
         uint64_t rfm_target;
     };
 
-    target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval);
-
     int target_usage(int retcode)
     {
         fprintf(stderr,
