@@ -1,5 +1,5 @@
+#include <getopt.h>
 #include "dlib/bam_util.h"
-#include "include/sam_opts.h"
 
 namespace BMF {
 

@@ -1,5 +1,10 @@
 #include "stack.h"
 
+#include <stdint.h>
+#include <algorithm>
+#include "include/igamc_cephes.h"
+#include "dlib/misc_util.h"
+
 namespace BMF {
     /*
      * TODO:
@@ -21,8 +26,7 @@ namespace BMF {
         vrec->rid = tid;
         vrec->pos = pos;
         vrec->qual = 0;
-        kstring_t allele_str = {0, 0, nullptr};
-        ks_resize(&allele_str, 20uL);
+        kstring_t allele_str = {0, 10uL, (char *)malloc(10uL * sizeof(char))};
         kputc(refbase, &allele_str);
         auto match = templates.find(refbase);
         if(match == templates.end()) {
@@ -107,11 +111,6 @@ namespace BMF {
         }
         std::vector<char> base_calls(base_set.begin(), base_set.end());
         const size_t n_base_calls = base_calls.size();
-#if 0
-        std::string tmp;
-        for(auto call: base_calls) tmp.push_back((char)call);
-        LOG_DEBUG("N base calls: %i. string: %s\n", (int)n_base_calls, tmp.c_str());
-#endif
         // Sort lexicographically AFTER putting the reference base first.
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
@@ -231,8 +230,7 @@ namespace BMF {
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
 #if !NDEBUG
-        for(auto i: reverse_counts)
-            LOG_DEBUG("Reverse count: %i.\n", i);
+        for(auto i: reverse_counts) LOG_DEBUG("Reverse count: %i.\n", i);
 #endif
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());

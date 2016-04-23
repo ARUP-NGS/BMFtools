@@ -47,7 +47,7 @@ bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
 bmftools sort| Sort for bam rescue.|
 bmftools stack| A maximally-permissive variant caller using molecular barcode metadata analogous to samtools mpileup.|
 bmftools target| Calculates on-target rate.|
-bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
+bmftools vet| Curate variant calls from another variant caller (.bcf) and a bam alignment.|
 
 These tools are divided into four categories:
   1. Core functionality
@@ -139,6 +139,7 @@ MF | Mate fraction aligned (fraction of bases mapped to reference bases, not cou
 mc | Mate soft-clipped length | Integer |
 NC | Number of changed bases in rescued families of reads. | Integer |
 NF | Mean number of differences between reads and consensus per read in family | Single-precision floating number |
+NP | Number of Pre-rescue reads. Number of reads before rescue in a final post-rescue observation. |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array |
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
 SC | Soft-clipped length | Integer |

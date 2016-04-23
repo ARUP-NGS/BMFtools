@@ -1,5 +1,12 @@
 #include "splitter.h"
 
+#include <string.h>
+#include "htslib/kstring.h"
+#include "dlib/cstr_util.h"
+#include "dlib/compiler_util.h"
+#include "dlib/misc_util.h"
+#include "lib/binner.h"
+
 namespace BMF {
 
     void splitterhash_destroy(splitterhash_params_t *params)
@@ -89,7 +96,6 @@ namespace BMF {
 
         cond_free(var->tmp_out_handles_r1);
         cond_free(var->tmp_out_handles_r2);
-        LOG_DEBUG("Freeing final var at %p.\n", (void *)var);
         cond_free(var);
     }
 
@@ -97,12 +103,12 @@ namespace BMF {
     mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
     {
         mark_splitter_t ret = {
-            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r1
-            (gzFile *)malloc(settings_ptr->n_handles * sizeof(gzFile)), // tmp_out_handles_r2
+            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
+            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r2
             settings_ptr->n_nucs, // n_nucs
             (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
-            (char **)malloc(ret.n_handles * sizeof(char *)), // infnames_r1
-            (char **)malloc(ret.n_handles * sizeof(char *))  // infnames_r2
+            (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
+            (char **)calloc(ret.n_handles, sizeof(char *))  // infnames_r2
         };
         kstring_t ks = {0, 0, nullptr};
         for (int i = 0; i < ret.n_handles; i++) {
@@ -141,11 +147,8 @@ namespace BMF {
 
     mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
     {
-        if(settings_ptr->is_se) {
-            return init_splitter_se(settings_ptr);
-        } else {
-            return init_splitter_pe(settings_ptr);
-        }
+        return settings_ptr->is_se ? init_splitter_se(settings_ptr)
+                                   : init_splitter_pe(settings_ptr);
     }
 
 } /* namespace BMF */

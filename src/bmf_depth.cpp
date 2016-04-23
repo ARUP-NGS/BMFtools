@@ -1,5 +1,15 @@
 #include "bmf_depth.h"
 
+#include <ctype.h>
+#include <zlib.h>
+#include <unordered_set>
+#include <algorithm>
+#include <vector>
+#include "htslib/kseq.h"
+#include "dlib/bam_util.h"
+#include "dlib/cstr_util.h"
+#include "dlib/io_util.h"
+
 namespace BMF {
 
     struct depth_aux_t {
@@ -204,7 +214,6 @@ namespace BMF {
             depth_usage(EXIT_FAILURE);
         memset(&str, 0, sizeof(kstring_t));
         n = argc - optind;
-        fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
         aux = (depth_aux_t **)calloc(n, sizeof(depth_aux_t*));
         idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
         for (i = 0; i < n; ++i) {
@@ -251,8 +260,8 @@ namespace BMF {
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
         size_t capture_size = 0;
-        std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> dmp_capture_counts(n);
+        std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str = {0, 0, nullptr};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
@@ -290,7 +299,7 @@ namespace BMF {
                 int c = *q; *q = '\0';
                 col_names[i] = restrdup(col_names[i], p);
                 *q = c;
-            } else col_names[i] = restrdup(col_names[i], NO_ID_STR);
+            } else col_names[i] = restrdup(col_names[i], (char *)NO_ID_STR);
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -311,9 +320,9 @@ namespace BMF {
                         } else ++kh_val(aux[i]->depth_hash, k);
                         counts[i] += n_plp[i];
                         aux[i]->dmp_counts[arr_ind] = n_plp[i];
-                        raw_capture_counts[i] += n_plp[i];
+                        dmp_capture_counts[i] += n_plp[i];
                         aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
-                        dmp_capture_counts[i] += aux[i]->raw_counts[arr_ind];
+                        raw_capture_counts[i] += aux[i]->raw_counts[arr_ind];
                         aux[i]->singleton_counts[arr_ind] = plp_singleton_sum(plp[i], n_plp[i]);
                         singleton_capture_counts[i] += aux[i]->singleton_counts[arr_ind];
                     }
@@ -361,7 +370,8 @@ namespace BMF {
             ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
             ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
             ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton Fraction: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / dmp_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (raw): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / raw_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (dmp): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / dmp_capture_counts[i]);
         }
         ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
         for(i = 0; i < n; ++i) {

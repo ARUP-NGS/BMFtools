@@ -1,25 +1,10 @@
 #ifndef UNIQUE_OBS_H
 #define UNIQUE_OBS_H
-
-#include "dlib/bam_util.h"
-#include "dlib/bed_util.h"
-#include "dlib/misc_util.h"
-#include "dlib/vcf_util.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <getopt.h>
-#include "include/igamc_cephes.h"
-#include "htslib/khash.h"
-#include "htslib/vcf.h"
-#include "htslib/faidx.h"
-#include "htslib/sam.h"
-#include "htslib/vcf.h"
-#include "htslib/tbx.h"
-
-#include <vector>
+#include <cmath>
 #include <unordered_map>
-#include <unordered_set>
-#include <algorithm>
+#include "dlib/bam_util.h"
+#include "dlib/vcf_util.h"
+
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
@@ -60,26 +45,27 @@ static const char *stack_vcf_lines[] = {
     class UniqueObservation {
     friend SampleVCFPos;
     std::string qname;
-    int cycle1;
-    int cycle2; // Masked, from other read, if it was found.
-    int discordant;
-    uint32_t quality;
-    uint32_t mq1;
-    uint32_t mq2;
-    uint32_t rv;
-    int is_duplex1;
-    int is_duplex2;
-    int is_reverse1;
-    int is_reverse2;
-    int is_overlap;
-    int pass;
+    int16_t cycle1;
+    int16_t cycle2; // Masked, from other read, if it was found.
+    uint32_t quality:16;
+    uint32_t mq1:8;
+    uint32_t mq2:8;
+    uint32_t rv:16;
+    uint32_t discordant:1;
+    uint32_t is_duplex1:1;
+    uint32_t is_duplex2:1;
+    uint32_t is_reverse1:1;
+    uint32_t is_reverse2:1;
+    uint32_t is_overlap:1;
+    uint32_t pass:1;
     double pvalue;
-    int flag; // May turn into a flag
+    int flag; // BAM flag
     char base1;
     char base2; // Masked, from other read
     char base_call;
-    uint32_t agreed;
-    uint32_t size;
+    uint32_t agreed:16;
+    uint32_t size:32;
+    //size_t size;
     public:
         int is_pass() {
             return pass;
@@ -90,14 +76,17 @@ static const char *stack_vcf_lines[] = {
         uint32_t get_agreed() {
             return agreed;
         }
+        bool mate_added() {
+            return mq2 != (uint8_t)-1;
+        }
         int get_reverse() {
-            return is_reverse1 + (is_reverse2 >= 0) ? is_reverse2: 0;
+            return is_reverse1 + mate_added() ? is_reverse2: 0;
         }
         void set_pass(int _pass) {
             pass = _pass;
         }
         uint32_t get_meanMQ() {
-            return mq2 == (uint32_t)-1 ? mq1: ((mq2 + mq1 + 0.5) / 2);
+            return mate_added() ? mq1: ((mq2 + mq1 + 0.5) / 2);
         }
         double get_FA() {
             return (double)agreed / size;
@@ -105,7 +94,7 @@ static const char *stack_vcf_lines[] = {
         int get_overlap() {return is_overlap;}
         uint32_t get_quality() {return quality;}
         int get_duplex() {
-            return is_duplex1 + (is_duplex2 >= 0 ? is_duplex2: 0);
+            return is_duplex1 + mate_added() ? is_duplex2: 0;
         }
         UniqueObservation() {
             memset(this, 0, sizeof(*this));
@@ -114,15 +103,15 @@ static const char *stack_vcf_lines[] = {
             qname(bam_get_qname(plp.b)),
             cycle1(dlib::arr_qpos(&plp)),
             cycle2(-1),
-            discordant(-1),
             quality(((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle1]),
             mq1(plp.b->core.qual),
-            mq2((uint32_t)-1),
+            mq2((uint8_t)-1),
             rv((uint32_t)bam_itag(plp.b, "RV")),
+            discordant(0),
             is_duplex1(bam_itag(plp.b, "DR")),
-            is_duplex2(-1),
+            is_duplex2(0),
             is_reverse1((plp.b->core.flag & BAM_FREVERSE) != 0),
-            is_reverse2(-1),
+            is_reverse2(0),
             is_overlap(0),
             pass(1),
             pvalue(std::pow(10, quality - 0.1)),
@@ -137,8 +126,7 @@ static const char *stack_vcf_lines[] = {
         void add_obs(const bam_pileup1_t& plp);
     };
 
-    class stack_aux_t {
-    public:
+    struct stack_aux_t {
         stack_conf_t conf;
         dlib::BamHandle tumor;
         dlib::BamHandle normal;
@@ -230,10 +218,10 @@ static const char *stack_vcf_lines[] = {
     public:
         void to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos);
         PairVCFPos(std::unordered_map<std::string, UniqueObservation>& tobs,
-                std::unordered_map<std::string, UniqueObservation>& nobs,
-                    int32_t _tid, int32_t _pos):
-                        tumor(tobs, _tid, _pos),
-                        normal(nobs, _tid, _pos)
+                   std::unordered_map<std::string, UniqueObservation>& nobs,
+                   int32_t tid, int32_t pos):
+                        tumor(tobs, tid, pos),
+                        normal(nobs, tid, pos)
         {
         }
     };

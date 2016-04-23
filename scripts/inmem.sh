@@ -20,10 +20,9 @@ tmpstr=${1%.fq*}
 FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
 
 # Perform inline barcode demultiplexing.
-time bmftools dmp -zdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
-	-o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
 R1=${FINAL_FQ_PREFIX}.R1.fq.gz
 R2=${FINAL_FQ_PREFIX}.R2.fq.gz
+time bmftools inmem -L1 -l${BLEN} -v${MAX_BLEN} -s${HOMING} $r1 $r2 -1 $R1 -2 $R2
 tmpstr=${R1%.fq*}
 TMPFQ=${tmpstr%.fastq*}.tmp.fq
 TMPBAM=${tmpstr%.fastq*}.tmp.bam

@@ -1,19 +1,6 @@
 #ifndef BMF_RSQ_H
 #define BMF_RSQ_H
 #include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <zlib.h>
-#include <tgmath.h>
-#include <unordered_map>
-#include <algorithm>
-#include <functional>
-#include "htslib/sam.h"
-#include "include/sam_opts.h"
-#include "include/bam.h" // for bam_get_library
-#include "include/igamc_cephes.h" /// for igamc
-#include "dlib/cstr_util.h"
 #include "dlib/sort_util.h"
 #include "dlib/bam_util.h"
 
@@ -48,22 +35,23 @@ namespace BMF {
 
     CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
     {
-    #if !NDEBUG
+#if !NDEBUG
         if(ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
-           ucs_sort_mate_key(b) == ucs_sort_mate_key(p)) {
+           ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
+           sort_rlen_key(b) == sort_rlen_key(p)) {
             assert(b->core.tid == p->core.tid);
             assert(b->core.mtid == p->core.mtid);
-            assert(b->core.mtid == p->core.mtid);
+            assert(b->core.l_qseq == p->core.l_qseq);
             assert(bam_itag(b, "MU") == bam_itag(p, "MU"));
-            //assert(bam_itag(b, "SU") == bam_itag(p, "SU"));
+            assert(bam_itag(b, "LM") == bam_itag(p, "LM"));
             return 1;
         }
         return 0;
-    #else
+#else
         return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
                 ucs_sort_mate_key(b) == ucs_sort_mate_key(p) &&
                 sort_rlen_key(b) == sort_rlen_key(p));
-    #endif
+#endif
     }
 
     CONST static inline int read_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)

@@ -1,23 +1,18 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
-
-#include <stdio.h>
+#include <assert.h>
 #include <math.h>
 #include <zlib.h>
-#include <inttypes.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
 #include "htslib/kstring.h"
-#include "include/igamc_cephes.h"
-#include "lib/mseq.h"
-#include "lib/rescaler.h"
-#include "lib/splitter.h"
-#include "dlib/bam_util.h"
-#include "dlib/char_util.h"
-#include "dlib/misc_util.h"
 #include "dlib/cstr_util.h"
+#include "include/igamc_cephes.h"
+#include "lib/splitter.h"
 
-#define MAX_PV 3117 // Maximum seen with doubles
+#ifndef MAX_PV
+#    define MAX_PV 3117 // Maximum seen with doubles
+#endif
 #define HASH_DMP_OFFSET 14
 #define FP_OFFSET 9
 
@@ -60,7 +55,6 @@ namespace BMF {
     };
 
 
-
     void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
     void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
     int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2);
@@ -82,19 +76,18 @@ namespace BMF {
     }
 
     static inline void pushback_inmem(kingfisher_t *kfp, kseq_t *seq, int offset, int pass) {
-        //LOG_DEBUG("seq.l:%lu. offset: %i. kfp->readlen: %i\n", seq->seq.l, offset, kfp->readlen);
-        assert(kfp->readlen + offset == (int64_t)seq->seq.l);
-        if(!kfp->length++)
+        if(!kfp->length++) {
             kfp->pass_fail = pass + '0';
+        } else {
+            if(kfp->readlen + offset != (int64_t)seq->seq.l) {
+                if(pass) return; // Don't bother, it's an error.
+                offset = seq->seq.l - kfp->readlen;
+            }
+        }
         uint32_t posdata, i;
         for(i = offset; i < seq->seq.l; ++i) {
             posdata = nuc2num(seq->seq.s[i]) + (i - offset) * 5;
             assert(posdata < (unsigned)kfp->readlen * 5);
-#if 0
-            if(posdata >= (unsigned)kfp->readlen * 5){
-                LOG_DEBUG("readlen: %i. posdata: %u. i: %i. nuc2num: %i. offset: %i\n", kfp->readlen, posdata, i, nuc2num(seq->seq.s[i]), offset);
-            }
-#endif
             ++kfp->nuc_counts[posdata];
             kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
             if(seq->qual.s[i] > kfp->max_phreds[posdata])
@@ -121,22 +114,20 @@ namespace BMF {
      */
     CONST static inline int arr_max_u32(uint32_t *arr, int index)
     {
-        const uint32_t i5 = index * 5;
-        if(arr[i5] > arr[i5 + 1] &&
-            arr[i5] > arr[i5 + 2] &&
-            arr[i5] > arr[i5 + 3] &&
-            arr[i5] > arr[i5 + 4])
-            return 0;
-        else if(arr[i5 + 1] > arr[i5 + 2] &&
-                arr[i5 + 1] > arr[i5 + 3] &&
-                arr[i5 + 1] > arr[i5 + 4])
-            return 1;
-        else if(arr[i5 + 2] > arr[i5 + 3] &&
-                arr[i5 + 2] > arr[i5 + 4])
-            return 2;
-        else if(arr[i5 + 3] > arr[i5 + 4])
-            return 3;
-        return 4; // 'N'
+        arr += index * 5;
+        if(*arr > arr[1]) {
+            if(*arr > arr[2]) {
+                if(*arr > arr[3]) return *arr > arr[4] ? 0: 4;
+                else goto label34;
+            } else goto label24;
+        }
+        if(arr[1] > arr[2]) {
+            if(arr[1] > arr[3]) {
+                return arr[1] > arr[4] ? 1: 4;
+            } else goto label34;
+        }
+        label24: if(arr[2] > arr[3]) return (arr[2] > arr[4] ? 2: 4);
+        label34: return arr[3] > arr[4] ? 3: 4;
     }
 
 

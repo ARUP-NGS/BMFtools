@@ -1,5 +1,11 @@
 #include "bmf_dmp.h"
 
+#include <getopt.h>
+#include <omp.h>
+#include "dlib/nix_util.h"
+#include "lib/binner.h"
+#include "lib/mseq.h"
+
 namespace BMF {
 
     void dmp_usage()

@@ -1,12 +1,9 @@
 #ifndef BMF_HASHDMP_H
 #define BMF_HASHDMP_H
-#include <assert.h>
-
-#include "lib/mseq.h"
+//#include "lib/mseq.h"
 #include "lib/kingfisher.h"
-#include "bmf_dmp.h"
 extern "C" {
-#include "include/uthash.h"
+    #include "include/uthash.h"
 }
 
 
@@ -16,7 +13,7 @@ extern "C" {
 
 namespace BMF {
 
-    KHASH_MAP_INIT_STR(dmp, kingfisher_t *)
+    //KHASH_MAP_INIT_STR(dmp, kingfisher_t *)
     void hash_dmp_core(char *infname, char *outfname, int level);
     int hashdmp_main(int argc, char *argv[]);
     void stranded_hash_dmp_core(char *infname, char *outfname, int level);

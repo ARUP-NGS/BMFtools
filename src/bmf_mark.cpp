@@ -1,3 +1,4 @@
+#include <getopt.h>
 #include "dlib/bam_util.h"
 
 namespace BMF {
@@ -20,6 +21,8 @@ namespace BMF {
 
     static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
     {
+        if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
+            LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
         int ret = 0;
         dlib::add_unclipped_mate_starts(b1, b2);
         dlib::add_mate_SA_tag(b1, b2);
@@ -31,8 +34,10 @@ namespace BMF {
                 ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
         ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
 #if !NDEBUG
-        if(ret) {
-            LOG_DEBUG("Eliminating read pair.\n");
+        if(((mark_settings_t *)data)->remove_qcfail) {
+            if(bam_itag(b1, "FP") == 0) {
+                assert(ret);
+            }
         }
 #endif
         return ret;

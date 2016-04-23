@@ -1,4 +1,10 @@
 #include "bmf_rsq.h"
+#include <string.h>
+#include <getopt.h>
+#include "dlib/char_util.h"
+#include "include/igamc_cephes.h" /// for igamc
+//#include <unordered_map>
+#include <algorithm>
 
 namespace BMF {
 
@@ -21,21 +27,30 @@ namespace BMF {
     {
         int i;
         uint8_t *rvdata;
-        kstring_t ks{0, 0, nullptr};
-        kputc('@', &ks);
+        kstring_t ks{0, 120uL, (char *)malloc(120uL)};
+        ks.l = 1, ks.s[0] ='@', ks.s[1] = '\0';
         kputs(bam_get_qname(b), &ks);
-        kputs(" PV:B:I", &ks);
+        kputsn(" PV:B:I", 7uL, &ks);
         auto fa((uint32_t *)dlib::array_tag(b, "FA"));
         auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputs("\tFA:B:I", &ks);
+        kputsn("\tFA:B:I", 7uL, &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i",
-                 bam_itag(b, "FM"), bam_itag(b, "FP"));
+        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i", bam_itag(b, "FM"), bam_itag(b, "FP"));
+        write_tag_if_found(rvdata, b, "RV", ks);
+        write_tag_if_found(rvdata, b, "NC", ks);
+        write_tag_if_found(rvdata, b, "DR", ks);
+        write_tag_if_found(rvdata, b, "NP", ks);
+        /*
         if((rvdata = bam_aux_get(b, "RV")) != nullptr)
             ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
         if((rvdata = bam_aux_get(b, "NC")) != nullptr)
             ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "DR")) != nullptr)
+            ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
+        if((rvdata = bam_aux_get(b, "NP")) != nullptr)
+            ksprintf(&ks, "\tNP:i:%i", bam_aux2i(rvdata));
+        */
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -66,6 +81,7 @@ namespace BMF {
         kputc('\n', &ks);
         fputs(ks.s, fp), free(ks.s);
     }
+
 
     inline int switch_names(char *n1, char *n2) {
         for(;*n1;++n1, ++n2)
@@ -74,53 +90,6 @@ namespace BMF {
         return 0; // If identical, don't switch. Should never happen.
     }
 
-    inline void bam2ffq(bam1_t *b, FILE *fp, std::string& qname)
-    {
-        int i;
-        uint8_t *rvdata;
-        kstring_t ks{0, 0, nullptr};
-        kputc('@', &ks);
-        kputs(qname.c_str(), &ks);
-        kputs(" PV:B:I", &ks);
-        auto fa((uint32_t *)dlib::array_tag(b, "FA"));
-        auto pv((uint32_t *)dlib::array_tag(b, "PV"));
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputs("\tFA:B:I", &ks);
-        for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
-        ksprintf(&ks, "\tFM:i:%i\tFP:i:%i\tNC:i:%i",
-                bam_itag(b, "FM"), bam_itag(b, "FP"), bam_itag(b, "NC"));
-        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
-            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
-        kputc('\n', &ks);
-        uint8_t *seq(bam_get_seq(b));
-        char *seqbuf((char *)malloc(b->core.l_qseq + 1));
-        for (i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = seq_nt16_str[bam_seqi(seq, i)];
-        seqbuf[i] = '\0';
-        if (b->core.flag & BAM_FREVERSE) { // reverse complement
-            for(i = 0; i < b->core.l_qseq>>1; ++i) {
-                const int8_t t = seqbuf[b->core.l_qseq - i - 1];
-                seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
-                seqbuf[i] = nuc_cmpl(t);
-            }
-            if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
-        }
-        seqbuf[b->core.l_qseq] = '\0';
-        assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
-        kputs(seqbuf, &ks);
-        kputs("\n+\n", &ks);
-        uint8_t *qual(bam_get_qual(b));
-        for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
-        if (b->core.flag & BAM_FREVERSE) { // reverse
-            for (i = 0; i < b->core.l_qseq>>1; ++i) {
-                const int8_t t = seqbuf[b->core.l_qseq - 1 - i];
-                seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
-                seqbuf[i] = t;
-            }
-        }
-        kputs(seqbuf, &ks), free(seqbuf);
-        kputc('\n', &ks);
-        fputs(ks.s, fp), free(ks.s);
-    }
 
     void update_bam1(bam1_t *p, bam1_t *b)
     {
@@ -132,6 +101,7 @@ namespace BMF {
         }
         int bFM(bam_aux2i(bdata));
         int pFM(bam_aux2i(pdata));
+        int pTMP;
         if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
             memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
             assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
@@ -140,29 +110,43 @@ namespace BMF {
         bam_aux_del(p, pdata);
         bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
         if((pdata = bam_aux_get(p, "RV")) != nullptr) {
-            const int pRV = bam_aux2i(pdata) + bam_itag(b, "RV");
+            pTMP = bam_aux2i(pdata) + bam_itag(b, "RV");
             bam_aux_del(p, pdata);
-            bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
+            bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pTMP);
         }
         // Handle NC (Number Changed) tag
         pdata = bam_aux_get(p, "NC");
         bdata = bam_aux_get(b, "NC");
-        int n_changed{dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata)};
+        int n_changed(dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata));
         if(pdata) bam_aux_del(p, pdata);
-
+        // If the collapsed observation is now duplex but wasn't before, this updates the DR tag.
+        if(pTMP != pFM && pTMP != 0 && (pdata = bam_aux_get(p, "DR")) != nullptr && bam_aux2i(pdata) == 0) {
+            pTMP = 1;
+            bam_aux_del(p, pdata);
+            bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
+        }
+        if((pdata = bam_aux_get(p, "NP")) != nullptr) {
+            bdata = bam_aux_get(b, "NP");
+            pTMP = bam_aux2i(pdata) + (bdata ? bam_aux2i(bdata) : 1);
+            bam_aux_del(p, pdata);
+        } else {
+            bdata = bam_aux_get(b, "NP");
+            pTMP = (bdata ? bam_aux2i(bdata) : 1) + 1;
+        }
+        bam_aux_append(p, "NP", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&pTMP));
         uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
         uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
-        uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA")); // Length of this should be b->l_qseq
+        uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA"));
         uint32_t *pFA((uint32_t *)dlib::array_tag(p, "FA"));
         uint8_t *bSeq(bam_get_seq(b));
         uint8_t *pSeq(bam_get_seq(p));
         uint8_t *bQual(bam_get_qual(b));
         uint8_t *pQual(bam_get_qual(p));
         const int qlen = p->core.l_qseq;
+        int8_t ps, bs;
 
         if(p->core.flag & (BAM_FREVERSE)) {
             int qleni1;
-            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
                 qleni1 = qlen - i - 1;
                 ps = bam_seqi(pSeq, qleni1);
@@ -199,7 +183,6 @@ namespace BMF {
                 if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
             }
         } else {
-            int8_t ps, bs;
             for(int i = 0; i < qlen; ++i) {
                 ps = bam_seqi(pSeq, i);
                 bs = bam_seqi(bSeq, i);
@@ -224,20 +207,36 @@ namespace BMF {
                     pQual[i] = bQual[i];
                     ++n_changed;
                 }
-                if(pPV[i] < 3) {
+                if(pPV[i] > 2) {
+                    if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+                } else {
                     pFA[i] = 0;
                     pPV[i] = 0;
                     pQual[i] = 2;
                     n_base(pSeq, i);
-                    continue;
-                } else if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
+                }
             }
         }
         bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
     }
 
 
-    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings);
+    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
+    {
+        //size_t n = 0;
+        uint8_t *data;
+        for(unsigned i = 0; i < stack->n; ++i) {
+            if(stack->a[i]) {
+                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                    bam2ffq(stack->a[i], settings->fqh);
+                } else {
+                    sam_write1(settings->out, settings->hdr, stack->a[i]);
+                }
+                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
+            }
+        }
+    }
+
 
     void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     {
@@ -296,22 +295,6 @@ namespace BMF {
     }
 
 
-    void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
-    {
-        //size_t n = 0;
-        uint8_t *data;
-        for(unsigned i = 0; i < stack->n; ++i) {
-            if(stack->a[i]) {
-                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                    bam2ffq(stack->a[i], settings->fqh);
-                } else {
-                    sam_write1(settings->out, settings->hdr, stack->a[i]);
-                }
-                bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-            }
-        }
-    }
-
     inline int stringhd(char *a, char *b) {
         int hd = 0;
         while(*a) hd += (*a++ != *b++);
@@ -326,51 +309,24 @@ namespace BMF {
                     return 0;
         return 1;
     }
-    /*
-     * Returns true if hd <= mmlim, 0 otherwise.
-     */
-#define hd_test(a, b, mmlim) stringhd(bam_get_qname(a), bam_get_qname(b)) < mmlim)
 
-#if !NDEBUG
-    namespace {
-        KHASH_MAP_INIT_INT(hd, uint64_t)
-    }
 
-#endif
-
-#if !NDEBUG
-    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim, khash_t(hd) *readhds)
-#else
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
-#endif
     {
         std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
                 return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
         });
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
+                //assert(key == ucs_sort_core_key(stack->a[j]));
+                //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
+                //assert(tid == stack->a[j]->core.tid);
+                //assert(mucs == bam_itag(stack->a[j], "MU"));
+                assert(stack->a[i]);
+                assert(stack->a[j]);
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
-#if !NDEBUG
-                    const int readhd = read_hd(stack->a[i], stack->a[j]);
-                    if(readhd > 10) {
-                        char buf1[200];
-                        char buf2[200];
-                        dlib::bam_seq_cpy(buf1, stack->a[i]);
-                        dlib::bam_seq_cpy(buf2, stack->a[j]);
-                        LOG_DEBUG("Encountered large read hd %i. Seq1: %s. Seq2: %s. Name1: %s. Name2: %s. Name HD: %i\n",
-                                  readhd, buf1, buf2, bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]), stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])));
-                        assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim);
-                    }
-                    khiter_t k = kh_get(hd, readhds, readhd);
-                    int khr;
-                    if(k == kh_end(readhds)) {
-                        LOG_DEBUG("Encountered new hd for reads: %i.\n", readhd);
-                        k = kh_put(hd, readhds, readhd, &khr);
-                        kh_val(readhds, k) = 1;
-                    } else ++kh_val(readhds, k);
-#endif
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
                     update_bam1(stack->a[j], stack->a[i]);
@@ -389,9 +345,6 @@ namespace BMF {
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
-#if !NDEBUG
-        khash_t(hd) *read_hds = kh_init(hd);
-#endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
@@ -409,11 +362,7 @@ namespace BMF {
             if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
-#if !NDEBUG
-                flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
-#else
                 flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -423,15 +372,7 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
-#if !NDEBUG
-        flatten_stack_linear(stack, settings->mmlim, read_hds); // Change this later if the chemistry necessitates it.
-        for(khiter_t ki = kh_begin(read_hds); ki != kh_end(read_hds); ++ki)
-            if(kh_exist(read_hds, ki))
-                fprintf(stdout, "%i:%lu\n", kh_key(read_hds, ki), kh_val(read_hds, ki));
-        kh_destroy(hd, read_hds);
-#else
         flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
         write_stack(stack, settings);
         stack->n = 0;
         bam_destroy1(b);
@@ -477,7 +418,7 @@ namespace BMF {
 
         rsq_aux_t settings = {0};
         settings.mmlim = 2;
-        settings.cmpkey = POSITION;
+        settings.cmpkey = cmpkey::POSITION;
 
         char *fqname = nullptr;
 
@@ -488,7 +429,7 @@ namespace BMF {
             case 's': settings.write_supp = 1; break;
             case 'S': settings.is_se = 1; break;
             case 'u':
-                settings.cmpkey = UNCLIPPED;
+                settings.cmpkey = cmpkey::UNCLIPPED;
                 LOG_INFO("Unclipped start position chosen for cmpkey.\n");
                 break;
             case 't': settings.mmlim = atoi(optarg); break;
@@ -511,7 +452,7 @@ namespace BMF {
             LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
 
-        if(settings.cmpkey == UNCLIPPED)
+        if(settings.cmpkey == cmpkey::UNCLIPPED)
             for(const char *tag: {"MU"})
                 dlib::check_bam_tag_exit(argv[optind], tag);
         for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})

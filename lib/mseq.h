@@ -1,12 +1,10 @@
 #ifndef MSEQ_H
 #define MSEQ_H
-#include <stdio.h>
-#include <stdint.h>
 #include <zlib.h>
+#include <stdint.h>
 #include "htslib/kseq.h"
-#include "dlib/cstr_util.h"
 #include "dlib/compiler_util.h"
-#include "dlib/misc_util.h"
+#include "dlib/cstr_util.h"
 #include "lib/rescaler.h"
 
 

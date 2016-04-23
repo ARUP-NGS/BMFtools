@@ -1,28 +1,8 @@
 #ifndef BMF_DMP_H
 #define BMF_DMP_H
 
-#include <assert.h>
-#include <getopt.h>
-#include <math.h>
-#include <omp.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <zlib.h>
-#include "htslib/kstring.h"
-#include "dlib/cstr_util.h"
-#include "dlib/io_util.h"
-#include "dlib/logging_util.h"
-#include "dlib/math_util.h"
-#include "dlib/misc_util.h"
-#include "dlib/nix_util.h"
-#include "lib/mseq.h"
-#include "lib/binner.h"
 #include "lib/kingfisher.h"
 #include "bmf_hashdmp.h"
-
-extern int64_t ipow(int32_t, int32_t);
 
 typedef void (*hash_dmp_fn)(char *, char *, int);
 
@@ -51,7 +31,6 @@ namespace BMF {
      */
     CONST static inline int test_hp(char *barcode, int threshold)
     {
-        assert(barcode && *barcode);
         int run = 0; char last = '\0';
         while(*barcode) {
             if(*barcode == 'N') {
