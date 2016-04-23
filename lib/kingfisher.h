@@ -124,24 +124,6 @@ namespace BMF {
                                                                            : (arr[3] > arr[4] ? 3: 4)));
 
     }
-/*
-   Equivalent to:
-        arr += index * 5;
-        if(*arr > arr[1]) {
-            if(*arr > arr[2]) {
-                if(*arr > arr[3]) return *arr > arr[4] ? 0: 4;
-                goto label34;
-            }
-            goto label24;
-        }
-        if(arr[1] > arr[2]) {
-            if(arr[1] > arr[3]) return arr[1] > arr[4] ? 1: 4;
-            goto label34;
-        }
-        label24: if(arr[2] > arr[3]) return (arr[2] > arr[4] ? 2: 4);
-        label34: return arr[3] > arr[4] ? 3: 4;
-
- * /
 
 
     CONST static inline int kfp_argmax(kingfisher_t *kfp, int index)
