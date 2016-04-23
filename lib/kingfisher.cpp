@@ -30,9 +30,16 @@ namespace BMF {
         ksprintf(ks, "@%s ", kfp->barcode + 1);
         kfill_both(kfp->readlen, bufs->agrees, bufs->cons_quals, ks);
         bufs->cons_seq_buffer[kfp->readlen] = '\0';
-        ksprintf(ks, "\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%0.6f\tDR:i:0\n%s\n+\n",
-                kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
-                (double) diffs / kfp->length, bufs->cons_seq_buffer);
+        kputsn("\tFP:i:", 6uL, ks);
+        kputc(kfp->pass_fail, ks);
+        ksprintf(ks, "\tFM:i:%i", kfp->length);
+        if(is_rev != -1) {
+            ksprintf(ks, "\tRV:i:%i", is_rev ? kfp->length: 0);
+        }
+        ksprintf(ks, "\tNF:f:%0.4f", (double) diffs / kfp->length);
+        kputsn("\tDR:i:0\n", 8uL, ks);
+        kputsn(bufs->cons_seq_buffer, kfp->readlen, ks);
+        kputsn("\n+\n", 3uL, ks);
         for(i = 0; i < kfp->readlen; ++i) kputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], ks);
         kputc('\n', ks);
     }
