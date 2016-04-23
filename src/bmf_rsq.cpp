@@ -343,7 +343,7 @@ namespace BMF {
         }
     }
 
-    static const char *sorted_order_strings[2] = {"coordinate", "unclipped_rescue"};
+    static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
