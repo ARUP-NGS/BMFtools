@@ -299,7 +299,7 @@ namespace BMF {
                 int c = *q; *q = '\0';
                 col_names[i] = restrdup(col_names[i], p);
                 *q = c;
-            } else col_names[i] = restrdup(col_names[i], NO_ID_STR);
+            } else col_names[i] = restrdup(col_names[i], (char *)NO_ID_STR);
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
