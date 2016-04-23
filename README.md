@@ -47,7 +47,7 @@ bmftools sdmp| Demultiplex secondary-index barcoded experiments.|
 bmftools sort| Sort for bam rescue.|
 bmftools stack| A maximally-permissive variant caller using molecular barcode metadata analogous to samtools mpileup.|
 bmftools target| Calculates on-target rate.|
-bmftools vet| Curate variant calls from another variant caller (.vcf) and a bam alignment.|
+bmftools vet| Curate variant calls from another variant caller (.bcf) and a bam alignment.|
 
 These tools are divided into four categories:
   1. Core functionality

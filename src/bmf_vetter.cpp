@@ -15,9 +15,9 @@ namespace BMF {
     void vetter_usage(int retcode)
     {
         fprintf(stderr,
-                        "Checks variants from the vcf within a set of bed regions."
+                        "Checks variants from the bcf within a set of bed regions."
                         "bmftools vet does so by examining the bmftools metadata present in the bam.\n"
-                        "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
+                        "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.bcf> <in.srt.indexed.bam>\n"
                         "Optional arguments:\n"
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
@@ -219,6 +219,7 @@ namespace BMF {
         hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
+            LOG_EXIT("Only bcf currently supported.\n");
             //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
             //vcf_idx = tbx_index_load(aux->vcf_fp->fn);
             //if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
