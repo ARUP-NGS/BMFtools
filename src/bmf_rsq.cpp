@@ -352,8 +352,9 @@ namespace BMF {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
-        // Start stack
+        uint64_t count = 0;
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+            if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
