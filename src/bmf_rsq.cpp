@@ -326,6 +326,8 @@ namespace BMF {
                 assert(stack->a[j]);
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
+                if(stack->a[i]->core.l_qname != stack->a[j]->core.l_qname)
+                    continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
@@ -341,7 +343,7 @@ namespace BMF {
         }
     }
 
-    static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
+    static const char *sorted_order_strings[2] = {"coordinate", "unclipped_rescue"};
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
@@ -352,8 +354,9 @@ namespace BMF {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
-        // Start stack
+        uint64_t count = 0;
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+            if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
@@ -378,8 +381,11 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
-        for(auto pair: settings->realign_pairs)
-            fputs(pair.second.c_str(), settings->fqh);
+        if(settings->realign_pairs.size()) {
+            LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+            //for(auto pair: settings->realign_pairs)
+                //fputs(pair.second.c_str(), settings->fqh);
+        }
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)

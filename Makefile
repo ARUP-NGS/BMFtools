@@ -103,7 +103,7 @@ err_test: $(BINS)
 rsq_test: $(BINS)
 	cd test/rsq && python rsq_test.py  && cd ../..
 
-tests: $(TEST_OBJS) $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
+tests: $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
 
 python:
