@@ -232,7 +232,7 @@ namespace BMF {
                 HASH_FIND_STR(hash1r, barcode.s, tmp_hk1);
                 HASH_FIND_STR(hash2r, barcode.s, tmp_hk2);
                 pass &= test_hp(barcode.s, threshold);
-                assert(!tmp_hk1 ? !tmp_hk2: true); // Make sure that both have the same keyset.
+                assert(!tmp_hk1 == !tmp_hk2); // Make sure that both have the same keyset.
                 offset1 = blen1 + homing_len + mask;
                 offset2 = blen2 + homing_len + mask;
                 //LOG_DEBUG("Current barcode: %s. Offsets (1/2) (%i/%i). len: %i\n", barcode.s, offset1, offset2, strlen(barcode.s));
