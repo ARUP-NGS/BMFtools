@@ -16,7 +16,7 @@ r2=$3
 HOMING="TGACT"
 if [ -z "$PREFIX_LEN"]
 then
-    PREFIX_LEN="4"
+    PREFIX_LEN="0"
 fi
 TMP_PREF="tmpfileswtf"
 tmpstr=${1%.fq*}
@@ -32,6 +32,7 @@ PRERSQBAM=${tmpstr%.fastq*}.prersq.bam
 FINALBAM=${tmpstr%.fastq*}.rsq.bam
 
 # Perform inline barcode demultiplexing.
+echo time bmftools_db sdmp -zdp${THREADS} -s${SALT} -n${PREFIX_LEN} -i $rindex -o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
 time bmftools_db sdmp -zdp${THREADS} -s${SALT} -n${PREFIX_LEN} -i $rindex -o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
 echo Number of reads before dmp: $(zgrep -c '^+$' $r1) >> $LOG
 
@@ -40,13 +41,28 @@ echo RV sum after dmp: $(zcat $R1 | paste -d'~' - - - - | cut -f1 -d'~' | cut -f
 echo Number of collapsed observations after dmp: $(zgrep -c '^+$' $R1) >> $LOG
 
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
-bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbh - > ${R1}.premark.bam
-python getsums.py ${R1}.premark.bam 2>>$LOG &
+# echo bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbh -o ${R1}.premark.bam -
+echo "bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbho ${R1}.premark.bam -"
+bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbho ${R1}.premark.bam -
+#bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
+#    samtools view -Sbho ${R1}.premark.bam -
+echo getsums.py ${R1}.premark.bam 2>>$LOG
+getsums.py ${R1}.premark.bam 2>>$LOG
 echo Pre-mark read count -cF2816: $(samtools view -cF2816 ${R1}.premark.bam) >> $LOG &
 echo Pre-mark read count -cF2304: $(samtools view -cF2304 ${R1}.premark.bam) >> $LOG &
 echo bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
 bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
-python getsums.py ${R1}.postmark.bam 2>>$LOG
+getsums.py ${R1}.postmark.bam 2>>$LOG
+echo Post-mark read count -cF2816: $(samtools view -cF2816 ${R1}.postmark.bam) >> $LOG &
+echo Post-mark read count -cF2304: $(samtools view -cF2304 ${R1}.postmark.bam) >> $LOG &
+bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbh - > ${R1}.premark.bam
+echo getsums.py ${R1}.premark.bam 2>>$LOG &
+getsums.py ${R1}.premark.bam 2>>$LOG &
+echo Pre-mark read count -cF2816: $(samtools view -cF2816 ${R1}.premark.bam) >> $LOG &
+echo Pre-mark read count -cF2304: $(samtools view -cF2304 ${R1}.premark.bam) >> $LOG &
+echo bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
+bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
+getsums.py ${R1}.postmark.bam 2>>$LOG
 echo Post-mark read count -cF2816: $(samtools view -cF2816 ${R1}.postmark.bam) >> $LOG &
 echo Post-mark read count -cF2304: $(samtools view -cF2304 ${R1}.postmark.bam) >> $LOG &
 echo "Now checing that the qcfail bit is set correctly."
@@ -54,7 +70,7 @@ echo ../fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
 ../fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
 echo bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
 bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
-python getsums.py $PRERSQBAM 2>>$LOG &
+getsums.py $PRERSQBAM 2>>$LOG &
 echo Post-BMF-sort read count -cF2816: $(samtools view -cF2816 $PRERSQBAM) >> $LOG &
 echo Post-BMF-sort read count -cF2304: $(samtools view -cF2304 $PRERSQBAM) >> $LOG &
 
@@ -69,16 +85,11 @@ echo Post-rescue, before merge read count -cF2304: $(samtools view -cF2304 $TMPB
 bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-python getsums.py $TMPBAM 2>>$LOG
+getsums.py $TMPBAM 2>>$LOG
 echo Post-rescue, merged-reads count -cF2816: $(samtools view -cF2816 $TMPBAM) >> $LOG &
 echo Post-rescue, merged-reads count -cF2304: $(samtools view -cF2304 $TMPBAM) >> $LOG &
 
-# Align the records that were rescued and merge them back in.
-bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
-    samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
-    samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-
-python getsums.py $FINALBAM 2>>$LOG
+getsums.py $FINALBAM 2>>$LOG
 
 samtools index $FINALBAM
 
