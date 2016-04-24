@@ -29,11 +29,9 @@ TMPBAM=${tmpstr%.fastq*}.tmp.bam
 PRERSQBAM=${tmpstr%.fastq*}.prersq.bam
 FINALBAM=${tmpstr%.fastq*}.rsq.bam
 
-bash compile.sh # Makes the fp512 executable
-
 # Perform inline barcode demultiplexing.
-time bmftools_db dmp -zdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
-	-o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
+echo time bmftools_db inmem -l${BLEN} -s${HOMING} -v${BLEN} -1${R1} -2${R2} -m1 -L1 $r1 $r2
+time bmftools_db inmem -l${BLEN} -s${HOMING} -v${BLEN} -1${R1} -2${R2} -m1 -L1 $r1 $r2
 echo Number of reads before dmp: $(zgrep -c '^+$' $r1) >> $LOG
 
 echo FM sum after dmp: $(zcat $R1 | paste -d'~' - - - - | cut -f1 -d'~'  | cut -d':' -f9 | cut -f1 | paste -sd+ | bc -l) >> $LOG

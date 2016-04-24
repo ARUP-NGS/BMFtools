@@ -197,18 +197,15 @@ namespace BMF {
         kingfisher_hash_t *ce2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
         kingfisher_hash_t *tmp_hk1 = ce1, *tmp_hk2 = ce2; // Save the pointer location for later comparison.
         kstring_t barcode = {0, 32, (char *)malloc(32uL * sizeof(char))};
-        int flip;
         unsigned blen1, blen2;
         unsigned offset1, offset2;
         char pass;
         size_t barcode_count{0};
         while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
-            flip = switch_test(seq1, seq2, mask);
             pass = 1;
             blen1 = get_blen(seq1->seq.s, homing, homing_len, blen, max_blen, mask);
             blen2 = get_blen(seq2->seq.s, homing, homing_len, blen, max_blen, mask);
-            //LOG_DEBUG("blens{1:%i, 2:%i}.\n", blen1, blen2);
-            if(flip) {
+            if(switch_test(seq1, seq2, mask)) {
                 if(blen2 != (unsigned)-1) {
                     memcpy(barcode.s, seq2->seq.s + mask, blen2);
                 } else {
@@ -231,6 +228,7 @@ namespace BMF {
                 }
                 barcode.l = barcode.l + blen1;
                 barcode.s[barcode.l] = '\0';
+                //LOG_DEBUG("Looking for barcode %s.\n", barcode.s);
                 HASH_FIND_STR(hash1r, barcode.s, tmp_hk1);
                 HASH_FIND_STR(hash2r, barcode.s, tmp_hk2);
                 pass &= test_hp(barcode.s, threshold);
@@ -264,6 +262,7 @@ namespace BMF {
                     HASH_ADD_STR(hash2r, id, tmp_hk2);
                     //LOG_DEBUG("Finished pushing back!\n");
                 } else {
+                    //LOG_DEBUG("Found barcode with famiy size %i\n", tmp_hk2->value->length);
                     pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
                     pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
                 }

@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     size_t disagrees = 0, agrees = 0;
     int dbr = 0, lh3r = 0;
     while(in.read(b) != -1) {
-    	if(b->core.flag & (BAM_FUNMAP)) continue;
+        if(b->core.flag & (BAM_FUNMAP)) continue;
         if((dbr = bed.bam1_test(b)) != (lh3r = bed_overlap(lh3bed, in.header->target_name[b->core.tid], b->core.pos, bam_endpos(b)))) {
             LOG_EXIT("dbr: %i. lh3r: %i. Contig: %s. Position: %i. endpos; %i\n", dbr, lh3r, in.header->target_name[b->core.tid], b->core.pos, bam_endpos(b));
             if(++disagrees % 100 == 0) LOG_DEBUG("disagrees: %lu.\n", disagrees);
