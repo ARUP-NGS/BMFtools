@@ -28,7 +28,7 @@ enum sort_order {
     SAMTOOLS,
     QNAME,
     BMF_POS,
-    UCS
+    BMF_UCS
 };
 
 

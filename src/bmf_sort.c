@@ -102,7 +102,7 @@ static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
         case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
         case BMF_POS:
             return bmfsort_se_key(a) < bmfsort_se_key(b);
-        case UCS:
+        case BMF_UCS:
             return ucs_se_sort_key(a) < ucs_se_sort_key(b);
     }
     return 0; // This should never happen
@@ -114,6 +114,20 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
     uint64_t key_a, key_b;
+#if !NDEBUG
+    if(a->core.tid != -1) {
+        if(b->core.tid == -1) {
+            key_a = ucs_sort_core_key(a);
+            key_b = ucs_sort_core_key(b);
+            LOG_DEBUG("Ucs Map/unmap %lu/%lu.\n", key_a, key_b);
+            assert(key_a < key_b);
+            key_a = bmfsort_core_key(a);
+            key_b = bmfsort_core_key(b);
+            LOG_DEBUG("bmf Map/unmap %lu/%lu.\n", key_a, key_b);
+            assert(key_a < key_b);
+        }
+    }
+#endif
     switch(cmpkey) {
         case QNAME:
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
@@ -123,7 +137,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
             return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
-        case UCS:
+        case BMF_UCS:
             key_a = ucs_sort_core_key(a);
             key_b = ucs_sort_core_key(b);
             return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
@@ -148,7 +162,7 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
             key_a = bmfsort_core_key(a.b);
             key_b = bmfsort_core_key(b.b);
             return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
-        case UCS:
+        case BMF_UCS:
             if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
             key_a = ucs_sort_core_key(a.b);
             key_b = ucs_sort_core_key(b.b);
@@ -1753,7 +1767,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         case SAMTOOLS: change_SO(header, "coordinate"); break;
         case QNAME: change_SO(header, "queryname"); break;
         case BMF_POS: change_SO(header, "positional_rescue"); break;
-        case UCS: change_SO(header, "unclipped_rescue"); break;
+        case BMF_UCS: change_SO(header, "unclipped_rescue"); break;
         default: LOG_EXIT("Invalid (and impossible) cmpkey. Abort!\n");
     }
     // write sub files
@@ -1897,7 +1911,7 @@ int sort_main(int argc, char *argv[])
                   }
                   else if(strcmp(optarg, "ucs") == 0) {
                       LOG_INFO("Unclipped start position chosen for cmpkey.\n");
-                      cmpkey = UCS;
+                      cmpkey = BMF_UCS;
                   }
                   else {
                       fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
@@ -1934,6 +1948,13 @@ int sort_main(int argc, char *argv[])
     strcpy(modeout, "wb");
     sam_open_mode(modeout+1, fnout, NULL);
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
+
+    switch(cmpkey) {
+        case BMF_UCS:
+            check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "MU"); // Fall-through
+        case BMF_POS:
+            check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "LM");
+    }
 
     if (bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
                           tmpprefix, fnout, modeout, max_mem, n_threads,
