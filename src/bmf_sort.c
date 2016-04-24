@@ -114,17 +114,15 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
     uint64_t key_a, key_b;
-#if !NDEBUG
+#if 0
     if(a->core.tid != -1) {
         if(b->core.tid == -1) {
             key_a = ucs_sort_core_key(a);
             key_b = ucs_sort_core_key(b);
-            LOG_DEBUG("Ucs Map/unmap %lu/%lu.\n", key_a, key_b);
-            assert(key_a < key_b);
+            assert(key_b > key_a);
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
-            LOG_DEBUG("bmf Map/unmap %lu/%lu.\n", key_a, key_b);
-            assert(key_a < key_b);
+            assert(key_b > key_a);
         }
     }
 #endif
