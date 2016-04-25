@@ -3,11 +3,9 @@
 if __name__ == "__main__":
 
     import unittest
-    import sys
     from subprocess import check_output
 
-    bampath = sys.argv[1] if len(sys.argv) > 1 else "FINAL_S376x3_Unpurified_GCATAACG-GCATAACG_L001_R1_001.R1.rsq.bam"
-    executable = "bmftools_db"
+    bampath = "FINAL_S376x3_Unpurified_GCATAACG-GCATAACG_L001_R1_001.R1.rsq.bam"
     class Test(unittest.TestCase):
         def test_empty_filter(self):
             pre_count = check_output("samtools view -cF2304 %s" % bampath, shell=True)
@@ -25,8 +23,7 @@ if __name__ == "__main__":
             self.assertEqual(pre_count, post_count)
 
         def test_flag_filter(self):
-            flags = [4, 17, 2304, 1173]
-            for flag in flags:
+            for flag in [4, 17, 2304, 1173]:
                 pre_count = check_output("samtools view -cf%i %s" % (flag, bampath), shell=True)
                 post_count = check_output("bmftools_db filter -f%i -l0 %s - | samtools view -c" % (flag, bampath), shell=True)
                 self.assertEqual(pre_count, post_count)
