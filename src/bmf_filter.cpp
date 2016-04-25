@@ -41,14 +41,16 @@ namespace BMF {
 */
     static inline int test_core(bam1_t *b, opts *options) {
         uint8_t *data;
-        return ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM)) &&
-                b->core.qual >= options->minMQ &&
-                ((b->core.flag & options->skip_flag) == 0) &&
-                (b->core.flag & options->require_flag) == options->require_flag &&
-                (options->bed ? dlib::bed_test(b, options->bed):1) &&
-                (bam_itag(b, "MF") >= options->minAF || bam_itag(b, "AF") >= options->minAF);
+        if((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM))
+            if(b->core.qual >= options->minMQ)
+                if((b->core.flag & options->skip_flag) == 0)
+                    if((b->core.flag & options->require_flag) == options->require_flag)
+                        if(options->bed ? dlib::bed_test(b, options->bed):1)
+                            if(((data = bam_aux_get(b, "MF")) == nullptr ? 1: bam_aux2i(data) >= options->minAF)
+                               || dlib::bam_frac_align(b) >= options->minAF)
+                                return 1;
+        return 0;
     }
-
 
     /* If FM tag absent, it's treated as if it were 1.
      * Fail reads with FM < minFM, MQ < minMQ, a flag with any skip bits set,
@@ -78,7 +80,9 @@ namespace BMF {
 
     int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle& refused, opts *param)
     {
+        uint64_t count = 0;
         while(in.next() >= 0) {
+            if(++count % 1000000 == 0) LOG_INFO("%lu records processed.\n", count);
             if(bam_test(in.rec, (void *)param)) {
                 //LOG_DEBUG("Writing to output file %s.\n", refused.fp->fn);
                 refused.write(in.rec);
@@ -123,10 +127,8 @@ namespace BMF {
         dlib::BamHandle in(argv[optind]);
         param.bed = bedpath ? dlib::parse_bed_hash(bedpath, in.header, padding)
                             : nullptr;
-        if(param.minAF > 0 && param.is_se == 0) {
-            dlib::check_bam_tag_exit(argv[optind], "AF");
+        if(param.minAF > 0 && param.is_se == 0)
             dlib::check_bam_tag_exit(argv[optind], "MF");
-        }
         dlib::BamHandle out(argv[optind + 1], in.header, out_mode);
         // Core
         int ret = -1;

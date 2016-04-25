@@ -10,8 +10,8 @@ namespace BMF {
     int famstats_frac_usage(int exit_status) {
         fprintf(stderr,
                         "Calculates the fraction of raw reads with family size >= parameter.\n"
-                        "Usage: bmftools famstats frac <opts> <in.bam>\n"
-                        "Flags:\n-m minFM to accept. REQUIRED.\n"
+                        "Usage: bmftools famstats frac <opts> <minFM> <in.bam>\n"
+                        "-n: Set notification interval. Default: 10000000.\n"
                         "-h, -?: Return usage.\n"
                 );
         exit(exit_status);
@@ -285,17 +285,13 @@ namespace BMF {
     int famstats_frac_main(int argc, char *argv[])
     {
         int c;
-        uint32_t minFM = 0;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 3) famstats_frac_usage(EXIT_FAILURE);
+        if(argc < 2) famstats_frac_usage(EXIT_FAILURE);
         if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
             switch (c) {
-            case 'm':
-                minFM = (uint32_t)atoi(optarg); break;
-                break;
             case 'n':
                 notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
@@ -303,17 +299,15 @@ namespace BMF {
             }
         }
 
-        if(!minFM) {
-            LOG_EXIT("minFM not set. famstats_frac_main meaningless without it. Result: 1.0.\n");
-        }
-        LOG_INFO("Running frac main minFM %i.\n", minFM);
-
-        if (argc != optind+1) {
+        if (argc != optind+2) {
             if (argc == optind) famstats_frac_usage(EXIT_SUCCESS);
             else famstats_frac_usage(EXIT_FAILURE);
         }
-        for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind], tag);
-        dlib::BamHandle handle(argv[optind]);
+
+        uint32_t minFM = strtoul(argv[optind], nullptr, 10);
+        LOG_INFO("MinFM %i.\n", minFM);
+        for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind+1], tag);
+        dlib::BamHandle handle(argv[optind + 1]);
         uint64_t fm_above = 0, total_fm = 0, count = 0;
         // Check to see if the required tags are present before starting.
         int FM;
@@ -330,7 +324,7 @@ namespace BMF {
                 LOG_INFO("Number of records processed: %lu.\n", count);
         }
         if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
-        fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n",
+        fprintf(stdout, "#Fraction of raw reads with >= minFM %u:\t%f\n",
                 minFM, (double)fm_above / total_fm);
         LOG_INFO("Successfully complete bmftools famstats frac.\n");
         return EXIT_SUCCESS;
