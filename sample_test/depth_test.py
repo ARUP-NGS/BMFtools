@@ -11,9 +11,10 @@ if __name__ == "__main__":
     minFM = 2
     class Test(unittest.TestCase):
         def test_dmp_depth(self):
-            samtools = float(check_output("echo $(samtools bedcov %s %s | cut -f4 | paste -sd+ | bc) / $(awk '{print $3 - $2}' %s | paste -sd+ | bc) | bc -l" % (bedpath, bampath, bedpath), shell=True))
-            line = [i for i in check_output("bmftools_db depth -b %s %s" % (bedpath, bampath), shell=True).split() if "Mean DMP Coverage" in line][0]
-            bmftools = float(line.split(":")[1].split(".")[0].strip())
-            self.assertEqual(int(bmftools * 1000), int(samtools * 1000))
+            samtools = int(float(check_output("echo $(samtools bedcov %s %s | cut -f4 | paste -sd+ | bc) / $(awk '{print $3 - $2}' %s | paste -sd+ | bc) | bc -l" % (bedpath, bampath, bedpath), shell=True).strip()))
+            print "bmftools_db depth -b %s %s" % (bedpath, bampath)
+            line = [i for i in check_output("bmftools_db depth -b %s %s" % (bedpath, bampath), shell=True).split('\n') if "Mean DMP Coverage" in i][0]
+            bmftools = int(float(line.split(":")[1].split(".")[0].strip()))
+            self.assertEqual(bmftools, samtools)
 
     unittest.main()
