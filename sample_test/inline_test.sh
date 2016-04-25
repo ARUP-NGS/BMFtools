@@ -74,11 +74,6 @@ getsums.py $TMPBAM 2>>$LOG
 echo Post-rescue, merged-reads count -cF2816: $(samtools view -cF2816 $TMPBAM) >> $LOG &
 echo Post-rescue, merged-reads count -cF2304: $(samtools view -cF2304 $TMPBAM) >> $LOG &
 
-# Align the records that were rescued and merge them back in.
-bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
-    samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
-    samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-
 getsums.py $FINALBAM 2>>$LOG
 
 samtools index $FINALBAM

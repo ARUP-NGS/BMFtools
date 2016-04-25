@@ -93,8 +93,8 @@ namespace BMF {
     int hashdmp_inmem_main(int argc, char *argv[])
     {
         if(argc == 1) inmem_usage(), exit(EXIT_FAILURE);
-        char *outfname1 = const_cast<char *>("-"), *infname1 = nullptr;
-        char *outfname2 = const_cast<char *>("-"), *infname2 = nullptr;
+        char *outfname1 = const_cast<char *>("-");
+        char *outfname2 = const_cast<char *>("-");
         char *homing = nullptr;
         int c;
         int blen = -1;
@@ -119,13 +119,10 @@ namespace BMF {
             hashdmp_usage();
             exit(EXIT_FAILURE);
         }
-        if(argc - 2 == optind) {
-            infname1 = argv[optind];
-            infname2 = argv[optind + 1];
-        } else LOG_EXIT("Require exactly two input fastqs.\n");
+        if(argc - 2 != optind) LOG_EXIT("Require exactly two input fastqs.\n");
         if(blen < 0) LOG_EXIT("Barcode length required.");
         if(!homing) LOG_EXIT("Homing sequence required.\n");
-        hash_inmem_inline_core(infname1, infname2, outfname1, outfname2,
+        hash_inmem_inline_core(argv[optind], argv[optind + 1], outfname1, outfname2,
                                homing, blen, threshold, level, mask,
                                max_blen);
         LOG_INFO("Successfully complete bmftools hashdmp!\n");
@@ -523,31 +520,33 @@ namespace BMF {
                 ++fcount;
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
                 HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
-                if(!tmp_hkf) {
+                if(tmp_hkf) pushback_kseq(tmp_hkf->value, seq, blen);
+                else {
                     tmp_hkf = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hkf->value = init_kfp(tmp->readlen);
                     cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
                     pushback_kseq(tmp_hkf->value, seq, blen);
                     HASH_ADD_STR(hfor, id, tmp_hkf);
-                } else pushback_kseq(tmp_hkf->value, seq, blen);
+                }
             } else {
                 cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
                 HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
-                if(!tmp_hkr) {
+                if(tmp_hkr) pushback_kseq(tmp_hkr->value, seq, blen);
+                else {
                     tmp_hkr = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                     tmp_hkr->value = init_kfp(tmp->readlen);
                     cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
                     pushback_kseq(tmp_hkr->value, seq, blen);
                     HASH_ADD_STR(hrev, id, tmp_hkr);
-                } else pushback_kseq(tmp_hkr->value, seq, blen);
+                }
             }
         }
-        uint64_t rcount = count - fcount;
+        const uint64_t rcount = count - fcount;
         LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
         LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
-        kstring_t ks = {0, 0, nullptr};
+        kstring_t ks{0, 0, nullptr};
         // Demultiplex and empty the hash.
 #if !NDEBUG
         khiter_t ki;

@@ -59,6 +59,7 @@ namespace BMF {
                         "-d    Set bam compression level to default (6).\n"
                         "-i    Skip read pairs whose insert size is less than <INT>.\n"
                         "-u    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>\n"
+                        "-S    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
                         "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
                 );
@@ -68,7 +69,7 @@ namespace BMF {
     int mark_main(int argc, char *argv[])
     {
         char wmode[4]{"wb0"};
-        int c;
+        int c, is_se = 0;
         mark_settings_t settings;
         while ((c = getopt(argc, argv, "l:i:u:dq?h")) >= 0) {
             switch (c) {
@@ -85,6 +86,8 @@ namespace BMF {
             case 'd':
                 sprintf(wmode, "wb");
                 break;
+            case 'S':
+                is_se = 1; break;
             case '?': case 'h': mark_usage(); // Exits. No need for a break.
             }
         }

@@ -52,13 +52,13 @@ namespace BMF {
         kstring_t seq = {0, (size_t)len + 1, (char *)malloc((len + 1) * sizeof(char))};
         std::vector<uint32_t> agrees;
         std::vector<uint32_t> full_quals; // igamc calculated
-        agrees.resize(len);
-        full_quals.resize(len);
+        agrees.reserve(len);
+        full_quals.reserve(len);
         for(i = 0; i < len; ++i) {
             argmaxret = arr_max_u32(phred_sums.data(), i); // 0,1,2,3,4/A,C,G,T,N
             posdata = i * 5 + argmaxret;
-            agrees[i] = votes[posdata];
-            full_quals[i] = pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[posdata])));
+            agrees.push_back(votes[posdata]);
+            full_quals.push_back(pvalue_to_phred(igamc_pvalues(n, LOG10_TO_CHI2(phred_sums[posdata]))));
             // Mask unconfident base calls
             if(full_quals[i] < 2 || (double)agrees[i] / n < MIN_FRAC_AGREED) {
                 seq.s[i] = 'N';

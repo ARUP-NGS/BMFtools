@@ -1947,17 +1947,18 @@ int sort_main(int argc, char *argv[])
     sam_open_mode(modeout+1, fnout, NULL);
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-    switch(cmpkey) {
-        case BMF_UCS:
-            check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "MU"); // Fall-through
-        case BMF_POS:
-            check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "LM");
+    if(!is_se) {
+        switch(cmpkey) {
+            case BMF_UCS:
+                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "MU"); // Fall-through
+            case BMF_POS:
+                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "LM");
+        }
     }
 
-    if (bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
-                          tmpprefix, fnout, modeout, max_mem, n_threads,
-                          &ga.in, &ga.out, split, is_se) < 0)
-        ret = EXIT_FAILURE;
+    ret = bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
+                            tmpprefix, fnout, modeout, max_mem, n_threads,
+                            &ga.in, &ga.out, split, is_se);
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);

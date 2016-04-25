@@ -261,7 +261,7 @@ namespace BMF {
     {
         uint64_t bin(0), count(0);
         const int default_nlen(settings->blen + settings->offset + settings->homing_sequence_length);
-        LOG_DEBUG("Opening fastq file.\n", settings->input_r1_path);
+        LOG_DEBUG("Opening fastq file %s.\n", settings->input_r1_path);
         if(!dlib::isfile(settings->input_r1_path))
             LOG_EXIT("Could not open read paths: at least one is not a file.\n");
         if(settings->rescaler_path)
