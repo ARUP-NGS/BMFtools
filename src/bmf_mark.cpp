@@ -19,7 +19,25 @@ namespace BMF {
 
     }
 
-    static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
+    static int add_se_tags(bam1_t *b1, void *data)
+    {
+        int ret = 0;
+        ret |= (dlib::bitset_qcfail_se(b1) && ((mark_settings_t *)data)->remove_qcfail);
+        if(((mark_settings_t *)data)->min_insert_length)
+            if(b1->core.isize)
+                ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
+        ret |= dlib::filter_n_frac_se(b1, ((mark_settings_t *)data)->min_frac_unambiguous);
+#if !NDEBUG
+        if(((mark_settings_t *)data)->remove_qcfail) {
+            if(bam_itag(b1, "FP") == 0) {
+                assert(ret);
+            }
+        }
+#endif
+        return ret;
+    }
+
+    static int add_pe_tags(bam1_t *b1, bam1_t *b2, void *data)
     {
         if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
             LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
@@ -69,9 +87,9 @@ namespace BMF {
     int mark_main(int argc, char *argv[])
     {
         char wmode[4]{"wb0"};
-        int c, is_se = 0;
+        int c, is_se = 0, ret = -1;
         mark_settings_t settings;
-        while ((c = getopt(argc, argv, "l:i:u:dq?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:i:u:Sdq?h")) >= 0) {
             switch (c) {
             case 'u':
                 settings.min_frac_unambiguous = atof(optarg); break;
@@ -102,14 +120,19 @@ namespace BMF {
         } else {
             LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
-
         dlib::BamHandle inHandle(in);
         dlib::BamHandle outHandle(out, inHandle.header, "wb");
-        dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
-                                 &add_multiple_tags, &settings);
+        if(is_se) {
+            ret = dlib::abstract_single_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                             &add_se_tags, &settings);
+        } else {
+            ret = dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                           &add_pe_tags, &settings);
+        }
 
-        LOG_INFO("Successfully complete bmftools mark.\n");
-        return EXIT_SUCCESS;
+        if(ret == EXIT_SUCCESS)
+            LOG_INFO("Successfully complete bmftools mark.\n");
+        return ret;
     }
 
 }
