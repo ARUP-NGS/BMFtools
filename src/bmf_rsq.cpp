@@ -459,8 +459,8 @@ namespace BMF {
 
 
         if(settings.cmpkey == cmpkey::UNCLIPPED)
-            for(const char *tag: {"MU"})
-                dlib::check_bam_tag_exit(argv[optind], tag);
+            if(!settings.is_se)
+                dlib::check_bam_tag_exit(argv[optind], "MU");
         for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
             dlib::check_bam_tag_exit(argv[optind], tag);
         settings.in = sam_open(argv[optind], "r");

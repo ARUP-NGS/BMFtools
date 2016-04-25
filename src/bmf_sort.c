@@ -1900,15 +1900,15 @@ int sort_main(int argc, char *argv[])
         switch (c) {
         case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_POS;
                   else if(strcmp(optarg, "pos") == 0) {
-                      LOG_INFO("Pos chosen for cmpkey.\n");
+                      LOG_DEBUG("Pos chosen for cmpkey.\n");
                       cmpkey = SAMTOOLS;
                   }
                   else if(strcmp(optarg, "qname") == 0) {
-                      LOG_INFO("Qname chosen for cmpkey.\n");
+                      LOG_DEBUG("Qname chosen for cmpkey.\n");
                       cmpkey = QNAME;
                   }
                   else if(strcmp(optarg, "ucs") == 0) {
-                      LOG_INFO("Unclipped start position chosen for cmpkey.\n");
+                      LOG_DEBUG("Unclipped start position chosen for cmpkey.\n");
                       cmpkey = BMF_UCS;
                   }
                   else {
