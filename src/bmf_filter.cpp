@@ -84,10 +84,8 @@ namespace BMF {
         while(in.next() >= 0) {
             if(++count % 1000000 == 0) LOG_INFO("%lu records processed.\n", count);
             if(bam_test(in.rec, (void *)param)) {
-                //LOG_DEBUG("Writing to output file %s.\n", refused.fp->fn);
                 refused.write(in.rec);
             } else {
-                //LOG_DEBUG("Writing to output file %s.\n", out.fp->fn);
                 out.write(in.rec);
             }
         }
@@ -133,7 +131,7 @@ namespace BMF {
         // Core
         int ret = -1;
         if(refused_path.size()) { // refused path is set.
-            LOG_DEBUG("Splitting. Refused go to %s, pass to %s.\n", refused_path.c_str(), out.fp->fn);
+            LOG_DEBUG("Writing passing records to %s, failing to %s.\n", out.fp->fn, refused_path.c_str());
             dlib::BamHandle refused(refused_path.c_str(), in.header, out_mode);
             ret = filter_split_core(in, out, refused, &param);
         } else ret = in.for_each(bam_test, out, (void *)&param);

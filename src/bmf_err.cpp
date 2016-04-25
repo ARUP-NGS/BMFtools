@@ -576,7 +576,6 @@ namespace BMF {
                 ((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires
                 ((f->flag & REQUIRE_FP_PASS) && pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
                     ++f->nskipped;
-                    //LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
                     continue;
             }
             seq = (uint8_t *)bam_get_seq(b);
@@ -711,10 +710,7 @@ namespace BMF {
         int i;
         for(uint64_t l = 0; l < f->l; ++l) {
             fprintf(fp, "%lu\t", l + 1);
-            for(i = 0; i < 4; ++i) {
-                LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
-                fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
-            }
+            for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
             fputc('|', fp);
             for(i = 0; i < 4; ++i)
                 fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r2->qerr[i][l] / f->r2->qobs[i][l]);
@@ -799,7 +795,6 @@ namespace BMF {
             for(l = 0; l < f->l; ++l) {
                 f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-                //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
                 f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
                                                                         : 0;
                 f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
@@ -1222,23 +1217,18 @@ namespace BMF {
             if(ref) free(ref);
             LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
             ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
-            LOG_DEBUG("Fetched! Length: %i\n", len);
             for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
                 Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
-                LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
                 const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
                 const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
-                LOG_DEBUG("Iterating through bam region with start %i and stop %i.\n", start, stop);
                 if(Holloway->iter) hts_itr_destroy(Holloway->iter);
                 Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                                 start, stop);
                 while(read_bam(Holloway, b) >= 0) {
                     assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
                     if(bam_getend(b) <= start) {
-                        LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
                         continue;
                     } else if(b->core.pos >= stop) {
-                        LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
                         break;
                     }
                     region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
