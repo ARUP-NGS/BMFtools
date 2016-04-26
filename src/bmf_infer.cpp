@@ -73,17 +73,17 @@ namespace BMF {
         seq.s[i] = '\0';
         seq.l = i + 1;
         kstring_t faks = {0, 5uL * len, (char *)malloc(5 * len)};
-        kputsn(" PV:B:I", sizeof(" PV:B:I"), &name);
+        kputsnl(" PV:B:I", &name);
         for(i = 0; i < len; ++i) {
             ksprintf(&name, ",%u", full_quals[i]);
             ksprintf(&faks, ",%u", agrees[i]);
         }
         // 32 is for "\n+\n" + "\n" + "FP:i:1\tRV:i:0\n" + "\t" + "\t" + "FM:i:[Up to four digits]"
         //LOG_DEBUG("Name: %s.\n", name.c_str());
-        kputsn("\tFA:B:I", sizeof("\tFA:B:I"), &name);
+        kputsnl("\tFA:B:I", &name);
         kputsn(faks.s, faks.l, &name);
         ksprintf(&name, "\tFM:i:%u\t", n);
-        kputsn("FP:i:1\tRV:i:0\n", sizeof("FP:i:1\tRV:i:0\n"), &name);
+        kputsnl("FP:i:1\tRV:i:0\n", &name);
         ksprintf(&name, "%s\n+\n%s\n", seq.s, max_observed_phreds);
         std::string ret = name.s;
         name.l = l_name, name.s[name.l] = '\0';

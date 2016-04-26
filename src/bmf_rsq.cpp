@@ -1,9 +1,8 @@
 #include "bmf_rsq.h"
 #include <string.h>
 #include <getopt.h>
-#include "dlib/char_util.h"
+#include "dlib/cstr_util.h"
 #include "include/igamc_cephes.h" /// for igamc
-//#include <unordered_map>
 #include <algorithm>
 
 namespace BMF {
@@ -30,11 +29,11 @@ namespace BMF {
         kstring_t ks{0, 120uL, (char *)malloc(120uL)};
         ks.l = 1, ks.s[0] ='@', ks.s[1] = '\0';
         kputs(bam_get_qname(b), &ks);
-        kputsn(" PV:B:I", 7uL, &ks);
+        kputsnl(" PV:B:I", &ks);
         auto fa((uint32_t *)dlib::array_tag(b, "FA"));
         auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputsn("\tFA:B:I", 7uL, &ks);
+        kputsnl("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i", bam_itag(b, "FM"), bam_itag(b, "FP"));
         write_tag_if_found(rvdata, b, "RV", ks);
