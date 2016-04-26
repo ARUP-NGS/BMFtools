@@ -44,14 +44,14 @@ echo Number of collapsed observations after dmp: $(zgrep -c '^+$' $R1) >> $LOG
 
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
 bwa mem -CYT0 -t${THREADS} $REF $R1 | samtools view -Sbh - > ${R1}.postalign.bam
-getsums.py ${R1}.postalign.bam 2>>$LOG
+getsums.py ${R1}.postalign.bam >>$LOG
 echo Post-mark read count -cF2816: $(samtools view -cF2816 ${R1}.postalign.bam) >> $LOG &
 echo Post-mark read count -cF2304: $(samtools view -cF2304 ${R1}.postalign.bam) >> $LOG &
 bmftools_db mark -Sl6 ${R1}.postalign.bam ${R1}.postmark.bam
 ../fp512_test ${R1}.postmark.bam omg.bam && rm -f omg.bam
 echo bmftools_db sort -l 9 -m 3G -@ 10 -Sk ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
 bmftools_db sort -l 9 -m 3G -@ 10 -Sk ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
-getsums.py $PRERSQBAM 2>>$LOG &
+getsums.py $PRERSQBAM >>$LOG &
 echo Post-BMF-sort read count -cF2816: $(samtools view -cF2816 $PRERSQBAM) >> $LOG &
 echo Post-BMF-sort read count -cF2304: $(samtools view -cF2304 $PRERSQBAM) >> $LOG &
 
@@ -67,11 +67,11 @@ echo Post-rescue, before merge read count -cF2304: $(samtools view -cF2304 $TMPB
 bwa mem -CYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-getsums.py $TMPBAM 2>>$LOG
+getsums.py $TMPBAM >>$LOG
 echo Post-rescue, merged-reads count -cF2816: $(samtools view -cF2816 $FINALBAM) >> $LOG &
 echo Post-rescue, merged-reads count -cF2304: $(samtools view -cF2304 $FINALBAM) >> $LOG &
 
-getsums.py $FINALBAM 2>>$LOG
+getsums.py $FINALBAM >>$LOG &
 
 samtools index $FINALBAM
 

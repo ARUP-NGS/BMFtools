@@ -9,6 +9,7 @@ SORT_THREADS2="2"
 THREADS="10"
 BLEN=13
 MAX_BLEN=13
+PADDING=50
 r1=$1
 r2=$2
 HOMING="TGACT"
@@ -40,12 +41,12 @@ echo Number of collapsed observations after dmp: $(zgrep -c '^+$' $R1) >> $LOG
 
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbh - > ${R1}.premark.bam
-getsums.py ${R1}.premark.bam 2>>$LOG &
+getsums.py ${R1}.premark.bam >>$LOG &
 echo Pre-mark read count -cF2816: $(samtools view -cF2816 ${R1}.premark.bam) >> $LOG &
 echo Pre-mark read count -cF2304: $(samtools view -cF2304 ${R1}.premark.bam) >> $LOG &
 echo bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
 bmftools_db mark ${R1}.premark.bam ${R1}.postmark.bam
-getsums.py ${R1}.postmark.bam 2>>$LOG
+getsums.py ${R1}.postmark.bam >>$LOG &
 echo Post-mark read count -cF2816: $(samtools view -cF2816 ${R1}.postmark.bam) >> $LOG &
 echo Post-mark read count -cF2304: $(samtools view -cF2304 ${R1}.postmark.bam) >> $LOG &
 echo "Now checing that the qcfail bit is set correctly."
@@ -53,7 +54,7 @@ echo /fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
 ./fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
 echo bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
 bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
-getsums.py $PRERSQBAM 2>>$LOG &
+getsums.py $PRERSQBAM >>$LOG &
 echo Post-BMF-sort read count -cF2816: $(samtools view -cF2816 $PRERSQBAM) >> $LOG &
 echo Post-BMF-sort read count -cF2304: $(samtools view -cF2304 $PRERSQBAM) >> $LOG &
 
@@ -68,7 +69,7 @@ echo Post-rescue, before merge read count -cF2304: $(samtools view -cF2304 $TMPB
 bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-getsums.py $TMPBAM 2>>$LOG
+getsums.py $TMPBAM >>$LOG &
 echo Post-rescue, merged-reads count -cF2816: $(samtools view -cF2816 $TMPBAM) >> $LOG &
 echo Post-rescue, merged-reads count -cF2304: $(samtools view -cF2304 $TMPBAM) >> $LOG &
 
@@ -77,22 +78,16 @@ bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools_db mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
 
-getsums.py $FINALBAM 2>>$LOG
+rm $TMPFQ $TMPBAM &
+getsums.py $FINALBAM >>$LOG &
 
 samtools index $FINALBAM
 
 # QC
 
-
-samtools index $FINALBAM
-
-# QC
-
-#bmftools_db depth -sb $BED -p 50 $PRERSQBAM > ${PRERSQBAM}.doc.bed
-bmftools_db depth -sb $BED -p 50 $FINALBAM > ${FINALBAM}.doc.bed
-bmftools_db famstats fm $PRERSQBAM > ${PRERSQBAM}.famstats.txt
-bmftools_db famstats fm $FINALBAM > ${FINALBAM}.famstats.txt
+#bmftools_db depth -sb $BED -p $PADDING $PRERSQBAM > ${PRERSQBAM}.doc.bed
+bmftools_db depth -sb $BED -p $PADDING $FINALBAM > ${FINALBAM}.doc.bed &
+bmftools_db famstats fm $PRERSQBAM > ${PRERSQBAM}.famstats.txt &
+bmftools_db famstats fm $FINALBAM > ${FINALBAM}.famstats.txt &
 
 # Clean up
-
-rm $TMPFQ $TMPBAM

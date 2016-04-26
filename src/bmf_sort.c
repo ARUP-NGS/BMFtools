@@ -9,10 +9,6 @@ static int cmpkey = BMF_POS;
 #define NEED_MEMSET_PATTERN4
 #endif
 
-static inline int split_index(bam1_t *b)
-{
-    return IS_READ1(b) ? b->core.tid + 1: b->core.mtid + 1;
-}
 
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
@@ -1124,6 +1120,8 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
  * file. Finally we write our chosen read it to the output file.
  */
 
+#define split_index(b) ((b->core.flag & BAM_FREAD1) ? b->core.tid + 1: b->core.mtid + 1)
+
 /*!
   @abstract    Merge multiple sorted BAM.
   @param  cmpkey whether to sort by query name
@@ -1652,6 +1650,8 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
     free(fps);
 }
 
+#undef split_index
+
 static void write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h, int n_threads, const htsFormat *fmt)
 {
     size_t i;
@@ -1781,7 +1781,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         b = buf[k];
         if (UNLIKELY((ret = sam_read1(fp, header, b)) < 0)) break;
         if(++count % 1000000 == 0)
-            fprintf(stderr, "[%s] Records processed: %" PRIu64".\n", __func__, count);
+            fprintf(stderr, "[%s] Records processed: %lu".\n", __func__, count);
         if (b->l_data < b->m_data>>2) { // shrink
             b->m_data = b->l_data;
             kroundup32(b->m_data);
