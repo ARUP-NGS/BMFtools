@@ -28,7 +28,7 @@ namespace BMF {
                             "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
                             "-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
                             "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
-                            "-m: Number of bases in the start of reads to skip when salting. Default: 1.\n"
+                            "-m: Number of bases in the start of reads to skip when salting. Default: 0.\n"
                             "-d: Flag to run hash dmp. Default: False.\n"
                             "-p: Number of threads to use if running hash_dmp. Default: %i.\n"
                             "-v: Set notification interval for split. Default: 1000000.\n"
