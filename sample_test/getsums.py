@@ -10,7 +10,7 @@ if __name__ == "__main__":
         sys.stderr.write("Usage: python %s <bampath> <outfile> "
                          "[omit outfile to write to stdout]\n" % ex)
         sys.exit(1)
-    handle = open(sys.argv[2], "w") if len(sys.argv >= 3) else sys.stdout
+    handle = open(sys.argv[2], "w") if len(sys.argv) >= 3 else sys.stdout
     for read in pysam.AlignmentFile(sys.argv[1]):
         # 2432 = (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FREAD2)
         if read.flag & 2432:

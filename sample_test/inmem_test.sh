@@ -50,8 +50,8 @@ getsums.py ${R1}.postmark.bam >>$LOG &
 echo Post-mark read count -cF2816: $(samtools view -cF2816 ${R1}.postmark.bam) >> $LOG &
 echo Post-mark read count -cF2304: $(samtools view -cF2304 ${R1}.postmark.bam) >> $LOG &
 echo "Now checing that the qcfail bit is set correctly."
-echo /fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
-./fp512 ${R1}.postmark.bam omg.bam && rm -f omg.bam
+echo fp512_test ${R1}.postmark.bam /dev/null
+fp512_test ${R1}.postmark.bam /dev/null
 echo bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
 bmftools_db sort -l 9 -m 3G -@ 10 -k ucs -T tmpfileswtf ${R1}.postmark.bam > $PRERSQBAM
 getsums.py $PRERSQBAM >>$LOG &

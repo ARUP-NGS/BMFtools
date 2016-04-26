@@ -124,8 +124,8 @@ namespace BMF {
         }
         #pragma omp parallel for schedule(dynamic, 1)
         for(int i = 0; i < settings->n_handles; ++i) {
-            LOG_INFO("Now running hash dmp core on input filename %s and output filename %s.\n",
-                     params->infnames_r2[i], params->outfnames_r2[i]);
+            LOG_DEBUG("Now running hash dmp core on input filename %s and output filename %s.\n",
+                      params->infnames_r2[i], params->outfnames_r2[i]);
             func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
             if(settings->cleanup) {
                 kstring_t ks = {0, 0, nullptr};

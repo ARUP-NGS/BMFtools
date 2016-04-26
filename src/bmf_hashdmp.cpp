@@ -441,7 +441,7 @@ namespace BMF {
         }
         // Demultiplex and write out.
 #if !NDEBUG
-        fprintf(stderr, "[%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
+        fprintf(stderr, "[D:%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
 #endif
         free(ks.s);
         gzclose(fp);
@@ -541,8 +541,10 @@ namespace BMF {
                 }
             }
         }
+#if !NDEBUG
         const uint64_t rcount = count - fcount;
-        LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
+#endif
+        LOG_DEBUG("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
         LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
         // Write out all unmatched in forward and handle all barcodes handled from both strands.
         uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
