@@ -94,7 +94,6 @@ namespace BMF {
         }
         // Handle stats->np
         fms.resize(stats->np->n_occupied);
-        LOG_DEBUG("n_occupied: %lu.\n", stats->np->n_occupied);
         size_t n_rsq_fams = 0;
         for(i = 0, ki = kh_begin(stats->np); ki != kh_end(stats->np); ++ki) {
             if(kh_exist(stats->np, ki)) {
@@ -105,7 +104,7 @@ namespace BMF {
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
-        fprintf(fp, "#Number of families that were rescued: %lu.\n", n_rsq_fams);
+        fprintf(fp, "#Number of families that were rescued: %lu\n", n_rsq_fams);
         fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
         for(i = 0; i < stats->np->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
@@ -114,17 +113,17 @@ namespace BMF {
 
     static void print_stats(famstats_t *stats, FILE *fp)
     {
-        fprintf(fp, "#Number passing filters: %lu.\n", stats->n_pass);
-        fprintf(fp, "#Number failing filters: %lu.\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
-        fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
-        fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
-        fprintf(fp, "#Number failing flag filters (secondary, supplementary, read2, qcfail): %lu.\n", stats->n_flag_fail);
-        fprintf(fp, "#Summed FM (total founding reads): %lu.\n", stats->allfm_sum);
-        fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu.\n", stats->realfm_sum);
-        fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu.\n", stats->allrc_sum);
-        fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu.\n", stats->realrc_sum);
-        fprintf(fp, "#RV fraction for all read families: %f.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-        fprintf(fp, "#RV fraction for real read families: %f.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+        fprintf(fp, "#Number passing filters: %lu\n", stats->n_pass);
+        fprintf(fp, "#Number failing filters: %lu\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
+        fprintf(fp, "#Number failing FP filters: %lu\n", stats->n_fp_fail);
+        fprintf(fp, "#Number failing FM filters: %lu\n", stats->n_fm_fail);
+        fprintf(fp, "#Number failing flag filters (secondary, supplementary, read2, qcfail): %lu\n", stats->n_flag_fail);
+        fprintf(fp, "#Summed FM (total founding reads): %lu\n", stats->allfm_sum);
+        fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu\n", stats->realfm_sum);
+        fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu\n", stats->allrc_sum);
+        fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu\n", stats->realrc_sum);
+        fprintf(fp, "#RV fraction for all read families: %f\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+        fprintf(fp, "#RV fraction for real read families: %f\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
         fprintf(fp, "#Mean Family Size (all)\t%f\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
         fprintf(fp, "#Mean Family Size (real)\t%f\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
         if(stats->dr_counts) {
