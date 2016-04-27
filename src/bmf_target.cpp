@@ -107,17 +107,17 @@ namespace BMF {
 
         free(bedpath);
 
-        fprintf(stdout, "Number of reads skipped: %lu.\n", counts.n_skipped);
-        fprintf(stdout, "Number of real FM reads total: %lu.\n", counts.rfm_count);
-        fprintf(stdout, "Number of real FM reads on target: %lu.\n", counts.rfm_target);
-        fprintf(stdout, "Number of reads total: %lu.\n", counts.count);
-        fprintf(stdout, "Number of reads on target: %lu.\n", counts.target);
-        fprintf(stdout, "Fraction of dmp reads on target with padding of %u bases and %i minMQ: %0.12f.\n",
+        fprintf(stdout, "Number of reads skipped: %lu\n", counts.n_skipped);
+        fprintf(stdout, "Number of real FM reads total: %lu\n", counts.rfm_count);
+        fprintf(stdout, "Number of real FM reads on target: %lu\n", counts.rfm_target);
+        fprintf(stdout, "Number of reads total: %lu\n", counts.count);
+        fprintf(stdout, "Number of reads on target: %lu\n", counts.target);
+        fprintf(stdout, "Fraction of dmp reads on target with padding of %u bases and %i minMQ: %0.12f\n",
                 padding, minMQ, (double)counts.target / counts.count);
-        fprintf(stdout, "Fraction of raw reads on target with padding of %u bases and %i minMQ: %0.12f.\n",
+        fprintf(stdout, "Fraction of raw reads on target with padding of %u bases and %i minMQ: %0.12f\n",
                 padding, minMQ, (double)counts.raw_target / counts.raw_count);
         if(counts.rfm_count) {
-            fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f.\n",
+            fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f\n",
                     padding, minMQ, (double)counts.rfm_target / counts.rfm_count);
         }
         LOG_INFO("Successfully complete bmftools target!\n");
