@@ -576,7 +576,7 @@ namespace BMF {
         if(optind + 1 >= argc) vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
         // Check for required tags.
         if(aux.minAF) dlib::check_bam_tag_exit(argv[optind + 1], "AF");
-        for(auto tag : {"FA", "FM", "FP", "PV", "RV"})
+        for(auto tag : {"FA", "FM", "FP", "PV"})
             dlib::check_bam_tag_exit(argv[optind + 1], tag);
 
 

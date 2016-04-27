@@ -40,16 +40,6 @@ namespace BMF {
         write_tag_if_found(rvdata, b, "NC", ks);
         write_tag_if_found(rvdata, b, "DR", ks);
         write_tag_if_found(rvdata, b, "NP", ks);
-        /*
-        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
-            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "NC")) != nullptr)
-            ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "DR")) != nullptr)
-            ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "NP")) != nullptr)
-            ksprintf(&ks, "\tNP:i:%i", bam_aux2i(rvdata));
-        */
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -461,7 +451,7 @@ namespace BMF {
         if(settings.cmpkey == cmpkey::UNCLIPPED)
             if(!settings.is_se)
                 dlib::check_bam_tag_exit(argv[optind], "MU");
-        for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
+        for(const char *tag: {"FM", "FA", "PV", "FP"})
             dlib::check_bam_tag_exit(argv[optind], tag);
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);

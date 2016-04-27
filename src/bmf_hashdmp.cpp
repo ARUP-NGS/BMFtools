@@ -432,7 +432,7 @@ namespace BMF {
         kstring_t ks{0, 0, nullptr};
         HASH_ITER(hh, hash, current_entry, tmp_hk) {
             ++count;
-            dmp_process_write(current_entry->value, &ks, tmp->buffers, 0);
+            dmp_process_write(current_entry->value, &ks, tmp->buffers, -1);
             gzputs(out_handle, (const char *)ks.s);
             ks.l = 0;
             destroy_kf(current_entry->value);

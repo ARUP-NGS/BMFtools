@@ -1142,7 +1142,7 @@ namespace BMF {
         if ((header = sam_hdr_read(fp)) == nullptr) {
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
         }
-        for(auto tag: {"FM", "FP", "RV"})
+        for(auto tag: {"FM", "FP"})
             dlib::check_bam_tag_exit(argv[optind + 1], tag);
         if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
             dlib::check_bam_tag_exit(argv[optind + 1], "DR");

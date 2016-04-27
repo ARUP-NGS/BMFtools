@@ -4,8 +4,7 @@
 
 namespace BMF {
 
-    const char *tags_to_check[] = {"FP", "RV", "FM", "FA"};
-    int RVWarn = 1;
+    const char *tags_to_check[] = {"FP", "FM", "FA"};
 
     int famstats_frac_usage(int exit_status) {
         fprintf(stderr,
@@ -80,7 +79,6 @@ namespace BMF {
         });
         for(i = 0; i < stats->fm->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-        fprintf(fp, "#RV'd in family\tNumber of families\n");
 
         fms.resize(stats->rc->n_occupied);
         for(i = 0, ki = kh_begin(stats->rc); ki != kh_end(stats->rc); ++ki)
@@ -89,8 +87,11 @@ namespace BMF {
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
-        for(i = 0; i < stats->rc->n_occupied; ++i)
-            fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        if(fms[i].fm != (uint64_t)-1) {
+            fprintf(fp, "#RV'd in family\tNumber of families\n");
+            for(i = 0; i < stats->rc->n_occupied; ++i)
+                fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        }
         // Handle stats->np
         fms.resize(stats->np->n_occupied);
         LOG_DEBUG("n_occupied: %lu.\n", stats->np->n_occupied);
