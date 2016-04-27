@@ -382,14 +382,15 @@ namespace BMF {
         LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
         if(settings->realign_pairs.size()) {
             LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
-            //for(auto pair: settings->realign_pairs)
-                //fputs(pair.second.c_str(), settings->fqh);
+#if !NDEBUG
+            for(auto pair: settings->realign_pairs)
+                puts(pair.second.c_str());
+#endif
         }
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
-        LOG_DEBUG("Starting stack!\n");
         dlib::tmp_stack_t stack = {0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
         rsq_core(settings, &stack);
         free(stack.a);
