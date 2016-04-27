@@ -255,6 +255,7 @@ namespace BMF {
         // Write header
         // stderr ONLY for this development phase.
         kstring_t hdr_str = {0, 0, nullptr};
+        ksprintf(&hdr_str, "##bed=%s\n", bedpath);
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
