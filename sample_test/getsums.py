@@ -16,6 +16,6 @@ if __name__ == "__main__":
         if read.flag & 2432:
             continue
         fmsum += read.opt("FM")
-        rvsum += read.opt("RV")
+        rvsum += read.opt("RV") if read.has_tag("RV") else 0
     handle.write("%s-FM:%i;RV:%i.\n" % (sys.argv[1], fmsum, rvsum))
     sys.exit(0)
