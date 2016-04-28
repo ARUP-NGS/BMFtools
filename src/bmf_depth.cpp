@@ -76,16 +76,19 @@ namespace BMF {
         fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
         fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
         fprintf(fp, "#Depth");
-        for(i = 0; i < n_samples; ++i) fprintf(fp, "\t%s:#Bases\t%s:%%Bases", aux[i]->fp->fn, aux[i]->fp->fn);
+        for(i = 0; i < n_samples; ++i)
+            fprintf(fp, "\t%s:#Bases\t%s:%%Bases",
+                    aux[i]->fp->fn, aux[i]->fp->fn);
         fputc('\n', fp);
         for(i = 0; i < n_samples; ++i)
             for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
                 if(kh_exist(aux[i]->depth_hash, k))
                     keyset.insert(kh_key(aux[i]->depth_hash, k));
-        std::vector<int>keys(keyset.begin(), keyset.end());
+        std::vector<int> keys(keyset.begin(), keyset.end());
         std::sort(keys.begin(), keys.end());
         keyset.clear();
         std::vector<std::vector<uint64_t>> csums;
+        csums.reserve(n_samples);
         for(i = 0; i < n_samples; ++i) {
             csums.emplace_back(keys.size());
             for(j = keys.size() - 1; j != (unsigned)-1; --j) {
@@ -99,7 +102,8 @@ namespace BMF {
         for(j = 0; j < keys.size(); ++j) {
             fprintf(fp, "%i", keys[j]);
             for(i = 0; i < n_samples; ++i)
-                fprintf(fp, "\t%lu\t%0.2f%%", csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
+                fprintf(fp, "\t%lu\t%0.2f%%",
+                        csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
             fputc('\n', fp);
         }
     }

@@ -1164,7 +1164,6 @@ namespace BMF {
         uint8_t *fmdata, *fpdata;
         for(;;)
         {
-
             if((ret = sam_itr_next(navy->fp, navy->iter, b)) < 0) break;
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
                     (int)b->core.qual < navy->minMQ) continue;
@@ -1267,25 +1266,22 @@ namespace BMF {
             }
         }
 
-        if(padding < 0 && bedpath) {
+        if(padding < 0 && bedpath)
             LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
-        }
 
         if(!outpath) {
             outpath = strdup("-");
             LOG_WARNING("Output path not set. Defaulting to stdout.\n");
         }
-        if(!bedpath) {
+        if(!bedpath)
             LOG_EXIT("Bed file required for bmftools err region.\n");
-        }
         ofp = dlib::open_ofp(outpath);
 
         if (argc != optind+2)
             return err_region_usage(EXIT_FAILURE);
 
-        if((fai = fai_load(argv[optind])) == nullptr) {
+        if((fai = fai_load(argv[optind])) == nullptr)
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
-        }
 
         RegionExpedition Holloway(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
         err_region_core(&Holloway);
