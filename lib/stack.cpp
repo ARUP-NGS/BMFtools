@@ -216,14 +216,19 @@ namespace BMF {
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
         //LOG_DEBUG("Got total depths %i,%i.\n", total_depth_tumor, total_depth_normal);
-        std::vector<float> rv_fractions(reverse_counts.size());
-        std::vector<float> allele_fractions(reverse_counts.size());
+        std::vector<float> rv_fractions;
+        rv_fractions.reserve(reverse_counts.size());
+        std::vector<float> allele_fractions;
+        allele_fractions.reserve(reverse_counts.size());
         for(unsigned i = 0; i < n_base_calls; ++i) {
-            rv_fractions[i] = (float)counts[i] / reverse_counts[i];
-            rv_fractions[i + n_base_calls] = (float)counts[i + n_base_calls] / reverse_counts[i + n_base_calls];
-            allele_fractions[i] = (float)counts[i] / total_depth_tumor;
-            allele_fractions[i + n_base_calls] = (float)counts[i + n_base_calls] / total_depth_normal;
+            rv_fractions.push_back((float)counts[i] / reverse_counts[i]);
+            allele_fractions.push_back((float)counts[i] / total_depth_tumor);
         }
+        for(unsigned i = 0; i < n_base_calls; ++i) {
+            rv_fractions.push_back((float)counts[i + n_base_calls] / reverse_counts[i + n_base_calls]);
+            allele_fractions.push_back((float)counts[i + n_base_calls] / total_depth_normal);
+        }
+        assert(allele_fractions.size() == 2 * n_base_calls);
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADP", static_cast<const void *>(counts.data()), counts.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
@@ -241,13 +246,14 @@ namespace BMF {
     } /* PairVCFLine::to_bcf */
 
 void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
-    while(n)
-        if(bcf_hdr_append(hdr, lines[--n]))
-            LOG_EXIT("Could not add header line %s. Abort!\n");
+	lines += n;
+    while(n--)
+        if(bcf_hdr_append(hdr, *--lines))
+            LOG_EXIT("Could not add header line %s. Abort!\n", *lines);
 }
 
 void add_stack_lines(bcf_hdr_t *hdr) {
-    add_hdr_lines(hdr, stack_vcf_lines, sizeof(stack_vcf_lines) / sizeof(stack_vcf_lines[0]));
+    add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
 }
 
 } /* namespace BMF */
