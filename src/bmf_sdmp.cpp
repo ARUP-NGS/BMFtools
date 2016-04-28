@@ -40,14 +40,13 @@ namespace BMF {
                     , argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
     }
 
-    static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
+    static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     {
         LOG_DEBUG("Path to index fq: %s.\n", settings->index_fq_path);
         gzFile fp_read1, fp_read2, fp_index;
         kseq_t *seq1 = nullptr, *seq2 = nullptr, *seq_index = nullptr;
         int l1, l2, l_index;
-        mark_splitter_t *splitter_ptr = (mark_splitter_t *)calloc(1, sizeof(mark_splitter_t));
-        *splitter_ptr = init_splitter(settings);
+        mark_splitter_t splitter{init_splitter(settings)};
         for(auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
             if(!dlib::isfile(path))
                 LOG_EXIT("%s is not a file. Abort!\n", path);
@@ -78,8 +77,8 @@ namespace BMF {
         update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
         pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
         bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-        mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
-        mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+        mseq2fq(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+        mseq2fq(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
         uint64_t count = 0;
         while(LIKELY((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0))
                 && (l_index = kseq_read(seq_index)) >= 0) {
@@ -92,28 +91,27 @@ namespace BMF {
             update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
             pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
             bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-            mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
-            mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+            mseq2fq(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+            mseq2fq(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
         }
         tm_destroy(tmp);
         mseq_destroy(rseq1); mseq_destroy(rseq2);
         kseq_destroy(seq1); kseq_destroy(seq2); kseq_destroy(seq_index);
         gzclose(fp_read1); gzclose(fp_read2); gzclose(fp_index);
         for(int j = 0; j < settings->n_handles; ++j) {
-            gzclose(splitter_ptr->tmp_out_handles_r1[j]);
-            gzclose(splitter_ptr->tmp_out_handles_r2[j]);
-            splitter_ptr->tmp_out_handles_r1[j] = splitter_ptr->tmp_out_handles_r2[j] = nullptr;
+            gzclose(splitter.tmp_out_handles_r1[j]);
+            gzclose(splitter.tmp_out_handles_r2[j]);
+            splitter.tmp_out_handles_r1[j] = splitter.tmp_out_handles_r2[j] = nullptr;
         }
-        return splitter_ptr;
+        return splitter;
     }
 
-    static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings)
+    static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     {
         gzFile fp, fp_index;
         kseq_t *seq = nullptr, *seq_index = nullptr;
         int l, l_index;
-        mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
-        *splitter_ptr = init_splitter(settings);
+        mark_splitter_t splitter{init_splitter(settings)};
         if(!dlib::isfile(settings->input_r1_path) ||
            !dlib::isfile(settings->index_fq_path)) {
             LOG_EXIT("At least one input path ('%s', '%s') is not a file. Abort!\n",
@@ -132,7 +130,7 @@ namespace BMF {
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
-        mseq2fq(splitter_ptr->tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
+        mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
                 rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
         uint64_t count = 0;
         while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
@@ -141,7 +139,7 @@ namespace BMF {
             memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
             memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
             update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
-            mseq2fq(splitter_ptr->tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
+            mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
                     rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
         }
         tm_destroy(tmp);
@@ -149,11 +147,11 @@ namespace BMF {
         kseq_destroy(seq); kseq_destroy(seq_index);
         gzclose(fp); gzclose(fp_index);
         for(int j = 0; j < settings->n_handles; ++j) {
-            gzclose(splitter_ptr->tmp_out_handles_r1[j]);
-            splitter_ptr->tmp_out_handles_r1[j] = nullptr;
+            gzclose(splitter.tmp_out_handles_r1[j]);
+            splitter.tmp_out_handles_r1[j] = nullptr;
         }
         // Set out handles to nullptr.
-        return splitter_ptr;
+        return splitter;
     }
 
     int sdmp_main(int argc, char *argv[])
@@ -246,13 +244,13 @@ namespace BMF {
         }
 
         splitterhash_params_t *params = nullptr;
-        mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
+        mark_splitter_t splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
         if(!settings.run_hash_dmp) {
             fprintf(stderr, "[%s] Finished mark/split. Skipping dmp.\n", __func__);
             goto cleanup;
         }
         if(!settings.ffq_prefix) make_outfname(&settings);
-        params = init_splitterhash(&settings, splitter);
+        params = init_splitterhash(&settings, &splitter);
         fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 
         parallel_hash_dmp_core(&settings, params, &hash_dmp_core);
@@ -267,7 +265,7 @@ namespace BMF {
         splitterhash_destroy(params);
 
         cleanup:
-        splitter_destroy(splitter);
+        splitter_destroy(&splitter);
         free_marksplit_settings(settings);
         LOG_INFO("Successfully completed bmftools sdmp!\n");
         return EXIT_SUCCESS;
