@@ -74,8 +74,8 @@ namespace BMF {
         std::unordered_set<int> keyset;
         fprintf(fp, "##bedpath=%s\n", bedpath);
         fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
-        fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
-        fprintf(fp, "#Depth");
+        fputs("##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n", fp);
+        fputs("#Depth", fp);
         for(i = 0; i < n_samples; ++i)
             fprintf(fp, "\t%s:#Bases\t%s:%%Bases",
                     aux[i]->fp->fn, aux[i]->fp->fn);
@@ -94,7 +94,6 @@ namespace BMF {
             for(j = keys.size() - 1; j != (unsigned)-1; --j) {
                 if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
                     csums[i][j] = kh_val(aux[i]->depth_hash, k);
-                else csums[i][j] = 0;
                 if(j != (unsigned)keys.size() - 1)
                     csums[i][j] += csums[i][j + 1];
             }

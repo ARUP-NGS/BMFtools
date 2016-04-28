@@ -22,7 +22,6 @@ namespace BMF {
 
     readerr_t *readerr_init(size_t l);
     void readerr_destroy(readerr_t *e);
-    void rate_calc(readerr_t *e);
 
 
     struct fullerr_t {
@@ -129,7 +128,6 @@ namespace BMF {
         double minFR;
     };
 
-    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, unsigned minMQ, uint32_t minPV);
     void fm_destroy(fmerr_t *fm);
 
     enum err_flags {
@@ -139,12 +137,7 @@ namespace BMF {
         REQUIRE_FP_PASS = 8
     };
 
-    fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-            int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV);
     void fullerr_destroy(fullerr_t *e);
-
-    void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
-    void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
 
 
     static inline int pv2ph(double pv)
