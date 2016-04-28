@@ -259,7 +259,7 @@ namespace BMF {
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
-        ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
+        ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
         size_t capture_size = 0;
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);

@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include "dlib/bam_util.h"
+#include "dlib/cstr_util.h"
 
 namespace BMF {
 
@@ -121,6 +122,7 @@ namespace BMF {
             LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
         dlib::BamHandle inHandle(in);
+        dlib::add_pg_line(inHandle.header, argc, argv, "bmftools mark", BMF_VERSION, "bmftools", "Adds mate information to aux tags");
         dlib::BamHandle outHandle(out, inHandle.header, "wb");
         if(is_se) {
             ret = dlib::abstract_single_iter(inHandle.fp, inHandle.header, outHandle.fp,

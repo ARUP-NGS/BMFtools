@@ -8,8 +8,8 @@ CXXSTD=c++11
 CSTD=gnu99
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-CFLAGS= -Wunreachable-code -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
-FLAGS= -Wunreachable-code -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic
+CFLAGS= -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
+FLAGS= -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
