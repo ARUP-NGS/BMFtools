@@ -1211,23 +1211,24 @@ namespace BMF {
         int len;
         bam1_t *b = bam_init1();
         std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
+        Holloway->region_counts.reserve(sorted_keys.size());
         for(khiter_t& k: sorted_keys) {
             if(!kh_exist(Holloway->bed, k)) continue;
             if(ref) free(ref);
             LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
             ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
             for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
-                Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
                 const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
                 const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
-                if(Holloway->iter) hts_itr_destroy(Holloway->iter);
                 Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                                 start, stop);
+                Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
                 while(read_bam(Holloway, b) >= 0 && b->core.pos < stop) {
                     assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
                     if(bam_getend(b) <= start) continue;
                     region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
                 }
+                hts_itr_destroy(Holloway->iter);
             }
         }
         bam_destroy1(b);
