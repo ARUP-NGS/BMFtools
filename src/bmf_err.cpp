@@ -1223,13 +1223,9 @@ namespace BMF {
                 if(Holloway->iter) hts_itr_destroy(Holloway->iter);
                 Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                                 start, stop);
-                while(read_bam(Holloway, b) >= 0) {
+                while(read_bam(Holloway, b) >= 0 && b->core.pos < stop) {
                     assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
-                    if(bam_getend(b) <= start) {
-                        continue;
-                    } else if(b->core.pos >= stop) {
-                        break;
-                    }
+                    if(bam_getend(b) <= start) continue;
                     region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
                 }
             }
