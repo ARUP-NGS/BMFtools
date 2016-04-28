@@ -42,6 +42,7 @@ namespace BMF {
                         "for both raw and collapsed read families "
                         "over a capture region of interest.\n"
                         "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n"
+                        "  -H path       Write out a histogram of the number of bases in a capture covered at each depth or greater.\n"
                         "  -Q INT        Only count bases of at least INT quality [0]\n"
                         "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n"
                         "  -m INT        Max depth. Default: %i.\n"
