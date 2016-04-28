@@ -46,7 +46,7 @@ namespace BMF {
         gzFile fp_read1, fp_read2, fp_index;
         kseq_t *seq1 = nullptr, *seq2 = nullptr, *seq_index = nullptr;
         int l1, l2, l_index;
-        mark_splitter_t splitter{init_splitter(settings)};
+        mark_splitter_t splitter(init_splitter(settings));
         for(auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
             if(!dlib::isfile(path))
                 LOG_EXIT("%s is not a file. Abort!\n", path);
@@ -111,7 +111,7 @@ namespace BMF {
         gzFile fp, fp_index;
         kseq_t *seq = nullptr, *seq_index = nullptr;
         int l, l_index;
-        mark_splitter_t splitter{init_splitter(settings)};
+        mark_splitter_t splitter(init_splitter(settings));
         if(!dlib::isfile(settings->input_r1_path) ||
            !dlib::isfile(settings->index_fq_path)) {
             LOG_EXIT("At least one input path ('%s', '%s') is not a file. Abort!\n",

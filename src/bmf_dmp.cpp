@@ -266,7 +266,7 @@ namespace BMF {
             LOG_EXIT("Could not open read paths: at least one is not a file.\n");
         if(settings->rescaler_path)
             settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
-        mark_splitter_t splitter{init_splitter(settings)};
+        mark_splitter_t splitter(init_splitter(settings));
         gzFile fp(gzopen(settings->input_r1_path, "r"));
         kseq_t *seq(kseq_init(fp));
         // Manually process the first pair of reads so that we have the read length.
@@ -333,7 +333,7 @@ namespace BMF {
             LOG_EXIT("Could not open read paths: at least one is not a file.\n");
         }
         if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
-        mark_splitter_t splitter{init_splitter(settings)};
+        mark_splitter_t splitter(init_splitter(settings));
         gzFile fp1 = gzopen(settings->input_r1_path, "r");
         gzFile fp2 = gzopen(settings->input_r2_path, "r");
         kseq_t *seq1 = kseq_init(fp1), *seq2 = kseq_init(fp2);
