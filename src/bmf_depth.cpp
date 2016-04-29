@@ -19,7 +19,7 @@ namespace BMF {
         std::vector<uint64_t> raw_counts; // Counts for raw observations along region
         std::vector<uint64_t> dmp_counts; // Counts for dmp observations along region
         std::vector<uint64_t> singleton_counts; // Counts for singleton observations along region
-        int minFM; // Minimum family size
+        uint32_t minFM:16; // Minimum family size
         uint32_t minMQ:15; // Minimum mapping quality
         uint32_t requireFP:1; // Set to true to require
         khash_t(depth) *depth_hash;
@@ -167,7 +167,7 @@ namespace BMF {
             if ( ret<0 ) break;
             uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
             if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                (int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
+                b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
                 (aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
                     continue;
             break;

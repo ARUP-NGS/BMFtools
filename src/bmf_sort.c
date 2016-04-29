@@ -5,7 +5,7 @@ typedef bam1_t *bam1_p;
 
 static int cmpkey = BMF_POS;
 
-static int heap_is_se = 0;
+static int is_se = 0;
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
@@ -92,9 +92,6 @@ typedef struct {
 // Function to compare reads and determine which one is < the other (single-end).
 static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
 {
-#if !NDEBUG
-    LOG_DEBUG("Calling bam1_se_lt\n");
-#endif
     int t;
     switch(cmpkey) {
         case QNAME:
@@ -149,7 +146,7 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
     int t;
     uint64_t key_a, key_b;
-    if(heap_is_se) {
+    if(is_se) {
         if (a.b == NULL || b.b == NULL) return !a.b;
         return bam1_se_lt(a.b, b.b);
     }
@@ -1677,7 +1674,8 @@ static void *worker(void *data)
 {
     worker_t *w = (worker_t*)data;
     char *name;
-    ks_mergesort(sort, w->buf_len, w->buf, 0);
+    if(is_se) ks_mergesort(se_sort, w->buf_len, w->buf, 0);
+    else ks_mergesort(sort, w->buf_len, w->buf, 0);
     name = (char*)calloc(strlen(w->prefix) + 20, 1);
     sprintf(name, "%s.%.4d.bam", w->prefix, w->index);
     write_buffer(name, "wb1", w->buf_len, w->buf, w->h, 0, NULL);
@@ -1746,8 +1744,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
 int bam_sort_core_ext(const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
                       size_t _max_mem, int n_threads,
-                      const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
-                      int is_se)
+                      const htsFormat *in_fmt, const htsFormat *out_fmt, int split)
 {
     int ret = -1, i, n_files = 0;
     size_t mem, max_k, k, max_mem, count;
@@ -1889,7 +1886,7 @@ static int sort_usage(int status)
 int sort_main(int argc, char *argv[])
 {
     size_t max_mem = 768<<20; // 512MB
-    int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1, is_se = 0;
+    int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
     int split = 0;
     char modeout[12];
     char fnout[200] = "-";
@@ -1938,7 +1935,7 @@ int sort_main(int argc, char *argv[])
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
         case 's': split = 1; break;
-        case 'S': is_se = 1; heap_is_se = 1; break;
+        case 'S': is_se = 1; LOG_DEBUG("Heap is se\n"); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
         case '?': case 'h': return sort_usage(EXIT_SUCCESS);
@@ -1967,7 +1964,7 @@ int sort_main(int argc, char *argv[])
 
     ret = bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
                             tmpprefix, fnout, modeout, max_mem, n_threads,
-                            &ga.in, &ga.out, split, is_se);
+                            &ga.in, &ga.out, split);
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);
