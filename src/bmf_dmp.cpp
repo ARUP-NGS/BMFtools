@@ -307,7 +307,7 @@ namespace BMF {
             // Write the processed read to the bin
             mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode, 'F');
         }
-        LOG_INFO("Total number of raw observations: %lu\n", count);
+        LOG_INFO("Collapsing %lu initial reads....\n", count);
         LOG_DEBUG("Cleaning up.\n");
         for(int i = 0; i < splitter.n_handles; ++i)
             gzclose(splitter.tmp_out_handles_r1[i]);
@@ -405,6 +405,7 @@ namespace BMF {
                 mseq2fq_stranded(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
             }
         }
+        LOG_INFO("Collapsing %lu initial read pairs....\n", count);
         LOG_DEBUG("Cleaning up.\n");
         for(int i = 0; i < splitter.n_handles; ++i) {
             gzclose(splitter.tmp_out_handles_r1[i]);

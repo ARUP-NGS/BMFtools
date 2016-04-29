@@ -103,6 +103,7 @@ namespace BMF {
             gzclose(splitter.tmp_out_handles_r2[j]);
             splitter.tmp_out_handles_r1[j] = splitter.tmp_out_handles_r2[j] = nullptr;
         }
+        LOG_INFO("Collapsing %lu initial read pairs....\n", count);
         return splitter;
     }
 
@@ -150,6 +151,7 @@ namespace BMF {
             gzclose(splitter.tmp_out_handles_r1[j]);
             splitter.tmp_out_handles_r1[j] = nullptr;
         }
+        LOG_INFO("Collapsing %lu initial reads....\n", count);
         // Set out handles to nullptr.
         return splitter;
     }
