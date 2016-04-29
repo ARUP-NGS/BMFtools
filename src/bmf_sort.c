@@ -5,6 +5,8 @@ typedef bam1_t *bam1_p;
 
 static int cmpkey = BMF_POS;
 
+static int heap_is_se = 0;
+
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
 #endif
@@ -90,6 +92,9 @@ typedef struct {
 // Function to compare reads and determine which one is < the other (single-end).
 static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
 {
+#if !NDEBUG
+    LOG_DEBUG("Calling bam1_se_lt\n");
+#endif
     int t;
     switch(cmpkey) {
         case QNAME:
@@ -144,20 +149,24 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
     int t;
     uint64_t key_a, key_b;
+    if(heap_is_se) {
+        if (a.b == NULL || b.b == NULL) return !a.b;
+        return bam1_se_lt(a.b, b.b);
+    }
     switch(cmpkey) {
         case QNAME:
-            if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
+            if (a.b == NULL || b.b == NULL) return !a.b;
             t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
             return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
         case SAMTOOLS:
             return __pos_cmp(a, b);
         case BMF_POS:
-            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
+            if (a.b == NULL || b.b == NULL) return !a.b;
             key_a = bmfsort_core_key(a.b);
             key_b = bmfsort_core_key(b.b);
             return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
         case BMF_UCS:
-            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
+            if (a.b == NULL || b.b == NULL) return !a.b;
             key_a = ucs_sort_core_key(a.b);
             key_b = ucs_sort_core_key(b.b);
             return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
@@ -1929,7 +1938,7 @@ int sort_main(int argc, char *argv[])
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
         case 's': split = 1; break;
-        case 'S': is_se = 1; break;
+        case 'S': is_se = 1; heap_is_se = 1; break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
         case '?': case 'h': return sort_usage(EXIT_SUCCESS);
