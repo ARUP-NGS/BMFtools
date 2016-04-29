@@ -27,8 +27,12 @@ R2=${FINAL_FQ_PREFIX}.R2.fq.gz
 tmpstr=${R1%.fq*}
 TMPFQ=${tmpstr%.fastq*}.tmp.fq
 TMPBAM=${tmpstr%.fastq*}.tmp.bam
-PRERSQBAM=${tmpstr%.fastq*}.prersq.bam
 FINALBAM=${tmpstr%.fastq*}.rsq.bam
+
+mkdir -p _FASTQC_${tmpstr}
+mkdir -p _FASTQC_DMP_${tmpstr}
+fastqc -t ${THREADS} --nogroup -o _FASTQC_${tmpstr} $1 $2
+fastqc -t ${THREADS} --nogroup -o _FASTQC_DMP_${tmpstr} $R1 $R2
 
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
@@ -43,6 +47,10 @@ bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools mark -l 0 | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
 
 samtools index $FINALBAM
+
+bmftools depth -sb $BED -p 50 $FINALBAM > ${FINALBAM}.doc.bed
+bmftools famstats fm $TMPBAM > ${TMPBAM}.famstats.txt
+bmftools famstats fm $FINALBAM > ${FINALBAM}.famstats.txt
 
 # Clean up
 

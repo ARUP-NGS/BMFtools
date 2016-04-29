@@ -249,16 +249,15 @@ namespace BMF {
         col_names = (char **)calloc(n_cols, sizeof(char *));
 
         fp = gzopen(bedpath, "rb");
-        if(!fp) {
+        if(!fp)
             LOG_EXIT("Could not open bedfile %s. Abort!\n", bedpath);
-        }
         ks = ks_init(fp);
         n_plp = (int *)calloc(n, sizeof(int));
         plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
         int line_num = 0;
         // Write header
         // stderr ONLY for this development phase.
-        kstring_t hdr_str = {0, 0, nullptr};
+        kstring_t hdr_str{0, 0, nullptr};
         ksprintf(&hdr_str, "##bed=%s\n", bedpath);
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
@@ -341,11 +340,11 @@ namespace BMF {
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
-                raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0) / region_len;
+                raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
                 raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
-                dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0) / region_len;
+                dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
                 dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
-                singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0) / region_len;
+                singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
                 singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
                 kputc('\t', &str);
                 kputl(counts[i], &str);
@@ -395,7 +394,10 @@ namespace BMF {
         gzclose(fp);
 
         // Write histogram only if asked for.
-        if(histfp) write_hist(aux, histfp, n, bedpath), fclose(histfp);
+        if(histfp) {
+            write_hist(aux, histfp, n, bedpath);
+            fclose(histfp);
+        }
 
         // Clean up
         for (i = 0; i < n; ++i) {

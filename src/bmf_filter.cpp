@@ -125,6 +125,8 @@ namespace BMF {
         dlib::BamHandle in(argv[optind]);
         param.bed = bedpath ? dlib::parse_bed_hash(bedpath, in.header, padding)
                             : nullptr;
+        dlib::add_pg_line(in.header, argc, argv, "bmftools filter", BMF_VERSION,
+                "bmftools", "Filters or splits a bam by a set of criteria.");
         if(param.minAF > 0 && param.is_se == 0)
             dlib::check_bam_tag_exit(argv[optind], "MF");
         dlib::BamHandle out(argv[optind + 1], in.header, out_mode);

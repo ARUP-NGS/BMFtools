@@ -1744,7 +1744,8 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
 int bam_sort_core_ext(const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
                       size_t _max_mem, int n_threads,
-                      const htsFormat *in_fmt, const htsFormat *out_fmt, int split)
+                      const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
+                      int argc, char **argv)
 {
     int ret = -1, i, n_files = 0;
     size_t mem, max_k, k, max_mem, count;
@@ -1767,6 +1768,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         fprintf(stderr, "[%s] failed to read header for '%s'\n", __func__, fn);
         goto err;
     }
+    add_pg_line(header, argc, argv, "bmftools sort", BMF_VERSION, "bmftools", "Sorts a bam for positional rescue.");
     switch(cmpkey) {
         case SAMTOOLS: change_SO(header, "coordinate"); break;
         case QNAME: change_SO(header, "queryname"); break;
@@ -1964,7 +1966,7 @@ int sort_main(int argc, char *argv[])
 
     ret = bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
                             tmpprefix, fnout, modeout, max_mem, n_threads,
-                            &ga.in, &ga.out, split);
+                            &ga.in, &ga.out, split, argc, argv);
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);

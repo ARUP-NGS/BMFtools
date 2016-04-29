@@ -459,6 +459,8 @@ namespace BMF {
         if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
+        dlib::add_pg_line(settings.hdr, argc, argv, "bmftools rsq", BMF_VERSION, "bmftools",
+                "Uses positional information to rescue reads with errors in the barcode.");
         LOG_DEBUG("Write mode: %s.\n", wmode);
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)
