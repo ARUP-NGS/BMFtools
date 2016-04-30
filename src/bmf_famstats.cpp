@@ -141,7 +141,7 @@ namespace BMF {
     {
         uint8_t *data;
         if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
-        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL)) ||
+        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) ||
                 b->core.qual < settings->minMQ) {
             ++s->n_flag_fail;
             return;
@@ -149,7 +149,7 @@ namespace BMF {
         const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
         const int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
         const int NP = ((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1);
-        if(FM == 0) LOG_EXIT("Missing required FM tag. Abort!\n");
+        if(UNLIKELY(FM == 0)) LOG_EXIT("Missing required FM tag. Abort!\n");
         if(FM < settings->minFM) {
             ++s->n_fm_fail;
             return;
@@ -314,7 +314,7 @@ namespace BMF {
         int ret;
         while (LIKELY((ret = handle.next()) >= 0)) {
             // Filter reads
-            if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+            if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FREAD2)) ||
                     bam_itag(handle.rec, "FP") == 0)
                 continue;
             FM = bam_itag(handle.rec, "FM");

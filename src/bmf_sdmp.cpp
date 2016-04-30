@@ -133,7 +133,7 @@ namespace BMF {
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
         mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
                 rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
-        uint64_t count = 0;
+        uint64_t count = 1uL;
         while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
             if(UNLIKELY(++count % settings->notification_interval == 0))
                 fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
