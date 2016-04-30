@@ -23,7 +23,7 @@ namespace BMF {
 
     struct famstats_t {
         uint64_t n_pass;
-        uint64_t n_fp_fail;
+        uint64_t fp_fail_count;
         uint64_t n_fm_fail;
         uint64_t n_flag_fail;
         uint64_t allfm_sum;
@@ -45,8 +45,9 @@ namespace BMF {
 
     struct famstats_fm_settings_t {
         uint64_t notification_interval;
-        uint32_t minMQ;
-        int minFM;
+        uint32_t minMQ:8;
+        uint32_t skip_fp_fail:1;
+        uint32_t minFM:16;
     };
 
     struct fm_t{
@@ -111,13 +112,16 @@ namespace BMF {
     }
 
 
-    static void print_stats(famstats_t *stats, FILE *fp)
+    static void print_stats(famstats_t *stats, FILE *fp, famstats_fm_settings_t *settings)
     {
         fprintf(fp, "#Number passing filters: %lu\n", stats->n_pass);
-        fprintf(fp, "#Number failing filters: %lu\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
-        fprintf(fp, "#Number failing FP filters: %lu\n", stats->n_fp_fail);
+        fprintf(fp, "#Number failing filters: %lu\n", stats->fp_fail_count + stats->n_fm_fail + stats->n_flag_fail);
+        if(settings->skip_fp_fail)
+            fprintf(fp, "#Number failing FP filters: %lu\n", stats->fp_fail_count);
+        else
+            fprintf(fp, "#Count for FP failed reads, still included in total counts: %lu\n", stats->fp_fail_count);
         fprintf(fp, "#Number failing FM filters: %lu\n", stats->n_fm_fail);
-        fprintf(fp, "#Number failing flag filters (secondary, supplementary, read2, qcfail): %lu\n", stats->n_flag_fail);
+        fprintf(fp, "#Number failing flag filters (secondary, supplementary): %lu\n", stats->n_flag_fail);
         fprintf(fp, "#Summed FM (total founding reads): %lu\n", stats->allfm_sum);
         fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu\n", stats->realfm_sum);
         fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu\n", stats->allrc_sum);
@@ -126,7 +130,7 @@ namespace BMF {
         fprintf(fp, "#RV fraction for real read families: %f\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
         fprintf(fp, "#Mean Family Size (all)\t%f\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
         fprintf(fp, "#Mean Family Size (real)\t%f\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
-        if(stats->dr_counts) {
+        if(stats->allrc_sum) {
             fprintf(fp, "#Duplex fraction of unique observations\t%0.12f\n", (double)stats->dr_counts / stats->n_pass);
             fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12f\n", (double)stats->dr_sum / stats->allfm_sum);
             fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12f\n", stats->dr_rc_frac_sum / stats->dr_counts);
@@ -147,27 +151,27 @@ namespace BMF {
             return;
         }
         const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
-        const int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
         const int NP = ((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1);
+        int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
         if(UNLIKELY(FM == 0)) LOG_EXIT("Missing required FM tag. Abort!\n");
         if(FM < settings->minFM) {
             ++s->n_fm_fail;
             return;
         }
-        if(!bam_itag(b, "FP")) {
-            ++s->n_fp_fail;
-            return;
+        if(bam_itag(b, "FP") == 0) {
+            ++s->fp_fail_count;
+            if(settings->skip_fp_fail) return;
         }
         ++s->n_pass;
 
         if(FM > 1) {
             ++s->realfm_counts;
             s->realfm_sum += FM;
-            s->realrc_sum += RV;
+            s->realrc_sum += RV < 0 ? 0 : RV;
         }
         ++s->allfm_counts;
         s->allfm_sum += FM;
-        s->allrc_sum += RV;
+        s->allrc_sum += RV < 0 ? 0 : RV;
 
         int khr;
         // Have we seen this family size before?
@@ -189,6 +193,7 @@ namespace BMF {
         // If the Duplex Read tag is present, increment duplex read counts
         uint8_t *dr_data = bam_aux_get(b, "DR");
         if(dr_data && bam_aux2i(dr_data)) {
+            if(RV < 0) RV = 0;
             s->dr_sum += FM;
             ++s->dr_counts;
             s->dr_rc_sum += RV;
@@ -257,6 +262,8 @@ namespace BMF {
             case 'f':
                 settings.minFM = atoi(optarg); break;
                 break;
+            case 'F':
+                settings.skip_fp_fail = 1; break;
             case 'n': settings.notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return famstats_fm_usage(EXIT_SUCCESS);
@@ -273,7 +280,7 @@ namespace BMF {
 
         dlib::BamHandle handle(argv[optind]);
         s = famstats_fm_core(handle, &settings);
-        print_stats(s, stdout);
+        print_stats(s, stdout, &settings);
         kh_destroy(fm, s->fm);
         kh_destroy(fm, s->np);
         kh_destroy(fm, s->rc);

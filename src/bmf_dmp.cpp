@@ -259,7 +259,7 @@ namespace BMF {
      */
     mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
     {
-        uint64_t bin(0), count(0);
+        uint64_t bin(0), count(1); // Initialze count to 1 because of the read used to get read length.
         const int default_nlen(settings->blen + settings->offset + settings->homing_sequence_length);
         LOG_DEBUG("Opening fastq file %s.\n", settings->input_r1_path);
         if(!dlib::isfile(settings->input_r1_path))
@@ -289,7 +289,6 @@ namespace BMF {
         bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
         assert(bin < (uint64_t)settings->n_handles);
         mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode, 'F');
-        count = 0;
         while(LIKELY(kseq_read(seq) >= 0)) {
             if(UNLIKELY(++count % settings->notification_interval == 0))
                 LOG_INFO("Number of records processed: %lu.\n", count);
