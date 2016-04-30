@@ -254,7 +254,7 @@ namespace BMF {
         famstats_fm_settings_t settings{0};
         settings.notification_interval = 1000000uL;
 
-        while ((c = getopt(argc, argv, "m:f:n:h?")) >= 0) {
+        while ((c = getopt(argc, argv, "m:f:n:Fh?")) >= 0) {
             switch (c) {
             case 'm':
                 settings.minMQ = atoi(optarg); break;
