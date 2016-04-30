@@ -42,7 +42,7 @@ bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     samtools sort -O bam -T tmplastsort -@ $SORT_THREADS2 -m $SORTMEM -o $TMPBAM -
 
 # Align the records that were rescued and merge them back in.
-bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools mark -l 0 | \
+bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
 
