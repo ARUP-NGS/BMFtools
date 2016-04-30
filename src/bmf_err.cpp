@@ -251,7 +251,7 @@ namespace BMF {
                         "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-F:\t\tRequire that the FP tag be present and nonzero.\n"
-                        "-f:\t\tRequire that the fraction of family members agreed on a  base be <FLOAT> or greater. Default: 0.0\n"
+                        "-f:\t\tRequire that the fraction of family members agreed on a base be <FLOAT> or greater. Default: 0.0\n"
                 , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
@@ -485,8 +485,14 @@ namespace BMF {
             }
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
-                switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
                     if(is_rev) {
                         for(ind = 0; ind < length; ++ind) {
                             if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
@@ -516,12 +522,6 @@ namespace BMF {
                     }
                     rc += length; fc += length;
                     break;
-                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                    rc += length;
-                    break;
-                case BAM_CREF_SKIP: case BAM_CDEL:
-                    fc += length;
-                    break;
                 }
             }
         }
@@ -540,6 +540,10 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr)
             LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
+#if !MDEBUG
+        samFile *err_reads = sam_open("err_reads.bam", "wb");
+        sam_hdr_write(err_reads, hdr);
+#endif
         int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
         unsigned ind;
         bam1_t *b = bam_init1();
@@ -586,86 +590,60 @@ namespace BMF {
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
             is_rev = (b->core.flag & BAM_FREVERSE);
-            if(f->minPV) {
-                pv_array = (uint32_t *)dlib::array_tag(b, "PV");
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, ind + rc);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, cycle);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+#if !NDEBUG
+            uint32_t read_has_err = 0;
+#endif
+            for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+                length = bam_cigar_oplen(cigar[i]);
+                switch(bam_cigar_op(cigar[i])) {
+                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+                    if(is_rev) {
+                        for(ind = 0; ind < length; ++ind) {
+                            s = bam_seqi(seq, ind + rc);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+#if !NDEBUG
+                                ++read_has_err;
+#endif
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
-                    }
-                }
-            } else {
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                s = bam_seqi(seq, ind + rc);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                s = bam_seqi(seq, cycle);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+                    } else {
+                        for(ind = 0; ind < length; ++ind) {
+                            cycle = ind + rc;
+                            s = bam_seqi(seq, cycle);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+#if !NDEBUG
+                                ++read_has_err;
+#endif
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
                     }
+                    rc += length; fc += length;
+                    break;
+                case BAM_CSOFT_CLIP: case BAM_CINS:
+                    rc += length;
+                    break;
+                case BAM_CREF_SKIP: case BAM_CDEL:
+                    fc += length;
+                    break;
                 }
             }
+#if !NDEBUG
+            if(read_has_err) sam_write1(err_reads, hdr, b);
+#endif
         }
         cond_free(ref);
         bam_destroy1(b);
         bam_hdr_destroy(hdr), sam_close(fp);
+#if !NDEBUG
+        sam_close(err_reads);
+#endif
     }
 
 
