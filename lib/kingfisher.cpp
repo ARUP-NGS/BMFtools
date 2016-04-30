@@ -35,9 +35,10 @@ namespace BMF {
         ksprintf(ks, "\tFM:i:%i", kfp->length);
         if(is_rev != -1) {
             ksprintf(ks, "\tRV:i:%i", is_rev ? kfp->length: 0);
-            kputsnl("\tDR:i:0\n", ks);
+            kputsnl("\tDR:i:0", ks);
         }
         ksprintf(ks, "\tNF:f:%0.4f", (double) diffs / kfp->length);
+        kputc('\n', ks);
         kputsn(bufs->cons_seq_buffer, kfp->readlen, ks);
         kputsnl("\n+\n", ks);
         for(i = 0; i < kfp->readlen; ++i) kputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], ks);
