@@ -79,7 +79,7 @@ namespace BMF {
         bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
         mseq2fq(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
         mseq2fq(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
-        uint64_t count = 0;
+        uint64_t count = 1uL;
         while(LIKELY((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0))
                 && (l_index = kseq_read(seq_index)) >= 0) {
             if(UNLIKELY(++count % settings->notification_interval == 0))
