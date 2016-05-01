@@ -1,9 +1,8 @@
 #include "bmf_rsq.h"
 #include <string.h>
 #include <getopt.h>
-#include "dlib/char_util.h"
+#include "dlib/cstr_util.h"
 #include "include/igamc_cephes.h" /// for igamc
-//#include <unordered_map>
 #include <algorithm>
 
 namespace BMF {
@@ -30,27 +29,17 @@ namespace BMF {
         kstring_t ks{0, 120uL, (char *)malloc(120uL)};
         ks.l = 1, ks.s[0] ='@', ks.s[1] = '\0';
         kputs(bam_get_qname(b), &ks);
-        kputsn(" PV:B:I", 7uL, &ks);
+        kputsnl(" PV:B:I", &ks);
         auto fa((uint32_t *)dlib::array_tag(b, "FA"));
         auto pv((uint32_t *)dlib::array_tag(b, "PV"));
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", pv[i]);
-        kputsn("\tFA:B:I", 7uL, &ks);
+        kputsnl("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i", bam_itag(b, "FM"), bam_itag(b, "FP"));
         write_tag_if_found(rvdata, b, "RV", ks);
         write_tag_if_found(rvdata, b, "NC", ks);
         write_tag_if_found(rvdata, b, "DR", ks);
         write_tag_if_found(rvdata, b, "NP", ks);
-        /*
-        if((rvdata = bam_aux_get(b, "RV")) != nullptr)
-            ksprintf(&ks, "\tRV:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "NC")) != nullptr)
-            ksprintf(&ks, "\tNC:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "DR")) != nullptr)
-            ksprintf(&ks, "\tDR:i:%i", bam_aux2i(rvdata));
-        if((rvdata = bam_aux_get(b, "NP")) != nullptr)
-            ksprintf(&ks, "\tNP:i:%i", bam_aux2i(rvdata));
-        */
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -326,6 +315,8 @@ namespace BMF {
                 assert(stack->a[j]);
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
+                if(stack->a[i]->core.l_qname != stack->a[j]->core.l_qname)
+                    continue;
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
@@ -352,8 +343,9 @@ namespace BMF {
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
         bam1_t *b = bam_init1();
-        // Start stack
+        uint64_t count = 0;
         while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+            if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
             if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
                 sam_write1(settings->out, settings->hdr, b);
                 continue;
@@ -378,13 +370,17 @@ namespace BMF {
         bam_destroy1(b);
         // Handle any unpaired reads, though there shouldn't be any in real datasets.
         LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
-        for(auto pair: settings->realign_pairs)
-            fputs(pair.second.c_str(), settings->fqh);
+        if(settings->realign_pairs.size()) {
+            LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+            for(auto pair: settings->realign_pairs)
+                puts(pair.second.c_str());
+#endif
+        }
     }
 
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
-        LOG_DEBUG("Starting stack!\n");
         dlib::tmp_stack_t stack = {0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
         rsq_core(settings, &stack);
         free(stack.a);
@@ -453,9 +449,9 @@ namespace BMF {
 
 
         if(settings.cmpkey == cmpkey::UNCLIPPED)
-            for(const char *tag: {"MU"})
-                dlib::check_bam_tag_exit(argv[optind], tag);
-        for(const char *tag: {"FM", "FA", "PV", "FP", "RV"})
+            if(!settings.is_se)
+                dlib::check_bam_tag_exit(argv[optind], "MU");
+        for(const char *tag: {"FM", "FA", "PV", "FP"})
             dlib::check_bam_tag_exit(argv[optind], tag);
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
@@ -463,6 +459,8 @@ namespace BMF {
         if (settings.hdr == nullptr || settings.hdr->n_targets == 0)
             LOG_EXIT("input SAM does not have header. Abort!\n");
 
+        dlib::add_pg_line(settings.hdr, argc, argv, "bmftools rsq", BMF_VERSION, "bmftools",
+                "Uses positional information to rescue reads with errors in the barcode.");
         LOG_DEBUG("Write mode: %s.\n", wmode);
         settings.out = sam_open(argv[optind+1], wmode);
         if (settings.in == 0 || settings.out == 0)

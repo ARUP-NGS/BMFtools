@@ -5,7 +5,7 @@ SRC=bed_test.cpp ../../include/bedidx.c ../../dlib/bed_util.cpp
 OBJtmp=$(SRC:.cpp=.o)
 OBJ=$(OBJtmp:.c=.co)
 INCLUDE=-I ../../
-FLAGS= -Wunreachable-code -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic
+FLAGS= -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic
 LD= -lm -lz -lpthread
 INCLUDE= -I../.. -I../..htslib -I../../include -I.
 LIB=

@@ -62,9 +62,9 @@ namespace BMF {
     static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
     {
         int i;
-        kputsn("FA:B:I", 6, ks);
+        kputsnl("FA:B:I", ks);
         for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", agrees[i]);
-        kputsn("\tPV:B:I", 7, ks);
+        kputsnl("\tPV:B:I", ks);
         for(i = 0; i < readlen; ++i) ksprintf(ks, ",%u", quals[i]);
     }
 

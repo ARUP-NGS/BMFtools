@@ -4,14 +4,13 @@
 
 namespace BMF {
 
-    const char *tags_to_check[] = {"FP", "RV", "FM", "FA"};
-    int RVWarn = 1;
+    const char *tags_to_check[] = {"FP", "FM", "FA"};
 
     int famstats_frac_usage(int exit_status) {
         fprintf(stderr,
                         "Calculates the fraction of raw reads with family size >= parameter.\n"
-                        "Usage: bmftools famstats frac <opts> <in.bam>\n"
-                        "Flags:\n-m minFM to accept. REQUIRED.\n"
+                        "Usage: bmftools famstats frac <opts> <minFM> <in.bam>\n"
+                        "-n: Set notification interval. Default: 10000000.\n"
                         "-h, -?: Return usage.\n"
                 );
         exit(exit_status);
@@ -24,7 +23,7 @@ namespace BMF {
 
     struct famstats_t {
         uint64_t n_pass;
-        uint64_t n_fp_fail;
+        uint64_t fp_fail_count;
         uint64_t n_fm_fail;
         uint64_t n_flag_fail;
         uint64_t allfm_sum;
@@ -46,8 +45,9 @@ namespace BMF {
 
     struct famstats_fm_settings_t {
         uint64_t notification_interval;
-        uint32_t minMQ;
-        int minFM;
+        uint32_t minMQ:8;
+        uint32_t skip_fp_fail:1;
+        uint32_t minFM:16;
     };
 
     struct fm_t{
@@ -80,7 +80,6 @@ namespace BMF {
         });
         for(i = 0; i < stats->fm->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-        fprintf(fp, "#RV'd in family\tNumber of families\n");
 
         fms.resize(stats->rc->n_occupied);
         for(i = 0, ki = kh_begin(stats->rc); ki != kh_end(stats->rc); ++ki)
@@ -89,11 +88,13 @@ namespace BMF {
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
-        for(i = 0; i < stats->rc->n_occupied; ++i)
-            fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        if(fms[i].fm != (uint64_t)-1) {
+            fprintf(fp, "#RV'd in family\tNumber of families\n");
+            for(i = 0; i < stats->rc->n_occupied; ++i)
+                fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        }
         // Handle stats->np
         fms.resize(stats->np->n_occupied);
-        LOG_DEBUG("n_occupied: %lu.\n", stats->np->n_occupied);
         size_t n_rsq_fams = 0;
         for(i = 0, ki = kh_begin(stats->np); ki != kh_end(stats->np); ++ki) {
             if(kh_exist(stats->np, ki)) {
@@ -104,29 +105,32 @@ namespace BMF {
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
-        fprintf(fp, "#Number of families that were rescued: %lu.\n", n_rsq_fams);
+        fprintf(fp, "#Number of families that were rescued: %lu\n", n_rsq_fams);
         fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
         for(i = 0; i < stats->np->n_occupied; ++i)
             fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
     }
 
 
-    static void print_stats(famstats_t *stats, FILE *fp)
+    static void print_stats(famstats_t *stats, FILE *fp, famstats_fm_settings_t *settings)
     {
-        fprintf(fp, "#Number passing filters: %lu.\n", stats->n_pass);
-        fprintf(fp, "#Number failing filters: %lu.\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
-        fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
-        fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
-        fprintf(fp, "#Number failing flag filters (secondary, supplementary, read2, qcfail): %lu.\n", stats->n_flag_fail);
-        fprintf(fp, "#Summed FM (total founding reads): %lu.\n", stats->allfm_sum);
-        fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu.\n", stats->realfm_sum);
-        fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu.\n", stats->allrc_sum);
-        fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu.\n", stats->realrc_sum);
-        fprintf(fp, "#RV fraction for all read families: %f.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-        fprintf(fp, "#RV fraction for real read families: %f.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+        fprintf(fp, "#Number passing filters: %lu\n", stats->n_pass);
+        fprintf(fp, "#Number failing filters: %lu\n", stats->fp_fail_count + stats->n_fm_fail + stats->n_flag_fail);
+        if(settings->skip_fp_fail)
+            fprintf(fp, "#Number failing FP filters: %lu\n", stats->fp_fail_count);
+        else
+            fprintf(fp, "#Count for FP failed reads, still included in total counts: %lu\n", stats->fp_fail_count);
+        fprintf(fp, "#Number failing FM filters: %lu\n", stats->n_fm_fail);
+        fprintf(fp, "#Number failing flag filters (secondary, supplementary): %lu\n", stats->n_flag_fail);
+        fprintf(fp, "#Summed FM (total founding reads): %lu\n", stats->allfm_sum);
+        fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu\n", stats->realfm_sum);
+        fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu\n", stats->allrc_sum);
+        fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu\n", stats->realrc_sum);
+        fprintf(fp, "#RV fraction for all read families: %f\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+        fprintf(fp, "#RV fraction for real read families: %f\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
         fprintf(fp, "#Mean Family Size (all)\t%f\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
         fprintf(fp, "#Mean Family Size (real)\t%f\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
-        if(stats->dr_counts) {
+        if(stats->allrc_sum) {
             fprintf(fp, "#Duplex fraction of unique observations\t%0.12f\n", (double)stats->dr_counts / stats->n_pass);
             fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12f\n", (double)stats->dr_sum / stats->allfm_sum);
             fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12f\n", stats->dr_rc_frac_sum / stats->dr_counts);
@@ -141,33 +145,33 @@ namespace BMF {
     {
         uint8_t *data;
         if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
-        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL)) ||
+        if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) ||
                 b->core.qual < settings->minMQ) {
             ++s->n_flag_fail;
             return;
         }
         const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
-        const int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
         const int NP = ((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1);
-        if(FM == 0) LOG_EXIT("Missing required FM tag. Abort!\n");
+        int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
+        if(UNLIKELY(FM == 0)) LOG_EXIT("Missing required FM tag. Abort!\n");
         if(FM < settings->minFM) {
             ++s->n_fm_fail;
             return;
         }
-        if(!bam_itag(b, "FP")) {
-            ++s->n_fp_fail;
-            return;
+        if(bam_itag(b, "FP") == 0) {
+            ++s->fp_fail_count;
+            if(settings->skip_fp_fail) return;
         }
         ++s->n_pass;
 
         if(FM > 1) {
             ++s->realfm_counts;
             s->realfm_sum += FM;
-            s->realrc_sum += RV;
+            s->realrc_sum += RV < 0 ? 0 : RV;
         }
         ++s->allfm_counts;
         s->allfm_sum += FM;
-        s->allrc_sum += RV;
+        s->allrc_sum += RV < 0 ? 0 : RV;
 
         int khr;
         // Have we seen this family size before?
@@ -189,6 +193,7 @@ namespace BMF {
         // If the Duplex Read tag is present, increment duplex read counts
         uint8_t *dr_data = bam_aux_get(b, "DR");
         if(dr_data && bam_aux2i(dr_data)) {
+            if(RV < 0) RV = 0;
             s->dr_sum += FM;
             ++s->dr_counts;
             s->dr_rc_sum += RV;
@@ -249,7 +254,7 @@ namespace BMF {
         famstats_fm_settings_t settings{0};
         settings.notification_interval = 1000000uL;
 
-        while ((c = getopt(argc, argv, "m:f:n:h?")) >= 0) {
+        while ((c = getopt(argc, argv, "m:f:n:Fh?")) >= 0) {
             switch (c) {
             case 'm':
                 settings.minMQ = atoi(optarg); break;
@@ -257,6 +262,8 @@ namespace BMF {
             case 'f':
                 settings.minFM = atoi(optarg); break;
                 break;
+            case 'F':
+                settings.skip_fp_fail = 1; break;
             case 'n': settings.notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
                 return famstats_fm_usage(EXIT_SUCCESS);
@@ -273,7 +280,7 @@ namespace BMF {
 
         dlib::BamHandle handle(argv[optind]);
         s = famstats_fm_core(handle, &settings);
-        print_stats(s, stdout);
+        print_stats(s, stdout, &settings);
         kh_destroy(fm, s->fm);
         kh_destroy(fm, s->np);
         kh_destroy(fm, s->rc);
@@ -285,17 +292,13 @@ namespace BMF {
     int famstats_frac_main(int argc, char *argv[])
     {
         int c;
-        uint32_t minFM = 0;
         uint64_t notification_interval = 1000000;
 
-        if(argc < 3) famstats_frac_usage(EXIT_FAILURE);
+        if(argc < 2) famstats_frac_usage(EXIT_FAILURE);
         if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(EXIT_SUCCESS);
 
         while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
             switch (c) {
-            case 'm':
-                minFM = (uint32_t)atoi(optarg); break;
-                break;
             case 'n':
                 notification_interval = strtoull(optarg, nullptr, 0); break;
             case '?': case 'h':
@@ -303,24 +306,22 @@ namespace BMF {
             }
         }
 
-        if(!minFM) {
-            LOG_EXIT("minFM not set. famstats_frac_main meaningless without it. Result: 1.0.\n");
-        }
-        LOG_INFO("Running frac main minFM %i.\n", minFM);
-
-        if (argc != optind+1) {
+        if (argc != optind+2) {
             if (argc == optind) famstats_frac_usage(EXIT_SUCCESS);
             else famstats_frac_usage(EXIT_FAILURE);
         }
-        for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind], tag);
-        dlib::BamHandle handle(argv[optind]);
+
+        uint32_t minFM = strtoul(argv[optind], nullptr, 10);
+        LOG_INFO("MinFM %i.\n", minFM);
+        for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind+1], tag);
+        dlib::BamHandle handle(argv[optind + 1]);
         uint64_t fm_above = 0, total_fm = 0, count = 0;
         // Check to see if the required tags are present before starting.
         int FM;
         int ret;
         while (LIKELY((ret = handle.next()) >= 0)) {
             // Filter reads
-            if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+            if((handle.rec->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FREAD2)) ||
                     bam_itag(handle.rec, "FP") == 0)
                 continue;
             FM = bam_itag(handle.rec, "FM");
@@ -330,7 +331,7 @@ namespace BMF {
                 LOG_INFO("Number of records processed: %lu.\n", count);
         }
         if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
-        fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n",
+        fprintf(stdout, "#Fraction of raw reads with >= minFM %u:\t%f\n",
                 minFM, (double)fm_above / total_fm);
         LOG_INFO("Successfully complete bmftools famstats frac.\n");
         return EXIT_SUCCESS;

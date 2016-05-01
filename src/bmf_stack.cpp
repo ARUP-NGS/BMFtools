@@ -104,18 +104,14 @@ namespace BMF {
              }
         }
         for(auto& pair: tobs) {
-            if(pair.second.get_size() < aux->conf.minFM) {
+            if(pair.second.get_size() < aux->conf.minFM)
                 ++fm_failed[0], pair.second.set_pass(0);
-            }
-            if(pair.second.get_agreed() < aux->conf.minFA) {
+            if(pair.second.get_agreed() < aux->conf.minFA)
                 ++fa_failed[0], pair.second.set_pass(0);
-            }
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) {
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR)
                 ++fr_failed[0], pair.second.set_pass(0);
-            }
-            if(pair.second.get_meanMQ() < aux->conf.minMQ) {
+            if(pair.second.get_meanMQ() < aux->conf.minMQ)
                 ++mq_failed[0], pair.second.set_pass(0);
-            }
         }
         for(int i = 0; i < nn_plp; ++i) {
             uint8_t *data;

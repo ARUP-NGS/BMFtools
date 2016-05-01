@@ -22,7 +22,6 @@ namespace BMF {
 
     readerr_t *readerr_init(size_t l);
     void readerr_destroy(readerr_t *e);
-    void rate_calc(readerr_t *e);
 
 
     struct fullerr_t {
@@ -129,7 +128,6 @@ namespace BMF {
         double minFR;
     };
 
-    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, unsigned minMQ, uint32_t minPV);
     void fm_destroy(fmerr_t *fm);
 
     enum err_flags {
@@ -139,12 +137,7 @@ namespace BMF {
         REQUIRE_FP_PASS = 8
     };
 
-    fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-            int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV);
     void fullerr_destroy(fullerr_t *e);
-
-    void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
-    void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
 
 
     static inline int pv2ph(double pv)
@@ -258,7 +251,7 @@ namespace BMF {
                         "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-F:\t\tRequire that the FP tag be present and nonzero.\n"
-                        "-f:\t\tRequire that the fraction of family members agreed on a  base be <FLOAT> or greater. Default: 0.0\n"
+                        "-f:\t\tRequire that the fraction of family members agreed on a base be <FLOAT> or greater. Default: 0.0\n"
                 , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
@@ -417,7 +410,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
-        int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+        int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
         char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
@@ -485,36 +478,37 @@ namespace BMF {
                 if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
             }
             pos = b->core.pos;
-            is_rev = b->core.flag & BAM_FREVERSE;
             if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
                 k = kh_put(obs, hash, FM, &khr);
                 memset(&kh_val(hash, k), 0, sizeof(obserr_t));
             }
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
-                switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    if(is_rev) {
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
+                    if((b->core.flag & BAM_FREVERSE)) {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[b->core.l_qseq - 1 - ind - rc] / FM) < f->minFR)
-                                continue;
                             s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                                 ++kh_val(hash, k).err;
                         }
                     } else {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[ind + rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[ind + rc] / FM) < f->minFR)
-                                continue;
-                            s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                            cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
+                            s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
@@ -522,12 +516,6 @@ namespace BMF {
                         }
                     }
                     rc += length; fc += length;
-                    break;
-                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                    rc += length;
-                    break;
-                case BAM_CREF_SKIP: case BAM_CDEL:
-                    fc += length;
                     break;
                 }
             }
@@ -547,7 +535,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr)
             LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
+        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle;
         unsigned ind;
         bam1_t *b = bam_init1();
         char *ref = nullptr; // Will hold the sequence for a  chromosome
@@ -568,15 +556,16 @@ namespace BMF {
             pdata = bam_aux_get(b, "FP");
             FM = dlib::int_tag_zero(fdata);
             RV = dlib::int_tag_zero(rdata);
+            pv_array = static_cast<uint32_t*>(dlib::array_tag(b, "PV"));
             // Filters... WOOF
-            if((b->core.flag & 1796) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+            if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
+                b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
                 (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of region
                 (FM < f->minFM) || (FM > f->maxFM) || // minFM
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
                 ((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires
                 ((f->flag & REQUIRE_FP_PASS) && pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
                     ++f->nskipped;
-                    //LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
                     continue;
             }
             seq = (uint8_t *)bam_get_seq(b);
@@ -593,81 +582,41 @@ namespace BMF {
             }
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
-            is_rev = (b->core.flag & BAM_FREVERSE);
-            if(f->minPV) {
-                pv_array = (uint32_t *)dlib::array_tag(b, "PV");
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, ind + rc);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, cycle);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+            for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+                length = bam_cigar_oplen(cigar[i]);
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
+                    if((b->core.flag & BAM_FREVERSE)) {
+                        for(ind = 0; ind < length; ++ind) {
+                            s = bam_seqi(seq, ind + rc);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
-                    }
-                }
-            } else {
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                s = bam_seqi(seq, ind + rc);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                s = bam_seqi(seq, cycle);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+                    } else {
+                        for(ind = 0; ind < length; ++ind) {
+                            cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            s = bam_seqi(seq, cycle);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
                     }
+                    rc += length; fc += length;
+                    break;
                 }
             }
         }
@@ -711,10 +660,7 @@ namespace BMF {
         int i;
         for(uint64_t l = 0; l < f->l; ++l) {
             fprintf(fp, "%lu\t", l + 1);
-            for(i = 0; i < 4; ++i) {
-                LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
-                fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
-            }
+            for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
             fputc('|', fp);
             for(i = 0; i < 4; ++i)
                 fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r2->qerr[i][l] / f->r2->qobs[i][l]);
@@ -799,7 +745,6 @@ namespace BMF {
             for(l = 0; l < f->l; ++l) {
                 f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
                 f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-                //LOG_DEBUG("qpvsum: %f. Mean p value: %f.  pv2ph mean p value: %i.\n", f->r1->qpvsum[i][l] * f->r1->qobs[i][l], f->r1->qpvsum[i][l], pv2ph(f->r1->qpvsum[i][l]));
                 f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
                                                                         : 0;
                 f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
@@ -1147,7 +1092,7 @@ namespace BMF {
         if ((header = sam_hdr_read(fp)) == nullptr) {
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
         }
-        for(auto tag: {"FM", "FP", "RV"})
+        for(auto tag: {"FM", "FP"})
             dlib::check_bam_tag_exit(argv[optind + 1], tag);
         if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
             dlib::check_bam_tag_exit(argv[optind + 1], "DR");
@@ -1169,7 +1114,6 @@ namespace BMF {
         uint8_t *fmdata, *fpdata;
         for(;;)
         {
-
             if((ret = sam_itr_next(navy->fp, navy->iter, b)) < 0) break;
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
                     (int)b->core.qual < navy->minMQ) continue;
@@ -1217,32 +1161,24 @@ namespace BMF {
         int len;
         bam1_t *b = bam_init1();
         std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
+        Holloway->region_counts.reserve(sorted_keys.size());
         for(khiter_t& k: sorted_keys) {
             if(!kh_exist(Holloway->bed, k)) continue;
             if(ref) free(ref);
             LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
             ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
-            LOG_DEBUG("Fetched! Length: %i\n", len);
             for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
-                Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
-                LOG_DEBUG("Add new RegionErr. Size of vector: %lu.\n", Holloway->region_counts.size());
                 const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
                 const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
-                LOG_DEBUG("Iterating through bam region with start %i and stop %i.\n", start, stop);
-                if(Holloway->iter) hts_itr_destroy(Holloway->iter);
                 Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                                 start, stop);
-                while(read_bam(Holloway, b) >= 0) {
+                Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
+                while(read_bam(Holloway, b) >= 0 && b->core.pos < stop) {
                     assert((unsigned)b->core.tid == kh_key(Holloway->bed, k));
-                    if(bam_getend(b) <= start) {
-                        LOG_DEBUG("Pos (%i) less than region start (%i).\n", b->core.pos, start);
-                        continue;
-                    } else if(b->core.pos >= stop) {
-                        LOG_DEBUG("Pos (%i) g/e region stop (%i).\n", b->core.pos, stop);
-                        break;
-                    }
+                    if(bam_getend(b) <= start) continue;
                     region_loop(Holloway->region_counts[Holloway->region_counts.size() - 1], ref, b);
                 }
+                hts_itr_destroy(Holloway->iter);
             }
         }
         bam_destroy1(b);
@@ -1277,25 +1213,22 @@ namespace BMF {
             }
         }
 
-        if(padding < 0 && bedpath) {
+        if(padding < 0 && bedpath)
             LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
-        }
 
         if(!outpath) {
             outpath = strdup("-");
             LOG_WARNING("Output path not set. Defaulting to stdout.\n");
         }
-        if(!bedpath) {
+        if(!bedpath)
             LOG_EXIT("Bed file required for bmftools err region.\n");
-        }
         ofp = dlib::open_ofp(outpath);
 
         if (argc != optind+2)
             return err_region_usage(EXIT_FAILURE);
 
-        if((fai = fai_load(argv[optind])) == nullptr) {
+        if((fai = fai_load(argv[optind])) == nullptr)
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
-        }
 
         RegionExpedition Holloway(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
         err_region_core(&Holloway);

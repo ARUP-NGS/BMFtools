@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include "dlib/bam_util.h"
+#include "dlib/cstr_util.h"
 
 namespace BMF {
 
@@ -19,7 +20,25 @@ namespace BMF {
 
     }
 
-    static inline int add_multiple_tags(bam1_t *b1, bam1_t *b2, void *data)
+    static int add_se_tags(bam1_t *b1, void *data)
+    {
+        int ret = 0;
+        ret |= (dlib::bitset_qcfail_se(b1) && ((mark_settings_t *)data)->remove_qcfail);
+        if(((mark_settings_t *)data)->min_insert_length)
+            if(b1->core.isize)
+                ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
+        ret |= dlib::filter_n_frac_se(b1, ((mark_settings_t *)data)->min_frac_unambiguous);
+#if !NDEBUG
+        if(((mark_settings_t *)data)->remove_qcfail) {
+            if(bam_itag(b1, "FP") == 0) {
+                assert(ret);
+            }
+        }
+#endif
+        return ret;
+    }
+
+    static int add_pe_tags(bam1_t *b1, bam1_t *b2, void *data)
     {
         if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
             LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
@@ -27,6 +46,7 @@ namespace BMF {
         dlib::add_unclipped_mate_starts(b1, b2);
         dlib::add_mate_SA_tag(b1, b2);
         dlib::add_qseq_len(b1, b2);
+        dlib::add_fraction_aligned(b1, b2);
         // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
         ret |= (dlib::bitset_qcfail(b1, b2) && ((mark_settings_t *)data)->remove_qcfail);
         if(((mark_settings_t *)data)->min_insert_length)
@@ -58,6 +78,7 @@ namespace BMF {
                         "-d    Set bam compression level to default (6).\n"
                         "-i    Skip read pairs whose insert size is less than <INT>.\n"
                         "-u    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>\n"
+                        "-S    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.\n"
                         "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
                         "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
                 );
@@ -67,9 +88,9 @@ namespace BMF {
     int mark_main(int argc, char *argv[])
     {
         char wmode[4]{"wb0"};
-        int c;
+        int c, is_se = 0, ret = -1;
         mark_settings_t settings;
-        while ((c = getopt(argc, argv, "l:i:u:dq?h")) >= 0) {
+        while ((c = getopt(argc, argv, "l:i:u:Sdq?h")) >= 0) {
             switch (c) {
             case 'u':
                 settings.min_frac_unambiguous = atof(optarg); break;
@@ -84,6 +105,8 @@ namespace BMF {
             case 'd':
                 sprintf(wmode, "wb");
                 break;
+            case 'S':
+                is_se = 1; break;
             case '?': case 'h': mark_usage(); // Exits. No need for a break.
             }
         }
@@ -98,14 +121,20 @@ namespace BMF {
         } else {
             LOG_INFO("No input or output bam provided! Defaulting stdin and stdout.\n");
         }
-
         dlib::BamHandle inHandle(in);
+        dlib::add_pg_line(inHandle.header, argc, argv, "bmftools mark", BMF_VERSION, "bmftools", "Adds mate information to aux tags");
         dlib::BamHandle outHandle(out, inHandle.header, "wb");
-        dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
-                                 &add_multiple_tags, &settings);
+        if(is_se) {
+            ret = dlib::abstract_single_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                             &add_se_tags, &settings);
+        } else {
+            ret = dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                           &add_pe_tags, &settings);
+        }
 
-        LOG_INFO("Successfully complete bmftools mark.\n");
-        return EXIT_SUCCESS;
+        if(ret == EXIT_SUCCESS)
+            LOG_INFO("Successfully complete bmftools mark.\n");
+        return ret;
     }
 
 }
