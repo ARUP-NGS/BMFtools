@@ -539,10 +539,6 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr)
             LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-#if !MDEBUG
-        samFile *err_reads = sam_open("err_reads.bam", "wb");
-        sam_hdr_write(err_reads, hdr);
-#endif
         int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle;
         unsigned ind;
         bam1_t *b = bam_init1();
@@ -565,7 +561,8 @@ namespace BMF {
             FM = dlib::int_tag_zero(fdata);
             RV = dlib::int_tag_zero(rdata);
             // Filters... WOOF
-            if((b->core.flag & 1796) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+            if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
+                b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
                 (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of region
                 (FM < f->minFM) || (FM > f->maxFM) || // minFM
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
@@ -588,9 +585,6 @@ namespace BMF {
             }
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
-#if !NDEBUG
-            uint32_t read_has_err = 0;
-#endif
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
@@ -600,27 +594,21 @@ namespace BMF {
                             s = bam_seqi(seq, ind + rc);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             cycle = b->core.l_qseq - 1 - ind - rc;
+                            if(pv_array[cycle] < f->minPV) continue;
                             ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
                                 ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-#if !NDEBUG
-                                LOG_DEBUG("Read has an error at position %i, ind%i, rc%i, read base %i, ref base %i.\n",
-                                          ind + rc, ind, rc, s, seq_nt16_table[(int8_t)ref[pos + fc + ind]]);
-                                ++read_has_err;
-#endif
                             }
                         }
                     } else {
                         for(ind = 0; ind < length; ++ind) {
                             cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
                             s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
                                 ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
-#if !NDEBUG
-                                ++read_has_err;
-#endif
                             }
                         }
                     }
@@ -634,23 +622,10 @@ namespace BMF {
                     break;
                 }
             }
-#if !NDEBUG
-            if(read_has_err) {
-                uint8_t *d = bam_aux_get(b, "NM");
-                int nm;
-                if((nm = bam_aux2i(d)) != read_has_err) {
-                    bam_aux_append(b, "BE", 'i', 4, reinterpret_cast<uint8_t*>(&read_has_err));
-                    sam_write1(err_reads, hdr, b);
-                }
-            }
-#endif
         }
         cond_free(ref);
         bam_destroy1(b);
         bam_hdr_destroy(hdr), sam_close(fp);
-#if !NDEBUG
-        sam_close(err_reads);
-#endif
     }
 
 
