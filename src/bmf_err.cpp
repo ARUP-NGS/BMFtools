@@ -410,7 +410,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
-        int32_t ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+        int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
         char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
@@ -492,27 +492,23 @@ namespace BMF {
                     fc += length;
                     break;
                 case 3:
-                    if(b->core.flag & BAM_FREVERSE) {
+                    if((b->core.flag & BAM_FREVERSE)) {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[b->core.l_qseq - 1 - ind - rc] / FM) < f->minFR)
-                                continue;
                             s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                                 ++kh_val(hash, k).err;
                         }
                     } else {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[ind + rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[ind + rc] / FM) < f->minFR)
-                                continue;
-                            s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                            cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
+                            s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
@@ -560,6 +556,7 @@ namespace BMF {
             pdata = bam_aux_get(b, "FP");
             FM = dlib::int_tag_zero(fdata);
             RV = dlib::int_tag_zero(rdata);
+            pv_array = static_cast<uint32_t*>(dlib::array_tag(b, "PV"));
             // Filters... WOOF
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
                 b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
@@ -587,8 +584,14 @@ namespace BMF {
             pos = b->core.pos;
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
-                switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
                     if((b->core.flag & BAM_FREVERSE)) {
                         for(ind = 0; ind < length; ++ind) {
                             s = bam_seqi(seq, ind + rc);
@@ -613,12 +616,6 @@ namespace BMF {
                         }
                     }
                     rc += length; fc += length;
-                    break;
-                case BAM_CSOFT_CLIP: case BAM_CINS:
-                    rc += length;
-                    break;
-                case BAM_CREF_SKIP: case BAM_CDEL:
-                    fc += length;
                     break;
                 }
             }
