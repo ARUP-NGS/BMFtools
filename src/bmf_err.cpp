@@ -410,7 +410,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
-        int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+        int32_t ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
         char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
@@ -478,7 +478,6 @@ namespace BMF {
                 if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
             }
             pos = b->core.pos;
-            is_rev = b->core.flag & BAM_FREVERSE;
             if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
                 k = kh_put(obs, hash, FM, &khr);
                 memset(&kh_val(hash, k), 0, sizeof(obserr_t));
@@ -493,7 +492,7 @@ namespace BMF {
                     fc += length;
                     break;
                 case 3:
-                    if(is_rev) {
+                    if(b->core.flag & BAM_FREVERSE) {
                         for(ind = 0; ind < length; ++ind) {
                             if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
                                 continue;
@@ -544,7 +543,7 @@ namespace BMF {
         samFile *err_reads = sam_open("err_reads.bam", "wb");
         sam_hdr_write(err_reads, hdr);
 #endif
-        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
+        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle;
         unsigned ind;
         bam1_t *b = bam_init1();
         char *ref = nullptr; // Will hold the sequence for a  chromosome
@@ -589,7 +588,6 @@ namespace BMF {
             }
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
-            is_rev = (b->core.flag & BAM_FREVERSE);
 #if !NDEBUG
             uint32_t read_has_err = 0;
 #endif
@@ -597,7 +595,7 @@ namespace BMF {
                 length = bam_cigar_oplen(cigar[i]);
                 switch(bam_cigar_op(cigar[i])) {
                 case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    if(is_rev) {
+                    if((b->core.flag & BAM_FREVERSE)) {
                         for(ind = 0; ind < length; ++ind) {
                             s = bam_seqi(seq, ind + rc);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -606,6 +604,8 @@ namespace BMF {
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
                                 ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
 #if !NDEBUG
+                                LOG_DEBUG("Read has an error at position %i, ind%i, rc%i, read base %i, ref base %i.\n",
+                                          ind + rc, ind, rc, s, seq_nt16_table[(int8_t)ref[pos + fc + ind]]);
                                 ++read_has_err;
 #endif
                             }
@@ -635,7 +635,14 @@ namespace BMF {
                 }
             }
 #if !NDEBUG
-            if(read_has_err) sam_write1(err_reads, hdr, b);
+            if(read_has_err) {
+                uint8_t *d = bam_aux_get(b, "NM");
+                int nm;
+                if((nm = bam_aux2i(d)) != read_has_err) {
+                    bam_aux_append(b, "BE", 'i', 4, reinterpret_cast<uint8_t*>(&read_has_err));
+                    sam_write1(err_reads, hdr, b);
+                }
+            }
 #endif
         }
         cond_free(ref);
