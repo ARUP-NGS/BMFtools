@@ -19,7 +19,7 @@ namespace BMF {
         std::vector<uint64_t> raw_counts; // Counts for raw observations along region
         std::vector<uint64_t> dmp_counts; // Counts for dmp observations along region
         std::vector<uint64_t> singleton_counts; // Counts for singleton observations along region
-        int minFM; // Minimum family size
+        uint32_t minFM:16; // Minimum family size
         uint32_t minMQ:15; // Minimum mapping quality
         uint32_t requireFP:1; // Set to true to require
         khash_t(depth) *depth_hash;
@@ -42,6 +42,7 @@ namespace BMF {
                         "for both raw and collapsed read families "
                         "over a capture region of interest.\n"
                         "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n"
+                        "  -H path       Write out a histogram of the number of bases in a capture covered at each depth or greater.\n"
                         "  -Q INT        Only count bases of at least INT quality [0]\n"
                         "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n"
                         "  -m INT        Max depth. Default: %i.\n"
@@ -73,24 +74,26 @@ namespace BMF {
         std::unordered_set<int> keyset;
         fprintf(fp, "##bedpath=%s\n", bedpath);
         fprintf(fp, "##total bed region area: %lu.\n", aux[0]->n_analyzed);
-        fprintf(fp, "##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n");
-        fprintf(fp, "#Depth");
-        for(i = 0; i < n_samples; ++i) fprintf(fp, "\t%s:#Bases\t%s:%%Bases", aux[i]->fp->fn, aux[i]->fp->fn);
+        fputs("##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n", fp);
+        fputs("#Depth", fp);
+        for(i = 0; i < n_samples; ++i)
+            fprintf(fp, "\t%s:#Bases\t%s:%%Bases",
+                    aux[i]->fp->fn, aux[i]->fp->fn);
         fputc('\n', fp);
         for(i = 0; i < n_samples; ++i)
             for(k = kh_begin(aux[i]->depth_hash); k != kh_end(aux[i]->depth_hash); ++k)
                 if(kh_exist(aux[i]->depth_hash, k))
                     keyset.insert(kh_key(aux[i]->depth_hash, k));
-        std::vector<int>keys(keyset.begin(), keyset.end());
+        std::vector<int> keys(keyset.begin(), keyset.end());
         std::sort(keys.begin(), keys.end());
         keyset.clear();
         std::vector<std::vector<uint64_t>> csums;
+        csums.reserve(n_samples);
         for(i = 0; i < n_samples; ++i) {
             csums.emplace_back(keys.size());
             for(j = keys.size() - 1; j != (unsigned)-1; --j) {
                 if((k = kh_get(depth, aux[i]->depth_hash, keys[j])) != kh_end(aux[i]->depth_hash))
                     csums[i][j] = kh_val(aux[i]->depth_hash, k);
-                else csums[i][j] = 0;
                 if(j != (unsigned)keys.size() - 1)
                     csums[i][j] += csums[i][j + 1];
             }
@@ -98,7 +101,8 @@ namespace BMF {
         for(j = 0; j < keys.size(); ++j) {
             fprintf(fp, "%i", keys[j]);
             for(i = 0; i < n_samples; ++i)
-                fprintf(fp, "\t%lu\t%0.2f%%", csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
+                fprintf(fp, "\t%lu\t%0.2f%%",
+                        csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
             fputc('\n', fp);
         }
     }
@@ -163,7 +167,7 @@ namespace BMF {
             if ( ret<0 ) break;
             uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
             if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                (int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
+                b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
                 (aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
                     continue;
             break;
@@ -245,20 +249,20 @@ namespace BMF {
         col_names = (char **)calloc(n_cols, sizeof(char *));
 
         fp = gzopen(bedpath, "rb");
-        if(!fp) {
+        if(!fp)
             LOG_EXIT("Could not open bedfile %s. Abort!\n", bedpath);
-        }
         ks = ks_init(fp);
         n_plp = (int *)calloc(n, sizeof(int));
         plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
         int line_num = 0;
         // Write header
         // stderr ONLY for this development phase.
-        kstring_t hdr_str = {0, 0, nullptr};
+        kstring_t hdr_str{0, 0, nullptr};
+        ksprintf(&hdr_str, "##bed=%s\n", bedpath);
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
-        ksprintf(&hdr_str, "##BMFtools version=%s.\n", VERSION);
+        ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
         size_t capture_size = 0;
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);
@@ -336,11 +340,11 @@ namespace BMF {
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
-                raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0) / region_len;
+                raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
                 raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
-                dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0) / region_len;
+                dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
                 dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
-                singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0) / region_len;
+                singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
                 singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
                 kputc('\t', &str);
                 kputl(counts[i], &str);
@@ -367,11 +371,11 @@ namespace BMF {
             fprintf(stderr, "Errors in BED line '%s'\n", str.s);
         }
         for(i = 0; i < n; ++i){
-            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f.\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f.\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f.\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (raw): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / raw_capture_counts[i]);
-            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (dmp): %f.\n", argv[i + optind], singleton_capture_counts[i] * 100. / dmp_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean DMP Coverage: %f\n", argv[i + optind], (double)dmp_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean Raw Coverage: %f\n", argv[i + optind], (double)raw_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton Coverage: %f\n", argv[i + optind], (double)singleton_capture_counts[i] / capture_size);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (raw): %f\n", argv[i + optind], singleton_capture_counts[i] * 100. / raw_capture_counts[i]);
+            ksprintf(&hdr_str, "##[%s]Mean Singleton %% (dmp): %f\n", argv[i + optind], singleton_capture_counts[i] * 100. / dmp_capture_counts[i]);
         }
         ksprintf(&hdr_str, "#Contig\tStart\tStop\tRegion Name");
         for(i = 0; i < n; ++i) {
@@ -390,7 +394,10 @@ namespace BMF {
         gzclose(fp);
 
         // Write histogram only if asked for.
-        if(histfp) write_hist(aux, histfp, n, bedpath), fclose(histfp);
+        if(histfp) {
+            write_hist(aux, histfp, n, bedpath);
+            fclose(histfp);
+        }
 
         // Clean up
         for (i = 0; i < n; ++i) {

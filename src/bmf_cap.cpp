@@ -109,8 +109,8 @@ namespace BMF {
             return cap_usage();
         }
         int ret = dlib::bam_apply_function(argv[optind], argv[optind+1],
-                                           settings.dnd ? (single_aux_check)&cap_bam_dnd
-                                                        : (single_aux_check)&cap_bam_q,
+                                           settings.dnd ? (single_aux_fn)&cap_bam_dnd
+                                                        : (single_aux_fn)&cap_bam_q,
                                            (void *)&settings, wmode);
         LOG_INFO("Successfully completed bmftools cap!\n");
         return ret;

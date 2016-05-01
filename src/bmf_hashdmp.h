@@ -42,8 +42,7 @@ namespace BMF {
     {
         for(;;) {
             switch(*view) {
-                case '\0': // Fall-through
-                case '|': *buf++ = '\0'; return;
+                case '\0': case '|': *buf++ = '\0'; return;
                 default: *buf++ = *view++;
             }
         }

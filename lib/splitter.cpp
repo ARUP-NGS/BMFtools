@@ -96,7 +96,6 @@ namespace BMF {
 
         cond_free(var->tmp_out_handles_r1);
         cond_free(var->tmp_out_handles_r2);
-        cond_free(var);
     }
 
 

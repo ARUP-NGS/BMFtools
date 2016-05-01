@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
         return bmftools_usage(EXIT_FAILURE);
     if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        fprintf(stderr,"BMFtools version: '%s'.\n", VERSION);
+        fprintf(stderr,"BMFtools version: '%s'.\n", BMF_VERSION);
         exit(EXIT_SUCCESS);
     }
     if(strcmp(argv[1], "sort") == 0) return sort_main(argc - 1, argv + 1);

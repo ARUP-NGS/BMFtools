@@ -5,14 +5,12 @@ typedef bam1_t *bam1_p;
 
 static int cmpkey = BMF_POS;
 
+static int is_se = 0;
+
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
 #endif
 
-static inline int split_index(bam1_t *b)
-{
-    return IS_READ1(b) ? b->core.tid + 1: b->core.mtid + 1;
-}
 
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
@@ -102,7 +100,7 @@ static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
         case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
         case BMF_POS:
             return bmfsort_se_key(a) < bmfsort_se_key(b);
-        case UCS:
+        case BMF_UCS:
             return ucs_se_sort_key(a) < ucs_se_sort_key(b);
     }
     return 0; // This should never happen
@@ -114,6 +112,18 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
     uint64_t key_a, key_b;
+#if 0
+    if(a->core.tid != -1) {
+        if(b->core.tid == -1) {
+            key_a = ucs_sort_core_key(a);
+            key_b = ucs_sort_core_key(b);
+            assert(key_b > key_a);
+            key_a = bmfsort_core_key(a);
+            key_b = bmfsort_core_key(b);
+            assert(key_b > key_a);
+        }
+    }
+#endif
     switch(cmpkey) {
         case QNAME:
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
@@ -123,7 +133,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
             return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
-        case UCS:
+        case BMF_UCS:
             key_a = ucs_sort_core_key(a);
             key_b = ucs_sort_core_key(b);
             return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
@@ -136,20 +146,24 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
     int t;
     uint64_t key_a, key_b;
+    if(is_se) {
+        if (a.b == NULL || b.b == NULL) return !a.b;
+        return bam1_se_lt(a.b, b.b);
+    }
     switch(cmpkey) {
         case QNAME:
-            if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
+            if (a.b == NULL || b.b == NULL) return !a.b;
             t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
             return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
         case SAMTOOLS:
             return __pos_cmp(a, b);
         case BMF_POS:
-            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
+            if (a.b == NULL || b.b == NULL) return !a.b;
             key_a = bmfsort_core_key(a.b);
             key_b = bmfsort_core_key(b.b);
             return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
-        case UCS:
-            if(!a.b || !b.b) return a.b == NULL ? 1 : 0;
+        case BMF_UCS:
+            if (a.b == NULL || b.b == NULL) return !a.b;
             key_a = ucs_sort_core_key(a.b);
             key_b = ucs_sort_core_key(b.b);
             return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
@@ -1112,6 +1126,8 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
  * file. Finally we write our chosen read it to the output file.
  */
 
+#define split_index(b) ((b->core.flag & BAM_FREAD1) ? b->core.tid + 1: b->core.mtid + 1)
+
 /*!
   @abstract    Merge multiple sorted BAM.
   @param  cmpkey whether to sort by query name
@@ -1640,6 +1656,8 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
     free(fps);
 }
 
+#undef split_index
+
 static void write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h, int n_threads, const htsFormat *fmt)
 {
     size_t i;
@@ -1656,7 +1674,8 @@ static void *worker(void *data)
 {
     worker_t *w = (worker_t*)data;
     char *name;
-    ks_mergesort(sort, w->buf_len, w->buf, 0);
+    if(is_se) ks_mergesort(se_sort, w->buf_len, w->buf, 0);
+    else ks_mergesort(sort, w->buf_len, w->buf, 0);
     name = (char*)calloc(strlen(w->prefix) + 20, 1);
     sprintf(name, "%s.%.4d.bam", w->prefix, w->index);
     write_buffer(name, "wb1", w->buf_len, w->buf, w->h, 0, NULL);
@@ -1726,7 +1745,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
                       size_t _max_mem, int n_threads,
                       const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
-                      int is_se)
+                      int argc, char **argv)
 {
     int ret = -1, i, n_files = 0;
     size_t mem, max_k, k, max_mem, count;
@@ -1749,11 +1768,12 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         fprintf(stderr, "[%s] failed to read header for '%s'\n", __func__, fn);
         goto err;
     }
+    add_pg_line(header, argc, argv, "bmftools sort", BMF_VERSION, "bmftools", "Sorts a bam for positional rescue.");
     switch(cmpkey) {
         case SAMTOOLS: change_SO(header, "coordinate"); break;
         case QNAME: change_SO(header, "queryname"); break;
         case BMF_POS: change_SO(header, "positional_rescue"); break;
-        case UCS: change_SO(header, "unclipped_rescue"); break;
+        case BMF_UCS: change_SO(header, "unclipped_rescue"); break;
         default: LOG_EXIT("Invalid (and impossible) cmpkey. Abort!\n");
     }
     // write sub files
@@ -1769,7 +1789,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         b = buf[k];
         if (UNLIKELY((ret = sam_read1(fp, header, b)) < 0)) break;
         if(++count % 1000000 == 0)
-            fprintf(stderr, "[%s] Records processed: %" PRIu64".\n", __func__, count);
+            LOG_INFO("Records read: %lu.\n", count);
         if (b->l_data < b->m_data>>2) { // shrink
             b->m_data = b->l_data;
             kroundup32(b->m_data);
@@ -1868,7 +1888,7 @@ static int sort_usage(int status)
 int sort_main(int argc, char *argv[])
 {
     size_t max_mem = 768<<20; // 512MB
-    int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1, is_se = 0;
+    int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
     int split = 0;
     char modeout[12];
     char fnout[200] = "-";
@@ -1888,16 +1908,16 @@ int sort_main(int argc, char *argv[])
         switch (c) {
         case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_POS;
                   else if(strcmp(optarg, "pos") == 0) {
-                      LOG_INFO("Pos chosen for cmpkey.\n");
+                      LOG_DEBUG("Pos chosen for cmpkey.\n");
                       cmpkey = SAMTOOLS;
                   }
                   else if(strcmp(optarg, "qname") == 0) {
-                      LOG_INFO("Qname chosen for cmpkey.\n");
+                      LOG_DEBUG("Qname chosen for cmpkey.\n");
                       cmpkey = QNAME;
                   }
                   else if(strcmp(optarg, "ucs") == 0) {
-                      LOG_INFO("Unclipped start position chosen for cmpkey.\n");
-                      cmpkey = UCS;
+                      LOG_DEBUG("Unclipped start position chosen for cmpkey.\n");
+                      cmpkey = BMF_UCS;
                   }
                   else {
                       fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
@@ -1917,7 +1937,7 @@ int sort_main(int argc, char *argv[])
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
         case 's': split = 1; break;
-        case 'S': is_se = 1; break;
+        case 'S': is_se = 1; LOG_DEBUG("Heap is se\n"); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
         case '?': case 'h': return sort_usage(EXIT_SUCCESS);
@@ -1935,10 +1955,18 @@ int sort_main(int argc, char *argv[])
     sam_open_mode(modeout+1, fnout, NULL);
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-    if (bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
-                          tmpprefix, fnout, modeout, max_mem, n_threads,
-                          &ga.in, &ga.out, split, is_se) < 0)
-        ret = EXIT_FAILURE;
+    if(!is_se) {
+        switch(cmpkey) {
+            case BMF_UCS:
+                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "MU"); // Fall-through
+            case BMF_POS:
+                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "LM");
+        }
+    }
+
+    ret = bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
+                            tmpprefix, fnout, modeout, max_mem, n_threads,
+                            &ga.in, &ga.out, split, argc, argv);
 
     if(fnout_buffer.s) free(fnout_buffer.s);
     sam_global_args_free(&ga);

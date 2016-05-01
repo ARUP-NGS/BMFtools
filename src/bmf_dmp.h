@@ -43,7 +43,6 @@ namespace BMF {
             } else last = *barcode, run = 0;
             barcode++;
         }
-        //LOG_DEBUG("Passed barcode!\n");
         return 1;
     }
 
@@ -75,7 +74,6 @@ namespace BMF {
     static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
     {
         for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-            //LOG_DEBUG("Checking read at pos %i for homing sequence (%s, %s).\n", i, seq->seq.s + i, settings_ptr->homing_sequence);
             if(memcmp(seq->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
                 *pass_fail = 1;
                 return i + settings_ptr->homing_sequence_length;
@@ -88,14 +86,11 @@ namespace BMF {
     static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
     {
         for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-            //LOG_DEBUG("Checking read at pos %i for homing sequence (%s, %s).\n", i, seq1->seq.s + i, settings_ptr->homing_sequence);
             if(!memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length)) {
-                //LOG_DEBUG("Passed this one at %i.\n", i);
                 *pass_fail = 1;
                 return i + settings_ptr->homing_sequence_length;
             }
         }
-        //LOG_DEBUG("Failed this one (%s)\n", seq1->seq.s + settings_ptr->blen1_2);
         *pass_fail = 0;
         return default_len;
     }
