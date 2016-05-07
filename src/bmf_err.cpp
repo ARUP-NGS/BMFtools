@@ -1182,6 +1182,7 @@ namespace BMF {
             }
         }
         bam_destroy1(b);
+        Holloway->iter = nullptr;
     }
 
     void write_region_rates(FILE *fp, RegionExpedition& Holloway) {
