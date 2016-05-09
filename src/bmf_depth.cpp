@@ -335,7 +335,8 @@ namespace BMF {
             }
             // Now build the output information.
             kputc('\t', &str);
-            kputs(col_names[i], &str);
+            if(strcmp(NO_ID_STR, col_names[i]) == 0)
+                kputs(col_names[i], &str);
             for(i = 0; i < n; ++i) {
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
