@@ -597,6 +597,7 @@ namespace BMF {
                             s = bam_seqi(seq, ind + rc);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             cycle = b->core.l_qseq - 1 - ind - rc;
+                            assert(cycle < b->core.l_qseq);
                             if(pv_array[cycle] < f->minPV) continue;
                             ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
@@ -606,6 +607,7 @@ namespace BMF {
                     } else {
                         for(ind = 0; ind < length; ++ind) {
                             cycle = ind + rc;
+                            assert(cycle < b->core.l_qseq);
                             if(pv_array[cycle] < f->minPV) continue;
                             s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
