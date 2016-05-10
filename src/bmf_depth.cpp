@@ -299,8 +299,11 @@ namespace BMF {
             capture_size += region_len;
             for(i = 0; i < n; ++i) {
                 aux[i]->dmp_counts.resize(region_len);
+                memset(&aux[i]->dmp_counts[0], 0, sizeof(uint64_t) * region_len);
                 aux[i]->raw_counts.resize(region_len);
+                memset(&aux[i]->raw_counts[0], 0, sizeof(uint64_t) * region_len);
                 aux[i]->singleton_counts.resize(region_len);
+                memset(&aux[i]->singleton_counts[0], 0, sizeof(uint64_t) * region_len);
             }
             if(*p == '\t') {
                 q = ++p;
@@ -348,8 +351,9 @@ namespace BMF {
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
                 raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
-                LOG_DEBUG("region len: %i.\n", region_len);
-                LOG_DEBUG("Raw sum: %lu.\n", std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL));
+                LOG_DEBUG("For bam %s at index %i.\t:", aux[i]->fp->fn, i);
+                LOG_DEBUG("region len: %i.\t", region_len);
+                LOG_DEBUG("Raw sum: %lu.\t", std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL));
                 LOG_DEBUG("Raw mean: %f.\n", raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
                 dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
