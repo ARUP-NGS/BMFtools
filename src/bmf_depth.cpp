@@ -42,6 +42,7 @@ namespace BMF {
                         "for both raw and collapsed read families "
                         "over a capture region of interest.\n"
                         "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n"
+                        "  -o path       Write coverage bed to <path> instead of stdout.\n"
                         "  -H path       Write out a histogram of the number of bases in a capture covered at each depth or greater.\n"
                         "  -Q INT        Only count bases of at least INT quality [0]\n"
                         "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n"
@@ -188,7 +189,7 @@ namespace BMF {
         const bam_pileup1_t **plp;
         int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
         int requireFP = 0, n_cols = 0;
-        char *bedpath = nullptr;
+        char *bedpath = nullptr, *outpath = nullptr;
         FILE *histfp = nullptr;
         khiter_t k = 0;
         if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
@@ -209,11 +210,13 @@ namespace BMF {
             case 'n': n_quantiles = atoi(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 's': requireFP = 1; break;
+            case 'o': outpath = optarg; break;
             case 'h': /* fall-through */
             case '?': usage = 1; break;
             }
             if (usage) break;
         }
+        FILE *ofp = outpath ? fopen(outpath, "w"): stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
         memset(&str, 0, sizeof(kstring_t));
@@ -393,11 +396,12 @@ namespace BMF {
             ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
         }
         cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
-        puts(hdr_str.s), puts(cov_str.s);
+        fputs(hdr_str.s, ofp), fputs(cov_str.s, ofp);
         free(hdr_str.s), free(cov_str.s);
         free(n_plp); free(plp);
         ks_destroy(ks);
         gzclose(fp);
+        fclose(ofp);
 
         // Write histogram only if asked for.
         if(histfp) {
