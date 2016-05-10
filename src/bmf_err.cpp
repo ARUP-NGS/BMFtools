@@ -597,7 +597,7 @@ namespace BMF {
                             s = bam_seqi(seq, ind + rc);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             cycle = b->core.l_qseq - 1 - ind - rc;
-                            assert(cycle < b->core.l_qseq);
+                            assert((int32_t)cycle < b->core.l_qseq);
                             assert(bamseq2i[s] >= 0);
                             if(pv_array[cycle] < f->minPV) continue;
                             ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];

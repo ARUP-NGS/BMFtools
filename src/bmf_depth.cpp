@@ -197,7 +197,7 @@ namespace BMF {
 
         if(argc < 4) depth_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "H:Q:b:m:f:n:p:?hs")) >= 0) {
+        while ((c = getopt(argc, argv, "H:Q:b:m:f:n:o:p:?hs")) >= 0) {
             switch (c) {
             case 'H':
                 LOG_INFO("Writing output histogram to '%s'\n", optarg);
@@ -309,9 +309,9 @@ namespace BMF {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                col_names[i] = restrdup(col_names[i], p);
+                col_names[line_num] = restrdup(col_names[line_num], p);
                 *q = c;
-            } else col_names[i] = restrdup(col_names[i], (char *)NO_ID_STR);
+            } else col_names[line_num] = restrdup(col_names[line_num], (char *)NO_ID_STR);
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -341,20 +341,17 @@ namespace BMF {
                     ++arr_ind; // Increment for positions in range.
                 }
             }
-            // Now build the output information.
-            kputc('\t', &str);
-            if(strcmp(NO_ID_STR, col_names[i]) == 0)
-                kputs(col_names[i], &str);
+            // Only print the first 3 columns plus the name column.
+            for(p = str.s, i = 0; i < 2;*p++ == '\t' ? ++i: 0);
+            str.l = p - str.s;
             for(i = 0; i < n; ++i) {
+                kputc('\t', &str);
+                kputs(col_names[line_num], &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
                 raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
-                LOG_DEBUG("For bam %s at index %i.\t:", aux[i]->fp->fn, i);
-                LOG_DEBUG("region len: %i.\t", region_len);
-                LOG_DEBUG("Raw sum: %lu.\t", std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL));
-                LOG_DEBUG("Raw mean: %f.\n", raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
                 dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
                 singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
@@ -372,7 +369,6 @@ namespace BMF {
                 ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", singleton_mean, singleton_stdev, singleton_stdev / singleton_mean);
                 kputc('|', &str);
                 ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
-                kputc('\t', &str);
             }
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
