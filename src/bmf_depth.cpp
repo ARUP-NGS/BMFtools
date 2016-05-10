@@ -262,6 +262,7 @@ namespace BMF {
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
+        ksprintf(&hdr_str, "##padding=%i\n", padding);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
         size_t capture_size = 0;
         std::vector<uint64_t> dmp_capture_counts(n);
@@ -274,6 +275,7 @@ namespace BMF {
             double raw_mean, dmp_mean, singleton_mean;
             double raw_stdev, dmp_stdev, singleton_stdev;
             bam_mplp_t mplp;
+            if(*str.s == '#') continue;
 
             for (p = q = str.s; *p && *p != '\t'; ++p);
             if (*p != '\t') goto bed_error;
@@ -343,6 +345,9 @@ namespace BMF {
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
                 raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
+                LOG_DEBUG("region len: %i.\n", region_len);
+                LOG_DEBUG("Raw sum: %lu.\n", std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL));
+                LOG_DEBUG("Raw mean: %f.\n", raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
                 dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
                 singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
