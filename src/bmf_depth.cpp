@@ -342,7 +342,7 @@ namespace BMF {
                 }
             }
             // Only print the first 3 columns plus the name column.
-            for(p = str.s, i = 0; i < 2;*p++ == '\t' ? ++i: 0);
+            for(p = str.s, i = 0; i < 3;*p++ == '\t' ? ++i: 0);
             str.l = p - str.s;
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
