@@ -169,7 +169,13 @@ namespace BMF {
         settings.threads = DEFAULT_N_THREADS;
         settings.gzip_compression = 1;
         settings.cleanup = 1;
+#if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
+#pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
+        // If not set, zlib compresses all our files enormously.
+        sprintf(settings.mode, "wb0");
+#else
         sprintf(settings.mode, "wT");
+#endif
 
         int c;
         while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?S&")) > -1) {
