@@ -30,6 +30,7 @@ TMPFQ=${tmpstr%.fastq*}.tmp.fq
 TMPBAM=${tmpstr%.fastq*}.tmp.bam
 PRERSQBAM=${tmpstr%.fastq*}.prersq.bam
 FINALBAM=${tmpstr%.fastq*}.rsq.bam
+FASTQC="/uufs/chpc.utah.edu/common/home/arup-storage1/tools/FastQC/"
 
 # Perform inline barcode demultiplexing.
 echo time bmftools sdmp -zdp${THREADS} -s${SALT} -n${PREFIX_LEN} -i $rindex -o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
@@ -41,14 +42,13 @@ echo Number of collapsed observations after dmp: $(zgrep -c '^+$' $R1) >> $LOG
 
 mkdir -p _FASTQC_${tmpstr}
 mkdir -p _FASTQC_DMP_${tmpstr}
-fastqc -t ${THREADS} --nogroup -o _FASTQC_${tmpstr} $1 $2
-fastqc -t ${THREADS} --nogroup -o _FASTQC_DMP_${tmpstr} $R1 $R2
+$FASTQC -t ${THREADS} --nogroup -o _FASTQC_${tmpstr} $1 $2
+$FASTQC -t ${THREADS} --nogroup -o _FASTQC_DMP_${tmpstr} $R1 $R2
 
 # There are a lot of processes here. We save a lot of time by avoiding I/O by piping.
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | samtools view -Sbh - | bmftools mark -l 0 | \
     bmftools sort -o${PRERSQBAM} -l6 -m 6G -@ 4 -k ucs -T tmpfileswtf -
 
-getsums.py $PRERSQBAM >>$LOG &
 echo Post-BMF-sort read count -cF2816: $(samtools view -cF2816 $PRERSQBAM) >> $LOG &
 echo Post-BMF-sort read count -cF2304: $(samtools view -cF2304 $PRERSQBAM) >> $LOG &
 
@@ -63,11 +63,8 @@ echo Post-rescue, before merge read count -cF2304: $(samtools view -cF2304 $TMPB
 bwa mem -pCYT0 -t${THREADS} $REF $TMPFQ | bmftools mark -l 0 | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS2 -m $SORTMEM - | \
     samtools merge -fh $TMPBAM $FINALBAM $TMPBAM -
-getsums.py $TMPBAM >>$LOG
 echo Post-rescue, merged-reads count -cF2816: $(samtools view -cF2816 $FINALBAM) >> $LOG &
 echo Post-rescue, merged-reads count -cF2304: $(samtools view -cF2304 $FINALBAM) >> $LOG &
-
-getsums.py $FINALBAM >>$LOG
 
 # QC
 

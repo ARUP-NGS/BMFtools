@@ -210,7 +210,7 @@ namespace BMF {
     {
         fprintf(stderr,
                         "Calculates error rates over a variety of variables."
-                        "The primary output format consists of quality scores "
+                        "The primary output format consists of quality scores \n"
                         "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
                         "Flags:\n"
                         "-h/-?\t\tThis helpful help menu!\n"
@@ -222,6 +222,7 @@ namespace BMF {
                         "-f:\t\tPath to write the full measured error rates in tabular format.\n"
                         "-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
                         "-c:\t\tPath to write the cycle error rates in tabular format.\n"
+                        "-g:\t\tPath to write the global error rates in tabular format.\n"
                         "-b:\t\tPath to bed file for restricting analysis.\n"
                         "-m:\t\tMinimum family size for inclusion. Default: 0.\n"
                         "-M:\t\tMaximum family size for inclusion. Default: %i.\n"
@@ -251,7 +252,7 @@ namespace BMF {
                         "-p:\t\tSet padding for bed region. Default: %i.\n"
                         "-P:\t\tOnly include proper pairs.\n"
                         "-F:\t\tRequire that the FP tag be present and nonzero.\n"
-                        "-f:\t\tRequire that the fraction of family members agreed on a  base be <FLOAT> or greater. Default: 0.0\n"
+                        "-f:\t\tRequire that the fraction of family members agreed on a base be <FLOAT> or greater. Default: 0.0\n"
                 , DEFAULT_PADDING);
         exit(exit_status);
         return exit_status; // This never happens.
@@ -297,7 +298,6 @@ namespace BMF {
 
     void err_fm_report(FILE *fp, fmerr_t *f)
     {
-        LOG_DEBUG("Beginning err fm report.\n");
         int khr, fm;
         khiter_t k, k1, k2;
         // Make a set of all FMs to print out.
@@ -410,7 +410,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
-        int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+        int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
         char *ref = nullptr; // Will hold the sequence for a  chromosome
         khash_t(obs) *hash;
         uint8_t *seq, *drdata, *fpdata;
@@ -478,36 +478,37 @@ namespace BMF {
                 if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
             }
             pos = b->core.pos;
-            is_rev = b->core.flag & BAM_FREVERSE;
             if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
                 k = kh_put(obs, hash, FM, &khr);
                 memset(&kh_val(hash, k), 0, sizeof(obserr_t));
             }
             for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
                 length = bam_cigar_oplen(cigar[i]);
-                switch(bam_cigar_op(cigar[i])) {
-                case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                    if(is_rev) {
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
+                    if((b->core.flag & BAM_FREVERSE)) {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[b->core.l_qseq - 1 - ind - rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[b->core.l_qseq - 1 - ind - rc] / FM) < f->minFR)
-                                continue;
                             s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                                 ++kh_val(hash, k).err;
                         }
                     } else {
                         for(ind = 0; ind < length; ++ind) {
-                            if(pv_array[ind + rc] < f->minPV)
-                                continue;
-                            if(((double)fa_array[ind + rc] / FM) < f->minFR)
-                                continue;
-                            s = bam_seqi(seq, ind + rc);
-                            //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+                            cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
+                            s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
@@ -515,12 +516,6 @@ namespace BMF {
                         }
                     }
                     rc += length; fc += length;
-                    break;
-                case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                    rc += length;
-                    break;
-                case BAM_CREF_SKIP: case BAM_CDEL:
-                    fc += length;
                     break;
                 }
             }
@@ -540,7 +535,7 @@ namespace BMF {
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr)
             LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev;
+        int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1;
         unsigned ind;
         bam1_t *b = bam_init1();
         char *ref = nullptr; // Will hold the sequence for a  chromosome
@@ -553,7 +548,7 @@ namespace BMF {
             if(tid_to_study < 0) LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
         }
         uint8_t *fdata, *rdata, *pdata, *seq, *qual;
-        uint32_t *cigar, *pv_array, length;
+        uint32_t *cigar, *pv_array, length, cycle;
         readerr_t *r;
         while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
             fdata = bam_aux_get(b, "FM");
@@ -561,8 +556,10 @@ namespace BMF {
             pdata = bam_aux_get(b, "FP");
             FM = dlib::int_tag_zero(fdata);
             RV = dlib::int_tag_zero(rdata);
+            pv_array = static_cast<uint32_t*>(dlib::array_tag(b, "PV"));
             // Filters... WOOF
-            if((b->core.flag & 1796) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+            if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
+                b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
                 (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of region
                 (FM < f->minFM) || (FM > f->maxFM) || // minFM
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
@@ -585,81 +582,44 @@ namespace BMF {
             }
             r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
             pos = b->core.pos;
-            is_rev = (b->core.flag & BAM_FREVERSE);
-            if(f->minPV) {
-                pv_array = (uint32_t *)dlib::array_tag(b, "PV");
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, ind + rc);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                if(pv_array[cycle] < f->minPV)
-                                    continue;
-                                s = bam_seqi(seq, cycle);
-                                //fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+            for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+                length = bam_cigar_oplen(cigar[i]);
+                switch(bam_cigar_type(cigar[i])) {
+                case 1:
+                    rc += length;
+                    break;
+                case 2:
+                    fc += length;
+                    break;
+                case 3:
+                    if((b->core.flag & BAM_FREVERSE)) {
+                        for(ind = 0; ind < length; ++ind) {
+                            s = bam_seqi(seq, ind + rc);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            cycle = b->core.l_qseq - 1 - ind - rc;
+                            assert((int32_t)cycle < b->core.l_qseq);
+                            assert(bamseq2i[s] >= 0);
+                            if(pv_array[cycle] < f->minPV) continue;
+                            ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
-                    }
-                }
-            } else {
-                for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-                    length = bam_cigar_oplen(cigar[i]);
-                    switch(bam_cigar_op(cigar[i])) {
-                    case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
-                        if(is_rev) {
-                            for(ind = 0; ind < length; ++ind) {
-                                s = bam_seqi(seq, ind + rc);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                cycle = b->core.l_qseq - 1 - ind - rc;
-                                ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                            }
-                        } else {
-                            for(ind = 0; ind < length; ++ind) {
-                                cycle = ind + rc;
-                                s = bam_seqi(seq, cycle);
-                                if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
-                                ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                                if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-                                    ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
+                    } else {
+                        for(ind = 0; ind < length; ++ind) {
+                            cycle = ind + rc;
+                            if(pv_array[cycle] < f->minPV) continue;
+                            s = bam_seqi(seq, cycle);
+                            assert(bamseq2i[s] >= 0);
+                            if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
+                            ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
+                            if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                                ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
                             }
                         }
-                        rc += length; fc += length;
-                        break;
-                    case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-                        rc += length;
-                        break;
-                    case BAM_CREF_SKIP: case BAM_CDEL:
-                        fc += length;
-                        break;
                     }
+                    rc += length; fc += length;
+                    break;
                 }
             }
         }
@@ -729,6 +689,18 @@ namespace BMF {
         }
         fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum1 / counts1, (double)sum2 / counts2);
         fprintf(fp, "#Global Sum/Count\t%lu/%lu\t%lu/%lu\n", sum1, counts1, sum2, counts2);
+    }
+
+    /*
+     * Infers maximum observed read length
+     */
+    void set_max_readlen(fullerr_t *f)
+    {
+        for(; f->l;--f->l)
+            for(int i = 0; i < 4; ++i)
+                for(unsigned j = 0; j < NQSCORES; ++j)
+                    if(f->r1->obs[i][j][f->l - 1] || f->r2->obs[i][j][f->l - 1])
+                        return;
     }
 
     void write_cycle_rates(FILE *fp, fullerr_t *f)
@@ -862,7 +834,12 @@ namespace BMF {
         return;
     }
 
+    namespace {
+        size_t VLEN_BUFFER = 10uL;
+    }
+
     readerr_t *readerr_init(size_t l) {
+        l += VLEN_BUFFER; // Extra buffer in case of variable length barcodes.
         readerr_t *ret = (readerr_t *)calloc(1, sizeof(readerr_t));
         arr3d_init(ret->obs, l, uint64_t);
         arr3d_init(ret->err, l, uint64_t);
@@ -1027,8 +1004,8 @@ namespace BMF {
         // Get read length from the first read
         bam1_t *b = bam_init1();
         c = sam_read1(fp, header, b);
-        fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header,
-                                     padding, minFM, maxFM, flag, minMQ, minPV, min_obs);
+        fullerr_t *f = fullerr_init(b->core.l_qseq, bedpath, header,
+                                    padding, minFM, maxFM, flag, minMQ, minPV, min_obs);
         sam_close(fp);
         fp = nullptr;
         bam_destroy1(b);
@@ -1036,6 +1013,7 @@ namespace BMF {
         bam_hdr_destroy(header), header = nullptr;
         err_main_core(argv[optind + 1], fai, f, &open_fmt);
         fai_destroy(fai);
+        set_max_readlen(f);
         fill_qvals(f);
         impute_scores(f);
         //fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
@@ -1062,8 +1040,8 @@ namespace BMF {
             fclose(dc), dc = nullptr;
         }
         if(!global_fp) {
-            LOG_INFO("No global rate outfile provided. Defaulting to stdout.\n");
-            global_fp = stdout;
+            LOG_INFO("No global rate outfile provided. Defaulting to stderr.\n");
+            global_fp = stderr;
         }
         write_global_rates(global_fp, f); fclose(global_fp);
         fullerr_destroy(f);
@@ -1225,6 +1203,7 @@ namespace BMF {
             }
         }
         bam_destroy1(b);
+        Holloway->iter = nullptr;
     }
 
     void write_region_rates(FILE *fp, RegionExpedition& Holloway) {

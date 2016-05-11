@@ -115,19 +115,15 @@ namespace BMF {
     CONST static inline int arr_max_u32(uint32_t *arr, int index)
     {
         arr += index * 5;
-        if(*arr > arr[1]) {
-            if(*arr > arr[2]) {
-                if(*arr > arr[3]) return *arr > arr[4] ? 0: 4;
-                else goto label34;
-            } else goto label24;
-        }
-        if(arr[1] > arr[2]) {
-            if(arr[1] > arr[3]) {
-                return arr[1] > arr[4] ? 1: 4;
-            } else goto label34;
-        }
-        label24: if(arr[2] > arr[3]) return (arr[2] > arr[4] ? 2: 4);
-        label34: return arr[3] > arr[4] ? 3: 4;
+        return (arr[0] > arr[1]) ? ((arr[0] > arr[2]) ? ((arr[0] > arr[3]) ? (arr[0] > arr[4] ? 0: 4)
+                                                                           : (arr[3] > arr[4] ? 3: 4))
+                                                      : (arr[2] > arr[3])  ? (arr[2] > arr[4] ? 2: 4)
+                                                                           : (arr[3] > arr[4] ? 3: 4))
+                                 : ((arr[1] > arr[2]) ? ((arr[1] > arr[3]) ? (arr[1] > arr[4] ? 1: 4)
+                                                                           : (arr[3] > arr[4] ? 3: 4))
+                                                      : ((arr[2] > arr[3]) ? (arr[2] > arr[4] ? 2: 4)
+                                                                           : (arr[3] > arr[4] ? 3: 4)));
+
     }
 
 
