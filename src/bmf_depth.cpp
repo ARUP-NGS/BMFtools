@@ -42,6 +42,7 @@ namespace BMF {
                         "for both raw and collapsed read families "
                         "over a capture region of interest.\n"
                         "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n"
+                        "  -o path       Write coverage bed to <path> instead of stdout.\n"
                         "  -H path       Write out a histogram of the number of bases in a capture covered at each depth or greater.\n"
                         "  -Q INT        Only count bases of at least INT quality [0]\n"
                         "  -f INT        Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n"
@@ -188,7 +189,7 @@ namespace BMF {
         const bam_pileup1_t **plp;
         int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
         int requireFP = 0, n_cols = 0;
-        char *bedpath = nullptr;
+        char *bedpath = nullptr, *outpath = nullptr;
         FILE *histfp = nullptr;
         khiter_t k = 0;
         if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
@@ -196,7 +197,7 @@ namespace BMF {
 
         if(argc < 4) depth_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "H:Q:b:m:f:n:p:?hs")) >= 0) {
+        while ((c = getopt(argc, argv, "H:Q:b:m:f:n:o:p:?hs")) >= 0) {
             switch (c) {
             case 'H':
                 LOG_INFO("Writing output histogram to '%s'\n", optarg);
@@ -209,11 +210,13 @@ namespace BMF {
             case 'n': n_quantiles = atoi(optarg); break;
             case 'p': padding = atoi(optarg); break;
             case 's': requireFP = 1; break;
+            case 'o': outpath = optarg; break;
             case 'h': /* fall-through */
             case '?': usage = 1; break;
             }
             if (usage) break;
         }
+        FILE *ofp = outpath ? fopen(outpath, "w"): stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
         memset(&str, 0, sizeof(kstring_t));
@@ -262,6 +265,7 @@ namespace BMF {
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
         ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
+        ksprintf(&hdr_str, "##padding=%i\n", padding);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
         size_t capture_size = 0;
         std::vector<uint64_t> dmp_capture_counts(n);
@@ -274,6 +278,7 @@ namespace BMF {
             double raw_mean, dmp_mean, singleton_mean;
             double raw_stdev, dmp_stdev, singleton_stdev;
             bam_mplp_t mplp;
+            if(*str.s == '#') continue;
 
             for (p = q = str.s; *p && *p != '\t'; ++p);
             if (*p != '\t') goto bed_error;
@@ -294,16 +299,19 @@ namespace BMF {
             capture_size += region_len;
             for(i = 0; i < n; ++i) {
                 aux[i]->dmp_counts.resize(region_len);
+                memset(&aux[i]->dmp_counts[0], 0, sizeof(uint64_t) * region_len);
                 aux[i]->raw_counts.resize(region_len);
+                memset(&aux[i]->raw_counts[0], 0, sizeof(uint64_t) * region_len);
                 aux[i]->singleton_counts.resize(region_len);
+                memset(&aux[i]->singleton_counts[0], 0, sizeof(uint64_t) * region_len);
             }
             if(*p == '\t') {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                col_names[i] = restrdup(col_names[i], p);
+                col_names[line_num] = restrdup(col_names[line_num], p);
                 *q = c;
-            } else col_names[i] = restrdup(col_names[i], (char *)NO_ID_STR);
+            } else col_names[line_num] = restrdup(col_names[line_num], (char *)NO_ID_STR);
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -333,10 +341,12 @@ namespace BMF {
                     ++arr_ind; // Increment for positions in range.
                 }
             }
-            // Now build the output information.
-            kputc('\t', &str);
-            kputs(col_names[i], &str);
+            // Only print the first 3 columns plus the name column.
+            for(p = str.s, i = 0; i < 2;*p++ == '\t' ? ++i: 0);
+            str.l = p - str.s;
             for(i = 0; i < n; ++i) {
+                kputc('\t', &str);
+                kputs(col_names[line_num], &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
@@ -359,7 +369,6 @@ namespace BMF {
                 ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", singleton_mean, singleton_stdev, singleton_stdev / singleton_mean);
                 kputc('|', &str);
                 ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
-                kputc('\t', &str);
             }
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
@@ -387,11 +396,12 @@ namespace BMF {
             ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
         }
         cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
-        puts(hdr_str.s), puts(cov_str.s);
+        fputs(hdr_str.s, ofp), fputs(cov_str.s, ofp);
         free(hdr_str.s), free(cov_str.s);
         free(n_plp); free(plp);
         ks_destroy(ks);
         gzclose(fp);
+        fclose(ofp);
 
         // Write histogram only if asked for.
         if(histfp) {
