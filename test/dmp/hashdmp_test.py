@@ -27,7 +27,7 @@ def main():
     for ex in ["bmftools_db", "bmftools", "bmftools_p"]:
         cstr = "../../%s hashdmp -o hashdmp_test.out hashdmp_test.fq" % ex
         subprocess.check_call(shlex.split(cstr))
-        fqh  = pysam.FastqFile("hashdmp_test.out")
+        fqh = pysam.FastqFile("hashdmp_test.out")
         r1 = fqh.next()
         tags = get_tags(r1)
         assert tags["FM"] == 7
