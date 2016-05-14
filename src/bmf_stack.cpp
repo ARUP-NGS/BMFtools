@@ -25,7 +25,7 @@ namespace BMF {
                         " to produce a maximally permissive 'variant caller'.\n"
                         "Usage:\nbmftools stack <opts> <tumor.srt.indexed.bam> <normal.srt.indexed.bam>\n"
                         "Optional arguments:\n"
-                        "-R, --refpath\tPath to fasta reference. REQUIRED.\n"
+                        "-R, --ref\tPath to fasta reference. REQUIRED.\n"
                         "-o, --outpath\tPath to output file. Defaults to stdout.\n"
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"

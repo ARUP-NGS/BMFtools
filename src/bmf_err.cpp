@@ -264,7 +264,7 @@ namespace BMF {
                         "Calculates error rates by genomic region.\n"
                         "Usage: bmftools err region <reference.fasta> <input.csrt.bam>\n"
                         "Flags:\n"
-                        "-b\t\tPath to bed file. REQUIRED."
+                        "-b\t\tPath to bed file. REQUIRED.\n"
                         "-h/-?\t\tThis helpful help menu!\n"
                         "-o\t\tPath to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.\n"
                         "-a\t\tSet minimum mapping quality for inclusion.\n"
