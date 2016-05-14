@@ -29,7 +29,7 @@ namespace BMF {
                             "-g: Gzip compression ratio if writing ocmpressed. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
                             "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
                             "-m: Number of bases in the start of reads to skip when salting. Default: 0.\n"
-                            "-d: Flag to run hash dmp. Default: False.\n"
+                            "-D: Use this flag to only mark/split and avoid final demultiplexing/consolidation.\n"
                             "-p: Number of threads to use if running hash_dmp. Default: %i.\n"
                             "-v: Set notification interval for split. Default: 1000000.\n"
                             "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
@@ -169,6 +169,7 @@ namespace BMF {
         settings.threads = DEFAULT_N_THREADS;
         settings.gzip_compression = 1;
         settings.cleanup = 1;
+        settings.run_hash_dmp = 1;
 #if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
 #pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
         // If not set, zlib compresses all our files enormously.
@@ -178,9 +179,10 @@ namespace BMF {
 #endif
 
         int c;
-        while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdczw?S&")) > -1) {
+        while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdDczw?S&")) > -1) {
             switch(c) {
-                case 'd': settings.run_hash_dmp = 1; break;
+                case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
+                case 'D': settings.run_hash_dmp = 0; break;
                 case 'f': settings.ffq_prefix = strdup(optarg); break;
                 case 'i': settings.index_fq_path = strdup(optarg); break;
                 case 'm': settings.offset = atoi(optarg); break;
