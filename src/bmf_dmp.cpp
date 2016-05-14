@@ -36,7 +36,6 @@ namespace BMF {
                             "-z: Flag to write out final output as compressed. Default: False.\n"
                             "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
                             "-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
-                            "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                             "-u: Set notification/update interval for split. Default: 1000000.\n"
                             "-w: Set flag to leave temporary files. Primarily for debugging.\n"
                             "-h: Print usage.\n"

@@ -36,7 +36,7 @@ namespace BMF {
                             "-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
                             "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                             "-S: Single-end mode. Ignores read 2.\n"
-                            "-O: Emit final fastqs to stdout in interleaved form. Ignores -f.\n"
+                            "-=: Emit final fastqs to stdout in interleaved form. Ignores -f.\n"
                     , argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
     }
 
@@ -179,7 +179,7 @@ namespace BMF {
 #endif
 
         int c;
-        while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdDczw?S&")) > -1) {
+        while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdDczw?S=")) > -1) {
             switch(c) {
                 case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
                 case 'D': settings.run_hash_dmp = 0; break;
@@ -201,7 +201,7 @@ namespace BMF {
                     settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
                     break;
                 case 'S': settings.is_se = 1; break;
-                case 'O': settings.to_stdout = 1; break;
+                case '=': settings.to_stdout = 1; break;
                 case '?': case 'h': sdmp_usage(argv); return EXIT_SUCCESS;
             }
         }
