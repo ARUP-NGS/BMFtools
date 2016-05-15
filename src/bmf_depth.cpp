@@ -108,7 +108,8 @@ namespace BMF {
         }
     }
 
-    double u64_stdev(uint64_t *arr, size_t l, double mean)
+    template<typename T>
+    double stdev(T *arr, size_t l, double mean)
     {
         double ret = 0.0, tmp;
         for(unsigned i = 0; i < l; ++i) {
@@ -351,11 +352,11 @@ namespace BMF {
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
-                raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
+                raw_stdev = stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
-                dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
+                dmp_stdev = stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
                 singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
-                singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
+                singleton_stdev = stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
                 kputc('\t', &str);
                 kputl(counts[i], &str);
                 ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
