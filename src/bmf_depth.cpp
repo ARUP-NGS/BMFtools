@@ -217,7 +217,8 @@ namespace BMF {
             }
             if (usage) break;
         }
-        FILE *ofp = outpath ? fopen(outpath, "w"): stdout;
+        FILE *ofp = outpath ? fopen(outpath, "w")
+                            : stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
         memset(&str, 0, sizeof(kstring_t));
@@ -272,7 +273,7 @@ namespace BMF {
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
-        kstring_t cov_str = {0, 0, nullptr};
+        kstring_t cov_str{0, 0, nullptr};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;

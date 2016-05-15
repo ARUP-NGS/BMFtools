@@ -1,5 +1,5 @@
 #BMFtools
-###Summary
+##Summary
 BMFtools (**B**arcoded **M**olecular **F**amilies tools) is a suite of tools for error correction and precise quantitation using reads with molecular barcodes.
 Reads which are PCR duplicates of original template molecules are **molecularly** demultiplexed into single unique observations for each sequenced founding template molecule.
 Accessory tools provide postprocessing, filtering, quality control, and summary statistics.
@@ -16,7 +16,7 @@ For usage for a subcommand:
 bmftools <subcommand> <-h>
 ```
 
-###Synopsis
+##Synopsis
 <p>
 
 `bmftools cap -f 0.8 -c 200 input.bam output.bam`
@@ -81,9 +81,11 @@ bmftools <subcommand> <-h>
 
 `bmftools vet -o output.vcf -b capture.bed --min-family-size 3 input.bcf input.bam`
 
-###Commands and options
+##Commands and options
 
-#####<b>dmp</b>
+### Core Functionality
+
+####<b>dmp</b>
   Description:
   > Performs molecular demutiplexing of inline barcoded fastq data.
   > The homing sequence is a sequence of bases marking the end of the random nucleotides
@@ -119,7 +121,7 @@ bmftools <subcommand> <-h>
     > -h/-?: Print help menu.
 
 
-#####<b>sdmp</b>
+####<b>sdmp</b>
   Description:
   > Performs molecular demutiplexing of secondary index barcoded fastq data.
 
@@ -147,7 +149,7 @@ bmftools <subcommand> <-h>
     > -h/-?: Print help menu.
 
 
-#####<b>rsq</b>
+####<b>rsq</b>
   Description:
   > Uses positional information to rescue reads into proper families in cases were there were errors in the barcode.
   > In preprocessing, bam file is sorted to group reads sharing an "alignment signature" together, where an alignment signature consists of position, orientation, and read length for a read (and its mate, for paired-end data).
@@ -157,7 +159,7 @@ bmftools <subcommand> <-h>
   > For all data, requires sorting by alignment signature (see bmftools sort).
   > Because rescued read families may have changed base calls, these reads written to a temporary fastq
   > and realigned. In addition, this regenerates all of the secondary and supplementary alignments.
-  
+
   Usage: `bmftools rsq <options> input_R1.srt.bam output.bam`
 
   Options:
@@ -168,6 +170,132 @@ bmftools <subcommand> <-h>
     > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
     > -l:    Output bam compression level.
     > -t:    Mismatch limit. Default: 2.
+    > -h/-?: Print help menu.
+
+### Analysis
+
+####<b>stack</b>
+    Description:
+    > A maximally-permissive single nucleotide variant caller for matched sample pairs using molecular barcode metadata analogous to samtools mpileup.
+    > Reads with the same read name are merged into a single observation for each pileup, with p-values merged according to Fisher's method.
+    > Passing calls are marked BMF_PASS.
+    > Passing calls in the tumor but not the normal are marked as SOMATIC.
+
+    Options:
+    > -R, --refpath:               Path to fasta reference. REQUIRED.
+    > -b, --bed-path:              Path to bed file for anaylsis. REQUIRED.
+    > -p, --padding:               Number of bases around each region to pad in calling variants.
+
+    > -o, --outpath:               Path to output [bv]cf. Defaults to stdout.
+    > -c, --min-count:             Minimum number of passing observations to pass a variant.
+    > -s, --min-family-size:       Minimum family size required to pass an observation.
+    > -f, --min-fraction-agreed:   Minimum fraction of family members agreed on a base call.
+    > -v, --min-phred-quality:     Minimum PV tag value required.
+    > -a, --min-family-agreed:     Minimum number of reads in a family agreed on a base call.
+    > -m, --min-mapping-quality:   Minimum mapping quality required for inclusion of a read.
+
+    > -2, --skip-secondary:        Skip secondary alignments.
+    > -S, --skip-supplementary:    Skip supplementary alignments.
+    > -q, --skip-qc-fail:          Skip reads marked as QC fail.
+    > -r, --skip-duplicates:       Skip reads marked as duplicates.
+    > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
+
+    TODO: Fill in details on these tags.
+    VCF Header Fields:
+    1. BMF_PASS
+    2. ADP
+    3. ADPO
+    3. ADPD
+    4. ADPR
+    5. RVF
+    6. QSS
+    7. AMBIG
+    8. SOMATIC_PV
+    9. SOMATIC_CALL
+    10. SOMATIC
+    11. FR_FAILED
+    12. FM_FAILED
+    13. FP_FAILED
+    14. AF_FAILED
+    15. MQ_FAILED
+    16. IMPROPER
+    17. OVERLAP
+
+####<b>vet</b>
+    Description:
+    > Curates variant calls from a bcf file and an associated, indexed bam file.
+
+    Options:
+    > -b, --bed-path:              Path to bed file for anaylsis. REQUIRED.
+    > -p, --padding:               Number of bases around each region to pad in calling variants.
+
+    > -o, --outpath:               Path to output [bv]cf. Defaults to stdout.
+    > -c, --min-count:             Minimum number of passing observations to pass a variant.
+    > -s, --min-family-size:       Minimum family size required to pass an observation.
+    > -f, --min-fraction-agreed:   Minimum fraction of family members agreed on a base call.
+    > -v, --min-phred-quality:     Minimum PV tag value required.
+    > -a, --min-family-agreed:     Minimum number of reads in a family agreed on a base call.
+    > -m, --min-mapping-quality:   Minimum mapping quality required for inclusion of a read.
+
+    > -2, --skip-secondary:        Skip secondary alignments.
+    > -S, --skip-supplementary:    Skip supplementary alignments.
+    > -q, --skip-qc-fail:          Skip reads marked as QC fail.
+    > -F, --skip-recommended:      Skip secondary, supplementary, and PCR duplicates.
+    > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
+    > -w, --write-outside-bed:     Write variants outside of bed region unmodified rather than removing.
+
+    TODO: Fill in details on these tags.
+    VCF Header Fields:
+    1. BMF_VET
+    2. BMF_UNIOBS
+    3. BMF_DUPLEX
+    4. BMF_FAIL
+    5. DUPLEX_DEPTH
+    6. DISC_OVERLAP
+    7. OVERLAP
+
+
+### Manipulation
+
+####<b>cap</b>
+  Description:
+  > Caps quality scores using barcode metadata to facilitate working with barcode-agnostic tools.
+
+  Usage: `bmftools cap <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -f:    Path to temporary fastq
+    > -S:    Flag to perform rescue for single-end experiments.
+    > -u:    Flag to use unclipped start rather than position in alignment signature. Requires `-k ucs` in bmftools sort.
+    > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
+    > -l:    Output bam compression level.
+    > -t:    Mismatch limit. Default: 2.
+    > -h/-?: Print help menu.
+
+
+
+###"Undocumented" tools
+
+####<b>inmem</b>
+  Description:
+  > Largely an in-memory clone of bmftools dmp. Currently, only paired-end inline chemistry is supported.
+  > In addition, use of rescaled quality scores is not yet supported.
+  > RAM-hungry but fast. Useful for relatively small datasets.
+
+
+  Usage: `bmftools inmem <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -1:    Output read1 path. REQUIRED.
+    > -2:    Output read2 path. REQUIRED.
+    > -=:    Emit output to stdout, interleaved if paired-end, instead of writing to disk.
+    > -s:    Homing sequence. REQUIRED.
+    > -l:    Barcode length. REQUIRED. For variable-length barcodes, this signifies the minimum length.
+    > -v:    Maximum barcode length. Only needed for variable-length barcodes.
+    > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
+    > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
     > -h/-?: Print help menu.
 
 ### Workflow

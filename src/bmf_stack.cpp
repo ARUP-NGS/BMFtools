@@ -345,7 +345,7 @@ namespace BMF {
         LOG_DEBUG("Bedpath: %s.\n", bedpath);
         aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
                           : dlib::build_ref_hash(aux.normal.header);
-        if(!aux.bed) LOG_EXIT("COuld not open bedfile.\n");
+        if(!aux.bed) LOG_EXIT("Could not open bedfile.\n");
         // Check for required tags.
         for(auto tag: {"FM", "FA", "PV", "FP", "DR"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
