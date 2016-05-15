@@ -119,7 +119,7 @@ bmftools <subcommand> <-h>
     > -h/-?: Print help menu.
 
 
-#####<b>dmp</b>
+#####<b>sdmp</b>
   Description:
   > Performs molecular demutiplexing of secondary index barcoded fastq data.
 
@@ -144,6 +144,30 @@ bmftools <subcommand> <-h>
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
+    > -h/-?: Print help menu.
+
+
+#####<b>rsq</b>
+  Description:
+  > Uses positional information to rescue reads into proper families in cases were there were errors in the barcode.
+  > In preprocessing, bam file is sorted to group reads sharing an "alignment signature" together, where an alignment signature consists of position, orientation, and read length for a read (and its mate, for paired-end data).
+  > In a process analogous to samtools rmdup, reads sharing an alignment signature with a barcode hamming distance
+  > below a given threshold are considered to have originated from the same template molecule and are consolidted into one observation.
+  > For paired-end data, requires pre-processing by bmftools mark to add mate information as auxiliary tags.
+  > For all data, requires sorting by alignment signature (see bmftools sort).
+  > Because rescued read families may have changed base calls, these reads written to a temporary fastq
+  > and realigned. In addition, this regenerates all of the secondary and supplementary alignments.
+  
+  Usage: `bmftools rsq <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -f:    Path to temporary fastq
+    > -S:    Flag to perform rescue for single-end experiments.
+    > -u:    Flag to use unclipped start rather than position in alignment signature. Requires `-k ucs` in bmftools sort.
+    > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
+    > -l:    Output bam compression level.
+    > -t:    Mismatch limit. Default: 2.
     > -h/-?: Print help menu.
 
 ### Workflow
