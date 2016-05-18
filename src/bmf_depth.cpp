@@ -180,7 +180,6 @@ namespace BMF {
     int depth_main(int argc, char *argv[])
     {
         gzFile fp;
-        kstring_t str;
         kstream_t *ks;
         hts_idx_t **idx;
         depth_aux_t **aux;
@@ -221,7 +220,6 @@ namespace BMF {
                             : stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
-        memset(&str, 0, sizeof(kstring_t));
         n = argc - optind;
         aux = (depth_aux_t **)calloc(n, sizeof(depth_aux_t*));
         idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
@@ -274,6 +272,7 @@ namespace BMF {
         std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str{0, 0, nullptr};
+        kstring_t str{0};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
@@ -344,7 +343,7 @@ namespace BMF {
                 }
             }
             // Only print the first 3 columns plus the name column.
-            for(p = str.s, i = 0; i < 3;*p++ == '\t' ? ++i: 0);
+            for(p = str.s, i = 0; i < 3 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
             str.l = p - str.s;
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
@@ -397,6 +396,7 @@ namespace BMF {
             ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
             ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
         }
+        kputc('\n', &hdr_str);
         cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
         fputs(hdr_str.s, ofp), fputs(cov_str.s, ofp);
         free(hdr_str.s), free(cov_str.s);
