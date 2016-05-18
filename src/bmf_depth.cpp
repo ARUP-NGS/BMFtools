@@ -247,7 +247,7 @@ namespace BMF {
             LOG_EXIT("Bed path required. Abort!\n");
         }
         counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-        std::string col_name;
+        std::string region_name;
 
         fp = gzopen(bedpath, "rb");
         if(!fp)
@@ -312,9 +312,9 @@ namespace BMF {
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
                 LOG_DEBUG("p: %s.\n", p);
-                col_name = p;
+                region_name = p;
                 *q = c;
-            } else col_name = (char *)NO_ID_STR;
+            } else region_name = (char *)NO_ID_STR;
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -351,7 +351,7 @@ namespace BMF {
             LOG_INFO("Processing region #%i \"%s\". %0.4f%% complete of %i lines. N: %i\n", line_num + 1, str.s, (line_num * 100.) / n_lines, n_lines, n);
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
-                kputs(col_name.c_str(), &str);
+                kputs(region_name.c_str(), &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
