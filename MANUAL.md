@@ -265,15 +265,64 @@ bmftools <subcommand> <-h>
 
   Options:
 
-    > -f:    Path to temporary fastq
-    > -S:    Flag to perform rescue for single-end experiments.
-    > -u:    Flag to use unclipped start rather than position in alignment signature. Requires `-k ucs` in bmftools sort.
-    > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
-    > -l:    Output bam compression level.
-    > -t:    Mismatch limit. Default: 2.
+    > -l:    Set output compression level. Default: 6.
+    > -t:    Set phred score to which to set passing base qualities. Default: 93 ('~').
+    > -m:    Set minFM required to pass reads. Default: 0.
+    > -f:    Minimum fraction of reads in a family supporting a base call for inclusion. Default: 1.0.
+    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0. 
+    > -d:    Flag to only mask failing base scores as '#'/2, not modifying passing quality scores.
     > -h/-?: Print help menu.
 
+####<b>filter</b>
+  Description:
+  > Filters or splits a bam file. In filter mode, only passing reads are output. In split mode,
+  > emits passing reads to one file and failing reads to another.
 
+  Usage: `bmftools filter <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -l:    Set output compression level. Default: 6.
+    > -a:    Read pairs without one read with an aligned fraction above <parameter> are failed.
+    > -m:    Minimum mapping quality.
+    > -F:    Fail all reads with any bits in <parameter> set.
+    > -f:    Fail all reads without all bits in <parameter> set.
+    > -b:    Require reads be within the region defined by the bed file at <parameter>.
+    > -P:    Number of bases around the bed file with which to pad.
+    > -r:    If set, write failing reads to bam at <parameter>.
+    > -v:    Invert pass/fail. (Analogous to grep.)
+
+####<b>depth</b>
+  Description:
+  > Creates a bed file of coverage depths for both raw and collapsed read families over a capture region of interest.
+  > Requires an indexed bam.
+
+  Usage: `bmftools depth <options> input_R1.srt.bam`
+
+  Options:
+
+    > -o:    Write coverage bed to <path> instead of stdout.
+    > -H:    Write out a histogram of the number of bases in a capture covered at each depth or greater.
+    > -Q:    Only count bases of at least <parameter> quality [0]
+    > -f:    Only count bases of at least <parameter> Family size (unmarked reads are treated as FM 1) [0]
+    > -m:    Max depth. Default: 262144.
+    > -n:    Set N for quantile reporting. Default: 4 (quartiles)
+    > -p:    Number of bases around region to pad in coverage calculations. Default: 0
+    > -s:    Skip reads with an FP tag whose value is 0. (Fail)
+
+
+####bmftools depth
+Calculates depth of coverage across a bed file using barcode metadata.
+
+####bmftools target
+Calculates on-target fraction for bed file using barcode metadata.
+
+####bmftools err
+Calculates error rates by a variety of parameters.
+Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
+
+####bmftools famstats
+Calculates summary statistics related to family size and demultiplexing.
 
 ###"Undocumented" tools
 
@@ -284,7 +333,7 @@ bmftools <subcommand> <-h>
   > RAM-hungry but fast. Useful for relatively small datasets.
 
 
-  Usage: `bmftools inmem <options> input_R1.srt.bam output.bam`
+  Usage: `bmftools inmem <options> input_R1.fast1.gz input_R2.fastq.gz`
 
   Options:
 
