@@ -27,7 +27,7 @@ namespace BMF {
                             "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                             "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
                             "-p: Number of threads to use if running uthash_dmp. Default: %i.\n"
-                            "-d: Use this flag to to run hash_dmp.\n"
+                            "-D: Use this flag to only mark/split and avoid final demultiplexing/consolidation.\n"
                             "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                             "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
                             "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
@@ -36,7 +36,6 @@ namespace BMF {
                             "-z: Flag to write out final output as compressed. Default: False.\n"
                             "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
                             "-g: Gzip compression ratio if writing gzipped. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
-                            "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                             "-u: Set notification/update interval for split. Default: 1000000.\n"
                             "-w: Set flag to leave temporary files. Primarily for debugging.\n"
                             "-h: Print usage.\n"
@@ -433,6 +432,7 @@ namespace BMF {
         settings.max_blen = -1;
         settings.gzip_compression = 1;
         settings.cleanup = 1;
+        settings.run_hash_dmp = 1;
 #if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
 #pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
         // If not set, zlib compresses all our files enormously.
@@ -443,10 +443,11 @@ namespace BMF {
 
         //omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
         int c;
-        while ((c = getopt(argc, argv, "T:t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?S=")) > -1) {
+        while ((c = getopt(argc, argv, "T:t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdDh?S=")) > -1) {
             switch(c) {
                 case 'c': LOG_WARNING("Deprecated option -c.\n"); break;
-                case 'd': settings.run_hash_dmp = 1; break;
+                case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
+                case 'D': settings.run_hash_dmp = 0; break;
                 case 'f': settings.ffq_prefix = strdup(optarg); break;
                 case 'g': settings.gzip_compression = (uint32_t)atoi(optarg)%10; break;
                 case 'l': settings.blen = atoi(optarg); break;

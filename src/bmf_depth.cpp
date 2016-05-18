@@ -274,6 +274,7 @@ namespace BMF {
         kstring_t cov_str{0, 0, nullptr};
         kstring_t str{0};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
+            LOG_DEBUG("Read line %s.\n", str.s);
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
             double raw_mean, dmp_mean, singleton_mean;

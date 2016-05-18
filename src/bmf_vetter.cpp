@@ -33,7 +33,6 @@ namespace BMF {
                         "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
                         "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
                         "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
-                        "-w, --write-outside-bed\tWrite variants outside of bed region to file without analyzing. Default: False.\n"
                 );
         exit(retcode);
     }
