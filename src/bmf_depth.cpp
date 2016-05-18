@@ -183,12 +183,11 @@ namespace BMF {
         kstream_t *ks;
         hts_idx_t **idx;
         depth_aux_t **aux;
-        char **col_names;
         int *n_plp, dret, i, n, c, minMQ = 0;
         uint64_t *counts;
         const bam_pileup1_t **plp;
         int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
-        int requireFP = 0, n_cols = 0;
+        int requireFP = 0;
         char *bedpath = nullptr, *outpath = nullptr;
         FILE *histfp = nullptr;
         khiter_t k = 0;
@@ -248,8 +247,7 @@ namespace BMF {
             LOG_EXIT("Bed path required. Abort!\n");
         }
         counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-        n_cols = dlib::count_lines(bedpath);
-        col_names = (char **)calloc(n_cols, sizeof(char *));
+        std::string col_name;
 
         fp = gzopen(bedpath, "rb");
         if(!fp)
@@ -273,8 +271,9 @@ namespace BMF {
         std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str{0, 0, nullptr};
         kstring_t str{0};
+        const int n_lines = dlib::count_bed_lines(bedpath);
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
-            LOG_DEBUG("Read line %s.\n", str.s);
+            LOG_DEBUG("Loaded line.\n");
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
             double raw_mean, dmp_mean, singleton_mean;
@@ -299,6 +298,7 @@ namespace BMF {
             if(start < 0) start = 0;
             region_len = stop - start;
             capture_size += region_len;
+            LOG_DEBUG("Memory resize.\n");
             for(i = 0; i < n; ++i) {
                 aux[i]->dmp_counts.resize(region_len);
                 memset(&aux[i]->dmp_counts[0], 0, sizeof(uint64_t) * region_len);
@@ -311,9 +311,10 @@ namespace BMF {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                col_names[line_num] = restrdup(col_names[line_num], p);
+                LOG_DEBUG("p: %s.\n", p);
+                col_name = p;
                 *q = c;
-            } else col_names[line_num] = restrdup(col_names[line_num], (char *)NO_ID_STR);
+            } else col_name = (char *)NO_ID_STR;
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -347,9 +348,10 @@ namespace BMF {
             for(p = str.s, i = 0; i < 2 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
             if(p != str.s + str.l) --p;
             str.l = p - str.s;
+            LOG_INFO("Processing region #%i \"%s\". %0.4f%% complete of %i lines. N: %i\n", line_num + 1, str.s, (line_num * 100.) / n_lines, n_lines, n);
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
-                kputs(col_names[line_num], &str);
+                kputs(col_name.c_str(), &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
@@ -373,9 +375,12 @@ namespace BMF {
                 kputc('|', &str);
                 ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
             }
+            LOG_DEBUG("Finished region.\n");
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
+            LOG_DEBUG("Destroy pileup.\n");
             bam_mplp_destroy(mplp);
+            LOG_DEBUG("Destroyed pileup.\n");
             ++line_num;
             continue;
 
@@ -422,9 +427,7 @@ namespace BMF {
             kh_destroy(depth, aux[i]->depth_hash);
             cond_free(aux[i]);
         }
-        for(i = 0; i < n_cols; ++i) free(col_names[i]);
         free(counts);
-        free(col_names);
         free(aux); free(idx);
         free(str.s);
         free(bedpath);
