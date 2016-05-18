@@ -4,6 +4,10 @@ BMFtools (**B**arcoded **M**olecular **F**amilies tools) is a suite of tools for
 Reads which are PCR duplicates of original template molecules are **molecularly** demultiplexed into single unique observations for each sequenced founding template molecule.
 Accessory tools provide postprocessing, filtering, quality control, and summary statistics.
 
+### Workflow & Typical Use
+
+
+
 All command-line options are available from the command-line as follows:
 
 For a list of subcommands:
@@ -118,7 +122,7 @@ bmftools <subcommand> <-h>
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 
 ####<b>sdmp</b>
@@ -146,7 +150,7 @@ bmftools <subcommand> <-h>
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 
 ####<b>rsq</b>
@@ -170,7 +174,7 @@ bmftools <subcommand> <-h>
     > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
     > -l:    Output bam compression level.
     > -t:    Mismatch limit. Default: 2.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 ### Analysis
 
@@ -269,9 +273,9 @@ bmftools <subcommand> <-h>
     > -t:    Set phred score to which to set passing base qualities. Default: 93 ('~').
     > -m:    Set minFM required to pass reads. Default: 0.
     > -f:    Minimum fraction of reads in a family supporting a base call for inclusion. Default: 1.0.
-    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0. 
+    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0.
     > -d:    Flag to only mask failing base scores as '#'/2, not modifying passing quality scores.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 ####<b>filter</b>
   Description:
@@ -314,8 +318,8 @@ bmftools <subcommand> <-h>
 ####<b>target</b>
   Description:
   > Calculates the fraction of on-target reads, both raw and consolidated.
-  
-  Usage: bmftools target <opts> <in.bam> 
+
+  Usage: bmftools target <opts> <in.bam>
 
   Options:
     > -b:    Path to bed. REQUIRED.
@@ -335,7 +339,7 @@ bmftools <subcommand> <-h>
     1. err fm calculates error rates by family size.
   3. region
     1. err region calculates error rates by bed region.
-  
+
   Usage: bmftools err main <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
@@ -356,20 +360,95 @@ bmftools <subcommand> <-h>
     > -p:    Set padding for bed region. Default: 0.
     > -P:    Only include proper pairs.
     > -O:    Set minimum number of observations for imputing quality Default: 10000.
-    > -h/-?  Print help.
+    > -h/-?  Print usage.
 
-  Usage: bmftools err <opts> <in.bam> 
+  Usage: bmftools err fm <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
-    > -b:    Path to bed. REQUIRED.
-    > -m:    Set minimum mapping quality for inclusion.
-    > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
-    > -n:    Set notification interval - number of reads between logging statements. Default: 1000000.
+    > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
+    > -h/-?: Print usage.
+    > -S:    Set minimum calculated PV tag value for inclusion.
+    > -a:    Set minimum mapping quality for inclusion.
+    > -r:    Name of contig. If set, only reads aligned to this contig are considered
+    > -b:    Path to bed file for restricting analysis.
+    > -d:    Flag to only calculate error rates for duplex reads.
+    > -p:    Set padding for bed region. Default: 0.
+    > -P:    Only include proper pairs.
+    > -F:    Require that the FP tag be present and nonzero.
+    > -f:    Require that the fraction of family members agreed on a base be <parameter> or greater. Default: 0.0
 
-####bmftools err
+  Usage: bmftools err region <opts> <reference.fasta> <in.csrt.bam>
+
+  Options:
+   > -b:    Path to bed file. REQUIRED.
+   > -o:    Path to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.
+   > -a:    Set minimum mapping quality for inclusion.
+   > -p:    Set padding for bed region. Default: 0.
+   > -h/-?: Print usage.
+
 
 ####bmftools famstats
-Calculates summary statistics related to family size and demultiplexing.
+  Description:
+  > Calculates summary statistics related to family size and demultiplexing.
+  > famstats consists of two subcommands: fm and frac
+  > famstats fm has 2 subcommands:
+  1. fm
+    2. famstats fm produces summary statistics and count distributions for family size, duplex/reverse reads, and read rescue statistics.
+  2. frac
+    1. famstats frac
+
+  Usage: bmftools famstats fm <opts> <in.bam>
+
+  Options:
+    > -m:    Set minimum mapping quality. Default: 0.
+    > -f:    Set minimum family size. Default: 0.
+
+  Usage: bmftools famstats frac <opts> <minFM> <in.bam>
+
+  Options:
+    > -n:    Set notification interval. Default: 1000000.
+    > -h/-?: Print usage.
+
+
+### Utilities
+
+####bmftools sort
+  Description:
+  > Sorts an alignment file in preparation for read consolidation using positional information.
+  > Essentially a modification of samtools sort.
+
+  Options:
+    > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
+    > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
+    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
+    > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
+    > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
+    > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
+    > -@ INT       Set number of sorting and compression threads [1]
+    > -s           Flag to split the bam into a list of file handles.
+    > -p           If splitting into a list of handles, this sets the file prefix.
+    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
+    > -h/-?        Print usage.
+
+####bmftools mark
+  Description:
+  > Marks a sets of template bam records with auxiliary tags for use in downstream tools.
+  > Required for sort and rsq.
+  > Intended primarily for piping. Default compression is therefore 0. Typical compression for writing to disk: 6.
+
+  Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
+
+  Options:
+    > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
+    > -q:    Skip read pairs which fail.
+    > -d:    Set bam compression level to default (6).
+    > -i:    Skip read pairs whose insert size is less than <INT>.
+    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>
+    > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
+    > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
+    > Set output.bam to '-' or 'stdout' or omit to stdout.
+    > Thus `bmftools mark` defaults to reading and writing from stdin and stdout, respectively, in paired-end mode.
+
 
 ###"Undocumented" tools
 
@@ -392,6 +471,4 @@ Calculates summary statistics related to family size and demultiplexing.
     > -v:    Maximum barcode length. Only needed for variable-length barcodes.
     > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
     > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
-    > -h/-?: Print help menu.
-
-### Workflow
+    > -h/-?: Print usage.

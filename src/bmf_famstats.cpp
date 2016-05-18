@@ -10,7 +10,7 @@ namespace BMF {
         fprintf(stderr,
                         "Calculates the fraction of raw reads with family size >= parameter.\n"
                         "Usage: bmftools famstats frac <opts> <minFM> <in.bam>\n"
-                        "-n: Set notification interval. Default: 10000000.\n"
+                        "-n: Set notification interval. Default: 1000000.\n"
                         "-h, -?: Return usage.\n"
                 );
         exit(exit_status);
