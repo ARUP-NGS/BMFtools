@@ -218,7 +218,7 @@ namespace BMF {
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                	LOG_DEBUG("Trying to write.\n");
+                    LOG_DEBUG("Trying to write.\n");
                     bam2ffq(stack->a[i], settings->fqh);
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
@@ -237,11 +237,11 @@ namespace BMF {
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
-            	LOG_DEBUG("Starting to work on this read.\n");
-            	data = bam_aux_get(stack->a[i], "NC");
-            	LOG_DEBUG("Got data.\n");
+                LOG_DEBUG("Starting to work on this read.\n");
+                data = bam_aux_get(stack->a[i], "NC");
+                LOG_DEBUG("Got data.\n");
                 if(data) {
-                	LOG_DEBUG("Trying to write.\n");
+                    LOG_DEBUG("Trying to write.\n");
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
@@ -259,7 +259,7 @@ namespace BMF {
                         settings->realign_pairs.erase(qname);
                     }
                 } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
-                	LOG_DEBUG("Trying to write write supp or stuff.\n");
+                    LOG_DEBUG("Trying to write write supp or stuff.\n");
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
