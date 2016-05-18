@@ -37,10 +37,10 @@ namespace BMF {
         kputsnl("\tFA:B:I", &ks);
         for(i = 0; i < b->core.l_qseq; ++i) ksprintf(&ks, ",%u", fa[i]);
         ksprintf(&ks, "\tFM:i:%i\tFP:i:%i", bam_itag(b, "FM"), bam_itag(b, "FP"));
-        write_tag_if_found(rvdata, b, "RV", ks);
-        write_tag_if_found(rvdata, b, "NC", ks);
-        write_tag_if_found(rvdata, b, "DR", ks);
-        write_tag_if_found(rvdata, b, "NP", ks);
+        write_if_found(rvdata, b, "RV", ks);
+        write_if_found(rvdata, b, "NC", ks);
+        write_if_found(rvdata, b, "DR", ks);
+        write_if_found(rvdata, b, "NP", ks);
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -440,8 +440,8 @@ namespace BMF {
                 for(int i = 0; i < b->core.l_qseq; ++i)
                     pvbuf.push_back(static_cast<uint32_t>(qual[i]));
             }
-            bam_aux_append(b, "FA", 'B', b->core.l_qseq * sizeof(uint32_t), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
-            bam_aux_append(b, "PV", 'B', b->core.l_qseq * sizeof(uint32_t), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
+            dlib::bam_aux_array_append(b, "FA", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
+            dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
         }
     }
 

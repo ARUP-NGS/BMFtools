@@ -273,7 +273,6 @@ namespace BMF {
         kstring_t str{0};
         const int n_lines = dlib::count_bed_lines(bedpath);
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
-            LOG_DEBUG("Loaded line.\n");
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
             double raw_mean, dmp_mean, singleton_mean;
@@ -298,7 +297,6 @@ namespace BMF {
             if(start < 0) start = 0;
             region_len = stop - start;
             capture_size += region_len;
-            LOG_DEBUG("Memory resize.\n");
             for(i = 0; i < n; ++i) {
                 aux[i]->dmp_counts.resize(region_len);
                 memset(&aux[i]->dmp_counts[0], 0, sizeof(uint64_t) * region_len);
@@ -311,7 +309,6 @@ namespace BMF {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                LOG_DEBUG("p: %s.\n", p);
                 region_name = p;
                 *q = c;
             } else region_name = (char *)NO_ID_STR;
@@ -375,12 +372,9 @@ namespace BMF {
                 kputc('|', &str);
                 ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
             }
-            LOG_DEBUG("Finished region.\n");
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
-            LOG_DEBUG("Destroy pileup.\n");
             bam_mplp_destroy(mplp);
-            LOG_DEBUG("Destroyed pileup.\n");
             ++line_num;
             continue;
 
