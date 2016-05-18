@@ -88,7 +88,7 @@ namespace BMF {
         std::sort(fms.begin(), fms.end(), [](const fm_t a, const fm_t b){
             return a.fm < b.fm;
         });
-        if(fms[i].fm != (uint64_t)-1) {
+        if(fms[0].fm != (uint64_t)-1) {
             fprintf(fp, "#RV'd in family\tNumber of families\n");
             for(i = 0; i < stats->rc->n_occupied; ++i)
                 fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);

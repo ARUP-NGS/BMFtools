@@ -108,7 +108,8 @@ namespace BMF {
         }
     }
 
-    double u64_stdev(uint64_t *arr, size_t l, double mean)
+    template<typename T>
+    double stdev(T *arr, size_t l, double mean)
     {
         double ret = 0.0, tmp;
         for(unsigned i = 0; i < l; ++i) {
@@ -179,7 +180,6 @@ namespace BMF {
     int depth_main(int argc, char *argv[])
     {
         gzFile fp;
-        kstring_t str;
         kstream_t *ks;
         hts_idx_t **idx;
         depth_aux_t **aux;
@@ -216,10 +216,10 @@ namespace BMF {
             }
             if (usage) break;
         }
-        FILE *ofp = outpath ? fopen(outpath, "w"): stdout;
+        FILE *ofp = outpath ? fopen(outpath, "w")
+                            : stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
-        memset(&str, 0, sizeof(kstring_t));
         n = argc - optind;
         aux = (depth_aux_t **)calloc(n, sizeof(depth_aux_t*));
         idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
@@ -271,7 +271,8 @@ namespace BMF {
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
-        kstring_t cov_str = {0, 0, nullptr};
+        kstring_t cov_str{0, 0, nullptr};
+        kstring_t str{0};
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             LOG_DEBUG("Read line %s.\n", str.s);
             char *p, *q;
@@ -343,7 +344,8 @@ namespace BMF {
                 }
             }
             // Only print the first 3 columns plus the name column.
-            for(p = str.s, i = 0; i < 3;*p++ == '\t' ? ++i: 0);
+            for(p = str.s, i = 0; i < 2 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
+            if(p != str.s + str.l) --p;
             str.l = p - str.s;
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
@@ -352,11 +354,11 @@ namespace BMF {
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
-                raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
+                raw_stdev = stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
-                dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
+                dmp_stdev = stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
                 singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
-                singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
+                singleton_stdev = stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
                 kputc('\t', &str);
                 kputl(counts[i], &str);
                 ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
@@ -396,6 +398,7 @@ namespace BMF {
             ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
             ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
         }
+        kputc('\n', &hdr_str);
         cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
         fputs(hdr_str.s, ofp), fputs(cov_str.s, ofp);
         free(hdr_str.s), free(cov_str.s);
@@ -426,6 +429,6 @@ namespace BMF {
         free(str.s);
         free(bedpath);
         LOG_INFO("Successfully completed bmftools depth!\n");
-        return(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
 }

@@ -78,7 +78,7 @@ Uses positional information to collapse reads with the same alignment signatures
 ### Manipulation
 
 ####bmftools cap
-Caps quality scores from PV tags to facilitate working with barcode-agnostic tools.
+Caps quality scores using barcode metadata to facilitate working with barcode-agnostic tools.
 
 ####bmftools filter
 Filters or splits a bam file based on a set of filters. These can be inverted with -v (analogous to grep).

@@ -581,9 +581,7 @@ namespace BMF {
 
         strcpy(vcf_wmode, output_bcf ? "wb": "w");
         if(!outvcf) outvcf = strdup("-");
-        if(strcmp(outvcf, "-") == 0) {
-            LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
-        }
+        if(strcmp(outvcf, "-") == 0) LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
         // Open bam
         aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
         if(!aux.fp) LOG_EXIT("Could not open input bam %s. Abort!\n", argv[optind + 1]);

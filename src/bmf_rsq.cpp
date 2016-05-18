@@ -15,6 +15,7 @@ namespace BMF {
         uint32_t cmpkey:1; // 0 for pos, 1 for unclipped start position
         uint32_t is_se:1;
         uint32_t write_supp:1; // Write reads with supplementary alignments
+        uint32_t infer:1; // Use inference instead of barcodes. Fails on already-marked barcoded datasets.
         bam_hdr_t *hdr; // BAM header
         std::unordered_map<std::string, std::string> realign_pairs;
     };
@@ -217,6 +218,7 @@ namespace BMF {
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
                 if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+                	LOG_DEBUG("Trying to write.\n");
                     bam2ffq(stack->a[i], settings->fqh);
                 } else {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
@@ -231,10 +233,15 @@ namespace BMF {
     {
         if(settings->is_se) return write_stack_se(stack, settings);
         //size_t n = 0;
+        LOG_DEBUG("Starting to write stack\n");
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
-                if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
+            	LOG_DEBUG("Starting to work on this read.\n");
+            	data = bam_aux_get(stack->a[i], "NC");
+            	LOG_DEBUG("Got data.\n");
+                if(data) {
+                	LOG_DEBUG("Trying to write.\n");
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
@@ -252,6 +259,7 @@ namespace BMF {
                         settings->realign_pairs.erase(qname);
                     }
                 } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
+                	LOG_DEBUG("Trying to write write supp or stuff.\n");
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -273,13 +281,14 @@ namespace BMF {
                         settings->realign_pairs.erase(qname);
                     }
                 } else {
+                    LOG_DEBUG("About to output bam\n");
                     uint8_t *data;
-                    data = bam_aux_get(stack->a[i], "MU");
-                    bam_aux_del(stack->a[i], data);
+                    if((data = bam_aux_get(stack->a[i], "MU")) != nullptr)
+                        bam_aux_del(stack->a[i], data);
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-            }
+            } else {LOG_DEBUG("DNE\n");}
         }
     }
 
@@ -332,6 +341,33 @@ namespace BMF {
         }
     }
 
+    static inline void flatten_stack_infer(dlib::tmp_stack_t *stack, int mmlim)
+    {
+        std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
+                return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+        });
+        for(unsigned i = 0; i < stack->n; ++i) {
+            for(unsigned j = i + 1; j < stack->n; ++j) {
+                //assert(key == ucs_sort_core_key(stack->a[j]));
+                //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
+                //assert(tid == stack->a[j]->core.tid);
+                //assert(mucs == bam_itag(stack->a[j], "MU"));
+                assert(stack->a[i]);
+                assert(stack->a[j]);
+                if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
+                    continue;
+                //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
+                update_bam1(stack->a[j], stack->a[i]);
+                bam_destroy1(stack->a[i]);
+                stack->a[i] = nullptr;
+                break;
+                // "break" in case there are multiple within hamming distance.
+                // Otherwise, I'll end up having memory mistakes.
+                // Besides, that read set will get merged into the later read in the set.
+            }
+        }
+    }
+
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
@@ -379,10 +415,90 @@ namespace BMF {
         }
     }
 
+    static const std::vector<uint32_t> ONES(300uL, 1);
+
+    inline void add_dummy_tags(bam1_t *b)
+    {
+        const int one(1);
+        uint8_t *d;
+        static std::vector<uint32_t> pvbuf;
+        pvbuf.reserve(b->core.l_qseq);
+        // Set the read to be a singleton
+        if((d = bam_aux_get(b, "FM")) == nullptr)
+            bam_aux_append(b, "FM", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
+        // Pass the read
+        if((d = bam_aux_get(b, "FP")) == nullptr)
+            bam_aux_append(b, "FP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
+        if((d = bam_aux_get(b, "FA")) == nullptr) {
+            const uint8_t *qual = bam_get_qual(b);
+            if(b->core.flag & BAM_FREVERSE) {
+                const uint8_t *end = bam_get_qual(b) + b->core.l_qseq;
+                while(end >= qual)
+                    pvbuf.push_back(static_cast<uint32_t>(*--end));
+
+            } else {
+                for(int i = 0; i < b->core.l_qseq; ++i)
+                    pvbuf.push_back(static_cast<uint32_t>(qual[i]));
+            }
+            bam_aux_append(b, "FA", 'B', b->core.l_qseq * sizeof(uint32_t), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
+            bam_aux_append(b, "PV", 'B', b->core.l_qseq * sizeof(uint32_t), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
+        }
+    }
+
+    void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
+    {
+        // This selects the proper function to use for deciding if reads belong in the same stack.
+        // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
+        if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+            LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+                     dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+        bam1_t *b = bam_init1();
+        uint64_t count = 0;
+        while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+            if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+            add_dummy_tags(b);
+            if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
+                sam_write1(settings->out, settings->hdr, b);
+                continue;
+            }
+            //LOG_DEBUG("Read a read!\n");
+            if(stack->n == 0 || fn(b, *stack->a) == 0) {
+                LOG_DEBUG("Flattening stack\n");
+                // New stack -- flatten what we have and write it out.
+                flatten_stack_infer(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+                LOG_DEBUG("Flattened!\n")
+                write_stack(stack, settings);
+                LOG_DEBUG("Written\n");
+                stack->n = 1;
+                stack->a[0] = bam_dup1(b);
+                //LOG_DEBUG("Flattened stack\n");
+            } else {
+                LOG_DEBUG("Stack now has size %lu.\n", stack->n);
+                stack_insert(stack, b);
+            }
+        }
+        LOG_DEBUG("Loop exit.\n");
+        flatten_stack_infer(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+        write_stack(stack, settings);
+        stack->n = 0;
+        bam_destroy1(b);
+        // Handle any unpaired reads, though there shouldn't be any in real datasets.
+        LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
+        if(settings->realign_pairs.size()) {
+            LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+            for(auto pair: settings->realign_pairs)
+                puts(pair.second.c_str());
+#endif
+        }
+    }
+
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
-        dlib::tmp_stack_t stack = {0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
-        rsq_core(settings, &stack);
+        dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
+        if(settings->infer) infer_core(settings, &stack);
+        else rsq_core(settings, &stack);
         free(stack.a);
     }
 
@@ -402,6 +518,8 @@ namespace BMF {
                         "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                         "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
                         "Note: -u requires pre-processing with bmftools mark_unclipped.\n"
+                        "-i      Flag to ignore barcodes and infer solely by positional information. [THIS IS BROKEN]\n"
+                        "This flag adds artificial auxiliary tags to treat unbarcoded reads as if they were singletons.\n"
                 );
         return retcode;
     }
@@ -420,7 +538,7 @@ namespace BMF {
 
         if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-        while ((c = getopt(argc, argv, "l:f:t:SHush?")) >= 0) {
+        while ((c = getopt(argc, argv, "l:f:t:iSHush?")) >= 0) {
             switch (c) {
             case 's': settings.write_supp = 1; break;
             case 'S': settings.is_se = 1; break;
@@ -431,6 +549,7 @@ namespace BMF {
             case 't': settings.mmlim = atoi(optarg); break;
             case 'f': fqname = optarg; break;
             case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
+            case 'i': settings.infer = 1; break;
             case '?': case 'h': case 'H': return rsq_usage(EXIT_SUCCESS);
             }
         }
@@ -451,8 +570,9 @@ namespace BMF {
         if(settings.cmpkey == cmpkey::UNCLIPPED)
             if(!settings.is_se)
                 dlib::check_bam_tag_exit(argv[optind], "MU");
-        for(const char *tag: {"FM", "FA", "PV", "FP"})
-            dlib::check_bam_tag_exit(argv[optind], tag);
+        if(!settings.infer)
+            for(const char *tag: {"FM", "FA", "PV", "FP"})
+                dlib::check_bam_tag_exit(argv[optind], tag);
         settings.in = sam_open(argv[optind], "r");
         settings.hdr = sam_hdr_read(settings.in);
 
