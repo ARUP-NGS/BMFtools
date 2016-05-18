@@ -311,15 +311,62 @@ bmftools <subcommand> <-h>
     > -s:    Skip reads with an FP tag whose value is 0. (Fail)
 
 
-####bmftools depth
-Calculates depth of coverage across a bed file using barcode metadata.
+####<b>target</b>
+  Description:
+  > Calculates the fraction of on-target reads, both raw and consolidated.
+  
+  Usage: bmftools target <opts> <in.bam> 
 
-####bmftools target
-Calculates on-target fraction for bed file using barcode metadata.
+  Options:
+    > -b:    Path to bed. REQUIRED.
+    > -m:    Set minimum mapping quality for inclusion.
+    > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
+    > -n:    Set notification interval - number of reads between logging statements. Default: 1000000.
+
+####<b>err</b>
+  Description:
+  > Calculates error rates by a variety of parameters.
+  > Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
+  > err has 3 subcommands:
+  1. main
+    1. Primary output is recalibrated quality scores given a sequenced, aligned, sorted standard dataset. (e.g., PhiX)
+    2. err main also produces error rates by cycle, base call, quality score, facilitating error analysis.
+  2. fm
+    1. err fm calculates error rates by family size.
+  3. region
+    1. err region calculates error rates by bed region.
+  
+  Usage: bmftools err main <opts> <reference.fasta> <in.csrt.bam>
+
+  Options:
+    > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
+    > -a:    Set minimum mapping quality for inclusion.
+    > -S:    Set minimum calculated PV tag value for inclusion.
+    > -r:    Name of contig. If set, only reads aligned to this contig are considered
+    > -3:    Path to write the 3d offset array in tabular format.
+    > -f:    Path to write the full measured error rates in tabular format.
+    > -n:    Path to write the cycle/nucleotide call error rates in tabular format.
+    > -c:    Path to write the cycle error rates in tabular format.
+    > -g:    Path to write the global error rates in tabular format.
+    > -b:    Path to bed file for restricting analysis.
+    > -m:    Minimum family size for inclusion. Default: 0.
+    > -M:    Maximum family size for inclusion. Default: 2147483647.
+    > -d:    Flag to only calculate error rates for duplex reads.
+    > -D:    Flag to only calculate error rates for non-duplex reads.
+    > -p:    Set padding for bed region. Default: 0.
+    > -P:    Only include proper pairs.
+    > -O:    Set minimum number of observations for imputing quality Default: 10000.
+    > -h/-?  Print help.
+
+  Usage: bmftools err <opts> <in.bam> 
+
+  Options:
+    > -b:    Path to bed. REQUIRED.
+    > -m:    Set minimum mapping quality for inclusion.
+    > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
+    > -n:    Set notification interval - number of reads between logging statements. Default: 1000000.
 
 ####bmftools err
-Calculates error rates by a variety of parameters.
-Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
 
 ####bmftools famstats
 Calculates summary statistics related to family size and demultiplexing.
