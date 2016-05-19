@@ -175,7 +175,7 @@ bmftools <subcommand> <-h>
   Description:
   > Performs molecular demutiplexing of inline barcoded fastq data.
   > The homing sequence is a sequence of bases marking the end of the random nucleotides
-  > which make up the barcode. This is required to ensure that chemistr has worked as expected
+  > which make up the barcode. This is required to ensure that chemistry has worked as expected
   > and to identify the barcode length, which is used for additional entropy.
 
   > To achieve linear performance with arbitrarily large datasets, an initial marking step subsets the reads by the first
