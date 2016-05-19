@@ -31,7 +31,7 @@ namespace BMF {
         return retcode; // This never happens.
     }
 
-    target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval)
+    target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minmq, uint64_t notification_interval)
     {
         dlib::BamHandle handle(bampath);
         khash_t(bed) *bed(dlib::parse_bed_hash(bedpath, handle.header, padding));
@@ -39,7 +39,7 @@ namespace BMF {
         uint8_t *data;
         int test;
         while (LIKELY(handle.next() >= 0)) {
-            if((handle.rec->core.qual < minMQ) || (handle.rec->core.flag & (3844))) { // 3844 is unmapped, secondary, supplementary, qcfail, duplicate
+            if((handle.rec->core.qual < minmq) || (handle.rec->core.flag & (3844))) { // 3844 is unmapped, secondary, supplementary, qcfail, duplicate
                 ++counts.n_skipped;
                 continue;
             }
@@ -63,7 +63,7 @@ namespace BMF {
     int target_main(int argc, char *argv[])
     {
         char *bedpath = nullptr;
-        uint32_t padding = (uint32_t)-1, minMQ = 0;
+        uint32_t padding = (uint32_t)-1, minmq = 0;
         uint64_t notification_interval = 1000000;
 
 
@@ -75,7 +75,7 @@ namespace BMF {
         while ((c = getopt(argc, argv, "m:b:p:n:h?")) >= 0) {
             switch (c) {
             case 'm':
-                minMQ = strtoul(optarg, nullptr, 0); break;
+                minmq = strtoul(optarg, nullptr, 0); break;
             case 'b':
                 bedpath = strdup(optarg); break;
             case 'p':
@@ -101,7 +101,7 @@ namespace BMF {
             return target_usage(EXIT_FAILURE);
         }
 
-        target_counts_t counts = target_core(bedpath, argv[optind], padding, minMQ, notification_interval);
+        target_counts_t counts = target_core(bedpath, argv[optind], padding, minmq, notification_interval);
 
         // Open [smt]am file.
 
@@ -112,13 +112,13 @@ namespace BMF {
         fprintf(stdout, "Number of real FM reads on target: %lu\n", counts.rfm_target);
         fprintf(stdout, "Number of reads total: %lu\n", counts.count);
         fprintf(stdout, "Number of reads on target: %lu\n", counts.target);
-        fprintf(stdout, "Fraction of dmp reads on target with padding of %u bases and %i minMQ: %0.12f\n",
-                padding, minMQ, (double)counts.target / counts.count);
-        fprintf(stdout, "Fraction of raw reads on target with padding of %u bases and %i minMQ: %0.12f\n",
-                padding, minMQ, (double)counts.raw_target / counts.raw_count);
+        fprintf(stdout, "Fraction of dmp reads on target with padding of %u bases and %i minmq: %0.12f\n",
+                padding, minmq, (double)counts.target / counts.count);
+        fprintf(stdout, "Fraction of raw reads on target with padding of %u bases and %i minmq: %0.12f\n",
+                padding, minmq, (double)counts.raw_target / counts.raw_count);
         if(counts.rfm_count) {
-            fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minMQ: %0.12f\n",
-                    padding, minMQ, (double)counts.rfm_target / counts.rfm_count);
+            fprintf(stdout, "Fraction of families of size >= 2 on target with padding of %u bases and %i minmq: %0.12f\n",
+                    padding, minmq, (double)counts.rfm_target / counts.rfm_count);
         }
         LOG_INFO("Successfully complete bmftools target!\n");
         return EXIT_SUCCESS;

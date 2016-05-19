@@ -25,16 +25,16 @@ static const char *stack_vcf_lines[] = {
 };
 
     struct stack_conf_t {
-        float minFR; // Minimum fraction of family members agreed on base
+        float min_fr; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
         int max_depth;
         uint32_t minFM;
         uint32_t minFA;
         uint32_t minPV;
-        uint32_t minMQ;
-        int minCount;
-        int minDuplex;
-        int minOverlap;
+        uint32_t minmq;
+        int min_count;
+        int min_duplex;
+        int min_overlap;
         int skip_improper;
         uint32_t skip_flag; // Skip reads with any bits set to true
         int output_bcf;

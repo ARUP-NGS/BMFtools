@@ -45,7 +45,7 @@ namespace BMF {
 
     struct famstats_fm_settings_t {
         uint64_t notification_interval;
-        uint32_t minMQ:8;
+        uint32_t minmq:8;
         uint32_t skip_fp_fail:1;
         uint32_t minFM:16;
     };
@@ -146,7 +146,7 @@ namespace BMF {
         uint8_t *data;
         if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
         if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) ||
-                b->core.qual < settings->minMQ) {
+                b->core.qual < settings->minmq) {
             ++s->n_flag_fail;
             return;
         }
@@ -257,7 +257,7 @@ namespace BMF {
         while ((c = getopt(argc, argv, "m:f:n:Fh?")) >= 0) {
             switch (c) {
             case 'm':
-                settings.minMQ = atoi(optarg); break;
+                settings.minmq = atoi(optarg); break;
                 break;
             case 'f':
                 settings.minFM = atoi(optarg); break;
@@ -274,7 +274,7 @@ namespace BMF {
             return famstats_fm_usage((argc == optind) ? EXIT_SUCCESS: EXIT_FAILURE);
         }
 
-        LOG_INFO("Running famstats fm with minMQ %i and minFM %i.\n", settings.minMQ, settings.minFM);
+        LOG_INFO("Running famstats fm with minmq %i and minFM %i.\n", settings.minmq, settings.minFM);
         for(const char *tag: tags_to_check)
             dlib::check_bam_tag_exit(argv[optind], tag);
 

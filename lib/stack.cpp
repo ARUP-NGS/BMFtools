@@ -134,7 +134,7 @@ namespace BMF {
             // auto without "reference" because auto is pointers.
             for(auto uni: tumor.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
-                        || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
+                        || (float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
                     uni->set_pass(0);
                     ++failed_counts[0];
                     continue;
@@ -143,9 +143,9 @@ namespace BMF {
                 overlap_counts[0] += uni->get_overlap();
                 reverse_counts[0] += uni->get_reverse();
                 qscore_sums[0] += uni->get_quality();
-                allele_passes[0] = (duplex_counts[0] >= aux->conf.minDuplex &&
-                                    counts[0] >= aux->conf.minCount &&
-                                    overlap_counts[0] >= aux->conf.minOverlap);
+                allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
+                                    counts[0] >= aux->conf.min_count &&
+                                    overlap_counts[0] >= aux->conf.min_overlap);
             }
         }
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
@@ -153,7 +153,7 @@ namespace BMF {
             // auto without "reference" because auto is pointers.
             for(auto uni: normal.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
-                       || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
+                       || (float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
                     uni->set_pass(0);
                     ++failed_counts[n_base_calls];
                     continue;
@@ -163,9 +163,9 @@ namespace BMF {
                 reverse_counts[n_base_calls] += uni->get_reverse();
                 qscore_sums[n_base_calls] += uni->get_quality();
             }
-            allele_passes[n_base_calls] = (duplex_counts[n_base_calls] >= aux->conf.minDuplex &&
-                                                counts[n_base_calls] >= aux->conf.minCount &&
-                                                overlap_counts[n_base_calls] >= aux->conf.minOverlap);
+            allele_passes[n_base_calls] = (duplex_counts[n_base_calls] >= aux->conf.min_duplex &&
+                                                counts[n_base_calls] >= aux->conf.min_count &&
+                                                overlap_counts[n_base_calls] >= aux->conf.min_overlap);
         }
         kstring_t allele_str = {0, 0, nullptr};
         ks_resize(&allele_str, 8uL);
@@ -176,7 +176,7 @@ namespace BMF {
                 counts[i + n_base_calls] = match->second.size();
                 for(auto uni: normal.templates[base_calls[i]]) {
                     if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
-                            || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
+                            || (float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
                         uni->set_pass(0);
                         ++failed_counts[i];
                         continue;
@@ -186,15 +186,15 @@ namespace BMF {
                     reverse_counts[i + n_base_calls] += uni->get_reverse();
                     qscore_sums[i + n_base_calls] += uni->get_quality();
                 }
-                allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.minDuplex &&
-                                                        counts[i + n_base_calls] >= aux->conf.minCount &&
-                                                        overlap_counts[i + n_base_calls] >= aux->conf.minOverlap);
+                allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.min_duplex &&
+                                                        counts[i + n_base_calls] >= aux->conf.min_count &&
+                                                        overlap_counts[i + n_base_calls] >= aux->conf.min_overlap);
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
                 counts[i] = match->second.size();
                 for(auto uni: tumor.templates[base_calls[i]]) {
                     if(uni->get_quality() < aux->conf.minPV || uni->get_agreed() < aux->conf.minFA
-                            || (float)uni->get_agreed() / uni->get_size() < aux->conf.minFR) {
+                            || (float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
                         uni->set_pass(0);
                         ++failed_counts[i];
                         continue;
@@ -204,9 +204,9 @@ namespace BMF {
                     reverse_counts[i] += uni->get_reverse();
                     qscore_sums[i] += uni->get_quality();
                 }
-                allele_passes[i] = (duplex_counts[i] >= aux->conf.minDuplex &&
-                                                        counts[i] >= aux->conf.minCount &&
-                                                        overlap_counts[i] >= aux->conf.minOverlap);
+                allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
+                                                        counts[i] >= aux->conf.min_count &&
+                                                        overlap_counts[i] >= aux->conf.min_overlap);
                 if(allele_passes[i] && !allele_passes[i + n_base_calls]) {
                     bcf_update_info_flag(aux->vcf.vh, vrec, "SOMATIC", nullptr, 1);
                     somatic[i] = 1;

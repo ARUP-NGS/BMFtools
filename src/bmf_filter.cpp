@@ -25,7 +25,7 @@ namespace BMF {
 
     struct opts {
         uint32_t minFM:14;
-        uint32_t minMQ:8;
+        uint32_t minmq:8;
         uint32_t v:1;
         uint32_t is_se:1;
         uint32_t skip_flag:16;
@@ -35,14 +35,14 @@ namespace BMF {
     };
 
 /* If FM tag absent, it's treated as if it were 1.
- * Fail reads with FM < minFM, MQ < minMQ, a flag with any skip bits set,
+ * Fail reads with FM < minFM, MQ < minmq, a flag with any skip bits set,
  * a flag without all required bits set, and, if a bed file is provided,
  * reads outside of the bed region.
 */
     static inline int test_core(bam1_t *b, opts *options) {
         uint8_t *data;
         if((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM))
-            if(b->core.qual >= options->minMQ)
+            if(b->core.qual >= options->minmq)
                 if((b->core.flag & options->skip_flag) == 0)
                     if((b->core.flag & options->require_flag) == options->require_flag)
                         if(options->bed ? dlib::bed_test(b, options->bed):1)
@@ -53,14 +53,14 @@ namespace BMF {
     }
 
     /* If FM tag absent, it's treated as if it were 1.
-     * Fail reads with FM < minFM, MQ < minMQ, a flag with any skip bits set,
+     * Fail reads with FM < minFM, MQ < minmq, a flag with any skip bits set,
      * a flag without all required bits set, and, if a bed file is provided,
      * reads outside of the bed region.
     */
         static inline int test_core_se(bam1_t *b, opts *options) {
             uint8_t *data;
             return ((((data = bam_aux_get(b, "FM")) != nullptr) ? bam_aux2i(data): 1) >= (int)(options->minFM)) &&
-                    b->core.qual >= options->minMQ &&
+                    b->core.qual >= options->minmq &&
                     ((b->core.flag & options->skip_flag) == 0) &&
                     (b->core.flag & options->require_flag) == options->require_flag &&
                     (options->bed ? dlib::bed_test(b, options->bed):1) &&
@@ -108,7 +108,7 @@ namespace BMF {
             case 'a': param.minAF = atof(optarg); break;
             case 'P': padding = atoi(optarg); break;
             case 'b': bedpath = optarg; break;
-            case 'm': param.minMQ = strtoul(optarg, nullptr, 0); break;
+            case 'm': param.minmq = strtoul(optarg, nullptr, 0); break;
             case 's': param.minFM = strtoul(optarg, nullptr, 0); break;
             case 'F': param.skip_flag = strtoul(optarg, nullptr, 0); break;
             case 'f': param.require_flag = strtoul(optarg, nullptr, 0); break;
