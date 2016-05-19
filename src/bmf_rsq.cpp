@@ -354,6 +354,7 @@ namespace BMF {
                 //assert(mucs == bam_itag(stack->a[j], "MU"));
                 assert(stack->a[i]);
                 assert(stack->a[j]);
+                assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
                 if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
                     continue;
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
@@ -420,29 +421,22 @@ namespace BMF {
     inline void add_dummy_tags(bam1_t *b)
     {
         const int one(1);
-        uint8_t *d;
-        static std::vector<uint32_t> pvbuf;
+        int i;
+        std::vector<uint32_t> pvbuf;
         pvbuf.reserve(b->core.l_qseq);
         // Set the read to be a singleton
-        if((d = bam_aux_get(b, "FM")) == nullptr)
-            bam_aux_append(b, "FM", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
+        bam_aux_append(b, "FM", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
         // Pass the read
-        if((d = bam_aux_get(b, "FP")) == nullptr)
-            bam_aux_append(b, "FP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
-        if((d = bam_aux_get(b, "FA")) == nullptr) {
-            const uint8_t *qual = bam_get_qual(b);
-            if(b->core.flag & BAM_FREVERSE) {
-                const uint8_t *end = bam_get_qual(b) + b->core.l_qseq;
-                while(end >= qual)
-                    pvbuf.push_back(static_cast<uint32_t>(*--end));
-
-            } else {
-                for(int i = 0; i < b->core.l_qseq; ++i)
-                    pvbuf.push_back(static_cast<uint32_t>(qual[i]));
-            }
-            dlib::bam_aux_array_append(b, "FA", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
-            dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
-        }
+        bam_aux_append(b, "FP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
+        uint8_t *qual = bam_get_qual(b);
+        if(b->core.flag & BAM_FREVERSE)
+        	for(i = b->core.l_qseq; i;)
+        		pvbuf.push_back(static_cast<uint32_t>(qual[--i]));
+        else
+        	for(i = 0; i < b->core.l_qseq; ++i)
+        		pvbuf.push_back(static_cast<uint32_t>(qual[i]));
+        dlib::bam_aux_array_append(b, "FA", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
+        dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
     }
 
     void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
@@ -497,8 +491,8 @@ namespace BMF {
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
         dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
-        if(settings->infer) infer_core(settings, &stack);
-        else rsq_core(settings, &stack);
+        settings->infer ? infer_core(settings, &stack)
+                        : rsq_core(settings, &stack);
         free(stack.a);
     }
 

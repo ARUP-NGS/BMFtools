@@ -443,7 +443,7 @@ bmftools <subcommand> <-h>
     > -q:    Skip read pairs which fail.
     > -d:    Set bam compression level to default (6).
     > -i:    Skip read pairs whose insert size is less than <INT>.
-    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>
+    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <parameter>
     > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
     > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
     > Set output.bam to '-' or 'stdout' or omit to stdout.
@@ -459,7 +459,7 @@ bmftools <subcommand> <-h>
   > RAM-hungry but fast. Useful for relatively small datasets.
 
 
-  Usage: `bmftools inmem <options> input_R1.fast1.gz input_R2.fastq.gz`
+  Usage: `bmftools inmem <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -472,3 +472,8 @@ bmftools <subcommand> <-h>
     > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
     > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
     > -h/-?: Print usage.
+
+
+####<b>hashdmp</b>
+  Description:
+   Contains 

@@ -255,7 +255,7 @@ namespace BMF {
         ks = ks_init(fp);
         n_plp = (int *)calloc(n, sizeof(int));
         plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
-        int line_num = 0;
+        int lineno = 1;
         // Write header
         // stderr ONLY for this development phase.
         kstring_t hdr_str{0, 0, nullptr};
@@ -345,7 +345,8 @@ namespace BMF {
             for(p = str.s, i = 0; i < 2 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
             if(p != str.s + str.l) --p;
             str.l = p - str.s;
-            LOG_INFO("Processing region #%i \"%s\". %0.4f%% complete of %i lines. N: %i\n", line_num + 1, str.s, (line_num * 100.) / n_lines, n_lines, n);
+            LOG_INFO("Processing region #%i \"%s\". %0.4f%% Complete: %i of %i lines.\n", lineno, str.s, (lineno * 100.) / n_lines, lineno, n_lines);
+
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
                 kputs(region_name.c_str(), &str);
@@ -375,7 +376,7 @@ namespace BMF {
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
             bam_mplp_destroy(mplp);
-            ++line_num;
+            ++lineno;
             continue;
 
     bed_error:
