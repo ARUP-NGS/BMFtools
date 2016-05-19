@@ -8,12 +8,15 @@ Accessory tools provide postprocessing, filtering, quality control, and summary 
 
 The only difference between inline and secondary index chemistry workflows is the initial `bmftools dmp` call.
 
+####Exact-Matching Fastq Consolidation
 A typical paired-end exact fastq-stage molecular demultiplexing call:
 
 > Inline
-`bmftools dmp -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>`
+
+```bmftools dmp -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>```
 > Secondary Index
-`bmftools sdmp -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>`
+
+```bmftools sdmp -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>```
 
 Each of these produces `final_output_prefix.R1.fq` and `final_output_prefix.R2.fq`. (A .gz suffix is appended if the output is gzip compressed.)
 
@@ -21,19 +24,21 @@ Barcode metadata is written into fastq comments in SAM auxiliary tag format. The
 bwa mem with the -C option, which appends the fastq comment to the end of the sam record. This trivially adds
 tags to all alignments for each read.
 
+####Alignment
+
 `bwa mem -CYT0 -t<threads> <idx.base> final_output_prefix.R1.fq final_output_prefix.R2.fq | samtools view -bho final_output.bam`
 
 
+####Rescue
 Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
 reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
 
 This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
 collapsing reads sharing these signatures with similar barcodes into single observations.
 
-Alignment signatures consist of a read and its mate's alignment information. These can be grouped by start position
-or by unclipped start position. Unclipped start position is likely less sensitive to errors in the reads, whereas
-a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position therefore
-requires an additional sorting step.
+"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
+or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
+a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
 
 Because reads need both their and their mates' alignment information, including read length, the preprocessing
 `bmftools mark` is required prior to bmftools sort.
@@ -49,18 +54,22 @@ If secondary and supplementary alignments are needed for other reads,these shoul
 `bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
 
 For position:
+
 `bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
 
 For unclipped start:
+
 `bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
 
 
 Realigned reads are then sorted and merged in with the other reads in the dataset.
 
-~bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix>  | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
+`bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix> | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
 
 For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
 At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
+
+####Post-rescue: Now what?
 
 If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
 
@@ -268,27 +277,45 @@ bmftools <subcommand> <-h>
     TODO: Fill in details on these tags.
     VCF Header Fields:
     1. BMF_PASS
+      1. 1 if variant passes, 0 otherwise.
     2. ADP
+      1. Number of unique observations for allele.
     3. ADPO
+      1. Number of overlapping read pair observations for allele.
     3. ADPD
+      1. Number of duplex observations for allele.
     4. ADPR
+      1. Number of original reversed observations for allele.
     5. RVF
+      1. Fraction of RV observations supporting allele.
     6. QSS
+      1. Q Score Sum supporting allele.
     7. AMBIG
-    8. SOMATIC_PV
+      1. Number of ambiguous base calls at position.
     9. SOMATIC_CALL
-    10. SOMATIC
+      1. Boolean value for a somatic call for allele.
     11. FR_FAILED
+      1. Number of observations failed by fraction of family members agreed on a base call per sample.
     12. FM_FAILED
+      1. Number of observations failed for insufficient family size per sample.
     13. FP_FAILED
+      1. Number of observations failed for failing barcode QC per sample.
     14. AF_FAILED
+      1. Number of observations failed for insufficient aligned fraction.
     15. MQ_FAILED
+      1. Number of observations failed for insufficient mapping quality.
     16. IMPROPER
+      1. Number of observations failed for being in an improper pair.
     17. OVERLAP
+      1. Number of overlapping read pairs at position.
+    18. AFR
+      1. Allele Fractions per allele, including reference.
 
 ####<b>vet</b>
     Description:
     > Curates variant calls from a bcf file and an associated, indexed bam file.
+    > Overlapping reads in a pileup are treated as two observations and are merged, if agreed, using Fisher's method.
+    > Discordant unambiguous base calls are masked. Ambiguous base calls are overridden by an unambiguous call from its mate.
 
     Options:
     > -b, --bed-path:              Path to bed file for anaylsis. REQUIRED.
@@ -307,17 +334,22 @@ bmftools <subcommand> <-h>
     > -q, --skip-qc-fail:          Skip reads marked as QC fail.
     > -F, --skip-recommended:      Skip secondary, supplementary, and PCR duplicates.
     > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
-    > -w, --write-outside-bed:     Write variants outside of bed region unmodified rather than removing.
 
-    TODO: Fill in details on these tags.
     VCF Header Fields:
     1. BMF_VET
+      1. 1 if a variant passes, 0 otherwise. 
     2. BMF_UNIOBS
+      1. Number of unique observations supporting a variant at that position.
     3. BMF_DUPLEX
+      1. Number of duplex observations supporting a variant at that position.
     4. BMF_FAIL
+      1. NUmber of reads at position failing filters.
     5. DUPLEX_DEPTH
+      1. Number of duplex reads at position passing filters.
     6. DISC_OVERLAP
+      1. Number of read pairs at position with discordant base calls.
     7. OVERLAP
+      1. Number of overlapping read pairs combined into single observations at position.
 
 
 ### Manipulation
