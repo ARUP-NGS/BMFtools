@@ -15,7 +15,7 @@ namespace BMF {
         uint32_t cmpkey:1; // 0 for pos, 1 for unclipped start position
         uint32_t is_se:1;
         uint32_t write_supp:1; // Write reads with supplementary alignments
-        uint32_t infer:1; // Use inference instead of barcodes. Fails on already-marked barcoded datasets.
+        uint32_t infer:1; // Use inference instead of barcodes.
         bam_hdr_t *hdr; // BAM header
         std::unordered_map<std::string, std::string> realign_pairs;
     };

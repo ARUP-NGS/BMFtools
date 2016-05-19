@@ -6,6 +6,67 @@ Accessory tools provide postprocessing, filtering, quality control, and summary 
 
 ### Workflow & Typical Use
 
+The only difference between inline and secondary index chemistry workflows is the initial `bmftools dmp` call.
+
+A typical paired-end exact fastq-stage molecular demultiplexing call:
+
+> Inline
+`bmftools dmp -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>`
+> Secondary Index
+`bmftools sdmp -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>`
+
+Each of these produces `final_output_prefix.R1.fq` and `final_output_prefix.R2.fq`. (A .gz suffix is appended if the output is gzip compressed.)
+
+Barcode metadata is written into fastq comments in SAM auxiliary tag format. These reads are then aligned with
+bwa mem with the -C option, which appends the fastq comment to the end of the sam record. This trivially adds
+tags to all alignments for each read.
+
+`bwa mem -CYT0 -t<threads> <idx.base> final_output_prefix.R1.fq final_output_prefix.R2.fq | samtools view -bho final_output.bam`
+
+
+Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
+reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
+
+This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
+collapsing reads sharing these signatures with similar barcodes into single observations.
+
+Alignment signatures consist of a read and its mate's alignment information. These can be grouped by start position
+or by unclipped start position. Unclipped start position is likely less sensitive to errors in the reads, whereas
+a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position therefore
+requires an additional sorting step.
+
+Because reads need both their and their mates' alignment information, including read length, the preprocessing
+`bmftools mark` is required prior to bmftools sort.
+
+
+Because reads that have been modified may align elsewhere, these reads are all realigned. In addition, this regenerates
+all of the secondary and supplementary alignments.
+
+
+In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
+If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
+
+`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
+
+For position:
+`bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
+
+For unclipped start:
+`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
+
+
+Realigned reads are then sorted and merged in with the other reads in the dataset.
+
+~bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix>  | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
+
+For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
+At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
+
+If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
+
+For more specific use cases, postprocessing steps (such as cap and filter) can be used to prepare a bam for use by BMF-agnostic tools, and variant calling can be performed or vetted with `bmftools stack` or `bmftools vet`.
+
+##Tools
 
 
 All command-line options are available from the command-line as follows:
@@ -31,7 +92,7 @@ bmftools <subcommand> <-h>
 
 <p>
 
-`bmftools dmp -p 12 -d -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
+`bmftools dmp -p 12 -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
 
 <p>
 
@@ -67,7 +128,7 @@ bmftools <subcommand> <-h>
 
 <p>
 
-`bmftools sdmp -p 12 -s 1 -o tmp_prefix -d -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
+`bmftools sdmp -p 12 -s 1 -o tmp_prefix -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
 
 <p>
 
@@ -476,4 +537,14 @@ bmftools <subcommand> <-h>
 
 ####<b>hashdmp</b>
   Description:
-   Contains 
+   > Contains the hashmap-powered consolidation only. Its input is the preprocessed marked bams produced
+   > by bmftools dmp and sdmp.
+   > Molecularly demultiplexes marked temporary fastqs into final unique observation records.
+   > bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.
+
+    Usage: `bmftools hashdmp <opts> <input.marked.fq>`
+
+    Options:
+
+    > -s:    Perform secondary index consolidation rather than Loeb-like inline consolidation.
+    > -o:    Write to <parameter> rather than stdout.
