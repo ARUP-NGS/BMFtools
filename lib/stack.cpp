@@ -77,7 +77,6 @@ namespace BMF {
             rv += bam_itag(plp.b, "RV");
         } else if(base1 == 'N') {
             discordant = 0;
-            // Basically, throw out
             base_call = base2;
             agreed = ((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle2];
             quality = ((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle2];
@@ -208,7 +207,6 @@ namespace BMF {
                                                         counts[i] >= aux->conf.min_count &&
                                                         overlap_counts[i] >= aux->conf.min_overlap);
                 if(allele_passes[i] && !allele_passes[i + n_base_calls]) {
-                    bcf_update_info_flag(aux->vcf.vh, vrec, "SOMATIC", nullptr, 1);
                     somatic[i] = 1;
                 }
             }

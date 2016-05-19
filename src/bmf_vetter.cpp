@@ -55,7 +55,6 @@ namespace BMF {
         int min_duplex;
         int min_overlap;
         uint32_t skip_improper:1;
-        uint32_t write_outside_bed:1;
         uint32_t vet_all:1;
         uint32_t minmq:8;
         uint32_t skip_flag; // Skip reads with any bits set to true
@@ -531,7 +530,6 @@ namespace BMF {
                 {"skip-recommended", no_argument, nullptr, 'F'},
                 {"max-depth", required_argument, nullptr, 'd'},
                 {"emit-bcf", no_argument, nullptr, 'B'},
-                {"write-outside-bed", no_argument, nullptr, 'w'},
                 {0, 0, 0, 0}
         };
         char vcf_wmode[4] = "w";
@@ -567,7 +565,6 @@ namespace BMF {
             case 'o': outvcf = strdup(optarg); break;
             case 'O': aux.min_overlap = atoi(optarg); break;
             case 'V': aux.vet_all = 1; break;
-            case 'w': aux.write_outside_bed = 1; break;
             case 'h': case '?': vetter_usage(EXIT_SUCCESS);
             }
         }
