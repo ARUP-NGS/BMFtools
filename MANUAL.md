@@ -4,7 +4,19 @@ BMFtools (**B**arcoded **M**olecular **F**amilies tools) is a suite of tools for
 Reads which are PCR duplicates of original template molecules are **molecularly** demultiplexed into single unique observations for each sequenced founding template molecule.
 Accessory tools provide postprocessing, filtering, quality control, and summary statistics.
 
-### Workflow & Typical Use
+##Index
+
+[Workflow](#workflow--typical-use)
+
+[Tools](#tools)
+
+[Usage](#usage)
+
+See also [Vignettes](https://github.com/ARUP-NGS/BMFtools/blob/dev/Vignettes.md) in a separate document for use cases.
+
+###Workflow
+
+Reads are originally collapsed into single observations per barcode using exact matching. Following this step, to correct for errors in barcode reading, positional information can be used to rescue reads into unique single observations.
 
 The only difference between inline and secondary index chemistry workflows is the initial `bmftools dmp` call.
 
@@ -155,7 +167,7 @@ bmftools <subcommand> <-h>
 
 `bmftools vet -o output.vcf -b capture.bed --min-family-size 3 input.bcf input.bam`
 
-##Commands and options
+##Usage
 
 ### Core Functionality
 
