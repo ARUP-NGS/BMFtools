@@ -271,7 +271,9 @@ namespace BMF {
         std::vector<uint64_t> singleton_capture_counts(n);
         kstring_t cov_str{0, 0, nullptr};
         kstring_t str{0};
+#if !NDEBUG
         const int n_lines = dlib::count_bed_lines(bedpath);
+#endif
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
