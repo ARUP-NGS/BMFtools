@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <getopt.h>
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"

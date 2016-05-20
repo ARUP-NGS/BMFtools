@@ -19,22 +19,20 @@ static const char *stack_vcf_lines[] = {
         "##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
         "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
         "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
-        "##INFO=<ID=SOMATIC_PV,Number=R,Type=Float,Description=\"P value for a somatic call for each allele.\">",
         "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
-        "##INFO=<ID=SOMATIC,Number=0,Type=Flag,Description=\"Somatic mutation\">"
 };
 
     struct stack_conf_t {
-        float minFR; // Minimum fraction of family members agreed on base
+        float min_fr; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
         int max_depth;
         uint32_t minFM;
         uint32_t minFA;
         uint32_t minPV;
-        uint32_t minMQ;
-        int minCount;
-        int minDuplex;
-        int minOverlap;
+        uint32_t minmq;
+        int min_count;
+        int min_duplex;
+        int min_overlap;
         int skip_improper;
         uint32_t skip_flag; // Skip reads with any bits set to true
         int output_bcf;

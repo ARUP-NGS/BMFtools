@@ -34,7 +34,7 @@ namespace BMF {
         khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
         int minFM;
         int maxFM;
-        int minMQ;
+        int minmq;
         uint32_t minPV;
         int flag; // Filter flags. First use will simply be
         uint64_t min_obs;
@@ -77,11 +77,11 @@ namespace BMF {
         std::vector<RegionErr> region_counts;
         hts_itr_t *iter;
         hts_idx_t *bam_index;
-        int32_t minMQ;
+        int32_t minmq;
         int32_t minFM;
         int32_t requireFP;
         int32_t max_depth;
-        RegionExpedition(char *bampath, char *bedpath, faidx_t *fai, int32_t minMQ=0, uint32_t padding=DEFAULT_PADDING,
+        RegionExpedition(char *bampath, char *bedpath, faidx_t *fai, int32_t minmq=0, uint32_t padding=DEFAULT_PADDING,
                          int32_t minFM=0, int32_t requireFP=0, int max_depth=262144) :
                 fp(sam_open(bampath, "r")),
                 hdr(sam_hdr_read(fp)),
@@ -91,7 +91,7 @@ namespace BMF {
                 fai(fai),
                 iter(nullptr),
                 bam_index(sam_index_load(fp, fp->fn)),
-                minMQ(minMQ),
+                minmq(minmq),
                 minFM(minFM),
                 requireFP(requireFP),
                 max_depth(max_depth)
@@ -123,9 +123,9 @@ namespace BMF {
         uint64_t flag;
         uint64_t nskipped;
         uint64_t nread;
-        uint32_t minMQ:16;
+        uint32_t minmq:16;
         uint32_t minPV:16;
-        double minFR;
+        double min_fr;
     };
 
     void fm_destroy(fmerr_t *fm);
@@ -313,8 +313,8 @@ namespace BMF {
 
         // Write  header
         fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
-                "##minMQ:%i\n##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
-                f->bedpath? f->bedpath: "N/A", f->minMQ,
+                "##minmq:%i\n##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
+                f->bedpath? f->bedpath: "N/A", f->minmq,
                 f->flag & REQUIRE_DUPLEX ? "True": "False",
                 f->flag & REFUSE_DUPLEX ? "True": "False");
         fprintf(fp, "##STATS\n##nread:%lu\n##nskipped:%lu\n", f->nread, f->nskipped);
@@ -439,7 +439,7 @@ namespace BMF {
                 ++f->nskipped;
                 continue;
             }
-            if(b->core.qual < f->minMQ) {
+            if(b->core.qual < f->minmq) {
                 ++f->nskipped;
                 continue;
             }
@@ -498,7 +498,7 @@ namespace BMF {
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             cycle = b->core.l_qseq - 1 - ind - rc;
                             if(pv_array[cycle] < f->minPV) continue;
-                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->min_fr) continue;
                             ++kh_val(hash, k).obs;
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                                 ++kh_val(hash, k).err;
@@ -507,7 +507,7 @@ namespace BMF {
                         for(ind = 0; ind < length; ++ind) {
                             cycle = ind + rc;
                             if(pv_array[cycle] < f->minPV) continue;
-                            if(static_cast<double>(fa_array[cycle]) / FM < f->minFR) continue;
+                            if(static_cast<double>(fa_array[cycle]) / FM < f->min_fr) continue;
                             s = bam_seqi(seq, cycle);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                             ++kh_val(hash, k).obs;
@@ -559,7 +559,7 @@ namespace BMF {
             pv_array = static_cast<uint32_t*>(dlib::array_tag(b, "PV"));
             // Filters... WOOF
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+                b->core.qual < f->minmq || (f->refcontig && tid_to_study != b->core.tid) ||
                 (f->bed && dlib::bed_test(b, f->bed) == 0) || // Outside of region
                 (FM < f->minFM) || (FM > f->maxFM) || // minFM
                 ((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
@@ -854,7 +854,7 @@ namespace BMF {
 
     fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
                             int padding, int minFM, int maxFM, int flag,
-                            int minMQ, uint32_t minPV, uint64_t min_obs) {
+                            int minmq, uint32_t minPV, uint64_t min_obs) {
         fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
         ret->l = l;
         ret->r1 = readerr_init(l);
@@ -864,7 +864,7 @@ namespace BMF {
         ret->minFM = minFM;
         ret->maxFM = maxFM;
         ret->flag = flag;
-        ret->minMQ = minMQ;
+        ret->minmq = minmq;
         ret->minPV = minPV;
         ret->min_obs = min_obs;
         return ret;
@@ -880,7 +880,7 @@ namespace BMF {
         free(e);
     }
 
-    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minMQ, uint32_t minPV, double minFR) {
+    fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minmq, uint32_t minPV, double min_fr) {
         fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
         if(bedpath && *bedpath) {
             ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
@@ -892,9 +892,9 @@ namespace BMF {
         ret->hash1 = kh_init(obs);
         ret->hash2 = kh_init(obs);
         ret->flag = flag;
-        ret->minMQ = minMQ;
+        ret->minmq = minmq;
         ret->minPV = minPV;
-        ret->minFR = minFR;
+        ret->min_fr = min_fr;
         return ret;
     }
 
@@ -945,7 +945,7 @@ namespace BMF {
         htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
         samFile *fp = nullptr;
         bam_hdr_t *header = nullptr;
-        int c, minMQ = 0;
+        int c, minmq = 0;
         std::string outpath("");
         if(argc < 2) return err_main_usage(EXIT_FAILURE);
 
@@ -963,7 +963,7 @@ namespace BMF {
         uint64_t min_obs = default_min_obs;
         while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:S:O:h?FdDP")) >= 0) {
             switch (c) {
-            case 'a': minMQ = atoi(optarg); break;
+            case 'a': minmq = atoi(optarg); break;
             case 'd': flag |= REQUIRE_DUPLEX; break;
             case 'D': flag |= REFUSE_DUPLEX; break;
             case 'P': flag |= REQUIRE_PROPER; break;
@@ -1005,7 +1005,7 @@ namespace BMF {
         bam1_t *b = bam_init1();
         c = sam_read1(fp, header, b);
         fullerr_t *f = fullerr_init(b->core.l_qseq, bedpath, header,
-                                    padding, minFM, maxFM, flag, minMQ, minPV, min_obs);
+                                    padding, minFM, maxFM, flag, minmq, minPV, min_obs);
         sam_close(fp);
         fp = nullptr;
         bam_destroy1(b);
@@ -1071,12 +1071,12 @@ namespace BMF {
         FILE *ofp = nullptr;
         std::string refcontig("");
         char *bedpath = nullptr;
-        int flag = 0, padding = -1, minMQ = 0, c;
+        int flag = 0, padding = -1, minmq = 0, c;
         uint32_t minPV = 0;
-        double minFR = 0.;
+        double min_fr = 0.;
         while ((c = getopt(argc, argv, "S:p:b:r:o:a:f:Fh?dP")) >= 0) {
             switch (c) {
-            case 'a': minMQ = atoi(optarg); break;
+            case 'a': minmq = atoi(optarg); break;
             case 'd': flag |= REQUIRE_DUPLEX; break;
             case 'o': outpath = optarg; break;
             case 'r': refcontig = optarg; break;
@@ -1086,8 +1086,8 @@ namespace BMF {
             case 'S': minPV = strtoul(optarg, nullptr, 0); break;
             case 'F': flag |= REQUIRE_FP_PASS; break;
             case 'f':
-                minFR = atof(optarg);
-                if(minFR < 0.0 || minFR > 1.0) LOG_EXIT("minFR must be between 0 and 1. Given: %f.\n", minFR);
+                min_fr = atof(optarg);
+                if(min_fr < 0.0 || min_fr > 1.0) LOG_EXIT("min_fr must be between 0 and 1. Given: %f.\n", min_fr);
                 break;
             case '?': case 'h': return err_fm_usage(EXIT_SUCCESS);
             }
@@ -1118,7 +1118,7 @@ namespace BMF {
         if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
             dlib::check_bam_tag_exit(argv[optind + 1], "DR");
 
-        fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minMQ, minPV, minFR);
+        fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minmq, minPV, min_fr);
         // Get read length from the first
         bam_hdr_destroy(header); header = nullptr;
         err_fm_core(argv[optind + 1], fai, f, &open_fmt);
@@ -1137,7 +1137,7 @@ namespace BMF {
         {
             if((ret = sam_itr_next(navy->fp, navy->iter, b)) < 0) break;
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                    (int)b->core.qual < navy->minMQ) continue;
+                    (int)b->core.qual < navy->minmq) continue;
             fmdata = bam_aux_get(b, "FM");
             fpdata = bam_aux_get(b, "FP");
             if ((fmdata && bam_aux2i(fmdata) < navy->minFM) ||
@@ -1220,13 +1220,13 @@ namespace BMF {
             return err_region_usage(EXIT_SUCCESS);
 
         FILE *ofp = nullptr;
-        int padding = -1, minMQ = 0, minFM = 0, c, requireFP = 0;
+        int padding = -1, minmq = 0, minFM = 0, c, requireFP = 0;
         char *bedpath = nullptr, *outpath = nullptr;
         faidx_t *fai;
         while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
             switch (c) {
             case 'q': requireFP = 1; break;
-            case 'a': minMQ = atoi(optarg); break;
+            case 'a': minmq = atoi(optarg); break;
             case 'f': minFM = atoi(optarg); break;
             case 'o': outpath = strdup(optarg); break;
             case 'b': bedpath = strdup(optarg); break;
@@ -1252,7 +1252,7 @@ namespace BMF {
         if((fai = fai_load(argv[optind])) == nullptr)
             LOG_EXIT("Could not load fasta index for %s. Abort!\n", argv[optind]);
 
-        RegionExpedition Holloway(argv[optind + 1], bedpath, fai, minMQ, padding, minFM, requireFP);
+        RegionExpedition Holloway(argv[optind + 1], bedpath, fai, minmq, padding, minFM, requireFP);
         err_region_core(&Holloway);
         write_region_rates(ofp, Holloway), fclose(ofp);
         fai_destroy(fai);

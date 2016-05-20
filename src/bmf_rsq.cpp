@@ -283,8 +283,9 @@ namespace BMF {
                 } else {
                     LOG_DEBUG("About to output bam\n");
                     uint8_t *data;
-                    if((data = bam_aux_get(stack->a[i], "MU")) != nullptr)
-                        bam_aux_del(stack->a[i], data);
+                    for(const char *tag: {"MU", "ms", "LM"})
+                        if((data = bam_aux_get(stack->a[i], tag)) != nullptr)
+                            bam_aux_del(stack->a[i], data);
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;

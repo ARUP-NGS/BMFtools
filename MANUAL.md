@@ -87,6 +87,8 @@ If you're not interested in taking advantage of the barcode metadata (new p valu
 
 For more specific use cases, postprocessing steps (such as cap and filter) can be used to prepare a bam for use by BMF-agnostic tools, and variant calling can be performed or vetted with `bmftools stack` or `bmftools vet`.
 
+For translocation detection, soft-clippings are often used as markers for potential events. To improve performance of such tools, (e.g., WHAM), if adapters sequences have been masked, successive masked bases at the ends of reads can be removed by [maskripper](https://github.com/noseatbelts/maskripper). For rescue to work properly, however, this should be performed only after rescue has been completed.
+
 ##Tools
 
 

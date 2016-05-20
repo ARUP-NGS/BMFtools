@@ -108,9 +108,9 @@ namespace BMF {
                 ++fm_failed[0], pair.second.set_pass(0);
             if(pair.second.get_agreed() < aux->conf.minFA)
                 ++fa_failed[0], pair.second.set_pass(0);
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR)
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.min_fr)
                 ++fr_failed[0], pair.second.set_pass(0);
-            if(pair.second.get_meanMQ() < aux->conf.minMQ)
+            if(pair.second.get_meanMQ() < aux->conf.minmq)
                 ++mq_failed[0], pair.second.set_pass(0);
         }
         for(int i = 0; i < nn_plp; ++i) {
@@ -142,8 +142,8 @@ namespace BMF {
         for(auto& pair: nobs) {
             if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
             if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.minFR) ++fr_failed[1], pair.second.set_pass(0);
-            if(pair.second.get_meanMQ() < aux->conf.minMQ) ++mq_failed[1], pair.second.set_pass(0);
+            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.min_fr) ++fr_failed[1], pair.second.set_pass(0);
+            if(pair.second.get_meanMQ() < aux->conf.minmq) ++mq_failed[1], pair.second.set_pass(0);
         }
         //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
@@ -190,7 +190,7 @@ namespace BMF {
                 if(aux->conf.skip_improper) return;
             }
             // If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
-            if(plp.b->core.qual < aux->conf.minMQ) {
+            if(plp.b->core.qual < aux->conf.minmq) {
                 ++mq_failed; return;
             }
             const int FM = bam_itag(plp.b, "FM");
@@ -205,7 +205,7 @@ namespace BMF {
             if(FA < aux->conf.minFA) {
                 ++fa_failed; return;
             }
-            if((float)FA / FM < aux->conf.minFR) {
+            if((float)FA / FM < aux->conf.min_fr) {
                 ++fr_failed; return;
             }
             // Should I be failing FA/FM/PV before merging overlapping reads? NO.
@@ -291,12 +291,12 @@ namespace BMF {
                 case 'a': conf.minFA = atoi(optarg); break;
                 case 'b': bedpath = optarg; break;
                 case 'B': conf.output_bcf = 1; break;
-                case 'c': conf.minCount = atoi(optarg); break;
+                case 'c': conf.min_count = atoi(optarg); break;
                 case 'd': conf.max_depth = atoi(optarg); break;
-                case 'D': conf.minDuplex = atoi(optarg); break;
-                case 'f': conf.minFR = (float)atof(optarg); break;
-                case 'm': conf.minMQ = atoi(optarg); break;
-                case 'O': conf.minOverlap = atoi(optarg); break;
+                case 'D': conf.min_duplex = atoi(optarg); break;
+                case 'f': conf.min_fr = (float)atof(optarg); break;
+                case 'm': conf.minmq = atoi(optarg); break;
+                case 'O': conf.min_overlap = atoi(optarg); break;
                 case 'o': outvcf = optarg; break;
                 case 'P': conf.skip_improper = 1; break;
                 case 'p': padding = atoi(optarg); break;
