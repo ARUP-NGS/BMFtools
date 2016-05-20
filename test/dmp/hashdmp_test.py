@@ -28,14 +28,20 @@ def main():
         cstr = "../../%s hashdmp -o hashdmp_test.out hashdmp_test.fq" % ex
         subprocess.check_call(shlex.split(cstr))
         fqh = pysam.FastqFile("hashdmp_test.out")
-        r1 = fqh.next()
+        try:
+            r1 = fqh.next()
+        except:
+            r1 = next(fqh)  # Python 3
         tags = get_tags(r1)
         assert tags["FM"] == 7
         assert round(tags["NF"], 2) == 0.14
         assert tags["RV"] == 2
         assert tags["DR"]
         assert len(r1.name) == 16
-        r1 = fqh.next()
+        try:
+            r1 = fqh.next()
+        except:
+            r1 = next(fqh)  # Python 3
         tags = get_tags(r1)
         assert tags["FM"] == 1
         assert tags["FP"] == 0

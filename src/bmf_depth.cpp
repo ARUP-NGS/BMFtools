@@ -345,7 +345,7 @@ namespace BMF {
             for(p = str.s, i = 0; i < 2 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
             if(p != str.s + str.l) --p;
             str.l = p - str.s;
-            LOG_INFO("Processing region #%i \"%s\". %0.4f%% Complete: %i of %i lines.\n", lineno, str.s, (lineno * 100.) / n_lines, lineno, n_lines);
+            LOG_DEBUG("Processing region #%i \"%s\". %0.4f%% Complete: %i of %i lines.\n", lineno, str.s, (lineno * 100.) / n_lines, lineno, n_lines);
 
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
