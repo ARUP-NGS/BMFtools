@@ -403,6 +403,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools target <opts> <in.bam>
 
   Options:
+
     > -b:    Path to bed. REQUIRED.
     > -m:    Set minimum mapping quality for inclusion.
     > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
@@ -424,6 +425,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools err main <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
+
     > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
     > -a:    Set minimum mapping quality for inclusion.
     > -S:    Set minimum calculated PV tag value for inclusion.
@@ -446,6 +448,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools err fm <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
+
     > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
     > -h/-?: Print usage.
     > -S:    Set minimum calculated PV tag value for inclusion.
@@ -461,6 +464,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools err region <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
+
    > -b:    Path to bed file. REQUIRED.
    > -o:    Path to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.
    > -a:    Set minimum mapping quality for inclusion.
@@ -481,6 +485,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools famstats fm <opts> <in.bam>
 
   Options:
+
     > -m:    Set minimum mapping quality. Default: 0.
     > -f:    Set minimum family size. Default: 0.
 
@@ -499,6 +504,7 @@ bmftools <subcommand> <-h>
   > Essentially a modification of samtools sort.
 
   Options:
+
     > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
     > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
     > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
@@ -520,6 +526,7 @@ bmftools <subcommand> <-h>
   Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
 
   Options:
+
     > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
     > -q:    Skip read pairs which fail.
     > -d:    Set bam compression level to default (6).
@@ -539,7 +546,6 @@ bmftools <subcommand> <-h>
   > In addition, use of rescaled quality scores is not yet supported.
   > RAM-hungry but fast. Useful for relatively small datasets.
 
-
   Usage: `bmftools inmem <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
@@ -557,14 +563,16 @@ bmftools <subcommand> <-h>
 
 ####<b>hashdmp</b>
   Description:
+
    > Contains the hashmap-powered consolidation only. Its input is the preprocessed marked bams produced
    > by bmftools dmp and sdmp.
    > Molecularly demultiplexes marked temporary fastqs into final unique observation records.
    > bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.
 
-    Usage: `bmftools hashdmp <opts> <input.marked.fq>`
 
-    Options:
+  Usage: `bmftools hashdmp <opts> <input.marked.fq>`
+
+  Options:
 
     > -s:    Perform secondary index consolidation rather than Loeb-like inline consolidation.
     > -o:    Write to <parameter> rather than stdout.
