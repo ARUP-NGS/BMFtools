@@ -4,6 +4,92 @@ BMFtools (**B**arcoded **M**olecular **F**amilies tools) is a suite of tools for
 Reads which are PCR duplicates of original template molecules are **molecularly** demultiplexed into single unique observations for each sequenced founding template molecule.
 Accessory tools provide postprocessing, filtering, quality control, and summary statistics.
 
+##Index
+
+[Workflow](#workflow)
+
+[Tools](#tools)
+
+[Usage](#usage)
+
+See also [Vignettes](https://github.com/ARUP-NGS/BMFtools/blob/dev/Vignettes.md) in a separate document for use cases.
+
+###Workflow
+
+Reads are originally collapsed into single observations per barcode using exact matching. Following this step, to correct for errors in barcode reading, positional information can be used to rescue reads into unique single observations.
+
+The only difference between inline and secondary index chemistry workflows is the initial `bmftools dmp` call.
+
+####Exact-Matching Fastq Consolidation
+A typical paired-end exact fastq-stage molecular demultiplexing call:
+
+> Inline
+
+```bmftools dmp -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>```
+> Secondary Index
+
+```bmftools sdmp -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>```
+
+Each of these produces `final_output_prefix.R1.fq` and `final_output_prefix.R2.fq`. (A .gz suffix is appended if the output is gzip compressed.)
+
+Barcode metadata is written into fastq comments in SAM auxiliary tag format. These reads are then aligned with
+bwa mem with the -C option, which appends the fastq comment to the end of the sam record. This trivially adds
+tags to all alignments for each read.
+
+####Alignment
+
+`bwa mem -CYT0 -t<threads> <idx.base> final_output_prefix.R1.fq final_output_prefix.R2.fq | samtools view -bho final_output.bam`
+
+
+####Rescue
+Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
+reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
+
+This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
+collapsing reads sharing these signatures with similar barcodes into single observations.
+
+"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
+or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
+a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
+
+Because reads need both their and their mates' alignment information, including read length, the preprocessing
+`bmftools mark` is required prior to bmftools sort.
+
+
+Because reads that have been modified may align elsewhere, these reads are all realigned. In addition, this regenerates
+all of the secondary and supplementary alignments.
+
+
+In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
+If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
+
+`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
+
+For position:
+
+`bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
+
+For unclipped start:
+
+`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
+
+
+Realigned reads are then sorted and merged in with the other reads in the dataset.
+
+`bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix> | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
+
+For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
+At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
+
+####Post-rescue: Now what?
+
+If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
+
+For more specific use cases, postprocessing steps (such as cap and filter) can be used to prepare a bam for use by BMF-agnostic tools, and variant calling can be performed or vetted with `bmftools stack` or `bmftools vet`.
+
+##Tools
+
+
 All command-line options are available from the command-line as follows:
 
 For a list of subcommands:
@@ -27,7 +113,7 @@ bmftools <subcommand> <-h>
 
 <p>
 
-`bmftools dmp -p 12 -d -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
+`bmftools dmp -p 12 -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
 
 <p>
 
@@ -63,7 +149,7 @@ bmftools <subcommand> <-h>
 
 <p>
 
-`bmftools sdmp -p 12 -s 1 -o tmp_prefix -d -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
+`bmftools sdmp -p 12 -s 1 -o tmp_prefix -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
 
 <p>
 
@@ -81,7 +167,7 @@ bmftools <subcommand> <-h>
 
 `bmftools vet -o output.vcf -b capture.bed --min-family-size 3 input.bcf input.bam`
 
-##Commands and options
+##Usage
 
 ### Core Functionality
 
@@ -89,7 +175,7 @@ bmftools <subcommand> <-h>
   Description:
   > Performs molecular demutiplexing of inline barcoded fastq data.
   > The homing sequence is a sequence of bases marking the end of the random nucleotides
-  > which make up the barcode. This is required to ensure that chemistr has worked as expected
+  > which make up the barcode. This is required to ensure that chemistry has worked as expected
   > and to identify the barcode length, which is used for additional entropy.
 
   > To achieve linear performance with arbitrarily large datasets, an initial marking step subsets the reads by the first
@@ -118,7 +204,7 @@ bmftools <subcommand> <-h>
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 
 ####<b>sdmp</b>
@@ -146,7 +232,7 @@ bmftools <subcommand> <-h>
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 
 ####<b>rsq</b>
@@ -170,7 +256,7 @@ bmftools <subcommand> <-h>
     > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
     > -l:    Output bam compression level.
     > -t:    Mismatch limit. Default: 2.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 ### Analysis
 
@@ -202,28 +288,29 @@ bmftools <subcommand> <-h>
 
     TODO: Fill in details on these tags.
     VCF Header Fields:
-    1. BMF_PASS
-    2. ADP
-    3. ADPO
-    3. ADPD
-    4. ADPR
-    5. RVF
-    6. QSS
-    7. AMBIG
-    8. SOMATIC_PV
-    9. SOMATIC_CALL
-    10. SOMATIC
-    11. FR_FAILED
-    12. FM_FAILED
-    13. FP_FAILED
-    14. AF_FAILED
-    15. MQ_FAILED
-    16. IMPROPER
-    17. OVERLAP
+    * BMF_PASS: 1 if variant passes, 0 otherwise.
+    * ADP: Number of unique observations for allele.
+    * ADPO: Number of overlapping read pair observations for allele.
+    * ADPD: Number of duplex observations for allele.
+    * ADPR: Number of original reversed observations for allele.
+    * RVF: Fraction of RV observations supporting allele.
+    * QSS: Q Score Sum supporting allele.
+    * AMBIG: Number of ambiguous base calls at position.
+    * SOMATIC_CALL: Boolean value for a somatic call for allele.
+    * FR_FAILED: Number of observations failed by fraction of family members agreed on a base call per sample.
+    * FM_FAILED: Number of observations failed for insufficient family size per sample.
+    * FP_FAILED: Number of observations failed for failing barcode QC per sample.
+    * AF_FAILED: Number of observations failed for insufficient aligned fraction.
+    * MQ_FAILED: Number of observations failed for insufficient mapping quality.
+    * IMPROPER: Number of observations failed for being in an improper pair.
+    * OVERLAP: Number of overlapping read pairs at position.
+    * AFR: Allele Fractions per allele, including reference.
 
 ####<b>vet</b>
     Description:
     > Curates variant calls from a bcf file and an associated, indexed bam file.
+    > Overlapping reads in a pileup are treated as two observations and are merged, if agreed, using Fisher's method.
+    > Discordant unambiguous base calls are masked. Ambiguous base calls are overridden by an unambiguous call from its mate.
 
     Options:
     > -b, --bed-path:              Path to bed file for anaylsis. REQUIRED.
@@ -242,17 +329,15 @@ bmftools <subcommand> <-h>
     > -q, --skip-qc-fail:          Skip reads marked as QC fail.
     > -F, --skip-recommended:      Skip secondary, supplementary, and PCR duplicates.
     > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
-    > -w, --write-outside-bed:     Write variants outside of bed region unmodified rather than removing.
 
-    TODO: Fill in details on these tags.
     VCF Header Fields:
-    1. BMF_VET
-    2. BMF_UNIOBS
-    3. BMF_DUPLEX
-    4. BMF_FAIL
-    5. DUPLEX_DEPTH
-    6. DISC_OVERLAP
-    7. OVERLAP
+    * BMF_VET:  1 if a variant passes, 0 otherwise. 
+    * BMF_UNIOBS: Number of unique observations supporting a variant at that position.
+    * BMF_DUPLEX: Number of duplex observations supporting a variant at that position.
+    * BMF_FAIL: NUmber of reads at position failing filters.
+    * DUPLEX_DEPTH: Number of duplex reads at position passing filters.
+    * DISC_OVERLAP: Number of read pairs at position with discordant base calls.
+    * OVERLAP: Number of overlapping read pairs combined into single observations at position.
 
 
 ### Manipulation
@@ -269,9 +354,9 @@ bmftools <subcommand> <-h>
     > -t:    Set phred score to which to set passing base qualities. Default: 93 ('~').
     > -m:    Set minFM required to pass reads. Default: 0.
     > -f:    Minimum fraction of reads in a family supporting a base call for inclusion. Default: 1.0.
-    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0. 
+    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0.
     > -d:    Flag to only mask failing base scores as '#'/2, not modifying passing quality scores.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
 ####<b>filter</b>
   Description:
@@ -314,10 +399,11 @@ bmftools <subcommand> <-h>
 ####<b>target</b>
   Description:
   > Calculates the fraction of on-target reads, both raw and consolidated.
-  
-  Usage: bmftools target <opts> <in.bam> 
+
+  Usage: bmftools target <opts> <in.bam>
 
   Options:
+
     > -b:    Path to bed. REQUIRED.
     > -m:    Set minimum mapping quality for inclusion.
     > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
@@ -335,10 +421,11 @@ bmftools <subcommand> <-h>
     1. err fm calculates error rates by family size.
   3. region
     1. err region calculates error rates by bed region.
-  
+
   Usage: bmftools err main <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
+
     > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
     > -a:    Set minimum mapping quality for inclusion.
     > -S:    Set minimum calculated PV tag value for inclusion.
@@ -356,20 +443,100 @@ bmftools <subcommand> <-h>
     > -p:    Set padding for bed region. Default: 0.
     > -P:    Only include proper pairs.
     > -O:    Set minimum number of observations for imputing quality Default: 10000.
-    > -h/-?  Print help.
+    > -h/-?  Print usage.
 
-  Usage: bmftools err <opts> <in.bam> 
+  Usage: bmftools err fm <opts> <reference.fasta> <in.csrt.bam>
 
   Options:
-    > -b:    Path to bed. REQUIRED.
-    > -m:    Set minimum mapping quality for inclusion.
-    > -p:    Set padding - number of bases around target region to consider as on-target. Default: 0.
-    > -n:    Set notification interval - number of reads between logging statements. Default: 1000000.
 
-####bmftools err
+    > -o:    Path to output file. Set to '-' or 'stdout' to emit to stdout.
+    > -h/-?: Print usage.
+    > -S:    Set minimum calculated PV tag value for inclusion.
+    > -a:    Set minimum mapping quality for inclusion.
+    > -r:    Name of contig. If set, only reads aligned to this contig are considered
+    > -b:    Path to bed file for restricting analysis.
+    > -d:    Flag to only calculate error rates for duplex reads.
+    > -p:    Set padding for bed region. Default: 0.
+    > -P:    Only include proper pairs.
+    > -F:    Require that the FP tag be present and nonzero.
+    > -f:    Require that the fraction of family members agreed on a base be <parameter> or greater. Default: 0.0
+
+  Usage: bmftools err region <opts> <reference.fasta> <in.csrt.bam>
+
+  Options:
+
+   > -b:    Path to bed file. REQUIRED.
+   > -o:    Path to output file. Leave unset or set to '-' or 'stdout' to emit to stdout.
+   > -a:    Set minimum mapping quality for inclusion.
+   > -p:    Set padding for bed region. Default: 0.
+   > -h/-?: Print usage.
+
 
 ####bmftools famstats
-Calculates summary statistics related to family size and demultiplexing.
+  Description:
+  > Calculates summary statistics related to family size and demultiplexing.
+  > famstats consists of two subcommands: fm and frac
+  > famstats fm has 2 subcommands:
+  1. fm
+    2. famstats fm produces summary statistics and count distributions for family size, duplex/reverse reads, and read rescue statistics.
+  2. frac
+    1. famstats frac
+
+  Usage: bmftools famstats fm <opts> <in.bam>
+
+  Options:
+
+    > -m:    Set minimum mapping quality. Default: 0.
+    > -f:    Set minimum family size. Default: 0.
+
+  Usage: bmftools famstats frac <opts> <minFM> <in.bam>
+
+  Options:
+    > -n:    Set notification interval. Default: 1000000.
+    > -h/-?: Print usage.
+
+
+### Utilities
+
+####bmftools sort
+  Description:
+  > Sorts an alignment file in preparation for read consolidation using positional information.
+  > Essentially a modification of samtools sort.
+
+  Options:
+
+    > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
+    > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
+    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
+    > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
+    > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
+    > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
+    > -@ INT       Set number of sorting and compression threads [1]
+    > -s           Flag to split the bam into a list of file handles.
+    > -p           If splitting into a list of handles, this sets the file prefix.
+    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
+    > -h/-?        Print usage.
+
+####bmftools mark
+  Description:
+  > Marks a sets of template bam records with auxiliary tags for use in downstream tools.
+  > Required for sort and rsq.
+  > Intended primarily for piping. Default compression is therefore 0. Typical compression for writing to disk: 6.
+
+  Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
+
+  Options:
+
+    > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
+    > -q:    Skip read pairs which fail.
+    > -d:    Set bam compression level to default (6).
+    > -i:    Skip read pairs whose insert size is less than <INT>.
+    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <parameter>
+    > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
+    > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
+    > Set output.bam to '-' or 'stdout' or omit to stdout.
+    > Thus `bmftools mark` defaults to reading and writing from stdin and stdout, respectively, in paired-end mode.
+
 
 ###"Undocumented" tools
 
@@ -379,8 +546,7 @@ Calculates summary statistics related to family size and demultiplexing.
   > In addition, use of rescaled quality scores is not yet supported.
   > RAM-hungry but fast. Useful for relatively small datasets.
 
-
-  Usage: `bmftools inmem <options> input_R1.fast1.gz input_R2.fastq.gz`
+  Usage: `bmftools inmem <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -392,6 +558,21 @@ Calculates summary statistics related to family size and demultiplexing.
     > -v:    Maximum barcode length. Only needed for variable-length barcodes.
     > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
     > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
-    > -h/-?: Print help menu.
+    > -h/-?: Print usage.
 
-### Workflow
+
+####<b>hashdmp</b>
+  Description:
+
+   > Contains the hashmap-powered consolidation only. Its input is the preprocessed marked bams produced
+   > by bmftools dmp and sdmp.
+   > Molecularly demultiplexes marked temporary fastqs into final unique observation records.
+   > bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.
+
+
+  Usage: `bmftools hashdmp <opts> <input.marked.fq>`
+
+  Options:
+
+    > -s:    Perform secondary index consolidation rather than Loeb-like inline consolidation.
+    > -o:    Write to <parameter> rather than stdout.

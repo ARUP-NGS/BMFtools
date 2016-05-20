@@ -247,7 +247,7 @@ namespace BMF {
             LOG_EXIT("Bed path required. Abort!\n");
         }
         counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-        std::string col_name;
+        std::string region_name;
 
         fp = gzopen(bedpath, "rb");
         if(!fp)
@@ -255,7 +255,7 @@ namespace BMF {
         ks = ks_init(fp);
         n_plp = (int *)calloc(n, sizeof(int));
         plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
-        int line_num = 0;
+        int lineno = 1;
         // Write header
         // stderr ONLY for this development phase.
         kstring_t hdr_str{0, 0, nullptr};
@@ -273,7 +273,6 @@ namespace BMF {
         kstring_t str{0};
         const int n_lines = dlib::count_bed_lines(bedpath);
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
-            LOG_DEBUG("Loaded line.\n");
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
             double raw_mean, dmp_mean, singleton_mean;
@@ -298,7 +297,6 @@ namespace BMF {
             if(start < 0) start = 0;
             region_len = stop - start;
             capture_size += region_len;
-            LOG_DEBUG("Memory resize.\n");
             for(i = 0; i < n; ++i) {
                 aux[i]->dmp_counts.resize(region_len);
                 memset(&aux[i]->dmp_counts[0], 0, sizeof(uint64_t) * region_len);
@@ -311,10 +309,9 @@ namespace BMF {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                LOG_DEBUG("p: %s.\n", p);
-                col_name = p;
+                region_name = p;
                 *q = c;
-            } else col_name = (char *)NO_ID_STR;
+            } else region_name = (char *)NO_ID_STR;
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -348,10 +345,11 @@ namespace BMF {
             for(p = str.s, i = 0; i < 2 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
             if(p != str.s + str.l) --p;
             str.l = p - str.s;
-            LOG_INFO("Processing region #%i \"%s\". %0.4f%% complete of %i lines. N: %i\n", line_num + 1, str.s, (line_num * 100.) / n_lines, n_lines, n);
+            LOG_INFO("Processing region #%i \"%s\". %0.4f%% Complete: %i of %i lines.\n", lineno, str.s, (lineno * 100.) / n_lines, lineno, n_lines);
+
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
-                kputs(col_name.c_str(), &str);
+                kputs(region_name.c_str(), &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
@@ -375,13 +373,10 @@ namespace BMF {
                 kputc('|', &str);
                 ksprintf(&str, "%f%%", singleton_mean / dmp_mean * 100);
             }
-            LOG_DEBUG("Finished region.\n");
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
-            LOG_DEBUG("Destroy pileup.\n");
             bam_mplp_destroy(mplp);
-            LOG_DEBUG("Destroyed pileup.\n");
-            ++line_num;
+            ++lineno;
             continue;
 
     bed_error:
