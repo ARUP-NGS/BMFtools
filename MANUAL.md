@@ -288,40 +288,23 @@ bmftools <subcommand> <-h>
 
     TODO: Fill in details on these tags.
     VCF Header Fields:
-    1. BMF_PASS
-      1. 1 if variant passes, 0 otherwise.
-    2. ADP
-      1. Number of unique observations for allele.
-    3. ADPO
-      1. Number of overlapping read pair observations for allele.
-    3. ADPD
-      1. Number of duplex observations for allele.
-    4. ADPR
-      1. Number of original reversed observations for allele.
-    5. RVF
-      1. Fraction of RV observations supporting allele.
-    6. QSS
-      1. Q Score Sum supporting allele.
-    7. AMBIG
-      1. Number of ambiguous base calls at position.
-    9. SOMATIC_CALL
-      1. Boolean value for a somatic call for allele.
-    11. FR_FAILED
-      1. Number of observations failed by fraction of family members agreed on a base call per sample.
-    12. FM_FAILED
-      1. Number of observations failed for insufficient family size per sample.
-    13. FP_FAILED
-      1. Number of observations failed for failing barcode QC per sample.
-    14. AF_FAILED
-      1. Number of observations failed for insufficient aligned fraction.
-    15. MQ_FAILED
-      1. Number of observations failed for insufficient mapping quality.
-    16. IMPROPER
-      1. Number of observations failed for being in an improper pair.
-    17. OVERLAP
-      1. Number of overlapping read pairs at position.
-    18. AFR
-      1. Allele Fractions per allele, including reference.
+    * BMF_PASS: 1 if variant passes, 0 otherwise.
+    * ADP: Number of unique observations for allele.
+    * ADPO: Number of overlapping read pair observations for allele.
+    * ADPD: Number of duplex observations for allele.
+    * ADPR: Number of original reversed observations for allele.
+    * RVF: Fraction of RV observations supporting allele.
+    * QSS: Q Score Sum supporting allele.
+    * AMBIG: Number of ambiguous base calls at position.
+    * SOMATIC_CALL: Boolean value for a somatic call for allele.
+    * FR_FAILED: Number of observations failed by fraction of family members agreed on a base call per sample.
+    * FM_FAILED: Number of observations failed for insufficient family size per sample.
+    * FP_FAILED: Number of observations failed for failing barcode QC per sample.
+    * AF_FAILED: Number of observations failed for insufficient aligned fraction.
+    * MQ_FAILED: Number of observations failed for insufficient mapping quality.
+    * IMPROPER: Number of observations failed for being in an improper pair.
+    * OVERLAP: Number of overlapping read pairs at position.
+    * AFR: Allele Fractions per allele, including reference.
 
 ####<b>vet</b>
     Description:
@@ -348,20 +331,13 @@ bmftools <subcommand> <-h>
     > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
 
     VCF Header Fields:
-    1. BMF_VET
-      1. 1 if a variant passes, 0 otherwise. 
-    2. BMF_UNIOBS
-      1. Number of unique observations supporting a variant at that position.
-    3. BMF_DUPLEX
-      1. Number of duplex observations supporting a variant at that position.
-    4. BMF_FAIL
-      1. NUmber of reads at position failing filters.
-    5. DUPLEX_DEPTH
-      1. Number of duplex reads at position passing filters.
-    6. DISC_OVERLAP
-      1. Number of read pairs at position with discordant base calls.
-    7. OVERLAP
-      1. Number of overlapping read pairs combined into single observations at position.
+    * BMF_VET:  1 if a variant passes, 0 otherwise. 
+    * BMF_UNIOBS: Number of unique observations supporting a variant at that position.
+    * BMF_DUPLEX: Number of duplex observations supporting a variant at that position.
+    * BMF_FAIL: NUmber of reads at position failing filters.
+    * DUPLEX_DEPTH: Number of duplex reads at position passing filters.
+    * DISC_OVERLAP: Number of read pairs at position with discordant base calls.
+    * OVERLAP: Number of overlapping read pairs combined into single observations at position.
 
 
 ### Manipulation
