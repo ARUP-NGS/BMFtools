@@ -6,7 +6,7 @@ Accessory tools provide postprocessing, filtering, quality control, and summary 
 
 ##Index
 
-[Workflow](#workflow--typical-use)
+[Workflow](#workflow)
 
 [Tools](#tools)
 
