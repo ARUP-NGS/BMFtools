@@ -11,7 +11,7 @@ static int bmftools_usage(int rc)
                     "err:                     Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:                Calculate family size statistics for a bam alignment file.\n"
                     "filter:                  Filter or split a bam file by a set of filters.\n"
-                    "inmem                    Performs dmp fully in memory. RAM-hungry but fast!\n"
+                    "inmem:                   Performs dmp fully in memory. RAM-hungry but fast!\n"
                     //"hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
                     "mark:                    Add tags including unclipped start positions.\n"
                     "rsq:                     Rescue reads with using positional inference to collapse to unique observations in spite of errors in the barcode sequence.\n"
@@ -19,7 +19,7 @@ static int bmftools_usage(int rc)
                     "sort:                    Sort for bam rescue.\n"
                     "stack:                   A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
                     "target:                  Calculates on-target rate.\n"
-                    "vet:                     Curate variant calls from another variant caller (.vcf) and an indexed alignment file.\n"
+                    "vet:                     Curate variant calls from another variant caller (.bcf) and an indexed alignment file.\n"
             );
     exit(rc);
 }

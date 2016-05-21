@@ -10,7 +10,7 @@ namespace BMF {
         uint64_t rfm_target;
     };
 
-    target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minMQ, uint64_t notification_interval);
+    target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minmq, uint64_t notification_interval);
 } /* namespace BMF */
 
 #endif /* ifndef BMF_TARGET_H */

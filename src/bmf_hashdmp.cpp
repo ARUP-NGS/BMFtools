@@ -31,20 +31,18 @@ namespace BMF {
                         " reducing memory requirements while keeping the constant-time hashmap collapsing.\n"
                         "Usage: bmftools inmem <opts> -1 <out.r1.fastq> -2 <out.r2.fastq> <r1.fastq> <r2.fastq>.\n"
                         "Flags:\n"
-                        "-s\tHoming sequence -- REQUIRED.\n"
-                        "-1\tPath to ountput fastq for read 1. Set to '-' for stdout. "
-                        "Setting both r1 and r2 to stdout results in interleaved output.\n"
-                        "-2\tPath to output fastq for read 2. Set to '-' for stdout.\n"
-                        "-l\tBarcode length. If using variable-length barcodes, this is the minimum barcode length.\n"
-                        "-v\tMaximum barcode length. (Set only if using variable-length barcodes.)\n"
-                        "-m\tSkip the first <INT> bases from each inline barcode. (Default: 0)\n"
-                        "-L\tOutput fastq compression level (Default: uncompressed).\n"
+                        "-s:\tHoming sequence -- REQUIRED.\n"
+                        "-1:\tPath to output fastq for read 1. REQUIRED.\n"
+                        "-2:\tPath to output fastq for read 2. REQUIRED.\n"
+                        "-l:\tBarcode length. If using variable-length barcodes, this is the minimum barcode length.\n"
+                        "-t:\tHomopolymer failure threshold. A molecular barcode with"
+                        " a homopolymer of length >= this limit is flagged as QC fail. Default: 10.\n"
+                        "-v:\tMaximum barcode length. (Set only if using variable-length barcodes.)\n"
+                        "-m:\tSkip the first <INT> bases from each inline barcode. Default: 0\n"
+                        "-L:\tOutput fastq compression level (Default: plain text).\n"
                         "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
                 );
     }
-    /*                case '1': outfname1 = optarg; break
-                case 'L': level = atoi(optarg) % 10; break;
-                case 's': homing = optarg; break; */
 
     tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
     {
@@ -102,7 +100,7 @@ namespace BMF {
         int mask = 0;
         int threshold = 10;
         int level = 0; // uncompressed
-        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:s:h?")) >= 0) {
+        while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:s:t:h?")) >= 0) {
             switch(c) {
                 case '1': outfname1 = optarg; break;
                 case '2': outfname2 = optarg; break;
@@ -111,6 +109,7 @@ namespace BMF {
                 case 'l': blen = atoi(optarg); break;
                 case 'L': level = atoi(optarg) % 10; break;
                 case 's': homing = optarg; break;
+                case 't': threshold = atoi(optarg); break;
                 case '?': case 'h': inmem_usage(); return EXIT_SUCCESS;
             }
         }
@@ -122,6 +121,8 @@ namespace BMF {
         if(argc - 2 != optind) LOG_EXIT("Require exactly two input fastqs.\n");
         if(blen < 0) LOG_EXIT("Barcode length required.");
         if(!homing) LOG_EXIT("Homing sequence required.\n");
+        if(strcmp(outfname1, outfname2) == 0) LOG_EXIT("read 1 and read 2 must be separate files. Abort!\n");
+
         hash_inmem_inline_core(argv[optind], argv[optind + 1], outfname1, outfname2,
                                homing, blen, threshold, level, mask,
                                max_blen);

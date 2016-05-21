@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <getopt.h>
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
@@ -73,7 +74,7 @@ namespace BMF {
                         "Required for bmftools rsq using unclipped start.\n"
                         "Required for bmftools infer.\n"
                         "Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>\n\n"
-                        "Flags:\n-l     Sets bam compression level. (Valid: 1-9). Default: 0.\n"
+                        "Flags:\n-l    Sets bam compression level. (Valid: 1-9). Default: 0.\n"
                         "-q    Skip read pairs which fail.\n"
                         "-d    Set bam compression level to default (6).\n"
                         "-i    Skip read pairs whose insert size is less than <INT>.\n"

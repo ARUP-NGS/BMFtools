@@ -33,7 +33,6 @@ namespace BMF {
                         "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
                         "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
                         "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
-                        "-w, --write-outside-bed\tWrite variants outside of bed region to file without analyzing. Default: False.\n"
                 );
         exit(retcode);
     }
@@ -46,19 +45,18 @@ namespace BMF {
         vcfFile *vcf_ofp;
         bcf_hdr_t *vcf_header;
         khash_t(bed) *bed;
-        float minFR; // Minimum fraction of family members agreed on base
+        float min_fr; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
         int max_depth;
         int minFM;
         uint32_t minFA;
         uint32_t minPV;
-        int minCount;
-        int minDuplex;
-        int minOverlap;
+        int min_count;
+        int min_duplex;
+        int min_overlap;
         uint32_t skip_improper:1;
-        uint32_t write_outside_bed:1;
         uint32_t vet_all:1;
-        uint32_t minMQ:8;
+        uint32_t minmq:8;
         uint32_t skip_flag; // Skip reads with any bits set to true
     };
 
@@ -83,12 +81,12 @@ namespace BMF {
             if ( ret<0 ) break;
             // Skip unmapped, secondary, qcfail, duplicates.
             // Skip improper if option set
-            // Skip MQ < minMQ
+            // Skip MQ < minmq
             // Skip FM < minFM
             // Skip AF < minAF
             if ((b->core.flag & aux->skip_flag) ||
                 (aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-                (int)b->core.qual < aux->minMQ || (bam_itag(b, "FM") < aux->minFM) ||
+                (int)b->core.qual < aux->minmq || (bam_itag(b, "FM") < aux->minFM) ||
                 (bam_itag(b, "FP") == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
                     continue;
             break;
@@ -122,7 +120,7 @@ namespace BMF {
         // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
         for(int i = 0; i < n_plp; ++i) {
             if(plp[i].is_del || plp[i].is_refskip) continue;
-            // Skip any reads failed for FA < minFA or FR < minFR
+            // Skip any reads failed for FA < minFA or FR < min_fr
             qname = bam_get_qname(plp[i].b);
             k = kh_get(names, hash, qname);
             if(k == kh_end(hash)) {
@@ -181,7 +179,7 @@ namespace BMF {
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
                     if(bam_itag(plp[i].b, "FM") < aux->minFM ||
                             FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-                            (double)FA1[arr_qpos1] / bam_itag(plp[i].b, "FM") < aux->minFR) {
+                            (double)FA1[arr_qpos1] / bam_itag(plp[i].b, "FM") < aux->min_fr) {
                         ++n_failed[j];
                         continue;
                     }
@@ -195,7 +193,7 @@ namespace BMF {
                     }
                 }
             }
-            pass_values[j] = n_obs[j] >= aux->minCount && n_duplex[j] >= aux->minDuplex && n_overlaps[j] >= aux->minOverlap;
+            pass_values[j] = n_obs[j] >= aux->min_count && n_duplex[j] >= aux->min_duplex && n_overlaps[j] >= aux->min_overlap;
             //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
 
         }
@@ -278,7 +276,6 @@ namespace BMF {
                         continue; // Only handle simple SNVs
                     }
                     if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
-                        if(aux->write_outside_bed) bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue; // Only handle simple SNVs
                     }
                     /*
@@ -532,7 +529,6 @@ namespace BMF {
                 {"skip-recommended", no_argument, nullptr, 'F'},
                 {"max-depth", required_argument, nullptr, 'd'},
                 {"emit-bcf", no_argument, nullptr, 'B'},
-                {"write-outside-bed", no_argument, nullptr, 'w'},
                 {0, 0, 0, 0}
         };
         char vcf_wmode[4] = "w";
@@ -542,7 +538,7 @@ namespace BMF {
         // Defaults to outputting textual (vcf)
         htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
         vetter_aux_t aux = {0};
-        aux.minCount = 1;
+        aux.min_count = 1;
         aux.max_depth = (1 << 18); // Default max depth
 
         while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVw", lopts, nullptr)) >= 0) {
@@ -550,10 +546,10 @@ namespace BMF {
             case 'B': output_bcf = 1; break;
             case 'a': aux.minFA = atoi(optarg); break;
             case 'A': NUM_PREALLOCATED_ALLELES = strtoull(optarg, 0, 0); LOG_DEBUG("Num preallocated: %lu\n", NUM_PREALLOCATED_ALLELES); break;
-            case 'c': aux.minCount = atoi(optarg); break;
-            case 'D': aux.minDuplex = atoi(optarg); break;
+            case 'c': aux.min_count = atoi(optarg); break;
+            case 'D': aux.min_duplex = atoi(optarg); break;
             case 's': aux.minFM = atoi(optarg); break;
-            case 'm': aux.minMQ = atoi(optarg); break;
+            case 'm': aux.minmq = atoi(optarg); break;
             case 'v': aux.minPV = atoi(optarg); break;
             case '2': aux.skip_flag |= BAM_FSECONDARY; break;
             case 'S': aux.skip_flag |= BAM_FSUPPLEMENTARY; break;
@@ -562,13 +558,12 @@ namespace BMF {
             case 'P': aux.skip_improper = 1; break;
             case 'p': padding = atoi(optarg); break;
             case 'd': aux.max_depth = atoi(optarg); break;
-            case 'f': aux.minFR = (float)atof(optarg); break;
+            case 'f': aux.min_fr = (float)atof(optarg); break;
             case 'F': aux.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP); break;
             case 'b': bed = strdup(optarg); break;
             case 'o': outvcf = strdup(optarg); break;
-            case 'O': aux.minOverlap = atoi(optarg); break;
+            case 'O': aux.min_overlap = atoi(optarg); break;
             case 'V': aux.vet_all = 1; break;
-            case 'w': aux.write_outside_bed = 1; break;
             case 'h': case '?': vetter_usage(EXIT_SUCCESS);
             }
         }
@@ -582,9 +577,7 @@ namespace BMF {
 
         strcpy(vcf_wmode, output_bcf ? "wb": "w");
         if(!outvcf) outvcf = strdup("-");
-        if(strcmp(outvcf, "-") == 0) {
-            LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
-        }
+        if(strcmp(outvcf, "-") == 0) LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
         // Open bam
         aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
         if(!aux.fp) LOG_EXIT("Could not open input bam %s. Abort!\n", argv[optind + 1]);

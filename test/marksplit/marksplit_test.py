@@ -45,7 +45,7 @@ def check_bc(read):
 
 def main():
     for ex in ["bmftools_db", "bmftools", "bmftools_p"]:
-        cstr = ("../../%s dmp -n0 -sTGACT -t%i -o marksplit_test_tmp -l 10 "
+        cstr = ("../../%s dmp -wn0 -sTGACT -t%i -o marksplit_test_tmp -l 10 "
                 "-v 11 marksplit_test.R1.fq marksplit_test.R2.fq" % (ex, mm_threshold))
         subprocess.check_call(shlex.split(cstr))
         for read in pysam.FastqFile("marksplit_test_tmp.tmp.0.R1.fastq"):

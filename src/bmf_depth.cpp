@@ -20,7 +20,7 @@ namespace BMF {
         std::vector<uint64_t> dmp_counts; // Counts for dmp observations along region
         std::vector<uint64_t> singleton_counts; // Counts for singleton observations along region
         uint32_t minFM:16; // Minimum family size
-        uint32_t minMQ:15; // Minimum mapping quality
+        uint32_t minmq:15; // Minimum mapping quality
         uint32_t requireFP:1; // Set to true to require
         khash_t(depth) *depth_hash;
         uint64_t n_analyzed;
@@ -108,7 +108,8 @@ namespace BMF {
         }
     }
 
-    double u64_stdev(uint64_t *arr, size_t l, double mean)
+    template<typename T>
+    double stdev(T *arr, size_t l, double mean)
     {
         double ret = 0.0, tmp;
         for(unsigned i = 0; i < l; ++i) {
@@ -152,7 +153,7 @@ namespace BMF {
     /*
      * Reads from the bam, filtering based on settings in depth_aux_t.
      * It fails unmapped/secondary/qcfail/pcr duplicate reads, as well as those
-     * with mapping qualities below minMQ and those with family sizes below minFM.
+     * with mapping qualities below minmq and those with family sizes below minFM.
      * If requireFP is set, it also fails any with an FP:i:0 tag.
      * If an FM tag is not found, reads are not filtered by family size.
      * Similarly, if an FP tag is not found, reads are passed.
@@ -168,7 +169,7 @@ namespace BMF {
             if ( ret<0 ) break;
             uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
             if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-                b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
+                b->core.qual < aux->minmq || (data && bam_aux2i(data) < aux->minFM) ||
                 (aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
                     continue;
             break;
@@ -179,16 +180,14 @@ namespace BMF {
     int depth_main(int argc, char *argv[])
     {
         gzFile fp;
-        kstring_t str;
         kstream_t *ks;
         hts_idx_t **idx;
         depth_aux_t **aux;
-        char **col_names;
-        int *n_plp, dret, i, n, c, minMQ = 0;
+        int *n_plp, dret, i, n, c, minmq = 0;
         uint64_t *counts;
         const bam_pileup1_t **plp;
         int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
-        int requireFP = 0, n_cols = 0;
+        int requireFP = 0;
         char *bedpath = nullptr, *outpath = nullptr;
         FILE *histfp = nullptr;
         khiter_t k = 0;
@@ -203,7 +202,7 @@ namespace BMF {
                 LOG_INFO("Writing output histogram to '%s'\n", optarg);
                 histfp = fopen(optarg, "w");
                 break;
-            case 'Q': minMQ = atoi(optarg); break;
+            case 'Q': minmq = atoi(optarg); break;
             case 'b': bedpath = strdup(optarg); break;
             case 'm': max_depth = atoi(optarg); break;
             case 'f': minFM = atoi(optarg); break;
@@ -216,16 +215,16 @@ namespace BMF {
             }
             if (usage) break;
         }
-        FILE *ofp = outpath ? fopen(outpath, "w"): stdout;
+        FILE *ofp = outpath ? fopen(outpath, "w")
+                            : stdout;
         if (usage || optind > argc) // Require at least one bam
             depth_usage(EXIT_FAILURE);
-        memset(&str, 0, sizeof(kstring_t));
         n = argc - optind;
         aux = (depth_aux_t **)calloc(n, sizeof(depth_aux_t*));
         idx = (hts_idx_t **)calloc(n, sizeof(hts_idx_t*));
         for (i = 0; i < n; ++i) {
             aux[i] = (depth_aux_t *)calloc(1, sizeof(depth_aux_t));
-            aux[i]->minMQ = minMQ;
+            aux[i]->minmq = minmq;
             aux[i]->minFM = minFM;
             aux[i]->requireFP = requireFP;
             aux[i]->fp = sam_open(argv[i + optind], "r");
@@ -248,8 +247,7 @@ namespace BMF {
             LOG_EXIT("Bed path required. Abort!\n");
         }
         counts = (uint64_t *)calloc(n, sizeof(uint64_t));
-        n_cols = dlib::count_lines(bedpath);
-        col_names = (char **)calloc(n_cols, sizeof(char *));
+        std::string region_name;
 
         fp = gzopen(bedpath, "rb");
         if(!fp)
@@ -257,13 +255,13 @@ namespace BMF {
         ks = ks_init(fp);
         n_plp = (int *)calloc(n, sizeof(int));
         plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
-        int line_num = 0;
+        int lineno = 1;
         // Write header
         // stderr ONLY for this development phase.
         kstring_t hdr_str{0, 0, nullptr};
         ksprintf(&hdr_str, "##bed=%s\n", bedpath);
         ksprintf(&hdr_str, "##NQuintiles=%i\n", n_quantiles);
-        ksprintf(&hdr_str, "##minMQ=%i\n", minMQ);
+        ksprintf(&hdr_str, "##minmq=%i\n", minmq);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
         ksprintf(&hdr_str, "##padding=%i\n", padding);
         ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
@@ -271,7 +269,11 @@ namespace BMF {
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);
         std::vector<uint64_t> singleton_capture_counts(n);
-        kstring_t cov_str = {0, 0, nullptr};
+        kstring_t cov_str{0, 0, nullptr};
+        kstring_t str{0};
+#if !NDEBUG
+        const int n_lines = dlib::count_bed_lines(bedpath);
+#endif
         while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
             char *p, *q;
             int tid, start, stop, pos, region_len, arr_ind;
@@ -309,9 +311,9 @@ namespace BMF {
                 q = ++p;
                 while(*q != '\t' && *q != '\n') ++q;
                 int c = *q; *q = '\0';
-                col_names[line_num] = restrdup(col_names[line_num], p);
+                region_name = p;
                 *q = c;
-            } else col_names[line_num] = restrdup(col_names[line_num], (char *)NO_ID_STR);
+            } else region_name = (char *)NO_ID_STR;
 
             for (i = 0; i < n; ++i) {
                 if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -342,20 +344,23 @@ namespace BMF {
                 }
             }
             // Only print the first 3 columns plus the name column.
-            for(p = str.s, i = 0; i < 3;*p++ == '\t' ? ++i: 0);
+            for(p = str.s, i = 0; i < 3 && p < str.s + str.l;*p++ == '\t' ? ++i: 0);
+            if(p != str.s + str.l) --p;
             str.l = p - str.s;
+            LOG_DEBUG("Processing region #%i \"%s\". %0.4f%% Complete: %i of %i lines.\n", lineno, str.s, (lineno * 100.) / n_lines, lineno, n_lines);
+
             for(i = 0; i < n; ++i) {
                 kputc('\t', &str);
-                kputs(col_names[line_num], &str);
+                kputs(region_name.c_str(), &str);
                 std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
                 std::sort(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end());
                 std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
                 raw_mean = (double)std::accumulate(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end(), 0uL) / region_len;
-                raw_stdev = u64_stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
+                raw_stdev = stdev(aux[i]->raw_counts.data(), region_len, raw_mean);
                 dmp_mean = (double)std::accumulate(aux[i]->dmp_counts.begin(), aux[i]->dmp_counts.end(), 0uL) / region_len;
-                dmp_stdev = u64_stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
+                dmp_stdev = stdev(aux[i]->dmp_counts.data(), region_len, dmp_mean);
                 singleton_mean = (double)std::accumulate(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end(), 0uL) / region_len;
-                singleton_stdev = u64_stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
+                singleton_stdev = stdev(aux[i]->singleton_counts.data(), region_len, singleton_mean);
                 kputc('\t', &str);
                 kputl(counts[i], &str);
                 ksprintf(&str, ":%0.2f:%0.2f:%0.2f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
@@ -373,7 +378,7 @@ namespace BMF {
             kputs(str.s, &cov_str);
             kputc('\n', &cov_str);
             bam_mplp_destroy(mplp);
-            ++line_num;
+            ++lineno;
             continue;
 
     bed_error:
@@ -395,6 +400,7 @@ namespace BMF {
             ksprintf(&hdr_str, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
             ksprintf(&hdr_str, "|SingletonReads:SingletonMeanCov:SingletonStdev:SingletonCoefVar:%i-tiles", n_quantiles);
         }
+        kputc('\n', &hdr_str);
         cov_str.s[--cov_str.l] = '\0'; // Trim unneeded newline
         fputs(hdr_str.s, ofp), fputs(cov_str.s, ofp);
         free(hdr_str.s), free(cov_str.s);
@@ -418,13 +424,11 @@ namespace BMF {
             kh_destroy(depth, aux[i]->depth_hash);
             cond_free(aux[i]);
         }
-        for(i = 0; i < n_cols; ++i) free(col_names[i]);
         free(counts);
-        free(col_names);
         free(aux); free(idx);
         free(str.s);
         free(bedpath);
         LOG_INFO("Successfully completed bmftools depth!\n");
-        return(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
 }
