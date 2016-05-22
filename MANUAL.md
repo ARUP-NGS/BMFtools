@@ -325,44 +325,6 @@ bmftools <subcommand> <-h>
     * DISC_OVERLAP: Number of read pairs at position with discordant base calls.
     * OVERLAP: Number of overlapping read pairs combined into single observations at position.
 
-
-### Manipulation
-
-####<b>cap</b>
-  Description:
-  > Caps quality scores using barcode metadata to facilitate working with barcode-agnostic tools.
-
-  Usage: `bmftools cap <options> input_R1.srt.bam output.bam`
-
-  Options:
-
-    > -l:    Set output compression level. Default: 6.
-    > -t:    Set phred score to which to set passing base qualities. Default: 93 ('~').
-    > -m:    Set minFM required to pass reads. Default: 0.
-    > -f:    Minimum fraction of reads in a family supporting a base call for inclusion. Default: 1.0.
-    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0.
-    > -d:    Flag to only mask failing base scores as '#'/2, not modifying passing quality scores.
-    > -h/-?: Print usage.
-
-####<b>filter</b>
-  Description:
-  > Filters or splits a bam file. In filter mode, only passing reads are output. In split mode,
-  > emits passing reads to one file and failing reads to another.
-
-  Usage: `bmftools filter <options> input_R1.srt.bam output.bam`
-
-  Options:
-
-    > -l:    Set output compression level. Default: 6.
-    > -a:    Read pairs without one read with an aligned fraction above <parameter> are failed.
-    > -m:    Minimum mapping quality.
-    > -F:    Fail all reads with any bits in <parameter> set.
-    > -f:    Fail all reads without all bits in <parameter> set.
-    > -b:    Require reads be within the region defined by the bed file at <parameter>.
-    > -P:    Number of bases around the bed file with which to pad.
-    > -r:    If set, write failing reads to bam at <parameter>.
-    > -v:    Invert pass/fail. (Analogous to grep.)
-
 ####<b>depth</b>
   Description:
   > Creates a bed file of coverage depths for both raw and collapsed read families over a capture region of interest.
@@ -480,6 +442,45 @@ bmftools <subcommand> <-h>
   Options:
     > -n:    Set notification interval. Default: 1000000.
     > -h/-?: Print usage.
+
+
+### Manipulation
+
+####<b>cap</b>
+  Description:
+  > Caps quality scores using barcode metadata to facilitate working with barcode-agnostic tools.
+
+  Usage: `bmftools cap <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -l:    Set output compression level. Default: 6.
+    > -t:    Set phred score to which to set passing base qualities. Default: 93 ('~').
+    > -m:    Set minFM required to pass reads. Default: 0.
+    > -f:    Minimum fraction of reads in a family supporting a base call for inclusion. Default: 1.0.
+    > -c:    Set minimum calculated phred score to not mask a base call. Default: 0.
+    > -d:    Flag to only mask failing base scores as '#'/2, not modifying passing quality scores.
+    > -h/-?: Print usage.
+
+####<b>filter</b>
+  Description:
+  > Filters or splits a bam file. In filter mode, only passing reads are output. In split mode,
+  > emits passing reads to one file and failing reads to another.
+
+  Usage: `bmftools filter <options> input_R1.srt.bam output.bam`
+
+  Options:
+
+    > -l:    Set output compression level. Default: 6.
+    > -a:    Read pairs without one read with an aligned fraction above <parameter> are failed.
+    > -m:    Minimum mapping quality.
+    > -F:    Fail all reads with any bits in <parameter> set.
+    > -f:    Fail all reads without all bits in <parameter> set.
+    > -b:    Require reads be within the region defined by the bed file at <parameter>.
+    > -P:    Number of bases around the bed file with which to pad.
+    > -r:    If set, write failing reads to bam at <parameter>.
+    > -v:    Invert pass/fail. (Analogous to grep.)
+
 
 
 ### Utilities
