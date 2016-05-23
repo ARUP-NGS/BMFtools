@@ -118,7 +118,11 @@ namespace BMF {
             hashdmp_usage();
             exit(EXIT_FAILURE);
         }
-        if(argc - 2 != optind) LOG_EXIT("Require exactly two input fastqs.\n");
+        if(argc - 2 != optind) {
+            if(argc - 1 != optind)
+                LOG_EXIT("Require at least one input fastq.\n");
+            LOG_EXIT("raise NotImplementedError(\"Single-end inmem not implemented.\")\n")
+        }
         if(blen < 0) LOG_EXIT("Barcode length required.");
         if(!homing) LOG_EXIT("Homing sequence required.\n");
         if(strcmp(outfname1, outfname2) == 0) LOG_EXIT("read 1 and read 2 must be separate files. Abort!\n");

@@ -309,12 +309,21 @@ namespace BMF {
         return 1;
     }
 
+KHASH_SET_INIT_STR(names)
 
+#if !NDEBUG
+    static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim, bam_hdr_t *hdr, samFile *tmp, khash_t(names) *tmphash)
+#else
     static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
+#endif
     {
         std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
                 return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
         });
+#if !NDEBUG
+        khiter_t k;
+        int khr;
+#endif
         for(unsigned i = 0; i < stack->n; ++i) {
             for(unsigned j = i + 1; j < stack->n; ++j) {
                 //assert(key == ucs_sort_core_key(stack->a[j]));
@@ -330,6 +339,16 @@ namespace BMF {
                 if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
+#if !NDEBUG
+                    if((k = kh_get(names, tmphash, bam_get_qname(stack->a[i])) == kh_end(tmphash))) {
+                        k = kh_put(names, tmphash, bam_get_qname(stack->a[i]), &khr);
+                        sam_write1(tmp, hdr, stack->a[i]);
+                    }
+                    if((k = kh_get(names, tmphash, bam_get_qname(stack->a[j])) == kh_end(tmphash))) {
+                        k = kh_put(names, tmphash, bam_get_qname(stack->a[j]), &khr);
+                        sam_write1(tmp, hdr, stack->a[j]);
+                    }
+#endif
                     update_bam1(stack->a[j], stack->a[i]);
                     bam_destroy1(stack->a[i]);
                     stack->a[i] = nullptr;
@@ -374,6 +393,10 @@ namespace BMF {
 
     void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
     {
+#if !NDEBUG
+        samFile *tmp = sam_open("prersq_reads.bam", "wb");
+        khash_t(names) *tmphash = kh_init(names);
+#endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
         const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
@@ -392,7 +415,11 @@ namespace BMF {
             if(stack->n == 0 || fn(b, *stack->a) == 0) {
                 //LOG_DEBUG("Flattening stack\n");
                 // New stack -- flatten what we have and write it out.
+#if !NDEBUG
+                flatten_stack_linear(stack, settings->mmlim, settings->hdr, tmp, tmphash); // Change this later if the chemistry necessitates it.
+#else
                 flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+#endif
                 write_stack(stack, settings);
                 stack->n = 1;
                 stack->a[0] = bam_dup1(b);
@@ -402,7 +429,11 @@ namespace BMF {
                 stack_insert(stack, b);
             }
         }
+#if !NDEBUG
+        flatten_stack_linear(stack, settings->mmlim, settings->hdr, tmp, tmphash); // Change this later if the chemistry necessitates it.
+#else
         flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
+#endif
         write_stack(stack, settings);
         stack->n = 0;
         bam_destroy1(b);
@@ -415,6 +446,10 @@ namespace BMF {
                 puts(pair.second.c_str());
 #endif
         }
+#if !NDEBUG
+        sam_close(tmp);
+        kh_destroy(names, tmphash);
+#endif
     }
 
     static const std::vector<uint32_t> ONES(300uL, 1);
