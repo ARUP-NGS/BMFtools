@@ -233,15 +233,15 @@ namespace BMF {
     {
         if(settings->is_se) return write_stack_se(stack, settings);
         //size_t n = 0;
-        LOG_DEBUG("Starting to write stack\n");
+        //LOG_DEBUG("Starting to write stack\n");
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
-                LOG_DEBUG("Starting to work on this read.\n");
+                //LOG_DEBUG("Starting to work on this read.\n");
                 data = bam_aux_get(stack->a[i], "NC");
-                LOG_DEBUG("Got data.\n");
+                //LOG_DEBUG("Got data.\n");
                 if(data) {
-                    LOG_DEBUG("Trying to write.\n");
+                    //LOG_DEBUG("Trying to write.\n");
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                         settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
@@ -281,7 +281,6 @@ namespace BMF {
                         settings->realign_pairs.erase(qname);
                     }
                 } else {
-                    LOG_DEBUG("About to output bam\n");
                     uint8_t *data;
                     for(const char *tag: {"MU", "ms", "LM"})
                         if((data = bam_aux_get(stack->a[i], tag)) != nullptr)
@@ -336,13 +335,16 @@ KHASH_SET_INIT_STR(names)
                     continue;
                 if(stack->a[i]->core.l_qname != stack->a[j]->core.l_qname)
                     continue;
-                if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) < mmlim) {
+                if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim) {
                     assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 #if !NDEBUG
                     if((k = kh_get(names, tmphash, bam_get_qname(stack->a[i])) == kh_end(tmphash))) {
+                        LOG_DEBUG("Writing read %s to file \n", bam_get_qname(stack->a[i]));
                         k = kh_put(names, tmphash, bam_get_qname(stack->a[i]), &khr);
                         sam_write1(tmp, hdr, stack->a[i]);
+                    } else {
+                        LOG_DEBUG("Read %s already in hash.\n", bam_get_qname(stack->a[i]));
                     }
                     if((k = kh_get(names, tmphash, bam_get_qname(stack->a[j])) == kh_end(tmphash))) {
                         k = kh_put(names, tmphash, bam_get_qname(stack->a[j]), &khr);
@@ -395,6 +397,7 @@ KHASH_SET_INIT_STR(names)
     {
 #if !NDEBUG
         samFile *tmp = sam_open("prersq_reads.bam", "wb");
+        sam_hdr_write(tmp, settings->hdr);
         khash_t(names) *tmphash = kh_init(names);
 #endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
