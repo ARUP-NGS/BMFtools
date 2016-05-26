@@ -112,7 +112,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
     uint64_t key_a, key_b;
-#if NDEBUG
+#if !NDEBUG
     if(a->core.tid != -1 && b->core.tid == -1) {
             key_a = ucs_sort_core_key(a);
             key_b = ucs_sort_core_key(b);
@@ -127,6 +127,25 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
             assert(key_a > key_b);
+    } else if(b->core.tid == a->core.tid && b->core.tid != -1) {
+        if(b->core.pos < a->core.pos)
+            assert(bmfsort_core_key(b) < bmfsort_core_key(a));
+        else {
+            /*
+            */
+            assert(bmfsort_core_key(a) >> 2 <= bmfsort_core_key(b) >> 2);
+        }
+        if(get_unclipped_start(b) < get_unclipped_start(a))
+            assert(ucs_sort_core_key(b) < ucs_sort_core_key(a));
+        else assert(ucs_sort_core_key(a) >> 2 <= ucs_sort_core_key(b) >> 2);
+    } else {
+        /*
+        LOG_DEBUG("tids: %i, %i.\n", a->core.tid, b->core.tid);
+        LOG_DEBUG("postns: %i, %i.\n", a->core.pos, b->core.pos);
+        LOG_DEBUG("bam_is_revs: %i, %i.\n", bam_is_rev(a), bam_is_rev(b));
+        */
+        assert(b->core.tid == a->core.tid || b->core.tid < a->core.tid ? bmfsort_core_key(b) < bmfsort_core_key(a)
+                                                                       : bmfsort_core_key(a) < bmfsort_core_key(b));
     }
 #endif
     switch(cmpkey) {
