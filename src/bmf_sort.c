@@ -112,16 +112,21 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
     uint64_t key_a, key_b;
-#if 0
-    if(a->core.tid != -1) {
-        if(b->core.tid == -1) {
+#if NDEBUG
+    if(a->core.tid != -1 && b->core.tid == -1) {
             key_a = ucs_sort_core_key(a);
             key_b = ucs_sort_core_key(b);
             assert(key_b > key_a);
             key_a = bmfsort_core_key(a);
             key_b = bmfsort_core_key(b);
             assert(key_b > key_a);
-        }
+    } else if(b->core.tid != -1 && a->core.tid == -1) {
+            key_a = ucs_sort_core_key(a);
+            key_b = ucs_sort_core_key(b);
+            assert(key_a > key_b);
+            key_a = bmfsort_core_key(a);
+            key_b = bmfsort_core_key(b);
+            assert(key_a > key_b);
     }
 #endif
     switch(cmpkey) {
@@ -144,31 +149,12 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    int t;
-    uint64_t key_a, key_b;
     if(is_se) {
         if (a.b == NULL || b.b == NULL) return !a.b;
         return bam1_se_lt(a.b, b.b);
     }
-    switch(cmpkey) {
-        case QNAME:
-            if (a.b == NULL || b.b == NULL) return !a.b;
-            t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
-            return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
-        case SAMTOOLS:
-            return __pos_cmp(a, b);
-        case BMF_POS:
-            if (a.b == NULL || b.b == NULL) return !a.b;
-            key_a = bmfsort_core_key(a.b);
-            key_b = bmfsort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a.b) < bmfsort_mate_key(b.b));
-        case BMF_UCS:
-            if (a.b == NULL || b.b == NULL) return !a.b;
-            key_a = ucs_sort_core_key(a.b);
-            key_b = ucs_sort_core_key(b.b);
-            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a.b) < ucs_sort_mate_key(b.b));
-    }
-    return -1; // This never happens.
+    return (a.b == NULL || b.b == NULL) ? !a.b
+                                        :  bam1_lt(a.b, b.b);
 }
 
 KSORT_INIT(heap, heap1_t, heap_lt)

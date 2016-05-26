@@ -406,7 +406,7 @@ namespace BMF {
 
     void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
     {
-        samFile *fp = sam_open_format(fname, "r", open_fmt);
+        samFile *fp = sam_open(fname, "r");
         bam_hdr_t *hdr = sam_hdr_read(fp);
         if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
         bam1_t *b = bam_init1();
