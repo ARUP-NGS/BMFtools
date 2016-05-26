@@ -144,8 +144,13 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         LOG_DEBUG("postns: %i, %i.\n", a->core.pos, b->core.pos);
         LOG_DEBUG("bam_is_revs: %i, %i.\n", bam_is_rev(a), bam_is_rev(b));
         */
-        assert(b->core.tid == a->core.tid || b->core.tid < a->core.tid ? bmfsort_core_key(b) < bmfsort_core_key(a)
-                                                                       : bmfsort_core_key(a) < bmfsort_core_key(b));
+        if(b->core.tid != a->core.tid) {
+            if(b->core.tid < a->core.tid) {
+                assert(bmfsort_core_key(b) < bmfsort_core_key(a));
+            } else {
+                assert(bmfsort_core_key(a) < bmfsort_core_key(b));
+            }
+        }
     }
 #endif
     switch(cmpkey) {
@@ -165,16 +170,30 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
     return 0; // This never happens.
 }
 
+#define __pos_cmp(a, b) ((a).pos > (b).pos || ((a).pos == (b).pos && ((a).i > (b).i || ((a).i == (b).i && (a).idx > (b).idx))))
+
+// Function to compare reads in the heap and determine which one is < the other
+static inline int heap_lt(const heap1_t a, const heap1_t b)
+{
+    if (cmpkey == QNAME) {
+        int t;
+        if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
+        t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
+        return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
+    } else return __pos_cmp(a, b);
+}
+/*
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
     if(is_se) {
-        if (a.b == NULL || b.b == NULL) return !a.b;
-        return bam1_se_lt(a.b, b.b);
+        return (a.b == NULL || b.b == NULL) ? !a.b
+                                            :  bam1_se_lt(a.b, b.b);
     }
     return (a.b == NULL || b.b == NULL) ? !a.b
                                         :  bam1_lt(a.b, b.b);
 }
+*/
 
 KSORT_INIT(heap, heap1_t, heap_lt)
 
