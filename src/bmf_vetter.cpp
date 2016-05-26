@@ -22,6 +22,7 @@ namespace BMF {
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-D, --min-duplex\tMinimum number of duplex reads required to pass a variant.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
@@ -541,7 +542,7 @@ namespace BMF {
         aux.min_count = 1;
         aux.max_depth = (1 << 18); // Default max depth
 
-        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVw", lopts, nullptr)) >= 0) {
+        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVwF", lopts, nullptr)) >= 0) {
             switch (c) {
             case 'B': output_bcf = 1; break;
             case 'a': aux.minFA = atoi(optarg); break;
