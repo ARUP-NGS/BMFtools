@@ -556,7 +556,7 @@ namespace BMF {
             pdata = bam_aux_get(b, "FP");
             FM = dlib::int_tag_zero(fdata);
             RV = dlib::int_tag_zero(rdata);
-            pv_array = static_cast<uint32_t*>(dlib::array_tag(b, "PV"));
+            pv_array = f->minPV ? static_cast<uint32_t*>(dlib::array_tag(b, "PV")): nullptr;
             // Filters... WOOF
             if((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)) ||
                 b->core.qual < f->minmq || (f->refcontig && tid_to_study != b->core.tid) ||
@@ -599,7 +599,7 @@ namespace BMF {
                             cycle = b->core.l_qseq - 1 - ind - rc;
                             assert((int32_t)cycle < b->core.l_qseq);
                             assert(bamseq2i[s] >= 0);
-                            if(pv_array[cycle] < f->minPV) continue;
+                            if(pv_array && pv_array[cycle] < f->minPV) continue;
                             ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
                             if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
                                 ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
@@ -608,7 +608,7 @@ namespace BMF {
                     } else {
                         for(ind = 0; ind < length; ++ind) {
                             cycle = ind + rc;
-                            if(pv_array[cycle] < f->minPV) continue;
+                            if(pv_array && pv_array[cycle] < f->minPV) continue;
                             s = bam_seqi(seq, cycle);
                             assert(bamseq2i[s] >= 0);
                             if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -998,7 +998,10 @@ namespace BMF {
         if ((header = sam_hdr_read(fp)) == nullptr)
             LOG_EXIT("Failed to read header for \"%s\"", argv[optind]);
 
-        if(minPV) dlib::check_bam_tag_exit(argv[optind + 1], "PV");
+        if(minPV) {
+            LOG_INFO("minPV: %u.\n", minPV);
+            dlib::check_bam_tag_exit(argv[optind + 1], "PV");
+        }
         if(minFM || maxFM != INT_MAX) dlib::check_bam_tag_exit(argv[optind + 1], "FM");
 
         // Get read length from the first read
