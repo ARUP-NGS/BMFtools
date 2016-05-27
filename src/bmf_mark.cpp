@@ -3,7 +3,7 @@
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
 
-namespace BMF {
+namespace bmf {
 
     namespace {
         struct mark_settings_t {

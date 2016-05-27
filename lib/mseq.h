@@ -15,7 +15,7 @@
 KSEQ_INIT(gzFile, gzread)
 #endif
 
-namespace BMF {
+namespace bmf {
 
     /*
      * A mutable kseq clone, roughly. Holds seq, qual, name, and other information
@@ -165,6 +165,6 @@ namespace BMF {
     tmp_mseq_t *init_tm_ptr(int readlen, int blen);
     void tm_destroy(tmp_mseq_t *var);
 
-} //namespace BMF
+} //namespace bmf
 
 #endif /* MSEQ_H */

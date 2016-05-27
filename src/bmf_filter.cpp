@@ -2,7 +2,7 @@
 #include <functional>
 #include "dlib/bam_util.h"
 
-namespace BMF {
+namespace bmf {
 
     int usage(char **argv, int retcode=EXIT_FAILURE) {
         fprintf(stderr,

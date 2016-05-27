@@ -5,7 +5,7 @@
 #include "include/igamc_cephes.h"
 #include "dlib/misc_util.h"
 
-namespace BMF {
+namespace bmf {
     /*
      * TODO:
      * 1. Decide which info/format fields for each variant.
@@ -253,4 +253,4 @@ void add_stack_lines(bcf_hdr_t *hdr) {
     add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
 }
 
-} /* namespace BMF */
+} /* namespace bmf */

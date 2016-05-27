@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <algorithm>
 
-namespace BMF {
+namespace bmf {
     struct infer_aux_t {
         FILE *fqh;
         samFile *in;
@@ -111,6 +111,6 @@ namespace BMF {
         void add_to_hash(infer_aux_t *settings);
     };
     // In this prototype, we're ignoring the alignment stop, though it should likely be expanded to include it.
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif /* BMF_INFER_H */

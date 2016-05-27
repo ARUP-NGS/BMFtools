@@ -2,7 +2,7 @@
 #include <algorithm>
 #include "dlib/bam_util.h"
 
-namespace BMF {
+namespace bmf {
 
     const char *tags_to_check[] = {"FP", "FM", "FA"};
 

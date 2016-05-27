@@ -10,7 +10,7 @@ typedef void (*hash_dmp_fn)(char *, char *, int);
 #define DEFAULT_N_NUCS 4
 #define DEFAULT_N_THREADS 4
 
-namespace BMF {
+namespace bmf {
 
     char test_hp_inline(char *barcode, int length, int threshold);
     void clean_homing_sequence(char *);
@@ -95,6 +95,6 @@ namespace BMF {
         return default_len;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif /* BMF_DMP_H */

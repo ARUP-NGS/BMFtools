@@ -1,7 +1,7 @@
 #include <getopt.h>
 #include "dlib/bam_util.h"
 
-namespace BMF {
+namespace bmf {
 
     static int cap_usage() {
         fprintf(stderr,

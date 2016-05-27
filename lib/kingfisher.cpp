@@ -3,7 +3,7 @@
 #include "dlib/bam_util.h"
 #include "dlib/io_util.h"
 
-namespace BMF {
+namespace bmf {
 
     #define dmp_pos(kfp, bufs, argmaxret, i, index, diffcount)\
         do {\
@@ -131,4 +131,4 @@ namespace BMF {
         return;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

@@ -7,7 +7,7 @@
 
 extern void dlib::check_bam_tag_exit(char *bampath, const char *tag);
 
-namespace BMF {
+namespace bmf {
 
     struct readerr_t {
         uint64_t ***obs;

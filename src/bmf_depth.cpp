@@ -10,7 +10,7 @@
 #include "dlib/cstr_util.h"
 #include "dlib/io_util.h"
 
-namespace BMF {
+namespace bmf {
 
     struct depth_aux_t {
         htsFile *fp; // Input sam
@@ -264,7 +264,7 @@ namespace BMF {
         ksprintf(&hdr_str, "##minmq=%i\n", minmq);
         ksprintf(&hdr_str, "##minFM=%i\n", minFM);
         ksprintf(&hdr_str, "##padding=%i\n", padding);
-        ksprintf(&hdr_str, "##BMFtools version=%s.\n", BMF_VERSION);
+        ksprintf(&hdr_str, "##bmftools version=%s.\n", BMF_VERSION);
         size_t capture_size = 0;
         std::vector<uint64_t> dmp_capture_counts(n);
         std::vector<uint64_t> raw_capture_counts(n);

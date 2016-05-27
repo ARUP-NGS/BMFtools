@@ -3,7 +3,7 @@
 #include "dlib/bed_util.h"
 #include <getopt.h>
 
-namespace BMF {
+namespace bmf {
 
     struct target_counts_t {
         uint64_t count;

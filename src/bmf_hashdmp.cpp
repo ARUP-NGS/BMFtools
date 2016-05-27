@@ -4,7 +4,7 @@
 #include "lib/mseq.h"
 
 
-namespace BMF {
+namespace bmf {
     void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
                                 char *homing, int blen, int threshold, int level=0, int mask=0,
                                 int max_blen=-1);
@@ -616,4 +616,4 @@ namespace BMF {
         tmpvars_destroy(tmp);
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

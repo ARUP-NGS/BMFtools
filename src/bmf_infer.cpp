@@ -5,7 +5,7 @@
 #include "lib/kingfisher.h"
 
 
-namespace BMF {
+namespace bmf {
 
     CONST static inline int same_infer_pos_se(bam1_t *b, bam1_t *p)
     {

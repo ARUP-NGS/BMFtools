@@ -3,7 +3,7 @@
 #include <getopt.h>
 #include <algorithm>
 
-namespace BMF {
+namespace bmf {
 
     const char *vcf_header_lines[] =  {
             "##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
@@ -60,12 +60,12 @@ namespace BMF {
         return ret;
     }
 
-    void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
+    void process_matched_pileups(bmf::stack_aux_t *aux, bcf1_t *ret,
                             const int& tn_plp, const int& tpos, const int& ttid,
                             const int& nn_plp, const int& npos, const int& ntid) {
         // Build overlap hash
-        std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
-        std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
+        std::unordered_map<std::string, bmf::UniqueObservation> tobs, nobs;
+        std::unordered_map<std::string, bmf::UniqueObservation>::iterator found;
         int flag_failed[2]{0};
         int af_failed[2]{0};
         int fa_failed[2]{0};
@@ -147,7 +147,7 @@ namespace BMF {
         }
         //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
-        BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
+        bmf::PairVCFPos vcfline = bmf::PairVCFPos(tobs, nobs, ttid, tpos);
         vcfline.to_bcf(ret, aux, ttid, tpos);
         bcf_update_format_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)fr_failed, 2);
         bcf_update_format_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)fa_failed, 2);
@@ -165,11 +165,11 @@ namespace BMF {
     /*
      * Needs a rewrite after the T/N pair rewrite!
      */
-    void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, BMF::stack_aux_t *aux) {
+    void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, bmf::stack_aux_t *aux) {
         std::string qname;
         // Build overlap hash
-        std::unordered_map<std::string, BMF::UniqueObservation> obs;
-        std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
+        std::unordered_map<std::string, bmf::UniqueObservation> obs;
+        std::unordered_map<std::string, bmf::UniqueObservation>::iterator found;
         int flag_failed = 0;
         int af_failed = 0;
         int fa_failed = 0;
@@ -211,11 +211,11 @@ namespace BMF {
             // Should I be failing FA/FM/PV before merging overlapping reads? NO.
             qname = bam_get_qname(plp.b);
             if((found = obs.find(qname)) == obs.end())
-                obs.emplace(std::make_pair(qname, BMF::UniqueObservation(plp)));
+                obs.emplace(std::make_pair(qname, bmf::UniqueObservation(plp)));
             else found->second.add_obs(plp);
         });
         // Build vcfline struct
-        BMF::SampleVCFPos vcfline = BMF::SampleVCFPos(obs, tid, pos);
+        bmf::SampleVCFPos vcfline = bmf::SampleVCFPos(obs, tid, pos);
         vcfline.to_bcf(ret, aux->vcf.vh, aux->get_ref_base(tid, pos));
         bcf_update_info_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
         bcf_update_info_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
@@ -228,7 +228,7 @@ namespace BMF {
         bcf_clear(ret);
     }
 
-    int stack_core(BMF::stack_aux_t *aux)
+    int stack_core(bmf::stack_aux_t *aux)
     {
         if(!aux->tumor.idx || !aux->normal.idx)
             LOG_EXIT("Could not load bam indices. Abort!\n");
@@ -262,7 +262,7 @@ namespace BMF {
         if(argc < 2) stack_usage(EXIT_FAILURE);
         char *outvcf = nullptr, *refpath = nullptr;
         char *bedpath = nullptr;
-        struct BMF::stack_conf_t conf = {0};
+        struct bmf::stack_conf_t conf = {0};
         const struct option lopts[] = {
             {"skip-secondary", no_argument, nullptr, '2'},
             {"min-family-agreed", required_argument, nullptr, 'a'},
@@ -337,7 +337,7 @@ namespace BMF {
         bcf_hdr_nsamples(vh) = 2;
         LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
         // Add lines to the header for the bed file?
-        BMF::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
+        bmf::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
         bcf_hdr_destroy(vh);
         if((aux.fai = fai_load(refpath)) == nullptr)
             LOG_EXIT("failed to open fai. Abort!\n");
@@ -354,4 +354,4 @@ namespace BMF {
         return ret;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

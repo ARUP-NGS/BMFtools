@@ -12,7 +12,7 @@
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
 
-namespace BMF {
+namespace bmf {
 
     void sdmp_usage(char *argv[])
     {

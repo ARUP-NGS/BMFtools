@@ -5,7 +5,7 @@
 #include "include/igamc_cephes.h" /// for igamc
 #include <algorithm>
 
-namespace BMF {
+namespace bmf {
 
     struct rsq_aux_t {
         FILE *fqh;

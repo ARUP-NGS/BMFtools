@@ -8,7 +8,7 @@
 #include "include/igamc_cephes.h"
 #include "htslib/tbx.h"
 
-namespace BMF {
+namespace bmf {
 
     KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
@@ -104,7 +104,7 @@ namespace BMF {
      * Add 'fm' tag to note which families of reads have already had their fm adjusted.
      * Separate from the upper-case tag!
      */
-    void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
+    void BMF_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
             std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
             int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
         int khr, s, s2;
@@ -322,7 +322,7 @@ namespace BMF {
                     memset(fail_values.data(), 0, sizeof(int32_t) * fail_values.size());
                     memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                     // Perform tests to provide the results for the tags.
-                    bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
+                    BMF_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
                                  fail_values, n_overlapped, n_duplex, n_disagreed);
                     // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
@@ -477,7 +477,7 @@ namespace BMF {
                 memset(fail_values.data(), 0, sizeof(int32_t) * fail_values.size());
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
-                bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
+                BMF_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
                              fail_values, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
@@ -642,4 +642,4 @@ namespace BMF {
         return ret;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

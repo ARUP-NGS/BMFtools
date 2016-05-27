@@ -20,7 +20,7 @@
 #define KSEQ_DEC_GZ
 KSEQ_INIT(gzFile, gzread)
 #endif
-namespace BMF {
+namespace bmf {
 
     const double MIN_FRAC_AGREED = 0.5; // Minimum fraction of bases agreed in a family to not "N" the base.
 
@@ -135,7 +135,7 @@ namespace BMF {
     std::vector<double> get_igamc_threshold(int family_size, int max_phred=MAX_PV, double delta=0.002);
     std::vector<std::vector<double>> get_igamc_thresholds(int max_family_size, int max_phred=MAX_PV, double delta=0.002);
 
-} /* namespace BMF */
+} /* namespace bmf */
 
 
 #endif /*KINGFISHER_H*/

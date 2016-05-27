@@ -9,7 +9,7 @@ extern "C" {
     extern int sort_main(int argc, char *argv[]);
 }
 
-namespace BMF {
+namespace bmf {
     extern int cap_main(int argc, char *argv[]);
     extern int depth_main(int argc, char *argv[]);
     extern int dmp_main(int argc, char *argv[]);

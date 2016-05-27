@@ -7,7 +7,7 @@
 #include "lib/binner.h"
 #include "lib/mseq.h"
 
-namespace BMF {
+namespace bmf {
 
     void dmp_usage()
     {
@@ -301,7 +301,7 @@ namespace BMF {
             // Update QC Fail
             pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
             // Get bin
-            bin = BMF::get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+            bin = bmf::get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
             assert(bin < (uint64_t)settings->n_handles);
             // Write the processed read to the bin
             mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode, 'F');
@@ -398,7 +398,7 @@ namespace BMF {
                 memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
                 memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
                 pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
-                bin = BMF::get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+                bin = bmf::get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
                 assert(bin < (uint64_t)settings->n_handles);
                 mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
                 mseq2fq_stranded(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
@@ -582,4 +582,4 @@ namespace BMF {
         return EXIT_SUCCESS;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

@@ -8,7 +8,7 @@
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 
-namespace BMF {
+namespace bmf {
 
 static const char *stack_vcf_lines[] = {
         "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",

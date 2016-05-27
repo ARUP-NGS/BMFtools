@@ -7,7 +7,7 @@
 #include "dlib/misc_util.h"
 #include "lib/binner.h"
 
-namespace BMF {
+namespace bmf {
 
     void splitterhash_destroy(splitterhash_params_t *params)
     {
@@ -150,4 +150,4 @@ namespace BMF {
                                    : init_splitter_pe(settings_ptr);
     }
 
-} /* namespace BMF */
+} /* namespace bmf */
