@@ -104,7 +104,7 @@ namespace bmf {
      * Add 'fm' tag to note which families of reads have already had their fm adjusted.
      * Separate from the upper-case tag!
      */
-    void BMF_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
+    void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
             std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
             int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
         int khr, s, s2;
@@ -177,9 +177,10 @@ namespace bmf {
                 PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
                 if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
-                    if(bam_itag(plp[i].b, "FM") < aux->minFM ||
-                            FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-                            (double)FA1[arr_qpos1] / bam_itag(plp[i].b, "FM") < aux->min_fr) {
+                    if((tmptag = bam_aux_get(plp[i].b, "FM")) != nullptr ? 1: bam_aux2i(tmptag) < aux->minFM ||
+                            FA1[arr_qpos1] < aux->minFA ||
+							PV1[arr_qpos1] < aux->minPV ||
+                            (double)FA1[arr_qpos1] / (tmptag ? bam_aux2i(tmptag): 1 ) < aux->min_fr) {
                         ++n_failed[j];
                         continue;
                     }
@@ -322,7 +323,7 @@ namespace bmf {
                     memset(fail_values.data(), 0, sizeof(int32_t) * fail_values.size());
                     memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                     // Perform tests to provide the results for the tags.
-                    BMF_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
+                    bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
                                  fail_values, n_overlapped, n_duplex, n_disagreed);
                     // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
@@ -477,7 +478,7 @@ namespace bmf {
                 memset(fail_values.data(), 0, sizeof(int32_t) * fail_values.size());
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
-                BMF_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
+                bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
                              fail_values, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
