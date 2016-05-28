@@ -324,9 +324,7 @@ namespace bmf {
             if(bcf_hdr_append(vh, line))
                 LOG_EXIT("Could not add line %s to header. Abort!\n", line);
         }
-        for(auto line: stack_vcf_lines)
-            if(bcf_hdr_append(vh, line))
-                LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+        add_stack_lines(vh);
         // Add samples
         int tmp;
         if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
