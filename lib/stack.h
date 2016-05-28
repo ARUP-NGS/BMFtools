@@ -92,9 +92,7 @@ namespace bmf {
             quality(((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle1]),
             mq1(plp.b->core.qual),
             mq2((uint8_t)-1),
-            rv((uint32_t)bam_itag(plp.b, "RV")),
             discordant(0),
-            is_duplex1(bam_itag(plp.b, "DR")),
             is_duplex2(0),
             is_reverse1((plp.b->core.flag & BAM_FREVERSE) != 0),
             is_reverse2(0),
@@ -108,6 +106,9 @@ namespace bmf {
             agreed(((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle1]),
             size(bam_itag(plp.b, "FM"))
         {
+            uint8_t *d;
+            rv = ((d = bam_aux_get(plp.b, "RV")) == nullptr ? 0: bam_aux2i(d));
+            is_duplex1 = ((d = bam_aux_get(plp.b, "DR")) == nullptr ? 0: bam_aux2i(d));
         }
         void add_obs(const bam_pileup1_t& plp);
     };
@@ -211,13 +212,17 @@ namespace bmf {
         {
         }
     };
+    /*
+     * Returns the expected number of correct base calls for variants
+     * with given p-values. The sum of (1 - p value) for all
+     * base calls of a given nucleotide.
+     */
     static inline int expected_count(std::vector<uint32_t> &phred_vector) {
         // Do this instead of
         // ret += 1 - (std::pow(10., i * -.1));
         // That way, we only increment once. Does it really matter? No, but it's elegant.
         double ret = phred_vector.size();
-        for(int i: phred_vector)
-            ret -= std::pow(10., i * -.1);
+        for(auto i: phred_vector) ret -= std::pow(10., i * -.1);
         return (int)(ret + 0.5);
     }
     static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_vec, std::vector<std::vector<uint32_t>> &susp_vec, int j) {

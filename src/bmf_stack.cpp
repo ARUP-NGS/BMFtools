@@ -345,7 +345,7 @@ namespace bmf {
                           : dlib::build_ref_hash(aux.normal.header);
         if(!aux.bed) LOG_EXIT("Could not open bedfile.\n");
         // Check for required tags.
-        for(auto tag: {"FM", "FA", "PV", "FP", "DR"})
+        for(auto tag: {"FM", "FA", "PV", "FP"})
             dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
         int ret = stack_core(&aux);
         LOG_INFO("Successfully complete bmftools stack!\n");

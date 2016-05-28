@@ -1,4 +1,4 @@
-#include "bmf_vetter.h"
+#include "bmf_vet.h"
 
 #include <getopt.h>
 #include <algorithm>
@@ -88,7 +88,7 @@ namespace bmf {
             // Skip AF < minAF
             if ((b->core.flag & aux->skip_flag) ||
                 (aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-                (int)b->core.qual < aux->minmq || (bam_itag(b, "FM") < aux->minFM) ||
+                (int)b->core.qual < aux->minmq ||
                 (bam_itag(b, "FP") == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
                     continue;
             break;
