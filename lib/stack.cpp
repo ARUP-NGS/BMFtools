@@ -120,6 +120,11 @@ namespace bmf {
         tsuspect_phreds.reserve(n_base_calls);
         nconfident_phreds.reserve(n_base_calls);
         nsuspect_phreds.reserve(n_base_calls);
+        //TODO: Switch out about two lines for below two.
+        /*
+        nconfident_phreds.reserve(n_base_calls);
+        nsuspect_phreds.reserve(n_base_calls);
+        */
         // Sort lexicographically AFTER putting the reference base first.
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
@@ -191,6 +196,10 @@ namespace bmf {
         kputc(refbase, &allele_str);
         for(unsigned i = 1; i < n_base_calls; ++i) {
             kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
+            nsuspect_phreds.emplace_back();
+            nconfident_phreds.emplace_back();
+            tsuspect_phreds.emplace_back();
+            tconfident_phreds.emplace_back();
             if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
                 counts[i + n_base_calls] = match->second.size();
                 for(auto uni: normal.templates[base_calls[i]]) {
@@ -233,6 +242,11 @@ namespace bmf {
                 somatic[i] = allele_passes[i] && !allele_passes[i + n_base_calls];
             }
         }
+        LOG_DEBUG("tconfident size: %lu. i_base_calls: %i\n", tconfident_phreds.size(), n_base_calls);
+        assert(n_base_calls == tconfident_phreds.size());
+        assert(n_base_calls == tsuspect_phreds.size());
+        assert(n_base_calls == nconfident_phreds.size());
+        assert(n_base_calls == nsuspect_phreds.size());
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
         //LOG_DEBUG("Got total depths %i,%i.\n", total_depth_tumor, total_depth_normal);
@@ -263,7 +277,10 @@ namespace bmf {
 #endif
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
+        if(bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size())) {
+            int i = bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
+            LOG_EXIT("Could not add tag BMF_QUANT %i..\n", i);
+        }
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), sizeof(ambig));
         bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
@@ -286,7 +303,7 @@ namespace bmf {
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
-            "##INFO=<ID=BMF_QUANT,Number=A,Type=Integer,Description=\"Estimated quantitation for variant allele.\">"
+            "##FORMAT=<ID=BMF_QUANT,Number=A,Type=Integer,Description=\"Estimated quantitation for variant allele.\">"
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {

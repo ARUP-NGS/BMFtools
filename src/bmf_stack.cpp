@@ -236,11 +236,13 @@ namespace bmf {
         aux->normal.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->normal);
         bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->normal.plp, aux->conf.max_depth);
+        LOG_DEBUG("Making sorted keys.\n");
         std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
         int ttid, tpos, tn_plp, ntid, npos, nn_plp;
         bcf1_t *v = bcf_init1();
         for(unsigned k = 0; k < sorted_keys.size(); ++k) {
             const khiter_t key = sorted_keys[k];
+            LOG_DEBUG("Now iterating through tid %i.\n", kh_key(aux->bed, key));
             const size_t n = kh_val(aux->bed, key).n;
             for(uint64_t i = 0; i < n; ++i) {
                 const int start = get_start(kh_val(aux->bed, key).intervals[i]);
@@ -341,8 +343,12 @@ namespace bmf {
             LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header
         LOG_DEBUG("Bedpath: %s.\n", bedpath);
-        aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
+        if(bedpath == nullptr) LOG_EXIT("Bed path for analysis required.\n");
+        aux.bed = dlib::parse_bed_hash(bedpath, aux.normal.header, padding);
+        /*
+         * aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
                           : dlib::build_ref_hash(aux.normal.header);
+        */
         if(!aux.bed) LOG_EXIT("Could not open bedfile.\n");
         // Check for required tags.
         for(auto tag: {"FM", "FA", "PV", "FP"})
