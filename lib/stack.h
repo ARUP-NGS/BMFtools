@@ -200,6 +200,11 @@ namespace bmf {
     };
 
     class PairVCFPos {
+        // TODO: Change the inputs to PairVCFPos.
+        // Only use mapping quality and FP filtering for getting reads into pileups.
+        // Then segregate observations into confident and suspect.
+        // ???
+        // PROFIT
         SampleVCFPos tumor;
         SampleVCFPos normal;
     public:

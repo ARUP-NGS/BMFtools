@@ -147,7 +147,7 @@ namespace bmf {
         }
         //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
-        bmf::PairVCFPos vcfline = bmf::PairVCFPos(tobs, nobs, ttid, tpos);
+        bmf::PairVCFPos vcfline(bmf::PairVCFPos(tobs, nobs, ttid, tpos));
         vcfline.to_bcf(ret, aux, ttid, tpos);
         bcf_update_format_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)fr_failed, 2);
         bcf_update_format_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)fa_failed, 2);
