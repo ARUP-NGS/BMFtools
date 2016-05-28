@@ -19,6 +19,7 @@ namespace bmf {
         for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
     }
     void SampleVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
+        // TODO: Re-do the paired-end mode for single-end.
         std::vector<int> counts;
         std::vector<int> duplex_counts;
         std::vector<int> overlap_counts;
@@ -91,6 +92,7 @@ namespace bmf {
         }
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
+        // TODO: Add BMF_QUANT tag to PairVCFPos.
         const char refbase = aux->get_ref_base(ttid, tpos);
         int ambig[2] = {0, 0};
         std::unordered_set<char> base_set{refbase};
@@ -259,6 +261,7 @@ namespace bmf {
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
+            "##INFO=<ID=BMF_QUANT,Number=A,Type=Integer,Description=\"Estimated quantitation for variant allele.\">"
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {
