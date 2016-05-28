@@ -469,11 +469,11 @@ KHASH_SET_INIT_STR(names)
         bam_aux_append(b, "FP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
         uint8_t *qual = bam_get_qual(b);
         if(b->core.flag & BAM_FREVERSE)
-        	for(i = b->core.l_qseq; i;)
-        		pvbuf.push_back(static_cast<uint32_t>(qual[--i]));
+            for(i = b->core.l_qseq; i;)
+                pvbuf.push_back(static_cast<uint32_t>(qual[--i]));
         else
-        	for(i = 0; i < b->core.l_qseq; ++i)
-        		pvbuf.push_back(static_cast<uint32_t>(qual[i]));
+            for(i = 0; i < b->core.l_qseq; ++i)
+                pvbuf.push_back(static_cast<uint32_t>(qual[i]));
         dlib::bam_aux_array_append(b, "FA", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(ONES.data())));
         dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
     }

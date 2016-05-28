@@ -2,6 +2,7 @@
 
 #include <getopt.h>
 #include <algorithm>
+#include <assert.h>
 
 #include "dlib/bam_util.h"
 #include "dlib/vcf_util.h"
@@ -94,6 +95,44 @@ namespace bmf {
         return ret;
     }
 
+    template <typename T>
+    static inline int expected_count(std::vector<T> &phred_vector) {
+        // Do this instead of
+        // ret += 1 - (std::pow(10., i * -.1));
+        // That way, we only increment once. Does it really matter? No, but it's elegant.
+        double ret = phred_vector.size();
+        for(int i: phred_vector)
+            ret -= std::pow(10., i * -.1);
+        return (int)(ret + 0.5);
+    }
+
+    template <typename T>
+    static inline int expected_incorrect(std::vector<std::vector<T>> &conf_vec, std::vector<std::vector<T>> &susp_vec, int j) {
+        double ret = 0.;
+        for(unsigned i = 0; i != conf_vec.size(); ++i) {
+            if(i != (unsigned)j) {
+                for(auto k: conf_vec[i])
+                    // Probability the base call is incorrect, over 3, as the incorrect base call could have been any of the other 3.
+                    ret += std::pow(10., k * -.1) / 3;
+                for(auto k: susp_vec[i])
+                    ret += std::pow(10., k * -.1) / 3;
+            }
+        }
+        return (int)(ret + 0.5);
+    }
+
+    /*
+     *
+     *
+     */
+    static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
+        const int ret = confident_phreds[j].size();
+        const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
+        const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
+        return (expected_false_positives >= putative_suspects) ? ret
+                                                               : ret + putative_suspects - expected_false_positives;
+    }
+
 
 
     /*
@@ -106,19 +145,23 @@ namespace bmf {
      */
     void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
             std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-            int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
-        int khr, s, s2;
+            std::vector<int>& quant_est, int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
+        int khr, s, s2, i;
         n_all_disagreed = n_all_overlaps = 0;
         khiter_t k;
         uint32_t *FA1, *PV1, *FA2, *PV2;
         char *qname;
-        uint8_t *seq, *seq2, *tmptag, *drdata;
+        uint8_t *seq, *seq2, *tmptag;
+        std::vector<std::vector<uint32_t>> confident_phreds;
+        std::vector<std::vector<uint32_t>> suspect_phreds;
+        confident_phreds.reserve(vrec->n_allele);
+        suspect_phreds.reserve(vrec->n_allele);
         // Build overlap hash
         khash_t(names) *hash = kh_init(names);
         const int sk = 1;
         // Set the r1/r2 flags for the reads to ignore to 0
         // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-        for(int i = 0; i < n_plp; ++i) {
+        for(i = 0; i < n_plp; ++i) {
             if(plp[i].is_del || plp[i].is_refskip) continue;
             // Skip any reads failed for FA < minFA or FR < min_fr
             qname = bam_get_qname(plp[i].b);
@@ -164,13 +207,14 @@ namespace bmf {
                 }
             }
         }
-        for(int j = 0; j < vrec->n_allele; ++j) {
+        // Reads in the pair have now been merged, and those to be skipped have been tagged "SK".
+        for(unsigned j = 0; j < vrec->n_allele; ++j) {
+            confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
+            suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
             if(strcmp(vrec->d.allele[j], "<*>") == 0) continue;
             for(int i = 0; i < n_plp; ++i) {
                 if(plp[i].is_del || plp[i].is_refskip) continue;
-                if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) {
-                    continue;
-                }
+                if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) continue;
 
                 seq = bam_get_seq(plp[i].b);
                 FA1 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
@@ -179,27 +223,31 @@ namespace bmf {
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
                     if((tmptag = bam_aux_get(plp[i].b, "FM")) != nullptr ? 1: bam_aux2i(tmptag) < aux->minFM ||
                             FA1[arr_qpos1] < aux->minFA ||
-							PV1[arr_qpos1] < aux->minPV ||
+                            PV1[arr_qpos1] < aux->minPV ||
                             (double)FA1[arr_qpos1] / (tmptag ? bam_aux2i(tmptag): 1 ) < aux->min_fr) {
                         ++n_failed[j];
-                        continue;
-                    }
-                    ++n_obs[j];
-                    if((drdata = bam_aux_get(plp[i].b, "DR")) != nullptr && bam_aux2i(drdata)) {
-                        ++n_duplex[j]; // Has DR tag and its value is nonzero.
-                    }
-                    if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
-                        ++n_overlaps[j];
-                        bam_aux_del(plp[i].b, tmptag);
+                        suspect_phreds[j].push_back(PV1[arr_qpos1]);
+                    } else {
+                        // TODO: replace n_obs vector with calls to size
+                        confident_phreds[j].push_back(PV1[arr_qpos1]);
+                        ++n_obs[j];
+                        if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr && bam_aux2i(tmptag))
+                            ++n_duplex[j]; // Has DR tag and its value is nonzero.
+                        if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
+                            ++n_overlaps[j];
+                            bam_aux_del(plp[i].b, tmptag);
+                        }
                     }
                 }
             }
             pass_values[j] = n_obs[j] >= aux->min_count && n_duplex[j] >= aux->min_duplex && n_overlaps[j] >= aux->min_overlap;
+            quant_est[j] = estimate_quantity(confident_phreds, suspect_phreds, j);
             //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
-
         }
-        for(int i = 0; i < n_plp; ++i)
-            if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) bam_aux_del(plp[i].b, tmptag);
+        // Now estimate the fraction likely correct.
+        for(i = 0; i < n_plp; ++i)
+            if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr)
+                bam_aux_del(plp[i].b, tmptag);
         kh_destroy(names, hash);
         n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
     }
@@ -247,6 +295,7 @@ namespace bmf {
         std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
         for(khiter_t& ki: keys) {
 
@@ -324,7 +373,7 @@ namespace bmf {
                     memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                     // Perform tests to provide the results for the tags.
                     bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                                 fail_values, n_overlapped, n_duplex, n_disagreed);
+                                 fail_values, quant_est, n_overlapped, n_duplex, n_disagreed);
                     // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -392,6 +441,7 @@ namespace bmf {
         std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
         bam_plp_t pileup(nullptr);
 
         for(int i = 0; i < aux->header->n_targets; ++i) {
@@ -479,7 +529,7 @@ namespace bmf {
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
                 bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                             fail_values, n_overlapped, n_duplex, n_disagreed);
+                             fail_values, quant_est, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -488,6 +538,7 @@ namespace bmf {
                 bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
                 bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
                 bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (void *)&quant_est[0], vrec->n_allele, BCF_HT_INT);
 
                 // Pass or fail them individually.
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
