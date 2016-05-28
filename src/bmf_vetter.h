@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "htslib/khash.h"
+#include "lib/stack.h"
 
 namespace bmf {
 

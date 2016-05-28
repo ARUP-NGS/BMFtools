@@ -223,6 +223,36 @@ static const char *stack_vcf_lines[] = {
         {
         }
     };
-}
+    static inline int expected_count(std::vector<uint32_t> &phred_vector) {
+        // Do this instead of
+        // ret += 1 - (std::pow(10., i * -.1));
+        // That way, we only increment once. Does it really matter? No, but it's elegant.
+        double ret = phred_vector.size();
+        for(int i: phred_vector)
+            ret -= std::pow(10., i * -.1);
+        return (int)(ret + 0.5);
+    }
+    static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_vec, std::vector<std::vector<uint32_t>> &susp_vec, int j) {
+        double ret = 0.;
+        for(unsigned i = 0; i != conf_vec.size(); ++i) {
+            if(i != (unsigned)j) {
+                for(auto k: conf_vec[i])
+                    // Probability the base call is incorrect, over 3, as the incorrect base call could have been any of the other 3.
+                    ret += std::pow(10., k * -.1) / 3;
+                for(auto k: susp_vec[i])
+                    ret += std::pow(10., k * -.1) / 3;
+            }
+        }
+        return (int)(ret + 0.5);
+    }
+    static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
+        const int ret = confident_phreds[j].size();
+        const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
+        const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
+        return (expected_false_positives >= putative_suspects) ? ret
+                                                               : ret + putative_suspects - expected_false_positives;
+    }
+
+} /* namespace bmf */
 
 #endif

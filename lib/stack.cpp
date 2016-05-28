@@ -243,14 +243,15 @@ namespace bmf {
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
 
-void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
-    while(n--)
-        if(bcf_hdr_append(hdr, lines[n]))
-            LOG_EXIT("Could not add header line %s. Abort!\n", lines[n]);
-}
+    void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
+        while(n--)
+            if(bcf_hdr_append(hdr, lines[n]))
+                LOG_EXIT("Could not add header line %s. Abort!\n", lines[n]);
+    }
 
-void add_stack_lines(bcf_hdr_t *hdr) {
-    add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
-}
+    void add_stack_lines(bcf_hdr_t *hdr) {
+        add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
+    }
+
 
 } /* namespace bmf */
