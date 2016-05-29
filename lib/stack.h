@@ -62,7 +62,7 @@ namespace bmf {
         uint32_t get_agreed() {
             return agreed;
         }
-        bool mate_added() {
+        int mate_added() {
             return mq2 != (uint8_t)-1;
         }
         int get_reverse() {
@@ -71,8 +71,8 @@ namespace bmf {
         void set_pass(int _pass) {
             pass = _pass;
         }
-        uint32_t get_meanMQ() {
-            return mate_added() ? mq1: ((mq2 + mq1 + 0.5) / 2);
+        uint32_t get_max_mq() {
+            return mq1 > mq2 ? mq1: mq2;
         }
         double get_FA() {
             return (double)agreed / size;
