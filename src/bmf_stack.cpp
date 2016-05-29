@@ -335,10 +335,28 @@ namespace bmf {
             LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
         bcf_hdr_add_sample(vh, nullptr);
         bcf_hdr_nsamples(vh) = 2;
-        LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
+        kstring_t tmpstr = {0};
+        ksprintf(&tmpstr, "##cmdline=");
+        kputs("bmftools ", &tmpstr);
+        for(int i = 0; i < argc; ++i) {
+            kputs(argv[i], &tmpstr);
+            kputc(' ', &tmpstr);
+        }
+        bcf_hdr_append(vh, tmpstr.s);
+        tmpstr.l = 0;
+        bcf_hdr_printf(vh, "##bed_filename=\"%s\"", bedpath ? bedpath: "FullGenomeAnalysis");
+        samFile *tmpfp = sam_open(argv[optind], "r");
+        bam_hdr_t *hdr = sam_hdr_read(tmpfp);
+        // Add in settings
+        free(tmpstr.s);
+        std::string timestring("", 16uL);
+        dlib::string_fmt_time(timestring);
+        bcf_hdr_printf(vh, "##StartTime=\"%s\"", timestring.c_str());
+        dlib::bcf_add_bam_contigs(vh, hdr);
         // Add lines to the header for the bed file?
         bmf::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
         bcf_hdr_destroy(vh);
+        bam_hdr_destroy(hdr);
         if((aux.fai = fai_load(refpath)) == nullptr)
             LOG_EXIT("failed to open fai. Abort!\n");
         // TODO: Make BCF header

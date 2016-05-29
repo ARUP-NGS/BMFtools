@@ -615,19 +615,17 @@ namespace bmf {
                 LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
         }
         bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed ? bed: "FullGenomeAnalysis");
-        { // New block so tmpstr is cleared
-            kstring_t tmpstr = {0};
-            ksprintf(&tmpstr, "##cmdline=");
-            kputs("bmftools ", &tmpstr);
-            for(int i = 0; i < argc; ++i) {
-                kputs(argv[i], &tmpstr);
-                kputc(' ', &tmpstr);
-            }
-            bcf_hdr_append(aux.vcf_header, tmpstr.s);
-            tmpstr.l = 0;
-            // Add in settings
-            free(tmpstr.s);
+        kstring_t tmpstr = {0};
+        ksprintf(&tmpstr, "##cmdline=");
+        kputs("bmftools ", &tmpstr);
+        for(int i = 0; i < argc; ++i) {
+            kputs(argv[i], &tmpstr);
+            kputc(' ', &tmpstr);
         }
+        bcf_hdr_append(aux.vcf_header, tmpstr.s);
+        tmpstr.l = 0;
+        // Add in settings
+        free(tmpstr.s);
         bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", BMF_VERSION);
         std::string timestring("", 16uL);
         dlib::string_fmt_time(timestring);
