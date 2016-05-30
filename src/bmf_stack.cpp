@@ -63,7 +63,6 @@ namespace bmf {
         int improper_count[2]{0};
         int olap_count[2]{0};
         std::string qname;
-        LOG_DEBUG("tumor nplp: %i. nn_plp: %i.\n", tn_plp, nn_plp);
         for(int i = 0; i < tn_plp; ++i) {
             if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
             if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {

@@ -294,6 +294,14 @@ namespace bmf {
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
                                     tconfident_phreds.size() >= (unsigned)aux->conf.min_count &&
                                     overlap_counts[i] >= aux->conf.min_overlap);
+                if(vrec->rid == 6 && vrec->pos == 55249070) {
+                    //LOG_DEBUG("counts: %i. min: %i.\n", duplex_counts[i], aux->conf.min_duplex);
+                    LOG_DEBUG("%i/%i %s filter for base call %c.\n", vrec->rid, vrec->pos,
+                              duplex_counts[i] >= aux->conf.min_duplex ? "pass": "fail", base_calls[i]);
+                    LOG_DEBUG("Duplex counts: %i.\n", duplex_counts[i]);
+                    //LOG_DEBUG("%i/%i pass duplex filter? %i, (%i, %i).\n", vrec->rid, vrec->pos, (int)(duplex_counts[n_base_calls] >= aux->conf.min_duplex),
+                    //          duplex_counts[n_base_calls], aux->conf.min_duplex);
+                }
                 somatic[i] = allele_passes[i] && !allele_passes[i + n_base_calls];
             }
         }
@@ -339,7 +347,7 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size())
+        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig));
         bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
