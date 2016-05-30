@@ -17,6 +17,8 @@ namespace bmf {
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-D, --min-duplex\tMinimum number of duplex reads supporting a variant to pass it. Default: 0.\n"
+                        "-O, --min-overlap\tMinimum number of concordant overlapping read-pairs supporting a variant to pass it. Default: 0.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
@@ -42,11 +44,9 @@ namespace bmf {
             if(!data->iter) LOG_EXIT("Need to access bam with index.\n");
             ret = sam_itr_next(data->fp, data->iter, b);
             if ( ret<0 ) break;
-            // Skip unmapped, secondary, qcfail, duplicates.
-            if((tmp = bam_aux_get(b, "FP")) != nullptr)
-                if(bam_aux2i(tmp))
-                    if((b->core.flag & BAM_FUNMAP) == 0)
-                         break;
+            if((tmp = bam_aux_get(b, "FP")) != nullptr && bam_aux2i(tmp))
+                if((b->core.flag & BAM_FUNMAP) == 0)
+                    break;
         }
         return ret;
     }
@@ -63,6 +63,7 @@ namespace bmf {
         int improper_count[2]{0};
         int olap_count[2]{0};
         std::string qname;
+        LOG_DEBUG("tumor nplp: %i. nn_plp: %i.\n", tn_plp, nn_plp);
         for(int i = 0; i < tn_plp; ++i) {
             if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
             if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
@@ -278,6 +279,11 @@ namespace bmf {
                 case 'h': case '?': stack_usage(EXIT_SUCCESS);
             }
         }
+        /*
+        if(!conf.max_depth) {
+            conf.max_depth = DEFAULT_MAX_DEPTH;
+        }
+        */
         if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
         if(padding < 0) {
             LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);

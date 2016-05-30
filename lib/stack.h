@@ -14,16 +14,16 @@ namespace bmf {
         float min_fr; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
         int max_depth;
-        uint32_t minFM;
-        uint32_t minFA;
-        uint32_t minPV;
-        uint32_t minmq;
+        uint32_t minFA:16;
+        uint32_t minPV:16;
+        uint32_t minFM:15;
+        uint32_t output_bcf:1;
+        uint32_t skip_improper:1;
+        uint32_t minmq:8;
         int min_count;
         int min_duplex;
         int min_overlap;
-        int skip_improper;
         uint32_t skip_flag; // Skip reads with any bits set to true
-        int output_bcf;
     };
 
     class SampleVCFPos;
@@ -80,7 +80,7 @@ namespace bmf {
         int get_overlap() {return is_overlap;}
         uint32_t get_quality() {return quality;}
         int get_duplex() {
-            return is_duplex1 + mate_added() ? is_duplex2: 0;
+            return is_duplex1 + (mate_added() ? is_duplex2: 0);
         }
         UniqueObservation() {
             memset(this, 0, sizeof(*this));
@@ -112,6 +112,8 @@ namespace bmf {
         }
         void add_obs(const bam_pileup1_t& plp);
     };
+
+static const int MAX_COUNT = 1 << 16;
 
     struct stack_aux_t {
         stack_conf_t conf;
@@ -155,8 +157,8 @@ namespace bmf {
             }
             return 0;
         }
-        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf_t conf):
-            conf(conf),
+        stack_aux_t(char *tumor_path, char *normal_path, char *vcf_path, bcf_hdr_t *vh, stack_conf_t conf_):
+            conf(conf_),
             tumor(tumor_path),
             normal(normal_path),
             vcf(vcf_path, vh, conf.output_bcf ? "wb": "w"),
@@ -167,6 +169,7 @@ namespace bmf {
         {
             dlib::bcf_add_bam_contigs(vcf.vh, tumor.header);
             if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
+            LOG_DEBUG("Max depth: %i.\n", conf.max_depth);
         }
         char get_ref_base(int tid, int pos) {
             //LOG_DEBUG("fai ptr %p.\n", (void *)fai);

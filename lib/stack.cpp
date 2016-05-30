@@ -323,6 +323,7 @@ namespace bmf {
         }
         assert(allele_fractions.size() == 2 * n_base_calls);
         std::vector<int> adp_pass;
+        assert(duplex_counts.size() == n_base_calls * 2);
         adp_pass.reserve(n_base_calls * 2);
         for(auto& i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         for(auto& i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
@@ -338,12 +339,9 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
-        if(bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size())) {
-            int i = bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
-            LOG_EXIT("Could not add tag BMF_QUANT %i..\n", i);
-        }
+        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size())
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), sizeof(ambig));
+        bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig));
         bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
@@ -355,6 +353,7 @@ namespace bmf {
     }
 
     static const char *stack_vcf_lines[] = {
+            "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
             "##FORMAT=<ID=ADP_PASS,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">",
             "##FORMAT=<ID=ADP_ALL,Number=R,Type=Integer,Description=\"Number of unique observations for each allele.\">",
@@ -364,7 +363,6 @@ namespace bmf {
             "##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
-            "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
             "##FORMAT=<ID=BMF_QUANT,Number=A,Type=Integer,Description=\"Estimated quantitation for variant allele.\">",
             "##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
             "##FORMAT=<ID=PV_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
