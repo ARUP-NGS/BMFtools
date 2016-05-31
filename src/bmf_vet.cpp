@@ -410,7 +410,7 @@ namespace bmf {
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
         vrec->rid = -1;
-        hts_itr_t *vcf_iter = nullptr;
+        hts_itr_t *vcf_iter(nullptr);
 
         std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
