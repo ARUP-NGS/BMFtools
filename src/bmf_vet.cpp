@@ -279,7 +279,7 @@ namespace bmf {
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
-        for(khiter_t& ki: keys) {
+        for(khiter_t ki: keys) {
 
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
                 int tid, start, stop, pos = -1;
@@ -299,7 +299,12 @@ namespace bmf {
                 int n_disagreed = 0;
                 int n_overlapped = 0;
                 int n_duplex = 0;
+                bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+                bam_plp_set_maxcnt(pileup, max_depth);
+                if (aux->iter) hts_itr_destroy(aux->iter);
+                aux->iter = sam_itr_queryi(idx, tid, start - 500, stop);
                 while(read_bcf(aux, vcf_iter, vrec) >= 0) {
+                    //if (aux->iter) hts_itr_destroy(aux->iter);
                     if(!bcf_is_snp(vrec)) {
                         LOG_DEBUG("Variant isn't a snp. Skip!\n");
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -309,33 +314,12 @@ namespace bmf {
                         LOG_DEBUG("Outside of bed region. Skip.\n");
                         continue; // Only handle simple SNVs
                     }
-                    if (aux->iter) hts_itr_destroy(aux->iter);
-                    aux->iter = sam_itr_queryi(idx, tid, vrec->pos - 500, vrec->pos);
-                    bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-                    bam_plp_set_maxcnt(pileup, max_depth);
-                    // This would be faster if we did one sam_itr_queryi for each bed region.
-                    /*
-                    while(vrec->pos > stop) {
-                        if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
-                            LOG_EXIT("Record in bed region, but past region of interest on contig and no available contig is present?\n");
-                        }
-                        start = get_start(kh_val(aux->bed, ki).intervals[j]);
-                        stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-                    }
-                    */
-                    //LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
                     bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
-                    //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
-                    plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-                    //LOG_DEBUG("Finished pileup.\n");
-                    if(tid != vrec->rid) {
-                        LOG_EXIT("Pileup failed that hard, huh?\n");
-                    }
-                    while ((pos < vrec->pos && tid == vrec->rid) &&
-                            ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
+                    if(pos > vrec->pos) LOG_EXIT("pos is after variant. WTF?");
+                    while(pos < vrec->pos && tid <= vrec->rid && (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0);
+                    //assert(pos == vrec->pos);
                         //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                         /* Zoom ahead until you're at the correct position */
-                    }
                     if(!plp) {
                         if(n_plp == -1) {
                             LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
@@ -372,9 +356,10 @@ namespace bmf {
 
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
-                    bam_plp_destroy(pileup);
+                    //bam_plp_reset(pileup);
                 }
                 if(vcf_iter) hts_itr_destroy(vcf_iter);
+                bam_plp_destroy(pileup);
             }
         }
         if(bcf_idx) hts_idx_destroy(bcf_idx);
