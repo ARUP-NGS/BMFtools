@@ -49,9 +49,8 @@ namespace bmf {
     char base1;
     char base2; // Masked, from other read
     char base_call;
-    uint32_t agreed:16;
-    uint32_t size:32;
-    //size_t size;
+    uint32_t agreed;
+    uint32_t size;
     public:
         int is_pass() {
             return pass;
@@ -74,7 +73,7 @@ namespace bmf {
         uint32_t get_max_mq() {
             return mq1 > mq2 ? mq1: mq2;
         }
-        double get_FA() {
+        double get_frac() {
             return (double)agreed / size;
         }
         int get_overlap() {return is_overlap;}
