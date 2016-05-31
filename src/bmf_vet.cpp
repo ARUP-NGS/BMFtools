@@ -121,7 +121,7 @@ namespace bmf {
         confident_phreds.reserve(vrec->n_allele);
         suspect_phreds.reserve(vrec->n_allele);
         // Build overlap hash
-        khash_t(names) *hash = kh_init(names);
+        khash_t(names) *hash(kh_init(names));
         const int sk = 1;
         // Set the r1/r2 flags for the reads to ignore to 0
         // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
@@ -265,8 +265,6 @@ namespace bmf {
 
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
                 int tid, start, stop, pos = -1;
-                bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-                bam_plp_set_maxcnt(pileup, max_depth);
 
                 // Handle coordinates
                 tid = kh_key(aux->bed, ki);
@@ -285,13 +283,16 @@ namespace bmf {
                 int n_duplex = 0;
                 while(read_bcf(aux, vcf_iter, vrec) >= 0) {
                     if(!bcf_is_snp(vrec)) {
-                        //LOG_DEBUG("Variant isn't a snp. Skip!\n");
+                        LOG_DEBUG("Variant isn't a snp. Skip!\n");
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue; // Only handle simple SNVs
                     }
                     if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
+                        LOG_DEBUG("Outside of bed region. Skip.\n");
                         continue; // Only handle simple SNVs
                     }
+                    bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+                    bam_plp_set_maxcnt(pileup, max_depth);
                     /*
                     while(vrec->pos > stop) {
                         if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
@@ -308,6 +309,9 @@ namespace bmf {
                     //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
                     plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                     //LOG_DEBUG("Finished pileup.\n");
+                    if(tid != vrec->rid) {
+                        LOG_EXIT("Pileup failed that hard, huh?\n");
+                    }
                     while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) &&
                             ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
                         //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
@@ -349,9 +353,9 @@ namespace bmf {
 
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
+                    bam_plp_destroy(pileup);
                 }
                 if(vcf_iter) hts_itr_destroy(vcf_iter);
-                bam_plp_destroy(pileup);
             }
         }
         if(bcf_idx) hts_idx_destroy(bcf_idx);
