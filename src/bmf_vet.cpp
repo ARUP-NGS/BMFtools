@@ -175,7 +175,12 @@ namespace bmf {
         for(unsigned j = 0; j < vrec->n_allele; ++j) {
             confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
             suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
-            if(strcmp(vrec->d.allele[j], "<*>") == 0) continue;
+            if(strcmp(vrec->d.allele[j], "<*>") == 0) {
+                LOG_DEBUG("Allele is meaningless/useless <*>. Continuing.\n");
+                continue;
+            }
+            const char allele(vrec->d.allele[j][0]);
+            //LOG_DEBUG("Checking stack for reads with base %c.\n", allele);
             for(int i = 0; i < n_plp; ++i) {
                 if(plp[i].is_del || plp[i].is_refskip) continue;
                 if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) continue;
@@ -183,20 +188,33 @@ namespace bmf {
                 seq = bam_get_seq(plp[i].b);
                 FA1 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
                 PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
-                if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
+                if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)allele]) { // Match!
+                    //LOG_DEBUG("Found read supporting allele '%i', '%c'.\n", bam_seqi(seq, plp[i].qpos), allele);
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
-                    if((tmptag = bam_aux_get(plp[i].b, "FM")) != nullptr ? 1: bam_aux2i(tmptag) < aux->minFM ||
-                            FA1[arr_qpos1] < aux->minFA ||
+                    if(bam_itag(plp[i].b, "FM") < aux->minFM ||
+                       FA1[arr_qpos1] < aux->minFA ||
                             PV1[arr_qpos1] < aux->minPV ||
                             (double)FA1[arr_qpos1] / (tmptag ? bam_aux2i(tmptag): 1 ) < aux->min_fr) {
+                        /*
+                        LOG_DEBUG("Failed a read because FM ? %s FA? %s PV? %s\n",
+                                (tmptag ? bam_aux2i(tmptag): 1) < aux->minFM ? "true": "false",
+                                FA1[arr_qpos1] < aux->minFA ? "true": "false",
+                                PV1[arr_qpos1] < aux->minPV ? "true": "false"
+                                );
+                        */
                         ++n_failed[j];
                         suspect_phreds[j].push_back(PV1[arr_qpos1]);
                     } else {
+                        //LOG_DEBUG("Passed a read!\n");
                         // TODO: replace n_obs vector with calls to size
                         confident_phreds[j].push_back(PV1[arr_qpos1]);
                         ++n_obs[j];
-                        if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr && bam_aux2i(tmptag))
-                            ++n_duplex[j]; // Has DR tag and its value is nonzero.
+                        if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr) {
+                            if(bam_aux2i(tmptag)) {
+                                ++n_duplex[j]; // Has DR tag and its value is nonzero.
+                                //LOG_DEBUG("Found a duplex read!\n");
+                            }
+                        }
                         if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
                             ++n_overlaps[j];
                             bam_aux_del(plp[i].b, tmptag);
@@ -293,6 +311,7 @@ namespace bmf {
                     }
                     bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
                     bam_plp_set_maxcnt(pileup, max_depth);
+                    // This would be faster if we did one sam_itr_queryi for each bed region.
                     /*
                     while(vrec->pos > stop) {
                         if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
