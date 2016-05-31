@@ -12,6 +12,7 @@
 namespace bmf {
 
     KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
+    static int max_depth = (1 << 20); // 262144
 
     void vetter_usage(int retcode)
     {
@@ -28,13 +29,16 @@ namespace bmf {
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
                         "-r, --skip-duplicates\tSkip reads marked as duplicates.\n"
+                        "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
+                        "-d, --max-depth\tMaximum depth for pileups. Default: %i.\n"
                         "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                         "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                         "-p, --padding\tNumber of bases outside of bed region to pad.\n"
                         "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
                         "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
+                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n",
+                max_depth
                 );
         exit(retcode);
     }
@@ -61,8 +65,6 @@ namespace bmf {
         uint32_t minmq:8;
         uint32_t skip_flag; // Skip reads with any bits set to true
     };
-
-    static int max_depth = (1 << 20); // 262144
 
 
     void vetter_error(const char *message, int retcode)
