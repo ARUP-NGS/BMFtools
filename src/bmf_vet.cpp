@@ -309,6 +309,8 @@ namespace bmf {
                         LOG_DEBUG("Outside of bed region. Skip.\n");
                         continue; // Only handle simple SNVs
                     }
+                    if (aux->iter) hts_itr_destroy(aux->iter);
+                    aux->iter = sam_itr_queryi(idx, tid, vrec->pos - 500, vrec->pos);
                     bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
                     bam_plp_set_maxcnt(pileup, max_depth);
                     // This would be faster if we did one sam_itr_queryi for each bed region.
@@ -324,8 +326,6 @@ namespace bmf {
                     //LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
                     bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
                     //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
-                    if (aux->iter) hts_itr_destroy(aux->iter);
-                    aux->iter = sam_itr_queryi(idx, tid, vrec->pos - 500, vrec->pos);
                     plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                     //LOG_DEBUG("Finished pileup.\n");
                     if(tid != vrec->rid) {
