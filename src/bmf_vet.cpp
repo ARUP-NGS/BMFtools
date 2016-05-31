@@ -358,10 +358,11 @@ namespace bmf {
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (const void *)pass_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (const void *)fail_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (const void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (const void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (const void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
 
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -508,11 +509,11 @@ namespace bmf {
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (void *)&quant_est[0], vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)fail_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
 
                 // Pass or fail them individually.
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
