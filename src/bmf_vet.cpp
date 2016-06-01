@@ -110,7 +110,7 @@ namespace bmf {
      */
     void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
             std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-            std::vector<int>& quant_est, int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
+            std::vector<int>& quant_est, std::vector<int>& qscore_sums, int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
         int khr, s, s2, i;
         n_all_disagreed = n_all_overlaps = 0;
         khiter_t k;
@@ -119,6 +119,7 @@ namespace bmf {
         uint8_t *seq, *seq2, *tmptag;
         std::vector<std::vector<uint32_t>> confident_phreds;
         std::vector<std::vector<uint32_t>> suspect_phreds;
+        memset(qscore_sums.data(), 0, qscore_sums.size() * sizeof(int));
         confident_phreds.reserve(vrec->n_allele);
         suspect_phreds.reserve(vrec->n_allele);
         // Build overlap hash
@@ -154,8 +155,8 @@ namespace bmf {
                 FA2 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
                 seq2 = bam_get_seq(plp[i].b);
                 s2 = bam_seqi(seq2, plp[i].qpos);
-                const int32_t arr_qpos1 = dlib::arr_qpos(kh_val(hash, k));
-                const int32_t arr_qpos2 = dlib::arr_qpos(&plp[i]);
+                const int32_t arr_qpos1(dlib::arr_qpos(kh_val(hash, k)));
+                const int32_t arr_qpos2(dlib::arr_qpos(&plp[i]));
                 if(s == s2) {
                     PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
                     FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
@@ -173,6 +174,12 @@ namespace bmf {
             }
         }
         // Reads in the pair have now been merged, and those to be skipped have been tagged "SK".
+#if !NDEBUG
+            for(auto i: qscore_sums) {
+                assert(i == 0);
+                LOG_DEBUG("Qscore sum before  %i.\n", i);
+            }
+#endif
         for(unsigned j = 0; j < vrec->n_allele; ++j) {
             confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
             suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
@@ -209,6 +216,7 @@ namespace bmf {
                         //LOG_DEBUG("Passed a read!\n");
                         // TODO: replace n_obs vector with calls to size
                         confident_phreds[j].push_back(PV1[arr_qpos1]);
+                        qscore_sums[j] += PV1[arr_qpos1];
                         ++n_obs[j];
                         if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr) {
                             if(bam_aux2i(tmptag)) {
@@ -227,6 +235,11 @@ namespace bmf {
             quant_est[j] = estimate_quantity(confident_phreds, suspect_phreds, j);
             //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
         }
+#if !NDEBUG
+            for(auto i: qscore_sums) {
+                LOG_DEBUG("Qscore sum after %i.\n", i);
+            }
+#endif
         // Now estimate the fraction likely correct.
         for(i = 0; i < n_plp; ++i)
             if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr)
@@ -276,6 +289,7 @@ namespace bmf {
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
         for(khiter_t ki: keys) {
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
@@ -298,7 +312,7 @@ namespace bmf {
                 int n_overlapped = 0;
                 int n_duplex = 0;
                 bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-                bam_plp_set_maxcnt(pileup, max_depth);
+                bam_plp_set_maxcnt(pileup, aux->max_depth);
                 if (aux->iter) hts_itr_destroy(aux->iter);
                 aux->iter = sam_itr_queryi(idx, tid, start - 500, stop);
                 while(read_bcf(aux, vcf_iter, vrec) >= 0) {
@@ -353,7 +367,7 @@ namespace bmf {
                     memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                     // Perform tests to provide the results for the tags.
                     bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                                 fail_values, quant_est, n_overlapped, n_duplex, n_disagreed);
+                                 fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
                     // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -363,6 +377,7 @@ namespace bmf {
                     bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (const void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
                     bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (const void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
                     bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (const void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_QSS", (const void *)qscore_sums.data(), vrec->n_allele, BCF_HT_INT);
 
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -419,6 +434,7 @@ namespace bmf {
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
         bam_plp_t pileup(nullptr);
 
         for(int i = 0; i < aux->header->n_targets; ++i) {
@@ -451,8 +467,8 @@ namespace bmf {
                 aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
                 //LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(pileup) bam_plp_destroy(pileup);
-                pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, max_depth);
-                LOG_DEBUG("Max depth: %i.\n", max_depth);
+                pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, aux->max_depth);
+                LOG_DEBUG("Max depth: %i.\n", aux->max_depth);
                 bam_plp_reset(pileup);
                 plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                 //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
@@ -504,7 +520,7 @@ namespace bmf {
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
                 bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                             fail_values, quant_est, n_overlapped, n_duplex, n_disagreed);
+                             fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -514,6 +530,7 @@ namespace bmf {
                 bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
                 bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
                 bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_QSS", (const void *)qscore_sums.data(), vrec->n_allele, BCF_HT_INT);
 
                 // Pass or fail them individually.
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -566,7 +583,7 @@ namespace bmf {
         htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
         vetter_aux_t aux = {0};
         aux.min_count = 1;
-        aux.max_depth = (1 << 18); // Default max depth
+        aux.max_depth = max_depth;
 
         while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVwF", lopts, nullptr)) >= 0) {
             switch (c) {

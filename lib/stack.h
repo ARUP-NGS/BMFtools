@@ -246,11 +246,12 @@ static const int MAX_COUNT = 1 << 16;
         return (int)(ret + 0.5);
     }
     static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
-        const int ret = confident_phreds[j].size();
-        const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
-        const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
-        return (expected_false_positives >= putative_suspects) ? ret
-                                                               : ret + putative_suspects - expected_false_positives;
+        // expected number of correct calls - expected incorrect calls.
+        // If the difference is > 0, return confident_phreds.size() + this difference.
+        // Otherwise, return confident_phreds.size().
+        const int putative_expected_diff = expected_count(suspect_phreds[j]) - expected_incorrect(confident_phreds, suspect_phreds, j);
+        return (putative_expected_diff > 0) ? confident_phreds[j].size()
+                                            : confident_phreds[j].size() + putative_expected_diff;
     }
     void add_stack_lines(bcf_hdr_t *hdr);
 
