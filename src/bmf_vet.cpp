@@ -174,12 +174,6 @@ namespace bmf {
             }
         }
         // Reads in the pair have now been merged, and those to be skipped have been tagged "SK".
-#if !NDEBUG
-            for(auto i: qscore_sums) {
-                assert(i == 0);
-                LOG_DEBUG("Qscore sum before  %i.\n", i);
-            }
-#endif
         for(unsigned j = 0; j < vrec->n_allele; ++j) {
             confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
             suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
@@ -235,11 +229,6 @@ namespace bmf {
             quant_est[j] = estimate_quantity(confident_phreds, suspect_phreds, j);
             //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
         }
-#if !NDEBUG
-            for(auto i: qscore_sums) {
-                LOG_DEBUG("Qscore sum after %i.\n", i);
-            }
-#endif
         // Now estimate the fraction likely correct.
         for(i = 0; i < n_plp; ++i)
             if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr)
@@ -476,7 +465,7 @@ namespace bmf {
                 while (pos < vrec->pos &&
                        ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
                     assert(tid == vrec->rid);
-                    LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                    //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                     /* Zoom ahead until you're at the correct position */
                 }
                 assert(tid == vrec->rid);
