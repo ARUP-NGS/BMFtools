@@ -1,6 +1,6 @@
 #include "stack.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <algorithm>
 #include "include/igamc_cephes.h"
 #include "dlib/misc_util.h"

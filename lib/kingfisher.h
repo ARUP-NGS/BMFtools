@@ -1,7 +1,7 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
 #include <assert.h>
-#include <math.h>
+#include <cmath>
 #include <zlib.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"

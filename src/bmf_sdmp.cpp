@@ -1,11 +1,11 @@
 #include <zlib.h>
-#include <stdio.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdint>
 #include <getopt.h>
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 #include <omp.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include "bmf_dmp.h"
 #include "lib/binner.h"
 #include "dlib/nix_util.h"

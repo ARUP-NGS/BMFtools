@@ -1,5 +1,5 @@
 #include "bmf_rsq.h"
-#include <string.h>
+#include <cstring>
 #include <getopt.h>
 #include "dlib/cstr_util.h"
 #include "include/igamc_cephes.h" /// for igamc

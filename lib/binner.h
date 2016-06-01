@@ -1,6 +1,6 @@
 #ifndef BINNER_H
 #define BINNER_H
-#include <stdint.h>
+#include <cstdint>
 #include "dlib/compiler_util.h"
 #include "dlib/math_util.h"
 

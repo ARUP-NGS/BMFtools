@@ -1,6 +1,6 @@
 #define __STDC_LIMIT_MACROS
 #include <assert.h>
-#include <stdint.h>
+#include <cstdint>
 //#include "htslib/sam.h"
 #include "src/bmf_target.h"
 #include "dlib/logging_util.h"

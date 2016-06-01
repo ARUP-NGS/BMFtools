@@ -1,7 +1,7 @@
 #ifndef BMF_VETTER_H
 #define BMF_VETTER_H
 
-#include <stdint.h>
+#include <cstdint>
 #include "htslib/khash.h"
 #include "lib/stack.h"
 

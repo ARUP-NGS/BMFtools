@@ -1,8 +1,8 @@
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 #include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 #include "dlib/logging_util.h"
 
 extern "C" {

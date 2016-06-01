@@ -1,6 +1,6 @@
 #include "splitter.h"
 
-#include <string.h>
+#include <cstring>
 #include "htslib/kstring.h"
 #include "dlib/cstr_util.h"
 #include "dlib/compiler_util.h"

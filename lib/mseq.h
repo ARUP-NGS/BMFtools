@@ -1,7 +1,7 @@
 #ifndef MSEQ_H
 #define MSEQ_H
 #include <zlib.h>
-#include <stdint.h>
+#include <cstdint>
 #include "htslib/kseq.h"
 #include "dlib/compiler_util.h"
 #include "dlib/cstr_util.h"

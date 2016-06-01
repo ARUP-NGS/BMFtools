@@ -1,6 +1,6 @@
 #ifndef BMF_DEPTH_H
 #define BMF_DEPTH_H
-#include <stdint.h>
+#include <cstdint>
 extern "C" {
     #include "htslib/khash.h"
 }
