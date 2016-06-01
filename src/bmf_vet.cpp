@@ -32,11 +32,11 @@ namespace bmf {
                         "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
                         "-d, --max-depth\tMaximum depth for pileups. Default: %i.\n"
-                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
-                        "-p, --padding\tNumber of bases outside of bed region to pad.\n"
-                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
-                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
+                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call. Default: 0.0.\n"
+                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space. Default: 0.\n"
+                        "-p, --padding\tNumber of bases outside of bed region to pad. Default: 0.\n"
+                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call. Default: 0.\n"
+                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion. Default: 0.\n"
                         "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n",
                 max_depth
                 );
@@ -582,7 +582,10 @@ namespace bmf {
             case 'c': aux.min_count = atoi(optarg); break;
             case 'D': aux.min_duplex = atoi(optarg); break;
             case 's': aux.minFM = atoi(optarg); break;
-            case 'm': aux.minmq = atoi(optarg); break;
+            case 'm':
+                aux.minmq = atoi(optarg);
+                if(aux.minmq < atoi(optarg)) LOG_EXIT("minmq must be <255. Provided: %i.\n", atoi(optarg));
+            break;
             case 'v': aux.minPV = atoi(optarg); break;
             case '2': aux.skip_flag |= BAM_FSECONDARY; break;
             case 'S': aux.skip_flag |= BAM_FSUPPLEMENTARY; break;
