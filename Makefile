@@ -8,8 +8,8 @@ CXXSTD=c++11
 CSTD=gnu99
 CC=g++
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-CFLAGS= -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
-FLAGS= -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic
+CFLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
+FLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic  # -Weffc++
 LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
@@ -30,7 +30,7 @@ DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib
 
 SOURCES = include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
           src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
-          src/bmf_err.c src/bmf_infer.c\
+          src/bmf_err.c \
           lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
           src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vet.c src/bmf_sort.c src/bmf_stack.c \
           lib/stack.c src/bmf_filter.c $(DLIB_SRC)
