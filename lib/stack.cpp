@@ -217,6 +217,18 @@ namespace bmf {
             allele_passes[n_base_calls] = (duplex_counts[n_base_calls] >= aux->conf.min_duplex &&
                                            nconfident_phreds[0].size() >= (unsigned)aux->conf.min_count &&
                                            overlap_counts[n_base_calls] >= aux->conf.min_overlap);
+#if 0
+                if(allele_passes[n_base_calls]) {
+                    LOG_DEBUG("Normal reference allele is passing duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
+                    LOG_DEBUG("Normal reference allele is passing counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
+                    LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
+                } else {
+                    LOG_DEBUG("Fail!\n Which of the below?\n");
+                    LOG_DEBUG("Normal reference allele duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
+                    LOG_DEBUG("Normal reference allele counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
+                    LOG_DEBUG("Normal reference allele overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
+                }
+#endif
         }
 
         kstring_t allele_str = {0, 0, nullptr};
@@ -261,6 +273,18 @@ namespace bmf {
                 allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.min_duplex &&
                                                    nconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                                    overlap_counts[i + n_base_calls] >= aux->conf.min_overlap);
+#if 0
+                if(allele_passes[i + n_base_calls]) {
+                    LOG_DEBUG("Normal allele is passing duplex. %i > %i.", duplex_counts[i + n_base_calls], aux->conf.min_duplex);
+                    LOG_DEBUG("Normal allele is passing counts. %lu > %i.", nconfident_phreds[i].size(), aux->conf.min_count);
+                    LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
+                } else {
+                    LOG_DEBUG("Fail!\n Which of the below?\n");
+                    LOG_DEBUG("Normal allele duplex. %i > %i.", duplex_counts[i + n_base_calls], aux->conf.min_duplex);
+                    LOG_DEBUG("Normal allele counts. %lu > %i.", nconfident_phreds[i].size(), aux->conf.min_count);
+                    LOG_DEBUG("Normal allele overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
+                }
+#endif
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
                 counts[i] = match->second.size();
@@ -306,7 +330,6 @@ namespace bmf {
                 somatic.push_back(allele_passes[i] && !allele_passes[i + n_base_calls]);
             }
         }
-        LOG_DEBUG("tconfident size: %lu. i_base_calls: %i\n", tconfident_phreds.size(), n_base_calls);
         assert(n_base_calls == tconfident_phreds.size());
         assert(n_base_calls == tsuspect_phreds.size());
         assert(n_base_calls == nconfident_phreds.size());

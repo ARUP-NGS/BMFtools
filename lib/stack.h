@@ -119,7 +119,7 @@ static const int MAX_COUNT = 1 << 16;
         khash_t(bed) *bed;
         int last_tid;
         char *ref_seq;
-        void pair_region_itr(int bamtid, int start, int stop, int &tn_plp, int &tpos, int &ttid, int &nn_plp, int &npos, int &ntid) {
+        int pair_region_itr(int bamtid, int start, int stop, int &tn_plp, int &tpos, int &ttid, int &nn_plp, int &npos, int &ntid) {
             bam_plp_reset(tumor.plp);
             bam_plp_reset(normal.plp);
             if(tumor.iter) hts_itr_destroy(tumor.iter);
@@ -140,10 +140,17 @@ static const int MAX_COUNT = 1 << 16;
                     //LOG_DEBUG("Breaking? %i >= start (%i)\n", npos, start);
                     break;
                 }
+                LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
             }
-            assert(npos == tpos && ntid == ttid);
-            //LOG_DEBUG("Advanced to %i:%i/%i:%i.\n", ttid, bamtid, npos, start);
-            //LOG_DEBUG("N pileups: %i, %i.\n", tn_plp, nn_plp);
+            if(npos != start) {
+                LOG_INFO("Could not load reads in region for normal bam. Skipping region.\n");
+                return 1;
+            }
+            if(tpos != start) {
+                LOG_INFO("Could not load reads in region for tumor bam. Skipping region.\n");
+                return 1;
+            }
+            return 0;
         }
         int next_paired_pileup(int *ttid, int *tpos, int *tn_plp, int *ntid, int *npos, int *nn_plp, int stop) {
             if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0 &&
@@ -245,9 +252,13 @@ static const int MAX_COUNT = 1 << 16;
         const int ret = confident_phreds[j].size();
         const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
         const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
+        /*
         LOG_DEBUG("For variant at position with total %lu observations, %lu conf, %lu suspect,"
                   " return value of %lu.\n", ret + suspect_phreds[j].size(),
                   ret, suspect_phreds[j].size(), (expected_false_positives >= putative_suspects) ? ret : ret + putative_suspects - expected_false_positives);
+        */
+        // Return 0 if no confident base calls observed.
+        //
         return (expected_false_positives >= putative_suspects) ? ret
                                                                : ret + putative_suspects - expected_false_positives;
     }

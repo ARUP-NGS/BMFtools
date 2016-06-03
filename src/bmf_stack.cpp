@@ -200,6 +200,7 @@ namespace bmf {
             LOG_EXIT("Could not load bam indices. Abort!\n");
         aux->tumor.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->tumor);
         aux->normal.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->normal);
+        LOG_DEBUG("Max depth: %i.\n", aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->normal.plp, aux->conf.max_depth);
         LOG_DEBUG("Making sorted keys.\n");
@@ -214,7 +215,8 @@ namespace bmf {
                 const int start = get_start(kh_val(aux->bed, key).intervals[i]);
                 const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
                 const int bamtid = (int)kh_key(aux->bed, key);
-                aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+                if(aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid))
+                    continue;  // Could not load reads in one of the two bams.
                 process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
                 while(aux->next_paired_pileup(&ttid, &tpos, &tn_plp, &ntid, &npos, &nn_plp, stop))
                     process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
