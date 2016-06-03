@@ -433,7 +433,8 @@ int dmp_main(int argc, char *argv[])
         return idmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "secondary") == 0)
         return sdmp_main(argc - 1, argv + 1);
-    LOG_EXIT("Unrecognized bmftools dmp subcommand %s. Abort!\n", argv[1]);
+    fprintf(stderr, "Unrecognized bmftools dmp subcommand %s. Abort!\n", argv[1]);
+    return EXIT_FAILURE;
 }
 
 
@@ -597,7 +598,7 @@ int idmp_main(int argc, char *argv[])
     cleanup:
     free_marksplit_settings(settings);
     splitter_destroy(&splitter);
-    LOG_INFO("Successfully completed bmftools dmp!\n");
+    LOG_INFO("Successfully completed bmftools collapse inline!\n");
     return EXIT_SUCCESS;
 } /* idmp_main */
 

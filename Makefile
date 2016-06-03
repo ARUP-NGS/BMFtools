@@ -95,7 +95,7 @@ tag_test: $(OBJS) $(TEST_OBJS) libhts.a
 target_test: $(D_OBJS) $(TEST_OBJS) libhts.a
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.dbo src/bmf_target.dbo test/target_test.dbo libhts.a -o ./target_test && ./target_test
 hashdmp_test: $(BINS)
-	cd test/dmp && python hashdmp_test.py && cd ../..
+	cd test/collapse && python hashdmp_test.py && cd ../..
 marksplit_test: $(BINS)
 	cd test/marksplit && python marksplit_test.py && cd ../..
 err_test: $(BINS)

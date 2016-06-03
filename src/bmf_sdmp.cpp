@@ -277,7 +277,7 @@ namespace bmf {
         cleanup:
         splitter_destroy(&splitter);
         free_marksplit_settings(settings);
-        LOG_INFO("Successfully completed bmftools sdmp!\n");
+        LOG_INFO("Successfully completed bmftools collapse secondary!\n");
         return EXIT_SUCCESS;
     }
 
