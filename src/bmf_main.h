@@ -18,7 +18,6 @@ namespace bmf {
     extern int filter_main(int argc, char *argv[]);
     extern int hashdmp_main(int argc, char *argv[]);
     extern int hashdmp_inmem_main(int argc, char *argv[]);
-    extern int infer_main(int argc, char *argv[]);
     extern int mark_main(int argc, char *argv[]);
     extern int rsq_main(int argc, char *argv[]);
     extern int sdmp_main(int argc, char *argv[]);

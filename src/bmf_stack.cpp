@@ -19,11 +19,12 @@ namespace bmf {
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                         "-D, --min-duplex\tMinimum number of duplex reads supporting a variant to pass it. Default: 0.\n"
                         "-O, --min-overlap\tMinimum number of concordant overlapping read-pairs supporting a variant to pass it. Default: 0.\n"
+                        "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
                         "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
-                        "-F, --skip-recommended\tSkip reads marked as QC fail, duplicate, or secondary. Equivalent to -S2q\n"
+                        "-F, --skip-recommended\tSkip reads marked as QC fail, duplicate, or secondary. Equivalent to -P -r -2 -q\n"
                         "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                         "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                         "-p, --padding\tNumber of bases outside of bed region to pad.\n"
@@ -262,7 +263,10 @@ namespace bmf {
                 case 'c': conf.min_count = atoi(optarg); break;
                 case 'd': conf.max_depth = atoi(optarg); break;
                 case 'D': conf.min_duplex = atoi(optarg); break;
-                case 'F': conf.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP); break;
+                case 'F':
+                          conf.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
+                          conf.skip_improper = 1;
+                          break;
                 case 'f': conf.min_fr = (float)atof(optarg); break;
                 case 'm': conf.minmq = atoi(optarg); break;
                 case 'O': conf.min_overlap = atoi(optarg); break;

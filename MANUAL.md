@@ -18,17 +18,17 @@ See also [Vignettes](https://github.com/ARUP-NGS/BMFtools/blob/dev/Vignettes.md)
 
 Reads are originally collapsed into single observations per barcode using exact matching. Following this step, to correct for errors in barcode reading, positional information can be used to rescue reads into unique single observations.
 
-The only difference between inline and secondary index chemistry workflows is the initial `bmftools dmp` call.
+The only difference between inline and secondary index chemistry workflows is the initial `bmftools collapse` call.
 
 ####Exact-Matching Fastq Consolidation
 A typical paired-end exact fastq-stage molecular demultiplexing call:
 
 > Inline
 
-```bmftools dmp -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>```
+```bmftools collapse inline -s <homing_sequence> -l <barcode_length> -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> <r1.fq.gz> <r2.fq.gz>```
 > Secondary Index
 
-```bmftools sdmp -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>```
+```bmftools collapse secondary -o <temporary_file_prefix> -p <threads> -f <final_output_prefix> -i <index.fq.gz> <r1.fq.gz> <r2.fq.gz>```
 
 Each of these produces `final_output_prefix.R1.fq` and `final_output_prefix.R2.fq`. (A .gz suffix is appended if the output is gzip compressed.)
 
@@ -40,48 +40,9 @@ tags to all alignments for each read.
 
 `bwa mem -CYT0 -t<threads> <idx.base> final_output_prefix.R1.fq final_output_prefix.R2.fq | samtools view -bho final_output.bam`
 
+The metadata tags have now been parsed into auxiliary tags in the output bam file and can be used by downstream tools.
 
-####Rescue
-Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
-reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
-
-This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
-collapsing reads sharing these signatures with similar barcodes into single observations.
-
-"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
-or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
-a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
-
-Because reads need both their and their mates' alignment information, including read length, the preprocessing
-`bmftools mark` is required prior to bmftools sort.
-
-
-Because reads that have been modified may align elsewhere, these reads are all realigned. In addition, this regenerates
-all of the secondary and supplementary alignments.
-
-
-In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
-If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
-
-`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
-
-For position:
-
-`bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
-
-For unclipped start:
-
-`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
-
-
-Realigned reads are then sorted and merged in with the other reads in the dataset.
-
-`bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix> | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
-
-For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
-At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
-
-####Post-rescue: Now what?
+####Post-Alignment: Now what?
 
 If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
 
@@ -112,7 +73,10 @@ bmftools <subcommand> <-h>
 `bmftools depth -H coverage_uniformity.hist.txt -b capture.bed -Q1 input.bam > coverage.bed.txt`
 
 
-`bmftools dmp -p 12 -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
+`bmftools collapse inline -p 12 -f output_prefix -l <barcode_length> input_R1.fastq.gz input_r2.fastq.gz`
+
+
+`bmftools collapse secondary -p 12 -s 1 -o tmp_prefix -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
 
 
 `bmftools err fm reference.fasta input.srt.bam > err_by_fm.txt`
@@ -133,15 +97,6 @@ bmftools <subcommand> <-h>
 `bmftools filter -s2 input.bam output.bam`
 
 
-`bmftools mark input.bam output.bam`
-
-
-`bmftools rsq -u -f tmp.fastq input.bam tmp.out.bam`
-
-
-`bmftools sdmp -p 12 -s 1 -o tmp_prefix -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
-
-
 `bmftools sort -T tmp_prefix -k ucs input.bam output.bam`
 
 
@@ -157,18 +112,25 @@ bmftools <subcommand> <-h>
 
 ### Core Functionality
 
-####<b>dmp</b>
+####<b>collapse</b>
   Description:
-  > Performs molecular demutiplexing of inline barcoded fastq data.
+  > Collapsed barcoded fastq data by exact barcode matching.
+  > To achieve linear performance with arbitrarily large datasets, an initial marking step subsets the reads by the first
+  > few nucleotides in the barcode. The more of these are used, the lower the RAM requirements but the more temporary files are written.
+  > This is controlled by the -n option.
+  > collapse has two subcommands:
+  1. inline
+    1. Collapses inline barcoded datasets.
+  2. secondary
+    2. Collapses secondary barcoded datasets.
+
+  <b>collapse inline</b>
   > The homing sequence is a sequence of bases marking the end of the random nucleotides
   > which make up the barcode. This is required to ensure that chemistry has worked as expected
   > and to identify the barcode length, which is used for additional entropy.
 
-  > To achieve linear performance with arbitrarily large datasets, an initial marking step subsets the reads by the first
-  > few nucleotides in the barcode. The more of these are used, the lower the RAM requirements but the more temporary files are written.
-  > This is controlled by the -n option.
 
-  Usage: `bmftools dmp <options> input_R1.fastq.gz input_R2.fastq.gz`
+  Usage: `bmftools collapse inline <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -182,9 +144,9 @@ bmftools <subcommand> <-h>
     > -o:    Temporary file basename. Defaults to a random string variation on the input filename.
     > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
     > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
-    > -p:    Number of threads to use for dmp step.
+    > -p:    Number of threads to use for collapse step.
     > -f:    Sets final fastq prefix. Final filenames will be <parameter>.R[12].fq if uncompressed, <parameter>.R[12].fq.gz if compressed. Ignored if -= is set.
-    > -r:    Path to text file with rescaled quality scores. Used for rescaling quality scores during dmp. Only used if provided.
+    > -r:    Path to text file with rescaled quality scores. Used for rescaling quality scores during collapse. Only used if provided.
     > -z:    Flag to write gzip-compressed output.
     > -T:    Write temporary fastq files with gzip compression level <parameter>. Defaults to transparent gzip files (zlib >= 1.2.5) or uncompressed (zlib < 1.2.5).
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
@@ -193,11 +155,8 @@ bmftools <subcommand> <-h>
     > -h/-?: Print usage.
 
 
-####<b>sdmp</b>
-  Description:
-  > Performs molecular demutiplexing of secondary index barcoded fastq data.
-
-  Usage: `bmftools sdmp <options> input_R1.fastq.gz input_R2.fastq.gz`
+  <b>collapse secondary</b>
+  Usage: `bmftools collapse secondary <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -209,39 +168,15 @@ bmftools <subcommand> <-h>
     > -o:    Temporary file basename. Defaults to a random string variation on the input filename.
     > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
     > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode salting due to their high error rates.
-    > -p:    Number of threads to use for dmp step.
+    > -p:    Number of threads to use for collapse step.
     > -=:    Emit output to stdout, interleaved if paired-end, instead of writing to disk.
     > -f:    Sets final fastq prefix. Final filenames will be <parameter>.R[12].fq if uncompressed, <parameter>.R[12].fq.gz if compressed. Ignored if -= is set.
-    > -r:    Path to text file with rescaled quality scores. Used for rescaling quality scores during dmp. Only used if provided.
+    > -r:    Path to text file with rescaled quality scores. Used for rescaling quality scores during collapse. Only used if provided.
     > -z:    Flag to write gzip-compressed output.
     > -T:    Write temporary fastq files with gzip compression level <parameter>. Defaults to transparent gzip files (zlib >= 1.2.5) or uncompressed (zlib < 1.2.5).
     > -g:    Gzip compression parameter when writing gzip-compressed output. Default: 1.
     > -u:    Notification interval. Log each <parameter> sets of reads processed during the initial marking step. Default: 1000000.
     > -w:    Leave temporary files.
-    > -h/-?: Print usage.
-
-
-####<b>rsq</b>
-  Description:
-  > Uses positional information to rescue reads into proper families in cases were there were errors in the barcode.
-  > In preprocessing, bam file is sorted to group reads sharing an "alignment signature" together, where an alignment signature consists of position, orientation, and read length for a read (and its mate, for paired-end data).
-  > In a process analogous to samtools rmdup, reads sharing an alignment signature with a barcode hamming distance
-  > below a given threshold are considered to have originated from the same template molecule and are consolidted into one observation.
-  > For paired-end data, requires pre-processing by bmftools mark to add mate information as auxiliary tags.
-  > For all data, requires sorting by alignment signature (see bmftools sort).
-  > Because rescued read families may have changed base calls, these reads written to a temporary fastq
-  > and realigned. In addition, this regenerates all of the secondary and supplementary alignments.
-
-  Usage: `bmftools rsq <options> input_R1.srt.bam output.bam`
-
-  Options:
-
-    > -f:    Path to temporary fastq
-    > -S:    Flag to perform rescue for single-end experiments.
-    > -u:    Flag to use unclipped start rather than position in alignment signature. Requires `-k ucs` in bmftools sort.
-    > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
-    > -l:    Output bam compression level.
-    > -t:    Mismatch limit. Default: 2.
     > -h/-?: Print usage.
 
 ### Analysis
@@ -275,7 +210,9 @@ bmftools <subcommand> <-h>
     TODO: Fill in details on these tags.
     VCF Header Fields:
     * BMF_PASS: 1 if variant passes, 0 otherwise.
-    * ADP: Number of unique observations for allele.
+    * BMF_QUANT
+    * ADP_PASS: Number of high-confidence unique observations for allele.
+    * ADP_ALL: Number of all unique observations for each allele, inc. both low- and high-confidence
     * ADPO: Number of overlapping read pair observations for allele.
     * ADPD: Number of duplex observations for allele.
     * ADPR: Number of original reversed observations for allele.
@@ -360,7 +297,7 @@ bmftools <subcommand> <-h>
 ####<b>err</b>
   Description:
   > Calculates error rates by a variety of parameters.
-  > Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
+  > Additionally, pre-computes the quality score recalibration for the optional collapse recalibration step.
   > err has 3 subcommands:
   1. main
     1. Primary output is recalibrated quality scores given a sequenced, aligned, sorted standard dataset. (e.g., PhiX)
@@ -480,86 +417,3 @@ bmftools <subcommand> <-h>
     > -P:    Number of bases around the bed file with which to pad.
     > -r:    If set, write failing reads to bam at <parameter>.
     > -v:    Invert pass/fail. (Analogous to grep.)
-
-
-
-### Utilities
-
-####bmftools sort
-  Description:
-  > Sorts an alignment file in preparation for read consolidation using positional information.
-  > Essentially a modification of samtools sort.
-
-  Options:
-
-    > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
-    > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
-    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
-    > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
-    > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
-    > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
-    > -@ INT       Set number of sorting and compression threads [1]
-    > -s           Flag to split the bam into a list of file handles.
-    > -p           If splitting into a list of handles, this sets the file prefix.
-    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
-    > -h/-?        Print usage.
-
-####bmftools mark
-  Description:
-  > Marks a sets of template bam records with auxiliary tags for use in downstream tools.
-  > Required for sort and rsq.
-  > Intended primarily for piping. Default compression is therefore 0. Typical compression for writing to disk: 6.
-
-  Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
-
-  Options:
-
-    > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
-    > -q:    Skip read pairs which fail.
-    > -d:    Set bam compression level to default (6).
-    > -i:    Skip read pairs whose insert size is less than <INT>.
-    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <parameter>
-    > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
-    > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
-    > Set output.bam to '-' or 'stdout' or omit to stdout.
-    > Thus `bmftools mark` defaults to reading and writing from stdin and stdout, respectively, in paired-end mode.
-
-
-###"Undocumented" tools
-
-####<b>inmem</b>
-  Description:
-  > Largely an in-memory clone of bmftools dmp. Currently, only paired-end inline chemistry is supported.
-  > In addition, use of rescaled quality scores is not yet supported.
-  > RAM-hungry but fast. Useful for relatively small datasets.
-
-  Usage: `bmftools inmem <options> input_R1.fastq.gz input_R2.fastq.gz`
-
-  Options:
-
-    > -1:    Output read1 path. REQUIRED.
-    > -2:    Output read2 path. REQUIRED.
-    > -=:    Emit output to stdout, interleaved if paired-end, instead of writing to disk.
-    > -s:    Homing sequence. REQUIRED.
-    > -l:    Barcode length. REQUIRED. For variable-length barcodes, this signifies the minimum length.
-    > -v:    Maximum barcode length. Only needed for variable-length barcodes.
-    > -t:    Reads with a homopolymer of threshold <parameter> length or greater are marked as QC fail. Default: 10.
-    > -m:    Skip first <parameter> bases at the beginning of each read for use in barcode due to their high error rates.
-    > -h/-?: Print usage.
-
-
-####<b>hashdmp</b>
-  Description:
-
-   > Contains the hashmap-powered consolidation only. Its input is the preprocessed marked bams produced
-   > by bmftools dmp and sdmp.
-   > Molecularly demultiplexes marked temporary fastqs into final unique observation records.
-   > bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.
-
-
-  Usage: `bmftools hashdmp <opts> <input.marked.fq>`
-
-  Options:
-
-    > -s:    Perform secondary index consolidation rather than Loeb-like inline consolidation.
-    > -o:    Write to <parameter> rather than stdout.

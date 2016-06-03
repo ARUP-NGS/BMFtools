@@ -7,16 +7,15 @@ static int bmftools_usage(int rc)
                     "-v/--version:            Print bmftools version and exit.\n"
                     "cap:                     Modifies the quality string as function of family metadata.\n"
                     "depth:                   Calculates depth of coverage over a set of bed intervals.\n"
-                    "dmp:                     Demultiplex inline barcoded experiments.\n"
+                    "collapse:                Collapses fastq records by barcodes.\n"
                     "err:                     Calculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:                Calculate family size statistics for a bam alignment file.\n"
                     "filter:                  Filter or split a bam file by a set of filters.\n"
-                    "inmem:                   Performs dmp fully in memory. RAM-hungry but fast!\n"
+                    //"inmem:                   Performs dmp fully in memory. RAM-hungry but fast!\n"
                     //"hashdmp:                 Demultiplex inline barcoded experiments that have already been marked.\n"
-                    "mark:                    Add tags including unclipped start positions.\n"
-                    "rsq:                     Rescue reads with using positional inference to collapse to unique observations in spite of errors in the barcode sequence.\n"
-                    "sdmp:                    Demultiplex secondary-index barcoded experiments.\n"
-                    "sort:                    Sort for bam rescue.\n"
+                    //"mark:                    Add tags including unclipped start positions.\n"
+                    //"rsq:                     Rescue reads with using positional inference to collapse to unique observations in spite of errors in the barcode sequence.\n"
+                    //"sort:                    Sort for bam rescue.\n"
                     "stack:                   A maximally-permissive yet statistically-thorough variant caller using molecular barcode metadata.\n"
                     "target:                  Calculates on-target rate.\n"
                     "vet:                     Curate variant calls from another variant caller (.bcf) and an indexed alignment file.\n"
@@ -33,14 +32,12 @@ int main(int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
     if(strcmp(argv[1], "sort") == 0) return sort_main(argc - 1, argv + 1);
-    if(strcmp(argv[1], "dmp") == 0) return bmf::dmp_main(argc - 1, argv + 1);
-    if(strcmp(argv[1], "sdmp") == 0) return bmf::sdmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "collapse") == 0) return bmf::dmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "rsq") == 0) return bmf::rsq_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "hashdmp") == 0) return bmf::hashdmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "inmem") == 0) return bmf::hashdmp_inmem_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "famstats") == 0) return bmf::famstats_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "vet") == 0) return bmf::vet_main(argc - 1, argv + 1);
-    if(strcmp(argv[1], "infer") == 0) return bmf::infer_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "err") == 0) return bmf::err_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "mark") == 0) return bmf::mark_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "cap") == 0) return bmf::cap_main(argc - 1, argv + 1);

@@ -71,7 +71,7 @@ namespace bmf {
             pass = _pass;
         }
         uint32_t get_max_mq() {
-            return mq1 > mq2 ? mq1: mq2;
+            return MAX2(mq1, mq2);
         }
         double get_frac() {
             return (double)agreed / size;
@@ -81,9 +81,6 @@ namespace bmf {
         int get_duplex() {
             return is_duplex1 + (mate_added() ? is_duplex2: 0);
         }
-        UniqueObservation() {
-            memset(this, 0, sizeof(*this));
-        }
         UniqueObservation(const bam_pileup1_t& plp):
             qname(bam_get_qname(plp.b)),
             cycle1(dlib::arr_qpos(&plp)),
@@ -91,7 +88,9 @@ namespace bmf {
             quality(((uint32_t *)dlib::array_tag(plp.b, "PV"))[cycle1]),
             mq1(plp.b->core.qual),
             mq2((uint8_t)-1),
+            rv(dlib::int_tag_zero(bam_aux_get(plp.b, "RV"))),
             discordant(0),
+            is_duplex1(dlib::int_tag_zero(bam_aux_get(plp.b, "DR"))),
             is_duplex2(0),
             is_reverse1((plp.b->core.flag & BAM_FREVERSE) != 0),
             is_reverse2(0),
@@ -105,9 +104,6 @@ namespace bmf {
             agreed(((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle1]),
             size(bam_itag(plp.b, "FM"))
         {
-            uint8_t *d;
-            rv = ((d = bam_aux_get(plp.b, "RV")) == nullptr ? 0: bam_aux2i(d));
-            is_duplex1 = ((d = bam_aux_get(plp.b, "DR")) == nullptr ? 0: bam_aux2i(d));
         }
         void add_obs(const bam_pileup1_t& plp);
     };
