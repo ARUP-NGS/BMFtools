@@ -1,20 +1,57 @@
+/*  bam_sort.c -- sorting and merging.
+
+    Copyright (C) 2008-2016 Genome Research Ltd.
+    Portions copyright (C) 2009-2012 Broad Institute.
+
+    Author: Heng Li <lh3@sanger.ac.uk>
+    Author: Martin Pollard <mp15@sanger.ac.uk>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.  */
+
+#include <config.h>
+
+#include <stdbool.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <assert.h>
+#include "htslib/ksort.h"
+#include "htslib/khash.h"
+#include "htslib/klist.h"
+#include "htslib/kstring.h"
+#include "htslib/sam.h"
+#include "sam_opts.h"
 #include "bmf_sort.h"
-
-
-typedef bam1_t *bam1_p;
-
-static int cmpkey = BMF_POS;
-
-static int is_se = 0;
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
 #endif
 
-
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
-    uint32_t* target_iter = (uint32_t *)target;
+    uint32_t* target_iter = target;
     size_t loops = size/4;
     size_t i;
     for (i = 0; i < loops; ++i) {
@@ -31,28 +68,9 @@ KHASH_INIT(cset, char*, char, 0, kh_str_hash_func, kh_str_hash_equal)
 KHASH_MAP_INIT_STR(c2i, int)
 
 #define hdrln_free_char(p)
-    KLIST_INIT(hdrln, char*, hdrln_free_char)
+KLIST_INIT(hdrln, char*, hdrln_free_char)
 
-    /*
-     * @func rand_string
-     * Stolen from stackoverflow.
-     * Fills the str with size random characters from the charset string
-     * and appends a terminal null character.
-     */
-    static char *rand_string(char *str, size_t size)
-    {
-        srand(time(NULL)); // Pick a seed!
-        const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKSTFUOMGZWTF";
-        if (size) {
-            --size;
-            for (size_t n = 0; n < size; n++) {
-                str[n] = charset[(int)(rand() % (int) (sizeof charset - 1))];
-            }
-            str[size] = '\0';
-        }
-        return str;
-    }
-
+static int g_cmpkey = POS;
 
 static int strnum_cmp(const char *_a, const char *_b)
 {
@@ -88,112 +106,17 @@ typedef struct {
 
 #define __pos_cmp(a, b) ((a).pos > (b).pos || ((a).pos == (b).pos && ((a).i > (b).i || ((a).i == (b).i && (a).idx > (b).idx))))
 
-
-// Function to compare reads and determine which one is < the other (single-end).
-static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
-{
-    int t;
-    switch(cmpkey) {
-        case QNAME:
-            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF_POS:
-            return bmfsort_se_key(a) < bmfsort_se_key(b);
-        case BMF_UCS:
-            return ucs_se_sort_key(a) < ucs_se_sort_key(b);
-    }
-    return 0; // This should never happen
-}
-
-
-// Function to compare reads and determine which one is < the other
-static inline int bam1_lt(const bam1_p a, const bam1_p b)
-{
-    int t;
-    uint64_t key_a, key_b;
-#if !NDEBUG
-    if(a->core.tid != -1 && b->core.tid == -1) {
-            key_a = ucs_sort_core_key(a);
-            key_b = ucs_sort_core_key(b);
-            assert(key_b > key_a);
-            key_a = bmfsort_core_key(a);
-            key_b = bmfsort_core_key(b);
-            assert(key_b > key_a);
-    } else if(b->core.tid != -1 && a->core.tid == -1) {
-            key_a = ucs_sort_core_key(a);
-            key_b = ucs_sort_core_key(b);
-            assert(key_a > key_b);
-            key_a = bmfsort_core_key(a);
-            key_b = bmfsort_core_key(b);
-            assert(key_a > key_b);
-    } else if(b->core.tid == a->core.tid && b->core.tid != -1) {
-        if(b->core.pos < a->core.pos)
-            assert(bmfsort_core_key(b) < bmfsort_core_key(a));
-        else {
-            /*
-            */
-            assert(bmfsort_core_key(a) >> 2 <= bmfsort_core_key(b) >> 2);
-        }
-        if(get_unclipped_start(b) < get_unclipped_start(a))
-            assert(ucs_sort_core_key(b) < ucs_sort_core_key(a));
-        else assert(ucs_sort_core_key(a) >> 2 <= ucs_sort_core_key(b) >> 2);
-    } else {
-        /*
-        LOG_DEBUG("tids: %i, %i.\n", a->core.tid, b->core.tid);
-        LOG_DEBUG("postns: %i, %i.\n", a->core.pos, b->core.pos);
-        LOG_DEBUG("bam_is_revs: %i, %i.\n", bam_is_rev(a), bam_is_rev(b));
-        */
-        if(b->core.tid != a->core.tid) {
-            if(b->core.tid < a->core.tid) {
-                assert(bmfsort_core_key(b) < bmfsort_core_key(a));
-            } else {
-                assert(bmfsort_core_key(a) < bmfsort_core_key(b));
-            }
-        }
-    }
-#endif
-    switch(cmpkey) {
-        case QNAME:
-            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-        case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
-        case BMF_POS:
-            key_a = bmfsort_core_key(a);
-            key_b = bmfsort_core_key(b);
-            return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
-        case BMF_UCS:
-            key_a = ucs_sort_core_key(a);
-            key_b = ucs_sort_core_key(b);
-            return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
-    }
-    return 0; // This never happens.
-}
-
-#define __pos_cmp(a, b) ((a).pos > (b).pos || ((a).pos == (b).pos && ((a).i > (b).i || ((a).i == (b).i && (a).idx > (b).idx))))
-
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    if (cmpkey == QNAME) {
-        int t;
+    if (g_cmpkey)
+        return __pos_cmp(a, b);
+    else {
         if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
-        t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
+        const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
         return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
-    } else return __pos_cmp(a, b);
-}
-/*
-// Function to compare reads in the heap and determine which one is < the other
-static inline int heap_lt(const heap1_t a, const heap1_t b)
-{
-    if(is_se) {
-        return (a.b == NULL || b.b == NULL) ? !a.b
-                                            :  bam1_se_lt(a.b, b.b);
     }
-    return (a.b == NULL || b.b == NULL) ? !a.b
-                                        :  bam1_lt(a.b, b.b);
 }
-*/
 
 KSORT_INIT(heap, heap1_t, heap_lt)
 
@@ -328,15 +251,17 @@ static void trans_tbl_destroy(trans_tbl_t *tbl) {
  */
 
 static merged_header_t * init_merged_header() {
-    merged_header_t *merged_hdr = (merged_header_t *)calloc(1, sizeof(*merged_hdr));
+    merged_header_t *merged_hdr;
+
+    merged_hdr = calloc(1, sizeof(*merged_hdr));
     if (merged_hdr == NULL) return NULL;
 
     merged_hdr->targets_sz   = 16;
-    merged_hdr->target_name = (char **)malloc(merged_hdr->targets_sz
+    merged_hdr->target_name = malloc(merged_hdr->targets_sz
                                      * sizeof(*merged_hdr->target_name));
     if (NULL == merged_hdr->target_name) goto fail;
 
-    merged_hdr->target_len = (uint32_t *)malloc(merged_hdr->targets_sz
+    merged_hdr->target_len = malloc(merged_hdr->targets_sz
                                     * sizeof(*merged_hdr->target_len));
     if (NULL == merged_hdr->target_len) goto fail;
 
@@ -444,11 +369,11 @@ static inline int grow_target_list(merged_header_t* merged_hdr) {
     uint32_t  *new_len;
 
     new_size = merged_hdr->targets_sz * 2;
-    new_names = (char **)realloc(merged_hdr->target_name, sizeof(*new_names) * new_size);
+    new_names = realloc(merged_hdr->target_name, sizeof(*new_names) * new_size);
     if (!new_names) goto fail;
     merged_hdr->target_name = new_names;
 
-    new_len = (uint32_t *)realloc(merged_hdr->target_len, sizeof(*new_len) * new_size);
+    new_len = realloc(merged_hdr->target_len, sizeof(*new_len) * new_size);
     if (!new_len) goto fail;
     merged_hdr->target_len = new_len;
 
@@ -484,7 +409,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
     hdr_match_t *new_sq_matches = NULL;
     char *text;
     hdr_match_t matches[2];
-    int32_t i, missing;
+    int32_t i;
     int32_t old_n_targets = merged_hdr->n_targets;
     khiter_t iter;
     int min_tid = -1;
@@ -537,7 +462,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 
     // Otherwise, find @SQ lines in translate->text for all newly added targets.
 
-    new_sq_matches = (hdr_match_t *)malloc((merged_hdr->n_targets - old_n_targets)
+    new_sq_matches = malloc((merged_hdr->n_targets - old_n_targets)
                             * sizeof(*new_sq_matches));
     if (new_sq_matches == NULL) goto memfail;
 
@@ -561,7 +486,8 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 
         if (iter == kh_end(sq_tids)) {
             // Warn about this, but it's not really fatal.
-            LOG_WARNING("@SQ SN (%.*s) found in text header but not binary header.\n",
+            fprintf(stderr, "[W::%s] @SQ SN (%.*s) found in text header but not binary header.\n",
+                    __func__,
                     (int) (matches[1].rm_eo - matches[1].rm_so),
                     text + matches[1].rm_so);
             text += matches[0].rm_eo;
@@ -581,20 +507,20 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
         text += matches[0].rm_eo;
     }
 
-    // Check if any new targets have been missed
-    missing = 0;
+    // Copy the @SQ headers found and recreate any missing from binary header.
     for (i = 0; i < merged_hdr->n_targets - old_n_targets; i++) {
         if (new_sq_matches[i].rm_so >= 0) {
             if (match_to_ks(translate->text, &new_sq_matches[i], out_text))
                 goto memfail;
             if (kputc('\n', out_text) == EOF) goto memfail;
         } else {
-            fprintf(stderr, "[E:%s] @SQ SN (%s) found in binary header but not text header.\n",
-                    __func__, merged_hdr->target_name[i + old_n_targets]);
-            missing++;
+            if (kputs("@SQ\tSN:", out_text) == EOF ||
+                kputs(merged_hdr->target_name[i + old_n_targets], out_text) == EOF ||
+                kputs("\tLN:", out_text) == EOF ||
+                kputuw(merged_hdr->target_len[i + old_n_targets], out_text) == EOF ||
+                kputc('\n', out_text) == EOF) goto memfail;
         }
     }
-    if (missing) goto fail;
 
     free(new_sq_matches);
     return 0;
@@ -797,8 +723,8 @@ static int finish_rg_pg(bool is_rg, klist_t(hdrln) *hdr_lines,
             idx = kh_get(c2c, pg_map, id);
             if (idx == kh_end(pg_map)) {
                 // Not found, warn.
-                LOG_WARNING("Tag %s%s not found in @PG records\n",
-                        search + 1, id);
+                fprintf(stderr, "[W::%s] Tag %s%s not found in @PG records\n",
+                        __func__, search + 1, id);
             } else {
                 // Remember new id and splice points on original string
                 new_id = kh_value(pg_map, idx);
@@ -854,7 +780,7 @@ static int finish_rg_pg(bool is_rg, klist_t(hdrln) *hdr_lines,
 
 static int trans_tbl_init(merged_header_t* merged_hdr, bam_hdr_t* translate,
                           trans_tbl_t* tbl, bool merge_rg, bool merge_pg,
-                          char* rg_override)
+                          bool copy_co, char* rg_override)
 {
     klist_t(hdrln) *rg_list = NULL;
     klist_t(hdrln) *pg_list = NULL;
@@ -896,20 +822,22 @@ static int trans_tbl_init(merged_header_t* merged_hdr, bam_hdr_t* translate,
     kl_destroy(hdrln, rg_list); rg_list = NULL;
     kl_destroy(hdrln, pg_list); pg_list = NULL;
 
-    // Just append @CO headers without translation
-    const char *line, *end_pointer;
-    for (line = translate->text; *line; line = end_pointer + 1) {
-        end_pointer = strchr(line, '\n');
-        if (strncmp(line, "@CO", 3) == 0) {
-            if (end_pointer) {
-                if (kputsn(line, end_pointer - line + 1, &merged_hdr->out_co) == EOF)
-                    goto memfail;
-            } else { // Last line with no trailing '\n'
-                if (kputs(line, &merged_hdr->out_co) == EOF) goto memfail;
-                if (kputc('\n', &merged_hdr->out_co) == EOF) goto memfail;
+    if (copy_co) {
+        // Just append @CO headers without translation
+        const char *line, *end_pointer;
+        for (line = translate->text; *line; line = end_pointer + 1) {
+            end_pointer = strchr(line, '\n');
+            if (strncmp(line, "@CO", 3) == 0) {
+                if (end_pointer) {
+                    if (kputsn(line, end_pointer - line + 1, &merged_hdr->out_co) == EOF)
+                        goto memfail;
+                } else { // Last line with no trailing '\n'
+                    if (kputs(line, &merged_hdr->out_co) == EOF) goto memfail;
+                    if (kputc('\n', &merged_hdr->out_co) == EOF) goto memfail;
+                }
             }
+            if (end_pointer == NULL) break;
         }
-        if (end_pointer == NULL) break;
     }
 
     return 0;
@@ -937,8 +865,6 @@ static inline void move_kstr_to_text(char **text, kstring_t *ks) {
 static bam_hdr_t * finish_merged_header(merged_header_t *merged_hdr) {
     size_t     txt_sz;
     char      *text;
-    char     **target_name;
-    uint32_t  *target_len;
     bam_hdr_t *hdr;
 
     // Check output text size
@@ -956,21 +882,30 @@ static bam_hdr_t * finish_merged_header(merged_header_t *merged_hdr) {
     hdr = bam_hdr_init();
     if (hdr == NULL) goto memfail;
 
-    // Try to shrink targets arrays to correct size
-    target_name = (char **)realloc(merged_hdr->target_name,
-                          merged_hdr->n_targets * sizeof(*target_name));
-    target_len = (uint32_t *)realloc(merged_hdr->target_len,
-                         merged_hdr->n_targets * sizeof(*target_len));
-
     // Transfer targets arrays to new header
-    hdr->n_targets   = merged_hdr->n_targets;
-    hdr->target_name = target_name ? target_name : merged_hdr->target_name;
-    hdr->target_len  = target_len ? target_len : merged_hdr->target_len;
-    merged_hdr->target_name = NULL;
-    merged_hdr->target_len  = NULL;
+    hdr->n_targets = merged_hdr->n_targets;
+    if (hdr->n_targets > 0) {
+        // Try to shrink targets arrays to correct size
+        hdr->target_name = realloc(merged_hdr->target_name,
+                                   hdr->n_targets * sizeof(char*));
+        if (!hdr->target_name) hdr->target_name = merged_hdr->target_name;
+
+        hdr->target_len = realloc(merged_hdr->target_len,
+                                  hdr->n_targets * sizeof(uint32_t));
+        if (!hdr->target_len) hdr->target_len = merged_hdr->target_len;
+
+        // These have either been freed by realloc() or, in the unlikely
+        // event that failed, have had their ownership transferred to hdr
+        merged_hdr->target_name = NULL;
+        merged_hdr->target_len  = NULL;
+    }
+    else {
+        hdr->target_name = NULL;
+        hdr->target_len  = NULL;
+    }
 
     // Allocate text
-    text = hdr->text = (char *)malloc(txt_sz + 1);
+    text = hdr->text = malloc(txt_sz + 1);
     if (!text) goto memfail;
 
     // Put header text in order @HD, @SQ, @RG, @PG, @CO
@@ -1057,10 +992,10 @@ static void bam_translate(bam1_t* b, trans_tbl_t* tbl)
         } else {
             char *tmp = strdup(decoded_rg);
             fprintf(stderr,
-                    "[%s] RG tag \"%s\" on read \"%s\" encountered "
+                    "[bam_translate] RG tag \"%s\" on read \"%s\" encountered "
                     "with no corresponding entry in header, tag lost. "
                     "Unknown tags are only reported once per input file for "
-                    "each tag ID.\n", __func__,
+                    "each tag ID.\n",
                     decoded_rg, bam_get_qname(b));
             bam_aux_del(b, rg);
             // Prevent future whinges
@@ -1087,10 +1022,10 @@ static void bam_translate(bam1_t* b, trans_tbl_t* tbl)
         } else {
             char *tmp = strdup(decoded_pg);
             fprintf(stderr,
-                    "[%s] PG tag \"%s\" on read \"%s\" encountered "
+                    "[bam_translate] PG tag \"%s\" on read \"%s\" encountered "
                     "with no corresponding entry in header, tag lost. "
                     "Unknown tags are only reported once per input file for "
-                    "each tag ID.\n", __func__,
+                    "each tag ID.\n",
                     decoded_pg, bam_get_qname(b));
             bam_aux_del(b, pg);
             // Prevent future whinges
@@ -1108,6 +1043,7 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
     // Create reverse translation table for tids
     int* rtrans = (int*)malloc(sizeof(int32_t)*n*n_targets);
     const int32_t NOTID = INT32_MIN;
+    if (!rtrans) return NULL;
     memset_pattern4((void*)rtrans, &NOTID, sizeof(int32_t)*n*n_targets);
     int i;
     for (i = 0; i < n; ++i) {
@@ -1128,6 +1064,7 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
 #define MERGE_FORCE       8 // Overwrite output BAM if it exists
 #define MERGE_COMBINE_RG 16 // Combine RG tags frather than redefining them
 #define MERGE_COMBINE_PG 32 // Combine PG tags frather than redefining them
+#define MERGE_FIRST_CO   64 // Use only first file's @CO headers (sort cmd only)
 
 /*
  * How merging is handled
@@ -1150,11 +1087,9 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
  * file. Finally we write our chosen read it to the output file.
  */
 
-#define split_index(b) ((b->core.flag & BAM_FREAD1) ? b->core.tid + 1: b->core.mtid + 1)
-
 /*!
   @abstract    Merge multiple sorted BAM.
-  @param  cmpkey whether to sort by query name
+  @param  l_cmpkey whether to sort by query name
   @param  out         output BAM file name
   @param  mode        sam_open() mode to be used to create the final output file
                       (overrides level settings from UNCOMP and LEVEL1 flags)
@@ -1170,14 +1105,13 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
   @discussion Padding information may NOT correctly maintained. This
   function is NOT thread safe.
  */
-int bam_merge_core2(int by_qname, const char *out, const char *mode,
+int bam_merge_core2(int merge_cmpkey, const char *out, const char *mode,
                     const char *headers, int n, char * const *fn, int flag,
                     const char *reg, int n_threads,
-                    const htsFormat *in_fmt, const htsFormat *out_fmt,
-                    int split)
+                    const htsFormat *in_fmt, const htsFormat *out_fmt)
 {
-    samFile **fp;
-    heap1_t *heap;
+    samFile *fpout, **fp = NULL;
+    heap1_t *heap = NULL;
     bam_hdr_t *hout = NULL;
     bam_hdr_t *hin  = NULL;
     int i, j, *RG_len = NULL;
@@ -1186,6 +1120,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
     hts_itr_t **iter = NULL;
     bam_hdr_t **hdr = NULL;
     trans_tbl_t *translation_tbl = NULL;
+    int *rtrans = NULL;
     merged_header_t *merged_hdr = init_merged_header();
     if (!merged_hdr) return -1;
 
@@ -1194,27 +1129,44 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         samFile* fpheaders = sam_open(headers, "r");
         if (fpheaders == NULL) {
             const char *message = strerror(errno);
-            fprintf(stderr, "[%s] cannot open '%s': %s\n", __func__, headers, message);
+            fprintf(stderr, "[bam_merge_core] cannot open '%s': %s\n", headers, message);
             return -1;
         }
         hin = sam_hdr_read(fpheaders);
         sam_close(fpheaders);
         if (hin == NULL) {
-            fprintf(stderr, "[%s] couldn't read headers for '%s'\n",
-                    __func__, headers);
-            return -1;
+            fprintf(stderr, "[bam_merge_core] couldn't read headers for '%s'\n",
+                    headers);
+            goto mem_fail;
         }
+    } else  {
+        hout = bam_hdr_init();
+        if (!hout) {
+            fprintf(stderr, "[bam_merge_core] couldn't allocate bam header\n");
+            goto mem_fail;
+        }
+        hout->text = strdup("");
+        if (!hout->text) goto mem_fail;
     }
 
+    g_cmpkey = merge_cmpkey;
     fp = (samFile**)calloc(n, sizeof(samFile*));
+    if (!fp) goto mem_fail;
     heap = (heap1_t*)calloc(n, sizeof(heap1_t));
+    if (!heap) goto mem_fail;
     iter = (hts_itr_t**)calloc(n, sizeof(hts_itr_t*));
+    if (!iter) goto mem_fail;
     hdr = (bam_hdr_t**)calloc(n, sizeof(bam_hdr_t*));
+    if (!hdr) goto mem_fail;
     translation_tbl = (trans_tbl_t*)calloc(n, sizeof(trans_tbl_t));
+    if (!translation_tbl) goto mem_fail;
     RG = (char**)calloc(n, sizeof(char*));
+    if (!RG) goto mem_fail;
+
     // prepare RG tag from file names
     if (flag & MERGE_RG) {
         RG_len = (int*)calloc(n, sizeof(int));
+        if (!RG_len) goto mem_fail;
         for (i = 0; i != n; ++i) {
             int l = strlen(fn[i]);
             const char *s = fn[i];
@@ -1223,6 +1175,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
             for (j = l - 1; j >= 0; --j) if (s[j] == '/') break;
             ++j; l -= j;
             RG[i] = (char*)calloc(l + 1, 1);
+            if (!RG[i]) goto mem_fail;
             RG_len[i] = l;
             strncpy(RG[i], s + j, l);
         }
@@ -1233,7 +1186,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         trans_tbl_t dummy;
         int res;
         res = trans_tbl_init(merged_hdr, hin, &dummy, flag & MERGE_COMBINE_RG,
-                             flag & MERGE_COMBINE_PG, NULL);
+                             flag & MERGE_COMBINE_PG, true, NULL);
         trans_tbl_destroy(&dummy);
         if (res) return -1; // FIXME: memory leak
     }
@@ -1243,31 +1196,19 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         bam_hdr_t *hin;
         fp[i] = sam_open_format(fn[i], "r", in_fmt);
         if (fp[i] == NULL) {
-            int j;
-            fprintf(stderr, "[%s] fail to open file %s\n", __func__, fn[i]);
-            for (j = 0; j < i; ++j) {
-                bam_hdr_destroy(hdr[i]);
-                sam_close(fp[j]);
-            }
-            free(fp); free(heap);
-            // FIXME: possible memory leak
-            return -1;
+            fprintf(stderr, "[bam_merge_core] fail to open file %s\n", fn[i]);
+            goto fail;
         }
         hin = sam_hdr_read(fp[i]);
         if (hin == NULL) {
-            fprintf(stderr, "[%s] failed to read header for '%s'\n",
-                    __func__, fn[i]);
-            for (j = 0; j < i; ++j) {
-                bam_hdr_destroy(hdr[i]);
-                sam_close(fp[j]);
-            }
-            free(fp); free(heap);
-            // FIXME: possible memory leak
-            return -1;
+            fprintf(stderr, "[bam_merge_core] failed to read header for '%s'\n",
+                    fn[i]);
+            goto fail;
         }
 
         if (trans_tbl_init(merged_hdr, hin, translation_tbl+i,
                            flag & MERGE_COMBINE_RG, flag & MERGE_COMBINE_PG,
+                           (flag & MERGE_FIRST_CO)? (i == 0) : true,
                            RG[i]))
             return -1; // FIXME: memory leak
 
@@ -1276,15 +1217,14 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         if (hts_get_format(fp[i])->format == sam) hdr[i] = hin;
         else { bam_hdr_destroy(hin); hdr[i] = NULL; }
 
-        if ((translation_tbl+i)->lost_coord_sort && !by_qname) {
-            fprintf(stderr, "[%s] Order of targets in file %s caused coordinate sort to be lost\n",
-                    __func__, fn[i]);
+        if ((translation_tbl+i)->lost_coord_sort && merge_cmpkey) {
+            fprintf(stderr, "[bam_merge_core] Order of targets in file %s caused coordinate sort to be lost\n", fn[i]);
         }
     }
 
     // Did we get an @HD line?
     if (!merged_hdr->have_hd) {
-        fprintf(stderr, "[W:%s] No @HD tag found.\n", __func__);
+        fprintf(stderr, "[W::%s] No @HD tag found.\n", __func__);
         /* FIXME:  Should we add an @HD line here, and if so what should
            we put in it? Ideally we want a way of getting htslib to tell
            us the SAM version number to assume given no @HD line.  Is
@@ -1299,12 +1239,16 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 
     // If we're only merging a specified region move our iters to start at that point
     if (reg) {
-        int* rtrans = rtrans_build(n, hout->n_targets, translation_tbl);
-
         int tid, beg, end;
-        const char *name_lim = hts_parse_reg(reg, &beg, &end);
+        const char *name_lim;
+
+        rtrans = rtrans_build(n, hout->n_targets, translation_tbl);
+        if (!rtrans) goto mem_fail;
+
+        name_lim = hts_parse_reg(reg, &beg, &end);
         if (name_lim) {
-            char *name = (char *)malloc(name_lim - reg + 1);
+            char *name = malloc(name_lim - reg + 1);
+            if (!name) goto mem_fail;
             memcpy(name, reg, name_lim - reg);
             name[name_lim - reg] = '\0';
             tid = bam_name2id(hout, name);
@@ -1319,7 +1263,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         if (tid < 0) {
             if (name_lim) fprintf(stderr, "[%s] Region \"%s\" specifies an unknown reference name\n", __func__, reg);
             else fprintf(stderr, "[%s] Badly formatted region: \"%s\"\n", __func__, reg);
-            return -1;
+            goto fail;
         }
         for (i = 0; i < n; ++i) {
             hts_idx_t *idx = sam_index_load(fp[i], fn[i]);
@@ -1328,7 +1272,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
             if (idx == NULL) {
                 fprintf(stderr, "[%s] failed to load index for %s.  Random alignment retrieval only works for indexed BAM or CRAM files.\n",
                         __func__, fn[i]);
-                return -1;
+                goto fail;
             }
             if (mapped_tid != INT32_MIN) {
                 iter[i] = sam_itr_queryi(idx, mapped_tid, beg, end);
@@ -1336,110 +1280,100 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
                 iter[i] = sam_itr_queryi(idx, HTS_IDX_NONE, 0, 0);
             }
             hts_idx_destroy(idx);
-            if (iter[i] == NULL) break;
+            if (iter[i] == NULL) {
+                if (mapped_tid != INT32_MIN) {
+                    fprintf(stderr,
+                            "[%s] failed to get iterator over "
+                            "{%s, %d, %d, %d}\n",
+                            __func__, fn[i], mapped_tid, beg, end);
+                } else {
+                    fprintf(stderr,
+                            "[%s] failed to get iterator over "
+                            "{%s, HTS_IDX_NONE, 0, 0}\n",
+                            __func__, fn[i]);
+                }
+                goto fail;
+            }
         }
         free(rtrans);
+        rtrans = NULL;
     } else {
         for (i = 0; i < n; ++i) {
             if (hdr[i] == NULL) {
                 iter[i] = sam_itr_queryi(NULL, HTS_IDX_REST, 0, 0);
-                if (iter[i] == NULL) break;
+                if (iter[i] == NULL) {
+                    fprintf(stderr, "[%s] failed to get iterator\n", __func__);
+                    goto fail;
+                }
             }
             else iter[i] = NULL;
         }
     }
 
-    if (i < n) {
-        fprintf(stderr, "[%s] Memory allocation failed\n", __func__);
-        return -1;
-    }
-
     // Load the first read from each file into the heap
     for (i = 0; i < n; ++i) {
         heap1_t *h = heap + i;
+        int res;
         h->i = i;
         h->b = bam_init1();
-        if ((iter[i]? sam_itr_next(fp[i], iter[i], h->b) : sam_read1(fp[i], hdr[i], h->b)) >= 0) {
+        if (!h->b) goto mem_fail;
+        res = iter[i] ? sam_itr_next(fp[i], iter[i], h->b) : sam_read1(fp[i], hdr[i], h->b);
+        if (res >= 0) {
             bam_translate(h->b, translation_tbl + i);
             h->pos = ((uint64_t)h->b->core.tid<<32) | (uint32_t)((int32_t)h->b->core.pos+1)<<1 | bam_is_rev(h->b);
             h->idx = idx++;
         }
-        else {
+        else if (res == -1 && (!iter[i] || iter[i]->finished)) {
             h->pos = HEAP_EMPTY;
             bam_destroy1(h->b);
             h->b = NULL;
+        } else {
+            fprintf(stderr, "[%s] failed to read first record from %s\n",
+                    __func__, fn[i]);
+            goto fail;
         }
     }
 
     // Open output file and write header
-    char outfname[500] = "";
-    // Open all temporary bams
-    samFile **outfps = (samFile **)malloc(sizeof(samFile *) * (hout->n_targets + 1));
-    if(split) {
-        sprintf(outfname, "%s.unmapped.bam", out);
-        outfps[0] = sam_open_format(outfname, mode, out_fmt);
-        sam_hdr_write(outfps[0], hout);
-        for(i = 1; i < hout->n_targets + 1; ++i) {
-            sprintf(outfname, "%s.%s.bam", out, hout->target_name[i - 1]);
-            outfps[i] = sam_open_format(outfname, mode, out_fmt);
-            if(!outfps[i]) {
-                LOG_EXIT("Could not open output bam %s. Abort!\n", outfname);
-            }
-            sam_hdr_write(outfps[i], hout);
-            hts_set_threads(outfps[i], n_threads);
-        }
+    if ((fpout = sam_open_format(out, mode, out_fmt)) == 0) {
+        fprintf(stderr, "[%s] failed to create \"%s\": %s\n", __func__, out, strerror(errno));
+        return -1;
     }
-    else {
-        outfps[0] = sam_open_format(out, mode, out_fmt);
-        if(!*outfps) {
-            LOG_EXIT("Could not open output bam %s. Abort!\n", outfname);
-        }
-        sam_hdr_write(outfps[0], hout);
-        hts_set_threads(outfps[0], n_threads);
+    if (sam_hdr_write(fpout, hout) != 0) {
+        fprintf(stderr, "[%s] failed to write header.\n", __func__);
+        sam_close(fpout);
+        return -1;
     }
+    if (!(flag & MERGE_UNCOMP)) hts_set_threads(fpout, n_threads);
 
     // Begin the actual merge
     ks_heapmake(heap, n, heap);
-    if(split) {
-        while (heap->pos != HEAP_EMPTY) {
-            bam1_t *b = heap->b;
-            if (flag & MERGE_RG) {
-                const uint8_t *rg = bam_aux_get(b, "RG");
-                if (rg) bam_aux_del(b, (uint8_t *)rg);
-                bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
-            }
-            sam_write1(outfps[split_index(b)], hout, b);
-            if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
-                bam_translate(b, translation_tbl + heap->i);
-                heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
-                heap->idx = idx++;
-            } else if (j == -1) {
-                heap->pos = HEAP_EMPTY;
-                bam_destroy1(heap->b);
-                heap->b = NULL;
-            } else fprintf(stderr, "[W:%s] '%s' is truncated. Continue anyway.\n", __func__, fn[heap->i]);
-            ks_heapadjust(heap, 0, n, heap);
+    while (heap->pos != HEAP_EMPTY) {
+        bam1_t *b = heap->b;
+        if (flag & MERGE_RG) {
+            uint8_t *rg = bam_aux_get(b, "RG");
+            if (rg) bam_aux_del(b, rg);
+            bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
         }
-    } else {
-        while (heap->pos != HEAP_EMPTY) {
-            bam1_t *b = heap->b;
-            if (flag & MERGE_RG) {
-                uint8_t *rg = bam_aux_get(b, "RG");
-                if (rg) bam_aux_del(b, rg);
-                bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
-            }
-            sam_write1(outfps[0], hout, b);
-            if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
-                bam_translate(b, translation_tbl + heap->i);
-                heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
-                heap->idx = idx++;
-            } else if (j == -1) {
-                heap->pos = HEAP_EMPTY;
-                bam_destroy1(heap->b);
-                heap->b = NULL;
-            } else fprintf(stderr, "[W:%s] '%s' is truncated. Continue anyway.\n", __func__, fn[heap->i]);
-            ks_heapadjust(heap, 0, n, heap);
+        if (sam_write1(fpout, hout, b) < 0) {
+            fprintf(stderr, "[%s] failed to write to output file.\n", __func__);
+            sam_close(fpout);
+            return -1;
         }
+        if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
+            bam_translate(b, translation_tbl + heap->i);
+            heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
+            heap->idx = idx++;
+        } else if (j == -1 && (!iter[heap->i] || iter[heap->i]->finished)) {
+            heap->pos = HEAP_EMPTY;
+            bam_destroy1(heap->b);
+            heap->b = NULL;
+        } else {
+            fprintf(stderr, "[bam_merge_core] error: '%s' is truncated.\n",
+                    fn[heap->i]);
+            goto fail;
+        }
+        ks_heapadjust(heap, 0, n, heap);
     }
 
     // Clean up and close
@@ -1453,61 +1387,89 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
         bam_hdr_destroy(hdr[i]);
         sam_close(fp[i]);
     }
-#if !NDEBUG
-    fprintf(stderr, "[D:%s] Clean out handles.\n", __func__);
-#endif
-    if(split) {
-        for(i = 0; i < hout->n_targets + 1; ++i) sam_close(outfps[i]), outfps[i] = NULL;
-    } else sam_close(*outfps);
-    if(hin) bam_hdr_destroy(hin);
+    bam_hdr_destroy(hin);
     bam_hdr_destroy(hout);
     free_merged_header(merged_hdr);
     free(RG); free(translation_tbl); free(fp); free(heap); free(iter); free(hdr);
+    if (sam_close(fpout) < 0) {
+        fprintf(stderr, "[bam_merge_core] error closing output file\n");
+        return -1;
+    }
     return 0;
+
+ mem_fail:
+    fprintf(stderr, "[bam_merge_core] Out of memory\n");
+
+ fail:
+    if (flag & MERGE_RG) {
+        if (RG) {
+            for (i = 0; i != n; ++i) free(RG[i]);
+        }
+        free(RG_len);
+    }
+    for (i = 0; i < n; ++i) {
+        if (translation_tbl && translation_tbl[i].tid_trans) trans_tbl_destroy(translation_tbl + i);
+        if (iter && iter[i]) hts_itr_destroy(iter[i]);
+        if (hdr && hdr[i]) bam_hdr_destroy(hdr[i]);
+        if (fp && fp[i]) sam_close(fp[i]);
+        if (heap && heap[i].b) bam_destroy1(heap[i].b);
+    }
+    if (hout) bam_hdr_destroy(hout);
+    free(RG);
+    free(translation_tbl);
+    free(hdr);
+    free(iter);
+    free(heap);
+    free(fp);
+    free(rtrans);
+    return -1;
 }
 
 // Unused here but may be used by legacy samtools-using third-party code
-int bam_merge_core(int by_qname, const char *out, const char *headers, int n, char * const *fn, int flag, const char *reg, int split)
+int bam_merge_core(int l_cmpkey, const char *out, const char *headers, int n, char * const *fn, int flag, const char *reg)
 {
     char mode[12];
     strcpy(mode, "wb");
     if (flag & MERGE_UNCOMP) strcat(mode, "0");
     else if (flag & MERGE_LEVEL1) strcat(mode, "1");
-    return bam_merge_core2(by_qname, out, mode, headers, n, fn, flag, reg, 0, NULL, NULL, split);
+    return bam_merge_core2(l_cmpkey, out, mode, headers, n, fn, flag, reg, 0, NULL, NULL);
 }
 
 static void merge_usage(FILE *to)
 {
-    fprintf(to, "Usage: samtools merge [-nurlf] [-h inh.sam] [-b <bamlist.fofn>] <out.bam> <in1.bam> [<in2.bam> ... <inN.bam>]\n\n");
-    fprintf(to, "Options:\n");
-    fprintf(to, "  -n             sort by read names\n");
-    fprintf(to, "  -r             attach RG tag (inferred from file names)\n");
-    fprintf(to, "  -u             uncompressed BAM output\n");
-    fprintf(to, "  -f             overwrite the output BAM if exist\n");
-    fprintf(to, "  -1             compress level 1\n");
-    fprintf(to, "  -l INT         compression level, from 0 to 9 [-1]\n");
-    fprintf(to, "  -@ INT         number of BAM compression threads [0]\n");
-    fprintf(to, "  -R STR         merge file in the specified region STR [all]\n");
-    fprintf(to, "  -h FILE        copy the header in FILE to <out.bam> [in1.bam]\n");
-    fprintf(to, "  -c             combine RG tags with colliding IDs rather than amending them\n");
-    fprintf(to, "  -p             combine PG tags with colliding IDs rather than amending them\n");
-    fprintf(to, "  -s VALUE       override random seed\n");
-    fprintf(to, "  -b FILE        list of input BAM filenames, one per line [null]\n");
+    fprintf(to,
+"Usage: samtools merge [-nurlf] [-h inh.sam] [-b <bamlist.fofn>] <out.bam> <in1.bam> [<in2.bam> ... <inN.bam>]\n"
+"\n"
+"Options:\n"
+"  -n         Input files are sorted by read name\n"
+"  -r         Attach RG tag (inferred from file names)\n"
+"  -u         Uncompressed BAM output\n"
+"  -f         Overwrite the output BAM if exist\n"
+"  -1         Compress level 1\n"
+"  -l INT     Compression level, from 0 to 9 [-1]\n"
+"  -R STR     Merge file in the specified region STR [all]\n"
+"  -h FILE    Copy the header in FILE to <out.bam> [in1.bam]\n"
+"  -c         Combine @RG headers with colliding IDs [alter IDs to be distinct]\n"
+"  -p         Combine @PG headers with colliding IDs [alter IDs to be distinct]\n"
+"  -s VALUE   Override random seed\n"
+"  -b FILE    List of input BAM filenames, one per line [null]\n"
+"  -@, --threads INT\n"
+"             Number of BAM/CRAM compression threads [0]\n");
     sam_global_opt_help(to, "-.O..");
 }
 
 int bam_merge(int argc, char *argv[])
 {
-    int c, cmpkey = 0, flag = 0, ret = 0, n_threads = 0, level = -1, nargcfiles;
+    int c, l_cmpkey = 0, flag = 0, ret = 0, n_threads = 0, level = -1;
     char *fn_headers = NULL, *reg = NULL, mode[12];
     long random_seed = (long)time(NULL);
     char** fn = NULL;
     int fn_size = 0;
 
-    sam_global_args ga;
-    memset(&ga, 0, sizeof(sam_global_args));
+    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
     static const struct option lopts[] = {
         SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),
+        { "threads", required_argument, NULL, '@' },
         { NULL, 0, NULL, 0 }
     };
 
@@ -1521,7 +1483,7 @@ int bam_merge(int argc, char *argv[])
         case 'r': flag |= MERGE_RG; break;
         case 'f': flag |= MERGE_FORCE; break;
         case 'h': fn_headers = strdup(optarg); break;
-        case 'n': cmpkey = 1; break;
+        case 'n': l_cmpkey = 1; break;
         case '1': flag |= MERGE_LEVEL1; level = 1; break;
         case 'u': flag |= MERGE_UNCOMP; level = 0; break;
         case 'R': reg = strdup(optarg); break;
@@ -1536,7 +1498,7 @@ int bam_merge(int argc, char *argv[])
             char **fn_read = hts_readlines(optarg, &nfiles);
             if (fn_read) {
                 // Append to end of array
-                fn = (char **)realloc(fn, (fn_size+nfiles) * sizeof(char*));
+                fn = realloc(fn, (fn_size+nfiles) * sizeof(char*));
                 if (fn == NULL) { ret = 1; goto end; }
                 memcpy(fn+fn_size, fn_read, nfiles * sizeof(char*));
                 fn_size += nfiles;
@@ -1569,10 +1531,10 @@ int bam_merge(int argc, char *argv[])
         }
     }
 
-    nargcfiles = argc - (optind+1);
+    int nargcfiles = argc - (optind+1);
     if (nargcfiles > 0) {
         // Add argc files to end of array
-        fn = (char **)realloc(fn, (fn_size+nargcfiles) * sizeof(char*));
+        fn = realloc(fn, (fn_size+nargcfiles) * sizeof(char*));
         if (fn == NULL) { ret = 1; goto end; }
         memcpy(fn+fn_size, argv + (optind+1), nargcfiles * sizeof(char*));
     }
@@ -1584,9 +1546,9 @@ int bam_merge(int argc, char *argv[])
     strcpy(mode, "wb");
     sam_open_mode(mode+1, argv[optind], NULL);
     if (level >= 0) sprintf(strchr(mode, '\0'), "%d", level < 9? level : 9);
-    if (bam_merge_core2(cmpkey, argv[optind], mode, fn_headers,
+    if (bam_merge_core2(l_cmpkey, argv[optind], mode, fn_headers,
                         fn_size+nargcfiles, fn, flag, reg, n_threads,
-                        &ga.in, &ga.out, 0) < 0)
+                        &ga.in, &ga.out) < 0)
         ret = 1;
 
 end:
@@ -1607,6 +1569,7 @@ end:
 
 #include <pthread.h>
 
+typedef bam1_t *bam1_p;
 
 static int change_SO(bam_hdr_t *h, const char *so)
 {
@@ -1642,8 +1605,39 @@ static int change_SO(bam_hdr_t *h, const char *so)
     return 0;
 }
 
-KSORT_INIT(sort, bam1_p, bam1_lt) // Original samtools sort
-KSORT_INIT(se_sort, bam1_p, bam1_se_lt) // Single-end bmf/ucs sort.
+
+static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b)
+{
+    const uint64_t key_a = ucs_sort_core_key(a);
+    const uint64_t key_b = ucs_sort_core_key(b);
+    return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
+}
+
+static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
+{
+    const uint64_t key_a = bmfsort_core_key(a);
+    const uint64_t key_b = bmfsort_core_key(b);
+    return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
+}
+
+// Function to compare reads and determine which one is < the other
+static inline int bam1_lt(const bam1_p a, const bam1_p b)
+{
+    int t;
+    switch(g_cmpkey) {
+        case POS:
+            return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
+        case UCS:
+            return bam1_lt_ucs(a, b);
+        case BMF:
+            return bam1_lt_bmf(a, b);
+        default: // QNAME
+            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
+    }
+}
+
+KSORT_INIT(sort, bam1_p, bam1_lt)
 
 typedef struct {
     size_t buf_len;
@@ -1651,58 +1645,40 @@ typedef struct {
     bam1_p *buf;
     const bam_hdr_t *h;
     int index;
+    int error;
 } worker_t;
 
-static void write_buffer_split(const char *split_prefix, const char *mode, size_t l, bam1_p *buf,
-        int n_threads, const bam_hdr_t *h, const htsFormat *fmt)
-{
-    uint64_t li;
-    int i;
-    samFile **fps = (samFile **)calloc(h->n_targets + 1, sizeof(samFile *));
-    kstring_t ks = {0, 0, NULL};
-    ksprintf(&ks, "%s.split.unmapped.bam", split_prefix);
-    fps[0] = sam_open_format(ks.s, mode, fmt);
-    sam_hdr_write(fps[0], h);
-    for(i = 1; i < h->n_targets + 1;++i) {
-        ks.l = 0;
-        ksprintf(&ks, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
-        if((fps[i] = sam_open_format(ks.s, mode, fmt)) == NULL)
-            LOG_EXIT("Couldn't open file %s. Abort!\n", ks.s);
-        sam_hdr_write(fps[i], h);
-    }
-    free(ks.s);
-
-    for(li = 0; li < l; ++li) sam_write1(fps[split_index(buf[li])], h, buf[li]);
-
-    for(i = 0; i < h->n_targets + 1;++i)
-        if(fps[i])
-            sam_close(fps[i]);
-    free(fps);
-}
-
-#undef split_index
-
-static void write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h, int n_threads, const htsFormat *fmt)
+// Returns 0 for success
+//        -1 for failure
+static int write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h, int n_threads, const htsFormat *fmt)
 {
     size_t i;
     samFile* fp;
     fp = sam_open_format(fn, mode, fmt);
-    if (fp == NULL) return;
-    sam_hdr_write(fp, h);
+    if (fp == NULL) return -1;
+    if (sam_hdr_write(fp, h) != 0) goto fail;
     if (n_threads > 1) hts_set_threads(fp, n_threads);
-    for (i = 0; i < l; ++i) sam_write1(fp, h, buf[i]);
+    for (i = 0; i < l; ++i) {
+        if (sam_write1(fp, h, buf[i]) < 0) goto fail;
+    }
+    if (sam_close(fp) < 0) return -1;
+    return 0;
+ fail:
     sam_close(fp);
+    return -1;
 }
 
 static void *worker(void *data)
 {
     worker_t *w = (worker_t*)data;
     char *name;
-    if(is_se) ks_mergesort(se_sort, w->buf_len, w->buf, 0);
-    else ks_mergesort(sort, w->buf_len, w->buf, 0);
+    w->error = 0;
+    ks_mergesort(sort, w->buf_len, w->buf, 0);
     name = (char*)calloc(strlen(w->prefix) + 20, 1);
+    if (!name) { w->error = errno; return 0; }
     sprintf(name, "%s.%.4d.bam", w->prefix, w->index);
-    write_buffer(name, "wb1", w->buf_len, w->buf, w->h, 0, NULL);
+    if (write_buffer(name, "wbx1", w->buf_len, w->buf, w->h, 0, NULL) < 0)
+        w->error = errno;
 
 // Consider using CRAM temporary files if the final output is CRAM.
 // Typically it is comparable speed while being smaller.
@@ -1711,7 +1687,8 @@ static void *worker(void *data)
 //        {"no_ref",      CRAM_OPT_NO_REF,  {1},     NULL}
 //    };
 //    opt[0].next = &opt[1];
-//    write_buffer(name, "wc1", w->buf_len, w->buf, w->h, 0, opt);
+//    if (write_buffer(name, "wc1", w->buf_len, w->buf, w->h, 0, opt) < 0)
+//        w->error = errno;
 
     free(name);
     return 0;
@@ -1725,9 +1702,10 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
     pthread_t *tid;
     pthread_attr_t attr;
     worker_t *w;
+    int n_failed = 0;
 
     if (n_threads < 1) n_threads = 1;
-    if ((int64_t)k < n_threads * 64) n_threads = 1; // use a single thread if we only sort a small batch of records
+    if (k < n_threads * 64) n_threads = 1; // use a single thread if we only sort a small batch of records
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     w = (worker_t*)calloc(n_threads, sizeof(worker_t));
@@ -1742,16 +1720,22 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
         b += w[i].buf_len; rest -= w[i].buf_len;
         pthread_create(&tid[i], &attr, worker, &w[i]);
     }
-    for (i = 0; i < n_threads; ++i) pthread_join(tid[i], 0);
+    for (i = 0; i < n_threads; ++i) {
+        pthread_join(tid[i], 0);
+        if (w[i].error != 0) {
+            fprintf(stderr, "[bam_sort_core] failed to create temporary file \"%s.%.4d.bam\": %s\n", prefix, w[i].index, strerror(w[i].error));
+            n_failed++;
+        }
+    }
     free(tid); free(w);
-    return n_files + n_threads;
+    return (n_failed == 0)? n_files + n_threads : -1;
 }
 
 /*!
   @abstract Sort an unsorted BAM file based on the chromosome order
   and the leftmost position of an alignment
 
-  @param  cmpkey whether to sort by query name
+  @param  l_cmpkey whether to sort by query name
   @param  fn       name of the file to be sorted
   @param  prefix   prefix of the temporary files (prefix.NNNN.bam are written)
   @param  fnout    name of the final output file to be written
@@ -1765,43 +1749,36 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core2(). This function is
   NOT thread safe.
  */
-int bam_sort_core_ext(const char *fn, const char *prefix,
+int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
                       size_t _max_mem, int n_threads,
-                      const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
-                      int argc, char **argv)
+                      const htsFormat *in_fmt, const htsFormat *out_fmt)
 {
     int ret = -1, i, n_files = 0;
-    size_t mem, max_k, k, max_mem, count;
+    size_t mem, max_k, k, max_mem;
     bam_hdr_t *header = NULL;
     samFile *fp;
     bam1_t *b, **buf;
-    char **fns;
 
     if (n_threads < 2) n_threads = 1;
+    g_cmpkey = l_cmpkey;
     max_k = k = 0; mem = 0;
     max_mem = _max_mem * n_threads;
     buf = NULL;
     fp = sam_open_format(fn, "r", in_fmt);
     if (fp == NULL) {
-        fprintf(stderr, "[%s] fail to open file %s\n", __func__, fn);
-        return -1;
+        const char *message = strerror(errno);
+        fprintf(stderr, "[bam_sort_core] fail to open '%s': %s\n", fn, message);
+        return -2;
     }
     header = sam_hdr_read(fp);
     if (header == NULL) {
-        fprintf(stderr, "[%s] failed to read header for '%s'\n", __func__, fn);
+        fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
         goto err;
     }
-    add_pg_line(header, argc, argv, "bmftools sort", BMF_VERSION, "bmftools", "Sorts a bam for positional rescue.");
-    switch(cmpkey) {
-        case SAMTOOLS: change_SO(header, "coordinate"); break;
-        case QNAME: change_SO(header, "queryname"); break;
-        case BMF_POS: change_SO(header, "positional_rescue"); break;
-        case BMF_UCS: change_SO(header, "unclipped_rescue"); break;
-        default: LOG_EXIT("Invalid (and impossible) cmpkey. Abort!\n");
-    }
+    if (l_cmpkey) change_SO(header, "queryname");
+    else change_SO(header, "coordinate");
     // write sub files
-    count = 0;
     for (;;) {
         if (k == max_k) {
             size_t kk, old_max = max_k;
@@ -1811,9 +1788,7 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         }
         if (buf[k] == NULL) buf[k] = bam_init1();
         b = buf[k];
-        if (UNLIKELY((ret = sam_read1(fp, header, b)) < 0)) break;
-        if(++count % 1000000 == 0)
-            LOG_INFO("Records read: %lu.\n", count);
+        if ((ret = sam_read1(fp, header, b)) < 0) break;
         if (b->l_data < b->m_data>>2) { // shrink
             b->m_data = b->l_data;
             kroundup32(b->m_data);
@@ -1823,35 +1798,43 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
         ++k;
         if (mem >= max_mem) {
             n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
+            if (n_files < 0) {
+                ret = -1;
+                goto err;
+            }
             mem = k = 0;
         }
     }
     if (ret != -1) {
-        fprintf(stderr, "[E:%s] truncated file. Aborting.\n", __func__);
+        fprintf(stderr, "[bam_sort_core] truncated file. Aborting.\n");
         ret = -1;
         goto err;
     }
 
     // write the final output
     if (n_files == 0) { // a single block
-        if(is_se) ks_mergesort(se_sort, k, buf, 0);
-        else ks_mergesort(sort, k, buf, 0);
-        if(split)
-            write_buffer_split(fnout, modeout, k, buf, n_threads, header, out_fmt);
-        else
-            write_buffer(fnout, modeout, k, buf, header, n_threads, out_fmt);
+        ks_mergesort(sort, k, buf, 0);
+        if (write_buffer(fnout, modeout, k, buf, header, n_threads, out_fmt) != 0) {
+            fprintf(stderr, "[bam_sort_core] failed to create \"%s\": %s\n", fnout, strerror(errno));
+            ret = -1;
+            goto err;
+        }
     } else { // then merge
-        LOG_DEBUG("n_files before sort_blocks: %d.\n", n_files);
+        char **fns;
         n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
-        LOG_INFO("merging from %d files...\n", n_files);
+        if (n_files == -1) {
+            ret = -1;
+            goto err;
+        }
+        fprintf(stderr, "[bam_sort_core] merging from %d files...\n", n_files);
         fns = (char**)calloc(n_files, sizeof(char*));
         for (i = 0; i < n_files; ++i) {
             fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
             sprintf(fns[i], "%s.%.4d.bam", prefix, i);
         }
-        if (bam_merge_core2(cmpkey, fnout, modeout, NULL, n_files, fns,
-                            MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads,
-                            in_fmt, out_fmt, split) < 0) {
+        if (bam_merge_core2(l_cmpkey, fnout, modeout, NULL, n_files, fns,
+                            MERGE_COMBINE_RG|MERGE_COMBINE_PG|MERGE_FIRST_CO,
+                            NULL, n_threads, in_fmt, out_fmt) < 0) {
             // Propagate bam_merge_core2() failure; it has already emitted a
             // message explaining the failure, so no further message is needed.
             goto err;
@@ -1874,126 +1857,123 @@ int bam_sort_core_ext(const char *fn, const char *prefix,
     return ret;
 }
 
-/* Unused here but may be used by legacy samtools-using third-party code
-int bam_sort_core(int cmpkey, const char *fn, const char *prefix, size_t max_mem)
+// Unused here but may be used by legacy samtools-using third-party code
+int bam_sort_core(int l_cmpkey, const char *fn, const char *prefix, size_t max_mem)
 {
     int ret;
     char *fnout = calloc(strlen(prefix) + 4 + 1, 1);
     sprintf(fnout, "%s.bam", prefix);
-    ret = bam_sort_core_ext(cmpkey, fn, prefix, fnout, "wb", max_mem, 0, NULL, NULL, 0);
+    ret = bam_sort_core_ext(l_cmpkey, fn, prefix, fnout, "wb", max_mem, 0, NULL, NULL);
     free(fnout);
     return ret;
 }
-*/
 
-
-static int sort_usage(int status)
+static void sort_usage(FILE *fp)
 {
-    fprintf(stderr,
-                    "Sorts bam alignments by alignment signatures to group "
-                    "reads with barcode errors with their original families.\n"
-                    "Usage: bmftools sort <opts> <in.bam>\n"
-                    "Flags:\n"
-                    "-l INT       Set compression level, from 0 (uncompressed) to 9 (best)\n"
-                    "-m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-                    "-k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
-                    "-o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
-                    "-O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
-                    "-T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
-                    "-@ INT       Set number of sorting and compression threads [1]\n"
-                    "-s           Flag to split the bam into a list of file handles.\n"
-                    "-p           If splitting into a list of handles, this sets the file prefix.\n"
-                    "-S           Flag to specify single-end. Needed for unclipped start compatibility.\n"
-                    "\n"
-            );
-    return status;
+    fprintf(fp,
+"Usage: samtools sort [options...] [in.bam]\n"
+"Options:\n"
+"  -l INT     Set compression level, from 0 (uncompressed) to 9 (best)\n"
+"  -m INT     Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
+"  -k KEY     Sort by comparison key. Default: samtools pos. bmf for rescue, ucs for unclipped-start based rescue.\n"
+"  -o FILE    Write final output to FILE rather than standard output\n"
+"  -T PREFIX  Write temporary files to PREFIX.nnnn.bam\n"
+"  -@, --threads INT\n"
+"             Set number of sorting and compression threads [1]\n");
+    sam_global_opt_help(fp, "-.O..");
 }
 
 int sort_main(int argc, char *argv[])
 {
     size_t max_mem = 768<<20; // 512MB
-    int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
-    int split = 0;
-    char modeout[12];
-    char fnout[200] = "-";
-    char tmpprefix[200];
-    rand_string(tmpprefix, 30);
-    kstring_t fnout_buffer = { 0, 0, NULL };
-    sam_global_args ga;
-    memset(&ga, 0, sizeof(sam_global_args));
+    int c, nargs, l_cmpkey = 0, ret, o_seen = 0, n_threads = 0, level = -1;
+    char *fnout = "-", modeout[12];
+    kstring_t tmpprefix = { 0, 0, NULL };
+    struct stat st;
+    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 
     static const struct option lopts[] = {
         SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),
+        { "threads", required_argument, NULL, '@' },
         { NULL, 0, NULL, 0 }
     };
 
-
-    while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:shS?", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "l:m:k:o:O:T:@:", lopts, NULL)) >= 0) {
         switch (c) {
-        case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_POS;
-                  else if(strcmp(optarg, "pos") == 0) {
-                      LOG_DEBUG("Pos chosen for cmpkey.\n");
-                      cmpkey = SAMTOOLS;
-                  }
-                  else if(strcmp(optarg, "qname") == 0) {
-                      LOG_DEBUG("Qname chosen for cmpkey.\n");
-                      cmpkey = QNAME;
-                  }
-                  else if(strcmp(optarg, "ucs") == 0) {
-                      LOG_DEBUG("Unclipped start position chosen for cmpkey.\n");
-                      cmpkey = BMF_UCS;
-                  }
-                  else {
-                      fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
-                      return sort_usage(EXIT_FAILURE);
-                  }
-                  break;
-        case 'o': strcpy(fnout, optarg); break;
-        case 'm': {
-            char *q;
-            max_mem = strtol(optarg, &q, 0);
-            if (*q == 'k' || *q == 'K') max_mem <<= 10;
-            else if (*q == 'm' || *q == 'M') max_mem <<= 20;
-            else if (*q == 'g' || *q == 'G') max_mem <<= 30;
+        case 'o': fnout = optarg; o_seen = 1; break;
+        case 'k':
+            if(strcmp(optarg, "bmf") == 0) l_cmpkey = BMF; break;
+            if(strcmp(optarg, "ucs") == 0) l_cmpkey = UCS; break;
+            if(strcmp(optarg, "pos") == 0) l_cmpkey = POS; break;
+            if(strcmp(optarg, "qname") == 0) l_cmpkey = QNAME; break;
+            LOG_EXIT("Invalid comparison key %s provided.", optarg);
             break;
-        }
-        case 'T': strcpy(tmpprefix, optarg); break;
+        case 'm': {
+                char *q;
+                max_mem = strtol(optarg, &q, 0);
+                if (*q == 'k' || *q == 'K') max_mem <<= 10;
+                else if (*q == 'm' || *q == 'M') max_mem <<= 20;
+                else if (*q == 'g' || *q == 'G') max_mem <<= 30;
+                break;
+            }
+        case 'T': kputs(optarg, &tmpprefix); break;
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
-        case 's': split = 1; break;
-        case 'S': is_se = 1; LOG_DEBUG("Heap is se\n"); break;
+
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
-        case '?': case 'h': return sort_usage(EXIT_SUCCESS);
+        case '?': sort_usage(stderr); ret = EXIT_FAILURE; goto sort_end;
         }
     }
 
     nargs = argc - optind;
-    if (argc == 1)
-        return sort_usage(EXIT_SUCCESS);
-    else if (nargs > 1)
-        return sort_usage(EXIT_FAILURE);
+    if (nargs == 0 && isatty(STDIN_FILENO)) {
+        sort_usage(stdout);
+        ret = EXIT_SUCCESS;
+        goto sort_end;
+    }
+    else if (nargs >= 2) {
+        // If exactly two, user probably tried to specify legacy <out.prefix>
+        if (nargs == 2)
+            fprintf(stderr, "[bam_sort] Use -T PREFIX / -o FILE to specify temporary and final output files\n");
 
+        sort_usage(stderr);
+        ret = EXIT_FAILURE;
+        goto sort_end;
+    }
 
     strcpy(modeout, "wb");
     sam_open_mode(modeout+1, fnout, NULL);
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-    if(!is_se) {
-        switch(cmpkey) {
-            case BMF_UCS:
-                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "MU"); // Fall-through
-            case BMF_POS:
-                check_bam_tag_exit(nargs > 0 ? argv[optind] : "-", "LM");
-        }
+    if (tmpprefix.l == 0) {
+        if (strcmp(fnout, "-") != 0) ksprintf(&tmpprefix, "%s.tmp", fnout);
+        else kputc('.', &tmpprefix);
+    }
+    if (stat(tmpprefix.s, &st) == 0 && S_ISDIR(st.st_mode)) {
+        unsigned t = ((unsigned) time(NULL)) ^ ((unsigned) clock());
+        if (tmpprefix.s[tmpprefix.l-1] != '/') kputc('/', &tmpprefix);
+        ksprintf(&tmpprefix, "samtools.%d.%u.tmp", (int) getpid(), t % 10000);
     }
 
-    ret = bam_sort_core_ext(nargs > 0 ? argv[optind] : "-",
-                            tmpprefix, fnout, modeout, max_mem, n_threads,
-                            &ga.in, &ga.out, split, argc, argv);
+    ret = bam_sort_core_ext(l_cmpkey, (nargs > 0)? argv[optind] : "-",
+                            tmpprefix.s, fnout, modeout, max_mem, n_threads,
+                            &ga.in, &ga.out);
+    if (ret >= 0)
+        ret = EXIT_SUCCESS;
+    else {
+        char dummy[4];
+        // If we failed on opening the input file & it has no .bam/.cram/etc
+        // extension, the user probably tried legacy -o <infile> <out.prefix>
+        if (ret == -2 && o_seen && nargs > 0 && sam_open_mode(dummy, argv[optind], NULL) < 0)
+            fprintf(stderr, "[bam_sort] Note the <out.prefix> argument has been replaced by -T/-o options\n");
 
-    if(fnout_buffer.s) free(fnout_buffer.s);
+        ret = EXIT_FAILURE;
+    }
+
+sort_end:
+    free(tmpprefix.s);
     sam_global_args_free(&ga);
-    if(!ret) LOG_INFO("Successfully complete bmftools sort!\n");
+
     return ret;
 }
