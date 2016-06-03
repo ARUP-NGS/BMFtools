@@ -52,20 +52,13 @@ These tools are divided into four categories:
 
 ### Core Functionality
 
-####bmftools dmp/sdmp
-bmftools dmp and sdmp perform **molecular** demultiplexing of barcoded experiments, for inline and secondary index chemistries, respectively.
+####bmftools collapse
+bmftools collapse combines reads sharing barcodes into single observations respectively.
 
-First, these tools add the barcodes to the comment fields of the fastqs and split the records into subsets based on the first characters in the barcode.
-Then, reads with exactly-matching barcode are collapsed into a unique observation, with a meta-analysis performed on each base call.
+First, the barcodes are added to the comment fields of the fastqs and split the records into subsets based on the first characters in the barcode.
+Then, reads with exactly-matching barcode are collapsed, with a meta-analysis performed on each base call.
 
-Since there can be errors in reading the barcode,
-`bmftools rsq` is made available for using positional information to rescue reads with mismatches into their proper families.
-
-bmftools dmp collapses templates where both strands were sequenced, whereas sdmp lacks strand information.
-
-Note: It is **STRONGLY** recommended that for the secondary-index chemistry that you mask adapter sequence in the molecular barcode reads.
-When the secondary-index barcode read consists primarily or entirely of adapter, this informs us that the chemistry did not perform as expected.
-This preprocessing will "N" those bases, marking the reads as QC fail with the FP integer tag (0 for fail, 1 for pass).
+bmftools collapse inline collapses templates where both strands were sequenced, whereas collapse secondary lacks strand information.
 
 ### Manipulation
 
@@ -101,7 +94,7 @@ Calculates on-target fraction for bed file using barcode metadata.
 
 ####bmftools err
 Calculates error rates by a variety of parameters.
-Additionally, pre-computes the quality score recalibration for the optional dmp/sdmp recalibration step.
+Additionally, pre-computes the quality score recalibration for the optional collapse recalibration step.
 
 ####bmftools famstats
 Calculates summary statistics related to family size and demultiplexing.
