@@ -9,11 +9,19 @@
 
 namespace bmf {
 
-void dmp_usage()
+
+void dmp_usage() {
+    fprintf(stderr, "Collapses initial fastq by exact barcode matching.\n"
+                    "Subcommands:\ninline: Inline barcoded chemistry.\n"
+                    "secondary: Secondary barcoded chemistry.\n");
+}
+
+
+void idmp_usage()
 {
         fprintf(stderr,
-                        "Performs molecular demultiplexing for inline barcoded experiments.\n"
-                        "Usage: bmftools dmp <options> <Fq.R1.seq> <Fq.R2.seq>"
+                        "Collapses inline barcoded fastq data.\n"
+                        "Usage: bmftools dmp <options> <r1.fq> <r2.fq>"
                         "\nFlags:\n"
                         "-S: Run in single-end mode. (Ignores read 2)\n"
                         "-=: Emit interleaved final output to stdout.\n"
@@ -415,10 +423,23 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     return splitter;
 }
 
+int idmp_main(int argc, char *argv[]);
+extern int sdmp_main(int argc, char *argv[]);
 
 int dmp_main(int argc, char *argv[])
 {
     if(argc == 1) dmp_usage(), exit(EXIT_FAILURE);
+    if(strcmp(argv[1], "inline") == 0)
+        return idmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "secondary") == 0)
+        return sdmp_main(argc - 1, argv + 1);
+    LOG_EXIT("Unrecognized bmftools dmp subcommand %s. Abort!\n", argv[1]);
+}
+
+
+int idmp_main(int argc, char *argv[])
+{
+    if(argc == 1) idmp_usage(), exit(EXIT_FAILURE);
     // Build settings struct
 
     marksplit_settings_t settings = {0};
@@ -466,7 +487,7 @@ int dmp_main(int argc, char *argv[])
             case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
             case 'S': settings.is_se = 1; break;
             case '=': settings.to_stdout = 1; break;
-            case '?': case 'h': dmp_usage(); exit(EXIT_SUCCESS);
+            case '?': case 'h': idmp_usage(); exit(EXIT_SUCCESS);
         }
     }
 
@@ -475,11 +496,11 @@ int dmp_main(int argc, char *argv[])
     // Check for proper command-line usage.
     if(settings.is_se) {
         if(argc < 4) {
-            dmp_usage();
+            idmp_usage();
             exit(EXIT_FAILURE);
         }
         if(argc < optind + 1) {
-            dmp_usage();
+            idmp_usage();
         }
         if(argc == optind + 2) {
             LOG_WARNING("Note: two read paths were provided but single-end mode was selected.\n");
@@ -493,10 +514,10 @@ int dmp_main(int argc, char *argv[])
         // Handle filenames
         settings.input_r1_path = strdup(argv[optind]);
     } else {
-        if(argc < 5) dmp_usage(), exit(EXIT_FAILURE);
+        if(argc < 5) idmp_usage(), exit(EXIT_FAILURE);
         if(argc != optind + 2) {
             fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required for paired-end. See usage.\n", __func__);
-            dmp_usage();
+            idmp_usage();
             return EXIT_FAILURE;
         }
         // Number of file handles
@@ -578,6 +599,6 @@ int dmp_main(int argc, char *argv[])
     splitter_destroy(&splitter);
     LOG_INFO("Successfully completed bmftools dmp!\n");
     return EXIT_SUCCESS;
-} /* dmp_main */
+} /* idmp_main */
 
 } /* namespace bmf */

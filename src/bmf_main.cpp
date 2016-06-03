@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
     if(strcmp(argv[1], "sort") == 0) return sort_main(argc - 1, argv + 1);
-    if(strcmp(argv[1], "dmp") == 0) return bmf::dmp_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "collapse") == 0) return bmf::dmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "sdmp") == 0) return bmf::sdmp_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "rsq") == 0) return bmf::rsq_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "hashdmp") == 0) return bmf::hashdmp_main(argc - 1, argv + 1);

@@ -112,9 +112,16 @@ bmftools <subcommand> <-h>
 
 ### Core Functionality
 
-####<b>dmp</b>
+####<b>collapse</b>
   Description:
-  > Performs molecular demutiplexing of inline barcoded fastq data.
+  > Collapsed barcoded fastq data by exact barcode matching.
+  > collapse has two subcommands:
+  1. inline
+    1. Collapses inline barcoded datasets.
+  2. secondary
+    2. Collapses secondary barcoded datasets.
+
+  <b>collapse inline</b>
   > The homing sequence is a sequence of bases marking the end of the random nucleotides
   > which make up the barcode. This is required to ensure that chemistry has worked as expected
   > and to identify the barcode length, which is used for additional entropy.
@@ -123,7 +130,7 @@ bmftools <subcommand> <-h>
   > few nucleotides in the barcode. The more of these are used, the lower the RAM requirements but the more temporary files are written.
   > This is controlled by the -n option.
 
-  Usage: `bmftools dmp <options> input_R1.fastq.gz input_R2.fastq.gz`
+  Usage: `bmftools collapse inline <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -148,11 +155,8 @@ bmftools <subcommand> <-h>
     > -h/-?: Print usage.
 
 
-####<b>sdmp</b>
-  Description:
-  > Performs molecular demutiplexing of secondary index barcoded fastq data.
-
-  Usage: `bmftools sdmp <options> input_R1.fastq.gz input_R2.fastq.gz`
+  <b>collapse inline</b>
+  Usage: `bmftools collapse inline <options> input_R1.fastq.gz input_R2.fastq.gz`
 
   Options:
 
@@ -413,49 +417,6 @@ bmftools <subcommand> <-h>
     > -P:    Number of bases around the bed file with which to pad.
     > -r:    If set, write failing reads to bam at <parameter>.
     > -v:    Invert pass/fail. (Analogous to grep.)
-
-
-
-### Utilities
-
-####bmftools sort
-  Description:
-  > Sorts an alignment file in preparation for read consolidation using positional information.
-  > Essentially a modification of samtools sort.
-
-  Options:
-
-    > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
-    > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
-    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
-    > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
-    > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
-    > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
-    > -@ INT       Set number of sorting and compression threads [1]
-    > -s           Flag to split the bam into a list of file handles.
-    > -p           If splitting into a list of handles, this sets the file prefix.
-    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
-    > -h/-?        Print usage.
-
-####bmftools mark
-  Description:
-  > Marks a sets of template bam records with auxiliary tags for use in downstream tools.
-  > Required for sort and rsq.
-  > Intended primarily for piping. Default compression is therefore 0. Typical compression for writing to disk: 6.
-
-  Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
-
-  Options:
-
-    > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
-    > -q:    Skip read pairs which fail.
-    > -d:    Set bam compression level to default (6).
-    > -i:    Skip read pairs whose insert size is less than <INT>.
-    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <parameter>
-    > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
-    > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
-    > Set output.bam to '-' or 'stdout' or omit to stdout.
-    > Thus `bmftools mark` defaults to reading and writing from stdin and stdout, respectively, in paired-end mode.
 
 
 ###"Undocumented" tools

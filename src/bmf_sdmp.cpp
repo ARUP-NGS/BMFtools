@@ -18,7 +18,7 @@ namespace bmf {
     {
             fprintf(stderr,
                             "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
-                            "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>\n"
+                            "Usage: bmftools collapse %s <options> <r1.fq> <r2.fq>\n"
                             "Flags:\n"
                             "-i: Index fastq path. REQUIRED.\n"
                             "-t: Homopolymer failure threshold. A molecular barcode with a homopolymer of length >= this limit is flagged as QC fail. Default: 10\n"
