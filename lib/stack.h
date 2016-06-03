@@ -71,7 +71,7 @@ namespace bmf {
             pass = _pass;
         }
         uint32_t get_max_mq() {
-            return mq1 > mq2 ? mq1: mq2;
+            return MAX2(mq1, mq2);
         }
         double get_frac() {
             return (double)agreed / size;

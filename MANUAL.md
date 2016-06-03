@@ -40,48 +40,9 @@ tags to all alignments for each read.
 
 `bwa mem -CYT0 -t<threads> <idx.base> final_output_prefix.R1.fq final_output_prefix.R2.fq | samtools view -bho final_output.bam`
 
+The metadata tags have now been parsed into auxiliary tags in the output bam file and can be used by downstream tools.
 
-####Rescue
-Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
-reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
-
-This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
-collapsing reads sharing these signatures with similar barcodes into single observations.
-
-"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
-or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
-a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
-
-Because reads need both their and their mates' alignment information, including read length, the preprocessing
-`bmftools mark` is required prior to bmftools sort.
-
-
-Because reads that have been modified may align elsewhere, these reads are all realigned. In addition, this regenerates
-all of the secondary and supplementary alignments.
-
-
-In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
-If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
-
-`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
-
-For position:
-
-`bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
-
-For unclipped start:
-
-`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
-
-
-Realigned reads are then sorted and merged in with the other reads in the dataset.
-
-`bwa mem -pCYT0 -t<threasd> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix> | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
-
-For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
-At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
-
-####Post-rescue: Now what?
+####Post-Alignment: Now what?
 
 If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
 
@@ -131,12 +92,6 @@ bmftools <subcommand> <-h>
 
 
 `bmftools filter -s2 input.bam output.bam`
-
-
-`bmftools mark input.bam output.bam`
-
-
-`bmftools rsq -u -f tmp.fastq input.bam tmp.out.bam`
 
 
 `bmftools sdmp -p 12 -s 1 -o tmp_prefix -f output_prefix -i index.fastq.gz read1.fastq.gz read2.fastq.gz`
@@ -220,30 +175,6 @@ bmftools <subcommand> <-h>
     > -w:    Leave temporary files.
     > -h/-?: Print usage.
 
-
-####<b>rsq</b>
-  Description:
-  > Uses positional information to rescue reads into proper families in cases were there were errors in the barcode.
-  > In preprocessing, bam file is sorted to group reads sharing an "alignment signature" together, where an alignment signature consists of position, orientation, and read length for a read (and its mate, for paired-end data).
-  > In a process analogous to samtools rmdup, reads sharing an alignment signature with a barcode hamming distance
-  > below a given threshold are considered to have originated from the same template molecule and are consolidted into one observation.
-  > For paired-end data, requires pre-processing by bmftools mark to add mate information as auxiliary tags.
-  > For all data, requires sorting by alignment signature (see bmftools sort).
-  > Because rescued read families may have changed base calls, these reads written to a temporary fastq
-  > and realigned. In addition, this regenerates all of the secondary and supplementary alignments.
-
-  Usage: `bmftools rsq <options> input_R1.srt.bam output.bam`
-
-  Options:
-
-    > -f:    Path to temporary fastq
-    > -S:    Flag to perform rescue for single-end experiments.
-    > -u:    Flag to use unclipped start rather than position in alignment signature. Requires `-k ucs` in bmftools sort.
-    > -s:    Flag to write reads with supplementary alignments to the temporary fastq to regenerate secondary/supplementary reads after rescue.
-    > -l:    Output bam compression level.
-    > -t:    Mismatch limit. Default: 2.
-    > -h/-?: Print usage.
-
 ### Analysis
 
 ####<b>stack</b>
@@ -275,7 +206,9 @@ bmftools <subcommand> <-h>
     TODO: Fill in details on these tags.
     VCF Header Fields:
     * BMF_PASS: 1 if variant passes, 0 otherwise.
-    * ADP: Number of unique observations for allele.
+    * BMF_QUANT
+    * ADP_PASS: Number of high-confidence unique observations for allele.
+    * ADP_ALL: Number of all unique observations for each allele, inc. both low- and high-confidence
     * ADPO: Number of overlapping read pair observations for allele.
     * ADPD: Number of duplex observations for allele.
     * ADPR: Number of original reversed observations for allele.
