@@ -7,6 +7,7 @@
 
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
+#define bcf_int32_vec(header, vrec, tag, vector) bcf_update_format_int32(header, vrec, tag, (void *)vector.data(), vector.size() * 2);
 
 namespace bmf {
 

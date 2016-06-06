@@ -119,9 +119,9 @@ namespace bmf {
         // Build vcfline struct
         bmf::PairVCFPos vcfline(tobs, nobs, ttid, tpos);
         vcfline.to_bcf(ret, aux, ttid, tpos);
-        bcf_update_format_int32(aux->vcf.vh, ret, "MQ_FAILED", (void *)mq_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "AF_FAILED", (void *)af_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "OVERLAP", (void *)olap_count, 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "MQ_FAILED", (void *)mq_failed, COUNT_OF(mq_failed) * 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "AF_FAILED", (void *)af_failed, COUNT_OF(af_failed) * 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "OVERLAP", (void *)olap_count, COUNT_OF(olap_count) * 2);
         //LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf.write(ret));
         aux->vcf.write(ret);
         bcf_clear(ret);

@@ -111,6 +111,7 @@ namespace bmf {
         }
         std::vector<char> base_calls(base_set.begin(), base_set.end());
         const size_t n_base_calls = base_calls.size();
+        const size_t nbc2(n_base_calls * 2);
         std::vector<std::vector<uint32_t>> tconfident_phreds;
         std::vector<std::vector<uint32_t>> tsuspect_phreds;
         std::vector<std::vector<uint32_t>> nconfident_phreds;
@@ -128,17 +129,17 @@ namespace bmf {
         std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
             return (a == refbase) ? true : (b == refbase) ? false: a < b;
         });
-        std::vector<int> counts(n_base_calls * 2);
-        std::vector<int> pv_failed(n_base_calls * 2);
-        std::vector<int> fr_failed(n_base_calls * 2);
-        std::vector<int> fa_failed(n_base_calls * 2);
-        std::vector<int> fm_failed(n_base_calls * 2);
-        std::vector<int> duplex_counts(n_base_calls * 2);
-        std::vector<int> overlap_counts(n_base_calls * 2);
-        std::vector<int> reverse_counts(n_base_calls * 2);
-        std::vector<int> failed_counts(n_base_calls * 2);
-        std::vector<int> allele_passes(n_base_calls * 2);
-        std::vector<int> qscore_sums(n_base_calls * 2);
+        std::vector<int> counts(nbc2);
+        std::vector<int> pv_failed(nbc2);
+        std::vector<int> fr_failed(nbc2);
+        std::vector<int> fa_failed(nbc2);
+        std::vector<int> fm_failed(nbc2);
+        std::vector<int> duplex_counts(nbc2);
+        std::vector<int> overlap_counts(nbc2);
+        std::vector<int> reverse_counts(nbc2);
+        std::vector<int> failed_counts(nbc2);
+        std::vector<int> allele_passes(nbc2);
+        std::vector<int> qscore_sums(nbc2);
         std::vector<int> somatic;
         somatic.reserve(n_base_calls);
         vrec->rid = tumor.tid;
@@ -377,27 +378,35 @@ namespace bmf {
         }
         assert(allele_fractions.size() == 2 * n_base_calls);
         std::vector<int> adp_pass;
-        assert(duplex_counts.size() == n_base_calls * 2);
-        adp_pass.reserve(n_base_calls * 2);
+        assert(duplex_counts.size() == nbc2);
+        adp_pass.reserve(nbc2);
         for(auto& i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         for(auto& i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
-        LOG_DEBUG("Total number of passing alleles: %i.\n", std::accumulate(allele_passes.begin(), allele_passes.end(), 0));
+        //LOG_DEBUG("Total number of passing alleles: %i.\n", std::accumulate(allele_passes.begin(), allele_passes.end(), 0));
+#if !NDEBUG
+        if(vrec->pos == 55249070) {
+            LOG_DEBUG("Number of base calls: %lu. Size of allele_passes: %lu.\n", n_base_calls, allele_passes.size());
+        }
+        assert(allele_passes.size() == nbc2);
+        assert(fa_failed.size() == nbc2);
+#endif
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FR_FAILED", (void *)fr_failed.data(), fr_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FM_FAILED", (void *)fm_failed.data(), fm_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FA_FAILED", (void *)fa_failed.data(), fa_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "PV_FAILED", (void *)pv_failed.data(), pv_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_ALL", static_cast<const void *>(counts.data()), counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_PASS", static_cast<const void *>(adp_pass.data()), adp_pass.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
-        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig));
-        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPO", overlap_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPR", reverse_counts);
+        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size() * 2);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_PASS", allele_passes);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_QUANT", quant_est);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FA_FAILED", fa_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
+        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
+        bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig) * 2);
+        assert(somatic.size() == n_base_calls);
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
 
@@ -412,13 +421,13 @@ namespace bmf {
             "##FORMAT=<ID=ADP_ALL,Number=R,Type=Integer,Description=\"Number of all unique observations for each allele, inc. both low- and high-confidence.\">",
             "##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">",
             "##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">",
-            "##FORMAT=<ID=ADP_PASS,Number=R,Type=Integer,Description=\"Number of high-confidence unique observations for each allele.\">",
+            "##FORMAT=<ID=ADP_PASS,Number=.,Type=Integer,Description=\"Number of high-confidence unique observations for each allele.\">",
             "##FORMAT=<ID=ADPR,Number=R,Type=Integer,Description=\"Total number of original reversed reads supporting allele.\">",
-            "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
-            "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">"
+            "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
-            "##FORMAT=<ID=BMF_QUANT,Number=R,Type=Integer,Description=\"Estimated quantitation for variant allele.\">",
+            "##FORMAT=<ID=BMF_QUANT,Number=.,Type=Integer,Description=\"Estimated quantitation for variant allele.\">",
+            "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
             "##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
             "##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
             "##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
