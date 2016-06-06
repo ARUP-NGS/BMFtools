@@ -382,15 +382,15 @@ namespace bmf {
         adp_pass.reserve(nbc2);
         for(auto& i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         for(auto& i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
-        //LOG_DEBUG("Total number of passing alleles: %i.\n", std::accumulate(allele_passes.begin(), allele_passes.end(), 0));
+        bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
 #if !NDEBUG
         if(vrec->pos == 55249070) {
             LOG_DEBUG("Number of base calls: %lu. Size of allele_passes: %lu.\n", n_base_calls, allele_passes.size());
         }
+        LOG_DEBUG("Alleles string: %s.\n", allele_str.s);
         assert(allele_passes.size() == nbc2);
         assert(fa_failed.size() == nbc2);
 #endif
-        bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
