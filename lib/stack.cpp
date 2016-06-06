@@ -181,8 +181,22 @@ namespace bmf {
                 }
             }
             allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
-                                tconfident_phreds.size() >= (unsigned)aux->conf.min_count &&
+                                tconfident_phreds[0].size() >= (unsigned)aux->conf.min_count &&
                                 overlap_counts[0] >= aux->conf.min_overlap);
+#if !NDEBUG
+            if(!allele_passes[0]) {
+                LOG_DEBUG("Ref allele failed at %i:%i.\n", vrec->rid, vrec->pos);
+                if(duplex_counts[0] < aux->conf.min_duplex) {
+                    LOG_DEBUG("Ref allele failed duplex threshold.\n");
+                }
+                else if(tconfident_phreds[0].size() < (unsigned)aux->conf.min_count) {
+                    LOG_DEBUG("Ref allele failed count threshold.\n");
+                }
+                else if(overlap_counts[0] < aux->conf.min_overlap) {
+                    LOG_DEBUG("Failed olap threshold.\n");
+                }
+            }
+#endif
         }
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
             counts[n_base_calls] = match->second.size();
@@ -219,9 +233,9 @@ namespace bmf {
                                            overlap_counts[n_base_calls] >= aux->conf.min_overlap);
 #if !NDEBUG
                 if(allele_passes[n_base_calls]) {
-                    LOG_DEBUG("Normal reference allele is passing duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
-                    LOG_DEBUG("Normal reference allele is passing counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
-                    LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
+                    //LOG_DEBUG("Normal reference allele is passing duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
+                    //LOG_DEBUG("Normal reference allele is passing counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
+                    //LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
                 } else {
                     LOG_DEBUG("Fail!\n Which of the below?\n");
                     LOG_DEBUG("Normal reference allele duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
@@ -367,6 +381,7 @@ namespace bmf {
         adp_pass.reserve(n_base_calls * 2);
         for(auto& i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         for(auto& i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
+        LOG_DEBUG("Total number of passing alleles: %i.\n", std::accumulate(allele_passes.begin(), allele_passes.end(), 0));
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
         bcf_update_format_int32(aux->vcf.vh, vrec, "FR_FAILED", (void *)fr_failed.data(), fr_failed.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "FM_FAILED", (void *)fm_failed.data(), fm_failed.size());
