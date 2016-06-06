@@ -1749,6 +1749,9 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core2(). This function is
   NOT thread safe.
  */
+
+static const char *sort_keys[4] = {"queryname", "coordinate", "positional_rescue", "unclipped_rescue"};
+
 int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
                       size_t _max_mem, int n_threads,
@@ -1776,8 +1779,7 @@ int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
         fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
         goto err;
     }
-    if (l_cmpkey) change_SO(header, "queryname");
-    else change_SO(header, "coordinate");
+    change_SO(header, sort_keys[l_cmpkey]);
     // write sub files
     for (;;) {
         if (k == max_k) {
