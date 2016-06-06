@@ -340,12 +340,9 @@ namespace bmf {
                     }
                 }
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
-                                    tconfident_phreds.size() >= (unsigned)aux->conf.min_count &&
+                                    tconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                     overlap_counts[i] >= aux->conf.min_overlap);
                 if(vrec->rid == 6 && vrec->pos == 55249070) {
-                    //LOG_DEBUG("counts: %i. min: %i.\n", duplex_counts[i], aux->conf.min_duplex);
-                    LOG_DEBUG("%i/%i %s filter for base call %c.\n", vrec->rid, vrec->pos,
-                              duplex_counts[i] >= aux->conf.min_duplex ? "pass": "fail", base_calls[i]);
                     LOG_DEBUG("Duplex counts: %i.\n", duplex_counts[i]);
                     //LOG_DEBUG("%i/%i pass duplex filter? %i, (%i, %i).\n", vrec->rid, vrec->pos, (int)(duplex_counts[n_base_calls] >= aux->conf.min_duplex),
                     //          duplex_counts[n_base_calls], aux->conf.min_duplex);
@@ -363,11 +360,11 @@ namespace bmf {
         std::vector<float> rv_fractions;
         std::vector<float> allele_fractions;
         std::vector<int> quant_est;
-        rv_fractions.reserve(reverse_counts.size());
-        allele_fractions.reserve(reverse_counts.size());
-        quant_est.reserve(reverse_counts.size());
+        rv_fractions.reserve(nbc2);
+        allele_fractions.reserve(nbc2);
+        quant_est.reserve(nbc2);
         for(unsigned i = 0; i < n_base_calls; ++i) {
-            rv_fractions.push_back((float)counts[i] / reverse_counts[i]);
+            rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
             allele_fractions.push_back((float)counts[i] / total_depth_tumor);
             quant_est.push_back(estimate_quantity(tconfident_phreds, tsuspect_phreds, i));
         }
@@ -385,9 +382,8 @@ namespace bmf {
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
 #if !NDEBUG
         if(vrec->pos == 55249070) {
-            LOG_DEBUG("Number of base calls: %lu. Size of allele_passes: %lu.\n", n_base_calls, allele_passes.size());
+            LOG_DEBUG("Number of base calls: %lu. Size of allele_passes: %lu. Ref: %c\n", n_base_calls, allele_passes.size(), vrec->d.allele[0][0]);
         }
-        LOG_DEBUG("Alleles string: %s.\n", allele_str.s);
         assert(allele_passes.size() == nbc2);
         assert(fa_failed.size() == nbc2);
 #endif

@@ -14,6 +14,7 @@ namespace bmf {
     struct stack_conf_t {
         float min_fr; // Minimum fraction of family members agreed on base
         float minAF; // Minimum aligned fraction
+        float min_allele_frac; // Minimum allele fraction
         int max_depth;
         uint32_t minFA:16;
         uint32_t minPV:16;
