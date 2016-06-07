@@ -25,6 +25,7 @@ namespace bmf {
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                         "-D, --min-duplex\tMinimum number of duplex reads required to pass a variant.\n"
+                        "-O, --min-overlap\tMinimum number of concordant overlapping read pairs required to pass a variant.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
@@ -249,6 +250,7 @@ namespace bmf {
         tbx_t *vcf_idx(nullptr);
         hts_idx_t *bcf_idx(nullptr);
         hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
+        if(!idx) LOG_EXIT("Could not load bam index for %s.\n", aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
             return vet_core_nobed(aux);
