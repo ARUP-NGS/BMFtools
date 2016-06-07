@@ -18,48 +18,156 @@ namespace bmf {
         templates.reserve(4);
         for(auto& pair: obs) templates[pair.second.base_call].push_back(&pair.second);
     }
-    void SampleVCFPos::to_bcf(bcf1_t *vrec, bcf_hdr_t *hdr, char refbase) {
-        // TODO: Re-do the paired-end mode for single-end.
-        std::vector<int> counts;
-        std::vector<int> duplex_counts;
-        std::vector<int> overlap_counts;
-        int count_index = 0;
+
+    void SampleVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, const char refbase) {
+        int ambig(0);
+        std::unordered_set<char> base_set{refbase};
+        for(auto& pair: templates) {
+            if(pair.first == 'N')
+               ambig = pair.second.size();
+            else
+                base_set.insert(pair.first);
+        }
+        std::vector<char> base_calls(base_set.begin(), base_set.end());
+        const size_t n_base_calls = base_calls.size();
+        std::vector<std::vector<uint32_t>> confident_phreds;
+        std::vector<std::vector<uint32_t>> suspect_phreds;
+        confident_phreds.reserve(n_base_calls);
+        suspect_phreds.reserve(n_base_calls);
+        // Sort lexicographically AFTER putting the reference base first.
+        std::sort(base_calls.begin(), base_calls.end(), [refbase](const char a, const char b) {
+            return (a == refbase) ? true : (b == refbase) ? false: a < b;
+        });
+        std::vector<int> counts(n_base_calls);
+        std::vector<int> pv_failed(n_base_calls);
+        std::vector<int> fr_failed(n_base_calls);
+        std::vector<int> fa_failed(n_base_calls);
+        std::vector<int> fm_failed(n_base_calls);
+        std::vector<int> duplex_counts(n_base_calls);
+        std::vector<int> overlap_counts(n_base_calls);
+        std::vector<int> reverse_counts(n_base_calls);
+        std::vector<int> failed_counts(n_base_calls);
+        std::vector<int> allele_passes(n_base_calls);
+        std::vector<int> qscore_sums(n_base_calls);
         vrec->rid = tid;
         vrec->pos = pos;
         vrec->qual = 0;
-        kstring_t allele_str = {0, 10uL, (char *)malloc(10uL * sizeof(char))};
-        kputc(refbase, &allele_str);
+        vrec->n_sample = 1;
         auto match = templates.find(refbase);
-        if(match == templates.end()) {
-            counts.resize(templates.size() + 1);
-            duplex_counts.resize(templates.size() + 1);
-            overlap_counts.resize(templates.size() + 1);
-            bcf_update_info_flag(hdr, vrec, "NOREF", nullptr, 1);
-            // No reference calls? Add appropriate info fields.
-        } else {
-            counts.resize(templates.size());
-            duplex_counts.resize(templates.size());
-            overlap_counts.resize(templates.size());
+        suspect_phreds.emplace_back();
+        confident_phreds.emplace_back();
+        if(match != templates.end()) {
             counts[0] = match->second.size();
-            for(auto uni: templates[refbase]) {
-                duplex_counts[0] += uni->get_duplex();
-                overlap_counts[0] += uni->get_overlap();
+            for(auto uni: match->second) {
+                if(uni->get_size() < (unsigned)aux->conf.minFM) {
+                    uni->set_pass(0);
+                    ++fm_failed[0];
+                }
+                if(uni->get_quality() < aux->conf.minPV) {
+                    uni->set_pass(0);
+                    ++pv_failed[0];
+                }
+                if(uni->get_agreed() < aux->conf.minFA) {
+                    uni->set_pass(0);
+                    ++fa_failed[0];
+                }
+                if(uni->get_frac() < aux->conf.min_fr) {
+                    uni->set_pass(0);
+                    ++fr_failed[0];
+                }
+                if(!uni->is_pass()) {
+                    suspect_phreds[0].push_back(uni->get_quality());
+                    ++failed_counts[0];
+                } else {
+                    confident_phreds[0].push_back(uni->get_quality());
+                    duplex_counts[0] += uni->get_duplex();
+                    overlap_counts[0] += uni->get_overlap();
+                    reverse_counts[0] += uni->get_reverse();
+                    qscore_sums[0] += uni->get_quality();
+                }
+            }
+            allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
+                                confident_phreds[0].size() >= (unsigned)aux->conf.min_count &&
+                                overlap_counts[0] >= aux->conf.min_overlap);
+        }
+
+        kstring_t allele_str{0, 0, nullptr};
+        ks_resize(&allele_str, 8uL);
+        kputc(refbase, &allele_str);
+        for(unsigned i = 1; i < n_base_calls; ++i) {
+            kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
+            suspect_phreds.emplace_back();
+            confident_phreds.emplace_back();
+            if((match = templates.find(base_calls[i])) != templates.end()) {
+                counts[i] = match->second.size();
+                for(auto uni: match->second) {
+                    if(uni->get_size() < (unsigned)aux->conf.minFM) {
+                        uni->set_pass(0);
+                        ++fm_failed[i];
+                    }
+                    if(uni->get_quality() < aux->conf.minPV) {
+                        uni->set_pass(0);
+                        ++pv_failed[i];
+                    }
+                    if(uni->get_agreed() < aux->conf.minFA) {
+                        uni->set_pass(0);
+                        ++fa_failed[i];
+                    }
+                    if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
+                        uni->set_pass(0);
+                        ++fr_failed[i];
+                    }
+                    if(!uni->is_pass()) {
+                        suspect_phreds[i].push_back(uni->get_quality());
+                        ++failed_counts[i];
+                    } else {
+                        confident_phreds[i].push_back(uni->get_quality());
+                        duplex_counts[i] += uni->get_duplex();
+                        overlap_counts[i] += uni->get_overlap();
+                        reverse_counts[i] += uni->get_reverse();
+                        qscore_sums[i] += uni->get_quality();
+                    }
+                }
+                allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
+                                    confident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
+                                    overlap_counts[i] >= aux->conf.min_overlap);
             }
         }
-        for(auto& pair: templates) {
-            if(pair.first != refbase)
-                 kputc(',', &allele_str), kputc((int)pair.first, &allele_str);
-            counts[++count_index] = pair.second.size();
-            for(auto uni: templates[pair.first]) {
-                duplex_counts[count_index] += uni->get_duplex();
-                overlap_counts[count_index] += uni->get_overlap();
-            }
-            // Update records
+        assert(n_base_calls == confident_phreds.size());
+        assert(n_base_calls == suspect_phreds.size());
+        const int total_depth(std::accumulate(counts.begin(), counts.end(), 0));
+        std::vector<float> rv_fractions;
+        std::vector<float> allele_fractions;
+        std::vector<int> quant_est;
+        rv_fractions.reserve(n_base_calls);
+        allele_fractions.reserve(n_base_calls);
+        quant_est.reserve(n_base_calls);
+        for(unsigned i = 0; i < n_base_calls; ++i) {
+           rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
+            allele_fractions.push_back((float)counts[i] / total_depth);
+            quant_est.push_back(estimate_quantity(confident_phreds, suspect_phreds, i));
         }
-        bcf_update_alleles_str(hdr, vrec, allele_str.s);
-        bcf_update_format(hdr, vrec, "ADP", (const void *)counts.data(), counts.size(), 'i');
-        bcf_update_format(hdr, vrec, "ADPD", (const void *)duplex_counts.data(), duplex_counts.size(), 'i');
-        bcf_update_format(hdr, vrec, "ADPO", (const void *)overlap_counts.data(), overlap_counts.size(), 'i');
+        assert(allele_fractions.size() == n_base_calls);
+        std::vector<int> adp_pass;
+        assert(duplex_counts.size() == n_base_calls);
+        adp_pass.reserve(n_base_calls);
+        for(auto& i: confident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
+        bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPO", overlap_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPR", reverse_counts);
+        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size() * 2);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_PASS", allele_passes);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_QUANT", quant_est);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FA_FAILED", fa_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
+        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
+        bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
     }
 
     void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
@@ -363,15 +471,18 @@ namespace bmf {
         rv_fractions.reserve(nbc2);
         allele_fractions.reserve(nbc2);
         quant_est.reserve(nbc2);
-        for(unsigned i = 0; i < n_base_calls; ++i) {
-            rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
-            allele_fractions.push_back((float)counts[i] / total_depth_tumor);
-            quant_est.push_back(estimate_quantity(tconfident_phreds, tsuspect_phreds, i));
-        }
-        for(unsigned i = 0; i < n_base_calls; ++i) {
-            rv_fractions.push_back((float)counts[i + n_base_calls] / reverse_counts[i + n_base_calls]);
-            allele_fractions.push_back((float)counts[i + n_base_calls] / total_depth_normal);
-            quant_est.push_back(estimate_quantity(nconfident_phreds, nsuspect_phreds, i));
+        {
+        unsigned i;
+            for(i = 0; i < n_base_calls; ++i) {
+                rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
+                allele_fractions.push_back((float)counts[i] / total_depth_tumor);
+                quant_est.push_back(estimate_quantity(tconfident_phreds, tsuspect_phreds, i));
+            }
+            for(i = 0; i < n_base_calls; ++i) {
+                rv_fractions.push_back((float)reverse_counts[i + n_base_calls] / counts[i + n_base_calls]);
+                allele_fractions.push_back((float)counts[i + n_base_calls] / total_depth_normal);
+                quant_est.push_back(estimate_quantity(nconfident_phreds, nsuspect_phreds, i));
+            }
         }
         assert(allele_fractions.size() == 2 * n_base_calls);
         std::vector<int> adp_pass;
