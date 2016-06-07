@@ -282,25 +282,25 @@ namespace bmf {
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
         for(khiter_t ki: keys) {
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
-                int tid, start, stop, pos = -1;
+                int pos = -1;
 
                 // Handle coordinates
-                tid = kh_key(aux->bed, ki);
+                int tid(kh_key(aux->bed, ki));
                 // rid is set to -1 before use. This won't be triggered.
-                start = get_start(kh_val(aux->bed, ki).intervals[j]);
-                stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
+                int start(get_start(kh_val(aux->bed, ki).intervals[j]));
+                int stop(get_stop(kh_val(aux->bed, ki).intervals[j]));
                 //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
                 vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
-                                   :bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                            : nullptr;
+                                   : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                                              : nullptr;
                 //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
-                int n_disagreed = 0;
-                int n_overlapped = 0;
-                int n_duplex = 0;
-                bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+                int n_disagreed (0);
+                int n_overlapped (0);
+                int n_duplex(0);
+                bam_plp_t pileup(bam_plp_init(read_bam, (void *)aux));
                 bam_plp_set_maxcnt(pileup, aux->max_depth);
                 if (aux->iter) hts_itr_destroy(aux->iter);
                 aux->iter = sam_itr_queryi(idx, tid, start - 500, stop);
