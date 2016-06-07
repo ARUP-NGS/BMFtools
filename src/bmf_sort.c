@@ -109,13 +109,11 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    if (g_cmpkey)
-        return __pos_cmp(a, b);
-    else {
+    if (g_cmpkey == QNAME) {
         if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
         const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
         return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
-    }
+    } else return __pos_cmp(a, b);
 }
 
 KSORT_INIT(heap, heap1_t, heap_lt)
@@ -1605,12 +1603,46 @@ static int change_SO(bam_hdr_t *h, const char *so)
     return 0;
 }
 
-
-static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b)
-{
+#if !NDEBUG
+static inline int ucslt(const bam1_p a, const bam1_p b) {
     const uint64_t key_a = ucs_sort_core_key(a);
     const uint64_t key_b = ucs_sort_core_key(b);
-    return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
+    return (key_a != key_b) ? (key_a < key_b)
+                            : (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
+}
+
+static inline int bam1_lt_ucs_test(const bam1_p a, const bam1_p b)
+{
+    if((uint64_t)a->core.tid != (uint64_t)b->core.tid) return (uint64_t)a->core.tid < (uint64_t)b->core.tid;
+    const int ucsa = get_unclipped_start(a);
+    const int ucsb = get_unclipped_start(b);
+    if(ucsa != ucsb) return ucsa < ucsb;
+    const int is_reva = bam_is_rev(a);
+    const int is_revb = bam_is_rev(b);
+    if(is_reva != is_revb) return is_reva < is_revb;
+    const int is_r1a = bam_is_r1(a);
+    const int is_r1b = bam_is_r1(b);
+    if(is_r1a != is_r1b) return is_r1a < is_r1b;
+    if((uint64_t)a->core.mtid != (uint64_t)b->core.mtid) return (uint64_t)a->core.mtid < (uint64_t)b->core.mtid;
+    if(bam_aux_get(a, "MU") == NULL) {
+        LOG_EXIT("Missing MU tag on read a.\n");
+    }
+    if(bam_aux_get(b, "MU") == NULL) {
+        LOG_EXIT("Missing MU tag on read b.\n");
+    }
+    const int ucsma = bam_itag(a, "MU");
+    const int ucsmb = bam_itag(b, "MU");
+    if(ucsma != ucsmb) return ucsma < ucsmb;
+    return bam_is_mrev(a) < bam_is_mrev(b);
+}
+#endif
+
+static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b) {
+    assert(bam1_lt_ucs_test(a, b) == ucslt(a, b));
+    const uint64_t key_a = ucs_sort_core_key(a);
+    const uint64_t key_b = ucs_sort_core_key(b);
+    return (key_a != key_b) ? (key_a < key_b)
+                            : (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
 }
 
 static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
@@ -1621,6 +1653,7 @@ static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
 }
 
 // Function to compare reads and determine which one is < the other
+#define ucs(a) get_unclipped_start(a)
 static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
@@ -1628,6 +1661,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         case POS:
             return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
         case UCS:
+            //return (((uint64_t)a->core.tid<<32|(ucs(a)+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(ucs(b)+1)<<1|bam_is_rev(b)));
             return bam1_lt_ucs(a, b);
         case BMF:
             return bam1_lt_bmf(a, b);
@@ -1834,6 +1868,7 @@ int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
             fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
             sprintf(fns[i], "%s.%.4d.bam", prefix, i);
         }
+        assert(l_cmpkey == g_cmpkey);
         if (bam_merge_core2(l_cmpkey, fnout, modeout, NULL, n_files, fns,
                             MERGE_COMBINE_RG|MERGE_COMBINE_PG|MERGE_FIRST_CO,
                             NULL, n_threads, in_fmt, out_fmt) < 0) {
@@ -1904,18 +1939,23 @@ int sort_main(int argc, char *argv[])
         switch (c) {
         case 'o': fnout = optarg; o_seen = 1; break;
         case 'k':
-            if(strcmp(optarg, "bmf") == 0) l_cmpkey = BMF; break;
-            if(strcmp(optarg, "ucs") == 0) l_cmpkey = UCS; break;
-            if(strcmp(optarg, "pos") == 0) l_cmpkey = POS; break;
-            if(strcmp(optarg, "qname") == 0) l_cmpkey = QNAME; break;
+            if(strcmp(optarg, "bmf") == 0) {l_cmpkey = BMF; break;}
+            if(strcmp(optarg, "ucs") == 0) {l_cmpkey = UCS; break;}
+            if(strcmp(optarg, "pos") == 0) {l_cmpkey = POS; break;}
+            if(strcmp(optarg, "qname") == 0) {l_cmpkey = QNAME; break;}
             LOG_EXIT("Invalid comparison key %s provided.", optarg);
             break;
         case 'm': {
                 char *q;
                 max_mem = strtol(optarg, &q, 0);
-                if (*q == 'k' || *q == 'K') max_mem <<= 10;
-                else if (*q == 'm' || *q == 'M') max_mem <<= 20;
-                else if (*q == 'g' || *q == 'G') max_mem <<= 30;
+                switch(*q) {
+                case 'g': case 'G':
+                    max_mem <<= 10; /* fall-through */
+                case 'm': case 'M':
+                    max_mem <<= 10; /* fall-through */
+                case 'k': case 'K':
+                    max_mem <<= 10;
+                }
                 break;
             }
         case 'T': kputs(optarg, &tmpprefix); break;
@@ -1927,6 +1967,8 @@ int sort_main(int argc, char *argv[])
         case '?': sort_usage(stderr); ret = EXIT_FAILURE; goto sort_end;
         }
     }
+    const char *types[4] = {"qname", "pos", "bmf", "ucs"};
+    LOG_INFO("Comparing records bys %s.\n", types[l_cmpkey]);
 
     nargs = argc - optind;
     if (nargs == 0 && isatty(STDIN_FILENO)) {

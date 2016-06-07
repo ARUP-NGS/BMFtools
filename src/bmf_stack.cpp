@@ -11,6 +11,7 @@ namespace bmf {
                         "Builds a stack summary for base calls and performs simple filters"
                         " to produce a maximally permissive 'variant caller'.\n"
                         "Usage:\nbmftools stack <opts> <tumor.srt.indexed.bam> <normal.srt.indexed.bam>\n"
+                        "Omit normal bam for single-bam analysis.\n"
                         "Optional arguments:\n"
                         "-R, --ref\tPath to fasta reference. REQUIRED.\n"
                         "-o, --outpath\tPath to output file. Defaults to stdout.\n"
