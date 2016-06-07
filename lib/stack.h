@@ -226,6 +226,7 @@ struct stack_aux_t {
         return ref_seq[pos];
     }
     ~stack_aux_t() {
+        LOG_DEBUG("bed: %p. ref_seq: %p.\n", (void *)bed, (void *)ref_seq);
         if(bed) dlib::bed_destroy_hash((void *)bed);
         if(ref_seq) free(ref_seq);
     }

@@ -153,20 +153,20 @@ namespace bmf {
         adp_pass.reserve(n_base_calls);
         for(auto& i: confident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
-        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
-        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
-        bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
-        bcf_int32_vec(aux->vcf.vh, vrec, "ADPO", overlap_counts);
-        bcf_int32_vec(aux->vcf.vh, vrec, "ADPR", reverse_counts);
-        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size() * 2);
-        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_PASS", allele_passes);
-        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_QUANT", quant_est);
-        bcf_int32_vec(aux->vcf.vh, vrec, "FA_FAILED", fa_failed);
-        bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
-        bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
-        bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
-        bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
-        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
+        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_ALL", static_cast<const void *>(counts.data()), counts.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_PASS", static_cast<const void *>(adp_pass.data()), adp_pass.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
+        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "FA_FAILED", static_cast<const void *>(fa_failed.data()), fa_failed.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "FM_FAILED", static_cast<const void *>(fm_failed.data()), fm_failed.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "FR_FAILED", static_cast<const void *>(fr_failed.data()), fr_failed.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "PV_FAILED", static_cast<const void *>(pv_failed.data()), pv_failed.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
+        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
     }
 

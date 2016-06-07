@@ -322,13 +322,14 @@ namespace bmf {
         int tmp;
         if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
             LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        if((tmp = bcf_hdr_add_sample(vh, "Normal")))
-            LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        if(argc - 1 != optind)
+            if((tmp = bcf_hdr_add_sample(vh, "Normal")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
         // Add header lines
         bcf_hdr_add_sample(vh, nullptr);
-        bcf_hdr_nsamples(vh) = 2;
+        bcf_hdr_nsamples(vh) = (argc - 1 != optind) ? 2: 1;
         // Add command line call
-        kstring_t tmpstr = {0};
+        kstring_t tmpstr{0};
         ksprintf(&tmpstr, "##cmdline=");
         kputs("bmftools ", &tmpstr);
         for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, "%s ", argv[i]);
@@ -354,7 +355,7 @@ namespace bmf {
         for(auto tag: {"FM", "FA", "PV", "FP"})
             dlib::check_bam_tag_exit(aux.tumor.fp->fn, tag);
         int ret = (argc - 1 == optind) ? stack_core_single(&aux): stack_core(&aux);
-        LOG_INFO("Successfully complete bmftools stack!\n");
+        LOG_INFO("Successfully completed bmftools stack!\n");
         return ret;
     }
 
