@@ -43,6 +43,7 @@ namespace bmf {
         std::vector<int> fr_failed(n_base_calls);
         std::vector<int> fa_failed(n_base_calls);
         std::vector<int> fm_failed(n_base_calls);
+        std::vector<int> md_failed(n_base_calls);
         std::vector<int> duplex_counts(n_base_calls);
         std::vector<int> overlap_counts(n_base_calls);
         std::vector<int> reverse_counts(n_base_calls);
@@ -60,22 +61,26 @@ namespace bmf {
             counts[0] = match->second.size();
             for(auto uni: match->second) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[0];
                 }
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[0];
                 }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[0];
                 }
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                    uni->pass = 0;
+                    ++md_failed[0];
+                }
                 if(uni->get_frac() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[0];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     suspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[0];
                 } else {
@@ -102,22 +107,26 @@ namespace bmf {
                 counts[i] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i];
                     }
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i];
                     }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i];
                     }
-                    if(!uni->is_pass()) {
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i];
+                    }
+                    if(!uni->pass) {
                         suspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i];
                     } else {
@@ -266,26 +275,26 @@ namespace bmf {
             counts[0] = match->second.size();
             for(auto uni: tumor.templates[refbase]) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[0];
                 }
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[0];
                 }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[0];
                 }
                 if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++md_failed[0];
                 }
                 if(uni->get_frac() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[0];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     tsuspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[0];
                 } else {
@@ -318,22 +327,26 @@ namespace bmf {
             counts[n_base_calls] = match->second.size();
             for(auto uni: normal.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[n_base_calls];
                 }
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[n_base_calls];
                 }
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                    uni->pass = 0;
+                    ++md_failed[n_base_calls];
+                }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[n_base_calls];
                 }
                 if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[n_base_calls];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     nsuspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[n_base_calls];
                 } else {
@@ -375,22 +388,26 @@ namespace bmf {
                 counts[i + n_base_calls] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i + n_base_calls];
                     }
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i + n_base_calls];
                     }
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i + n_base_calls];
+                    }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i + n_base_calls];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i + n_base_calls];
                     }
-                    if(!uni->is_pass()) {
+                    if(!uni->pass) {
                         nsuspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i + n_base_calls];
                     } else {
@@ -409,22 +426,26 @@ namespace bmf {
                 counts[i] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i];
                     }
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i];
                     }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i];
                     }
-                    if(!uni->is_pass()) {
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i];
+                    }
+                    if(!uni->pass) {
                         tsuspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i];
                     } else {
@@ -492,6 +513,7 @@ namespace bmf {
         bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "MD_FAILED", md_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig) * 2);

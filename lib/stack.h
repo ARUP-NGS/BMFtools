@@ -57,7 +57,9 @@ uint32_t is_duplex2:1;
 uint32_t is_reverse1:1;
 uint32_t is_reverse2:1;
 uint32_t is_overlap:1;
+public:
 uint32_t pass:1;
+private:
 double pvalue;
 int flag; // BAM flag
 char base1;
@@ -66,9 +68,6 @@ char base_call;
 uint32_t agreed;
 uint32_t size;
 public:
-    int is_pass() {
-        return pass;
-    }
     uint32_t get_size() {
         return size;
     }
