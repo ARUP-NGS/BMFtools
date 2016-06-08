@@ -277,7 +277,7 @@ namespace bmf {
                     uni->set_pass(0);
                     ++fa_failed[0];
                 }
-                if(uni->md >= aux->conf.md_thresh) {
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
                     uni->set_pass(0);
                     ++md_failed[0];
                 }

@@ -294,7 +294,6 @@ namespace bmf {
                 case 'h': case '?': stack_usage(EXIT_SUCCESS);
             }
         }
-        if(!conf.md_thresh) conf.md_thresh = (uint16_t)-1;
         if(!conf.flanksz) conf.flanksz = 20u;
         /*
         if(!conf.max_depth) {
