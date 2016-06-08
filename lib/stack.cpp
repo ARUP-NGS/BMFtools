@@ -177,6 +177,8 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
+        if(aux->conf.md_thresh)
+            bcf_update_format_int32(aux->vcf.vh, vrec, "MD_FAILED", static_cast<const void *>(md_failed.data()), md_failed.size());
     }
 
     void UniqueObservation::add_obs(const bam_pileup1_t& plp, stack_aux_t *aux) {
@@ -501,6 +503,7 @@ namespace bmf {
         assert(allele_passes.size() == nbc2);
         assert(fa_failed.size() == nbc2);
 #endif
+        // @Daniel TODO: Use normal quantity to filter out technical noise.
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
@@ -513,7 +516,8 @@ namespace bmf {
         bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
-        bcf_int32_vec(aux->vcf.vh, vrec, "MD_FAILED", md_failed);
+        if(aux->conf.md_thresh)
+            bcf_int32_vec(aux->vcf.vh, vrec, "MD_FAILED", md_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig) * 2);
