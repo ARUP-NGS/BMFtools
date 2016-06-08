@@ -517,12 +517,6 @@ namespace bmf {
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
 
-    void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
-        while(n--)
-            if(bcf_hdr_append(hdr, lines[n]))
-                LOG_EXIT("Could not add header line %s. Abort!\n", lines[n]);
-    }
-
     static const char *stack_vcf_lines[] = {
             "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
             "##FORMAT=<ID=ADP_ALL,Number=R,Type=Integer,Description=\"Number of all unique observations for each allele, inc. both low- and high-confidence.\">",
@@ -533,22 +527,24 @@ namespace bmf {
             "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
-            "##FORMAT=<ID=BMF_QUANT,Number=.,Type=Integer,Description=\"Estimated quantitation for variant allele.\">",
+            "##FORMAT=<ID=BMF_QUANT,Number=R,Type=Integer,Description=\"Estimated quantitation for each allele.\">",
             "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
-            "##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
-            "##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
+            "##FORMAT=<ID=FA_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
+            "##FORMAT=<ID=FM_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
             "##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
-            "##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
+            "##FORMAT=<ID=FR_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
             "##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
             "##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
             "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
-            "##FORMAT=<ID=PV_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
+            "##FORMAT=<ID=PV_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {
-        add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
+        for(auto line: stack_vcf_lines)
+            if(bcf_hdr_append(hdr, line))
+                LOG_EXIT("Could not add header line %s. Abort!\n", line);
     }
 
 
