@@ -397,25 +397,6 @@ namespace bmf {
                 allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.min_duplex &&
                                                    nconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                                    overlap_counts[i + n_base_calls] >= aux->conf.min_overlap);
-#if 0
-                if(allele_passes[i + n_base_calls]) {
-                    LOG_DEBUG("Normal allele is passing duplex. %i > %i.", duplex_counts[i + n_base_calls], aux->conf.min_duplex);
-                    LOG_DEBUG("Normal allele is passing counts. %lu > %i.", nconfident_phreds[i].size(), aux->conf.min_count);
-                    LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
-                } else {
-                    LOG_DEBUG("Fail!\n Which of the below?\n");
-                    if(duplex_counts[i + n_base_calls] < aux->conf.min_duplex) {
-                        LOG_DEBUG("Normal allele duplex. %i > %i.\n", duplex_counts[i + n_base_calls], aux->conf.min_duplex)
-                    }
-                    if(nconfident_phreds[i].size() < aux->conf.min_count) {
-                        LOG_DEBUG("Normal allele counts. %lu > %i. unconfident: %lu.\n", nconfident_phreds[i].size(), aux->conf.min_count,
-                                nsuspect_phreds[i].size());
-                    }
-                    if(overlap_counts[i + n_base_calls] < aux->conf.min_overlap) {
-                        LOG_DEBUG("Normal allele overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
-                    }
-                }
-#endif
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
                 counts[i] = match->second.size();
@@ -450,13 +431,8 @@ namespace bmf {
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
                                     tconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                     overlap_counts[i] >= aux->conf.min_overlap);
-                if(vrec->rid == 6 && vrec->pos == 55249070) {
-                    LOG_DEBUG("Duplex counts: %i.\n", duplex_counts[i]);
-                    //LOG_DEBUG("%i/%i pass duplex filter? %i, (%i, %i).\n", vrec->rid, vrec->pos, (int)(duplex_counts[n_base_calls] >= aux->conf.min_duplex),
-                    //          duplex_counts[n_base_calls], aux->conf.min_duplex);
-                }
             }
-            somatic.push_back(allele_passes[i] && !allele_passes[i + n_base_calls]);
+            somatic.push_back(allele_passes[i] & !allele_passes[i + n_base_calls]);
         }
         assert(n_base_calls == tconfident_phreds.size());
         assert(n_base_calls == tsuspect_phreds.size());
@@ -465,8 +441,7 @@ namespace bmf {
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
         //LOG_DEBUG("Got total depths %i,%i.\n", total_depth_tumor, total_depth_normal);
-        std::vector<float> rv_fractions;
-        std::vector<float> allele_fractions;
+        std::vector<float> rv_fractions, allele_fractions;
         std::vector<int> quant_est;
         rv_fractions.reserve(nbc2);
         allele_fractions.reserve(nbc2);

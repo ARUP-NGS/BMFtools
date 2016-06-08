@@ -126,7 +126,7 @@ struct stack_aux_t {
         if(tumor.iter) hts_itr_destroy(tumor.iter);
         tumor.iter = bam_itr_queryi(tumor.idx, bamtid, start, stop);
         while((tumor.pileups = bam_plp_auto(tumor.plp, &tid, &pos, &n_plp)) != 0) {
-            if(pos < start && tid == bamtid) continue;
+            if((pos < start) & (tid == bamtid)) continue;
             if(pos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
                 break;
@@ -147,7 +147,7 @@ struct stack_aux_t {
         tumor.iter = bam_itr_queryi(tumor.idx, bamtid, start, stop);
         normal.iter = bam_itr_queryi(normal.idx, bamtid, start, stop);
         while((tumor.pileups = bam_plp_auto(tumor.plp, &ttid, &tpos, &tn_plp)) != 0) {
-            if(tpos < start && ttid == bamtid) continue;
+            if((tpos < start) & (ttid == bamtid)) continue;
             if(tpos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
                 break;
@@ -155,7 +155,7 @@ struct stack_aux_t {
             LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
         }
         while((normal.pileups = bam_plp_auto(normal.plp, &ntid, &npos, &nn_plp)) != 0) {
-            if(npos < start && ntid == bamtid) continue;
+            if((npos < start) & (ntid == bamtid)) continue;
             if(npos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", npos, start);
                 break;
@@ -173,16 +173,14 @@ struct stack_aux_t {
         return 0;
     }
     int next_paired_pileup(int *ttid, int *tpos, int *tn_plp, int *ntid, int *npos, int *nn_plp, int stop) {
-        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0 &&
-                (normal.pileups = bam_plp_auto(normal.plp, ntid, npos, nn_plp)) != 0) {
+        if(((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0) &
+           ((normal.pileups = bam_plp_auto(normal.plp, ntid, npos, nn_plp)) != 0))
             return *npos < stop;
-        }
         return 0;
     }
     int next_single_pileup(int *ttid, int *tpos, int *tn_plp, int stop) {
-        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0) {
+        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)))
             return *tpos < stop;
-        }
         return 0;
     }
     stack_aux_t(char *tumor_path, char *vcf_path, bcf_hdr_t *vh, stack_conf_t conf_):
