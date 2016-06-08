@@ -20,6 +20,8 @@ namespace bmf {
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
                         "-D, --min-duplex\tMinimum number of duplex reads supporting a variant to pass it. Default: 0.\n"
                         "-O, --min-overlap\tMinimum number of concordant overlapping read-pairs supporting a variant to pass it. Default: 0.\n"
+                        "-M, --mismatch-density-threshold\tFail reads in pileups where the # of mismatches within 2 * flanksize bp of the SNV is >= <parameter>.\n"
+                        "-=, --flank-size\tSet flank size for mismatch density threshold. Default: 20.\n"
                         "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
@@ -80,8 +82,8 @@ namespace bmf {
 
             qname = bam_get_qname(aux->tumor.pileups[i].b);
             if((found = tobs.find(qname)) == tobs.end())
-                tobs.emplace(qname, aux->tumor.pileups[i]);
-            else ++olap_count[0], found->second.add_obs(aux->tumor.pileups[i]);
+                tobs.emplace(qname, UniqueObservation(aux->tumor.pileups[i], aux));
+            else ++olap_count[0], found->second.add_obs(aux->tumor.pileups[i], aux);
         }
         for(auto& pair: tobs)
             if(pair.second.get_max_mq() < aux->conf.minmq)
@@ -101,8 +103,8 @@ namespace bmf {
             }
             qname = bam_get_qname(aux->normal.pileups[i].b);
             if((found = nobs.find(qname)) == nobs.end())
-                nobs.emplace(qname, aux->normal.pileups[i]);
-            else ++olap_count[1], found->second.add_obs(aux->normal.pileups[i]);
+                nobs.emplace(qname, UniqueObservation(aux->normal.pileups[i], aux));
+            else ++olap_count[1], found->second.add_obs(aux->normal.pileups[i], aux);
         }
         for(auto& pair: nobs)
             if(pair.second.get_max_mq() < aux->conf.minmq)
@@ -148,11 +150,11 @@ namespace bmf {
             qname = bam_get_qname(aux->tumor.pileups[i].b);
             if((found = obs.find(qname)) == obs.end()) {
                 //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
-                obs.emplace(qname, aux->tumor.pileups[i]);
+                obs.emplace(qname, UniqueObservation(aux->tumor.pileups[i], aux));
             } else {
                 ++olap_count;
                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
-                found->second.add_obs(aux->tumor.pileups[i]);
+                found->second.add_obs(aux->tumor.pileups[i], aux);
             }
         }
         for(auto& pair: obs)
@@ -242,12 +244,14 @@ namespace bmf {
             {"min-family-agreed", required_argument, nullptr, 'a'},
             {"bedpath", required_argument, nullptr, 'b'},
             {"emit-bcf", no_argument, nullptr, 'B'},
+            {"flank-size", required_argument, nullptr, '='},
             {"min-count", required_argument, nullptr, 'c'},
             {"max-depth", required_argument, nullptr, 'd'},
             {"min-duplex", required_argument, nullptr, 'D'},
             {"min-fraction-agreed", required_argument, nullptr, 'f'},
             {"min-mapping-quality", required_argument, nullptr, 'm'},
             {"min-overlap", required_argument, nullptr, 'O'},
+            {"mismatch-density-threshold", required_argument, nullptr, 'M'},
             {"out-vcf", required_argument, nullptr, 'o'},
             {"skip-improper", no_argument, nullptr, 'P'},
             {"padding", required_argument, nullptr, 'p'},
@@ -260,7 +264,7 @@ namespace bmf {
             {"min-phred-quality", required_argument, nullptr, 'v'},
             {0, 0, 0, 0}
         };
-        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hVF", lopts, nullptr)) >= 0) {
+        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:=:M:BP?hVF", lopts, nullptr)) >= 0) {
             switch (c) {
                 case '2': conf.skip_flag |= BAM_FSECONDARY; break;
                 case 'a': conf.minFA = atoi(optarg); break;
@@ -275,6 +279,8 @@ namespace bmf {
                           break;
                 case 'f': conf.min_fr = (float)atof(optarg); break;
                 case 'm': conf.minmq = atoi(optarg); break;
+                case 'M': conf.md_thresh = atoi(optarg); break;
+                case '=': conf.flanksz = (uint8_t)atoi(optarg); break;
                 case 'O': conf.min_overlap = atoi(optarg); break;
                 case 'o': outvcf = optarg; break;
                 case 'P': conf.skip_improper = 1; break;
@@ -288,6 +294,8 @@ namespace bmf {
                 case 'h': case '?': stack_usage(EXIT_SUCCESS);
             }
         }
+        if(!conf.md_thresh) conf.md_thresh = (uint16_t)-1;
+        if(!conf.flanksz) conf.flanksz = 20u;
         /*
         if(!conf.max_depth) {
             conf.max_depth = DEFAULT_MAX_DEPTH;

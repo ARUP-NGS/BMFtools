@@ -170,10 +170,10 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
     }
 
-    void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
+    void UniqueObservation::add_obs(const bam_pileup1_t& plp, stack_aux_t *aux) {
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
         size += bam_itag(plp.b, "FM");
-        base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
+        base2 = plp_bc(plp);
         cycle2 = dlib::arr_qpos(&plp);
         mq2 = (uint32_t)plp.b->core.qual;
         is_reverse2 = bam_is_rev(plp.b);
@@ -198,6 +198,8 @@ namespace bmf {
             quality = 0;
             pvalue = 1.;
         }
+        const int md2(get_mismatch_density(plp, aux));
+        if(md2 > md) md = md2;
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         const char refbase = aux->get_ref_base(ttid, tpos);
@@ -242,6 +244,7 @@ namespace bmf {
         std::vector<int> fr_failed(nbc2);
         std::vector<int> fa_failed(nbc2);
         std::vector<int> fm_failed(nbc2);
+        std::vector<int> md_failed(nbc2);
         std::vector<int> duplex_counts(nbc2);
         std::vector<int> overlap_counts(nbc2);
         std::vector<int> reverse_counts(nbc2);
@@ -273,6 +276,10 @@ namespace bmf {
                 if(uni->get_agreed() < aux->conf.minFA) {
                     uni->set_pass(0);
                     ++fa_failed[0];
+                }
+                if(uni->md >= aux->conf.md_thresh) {
+                    uni->set_pass(0);
+                    ++md_failed[0];
                 }
                 if(uni->get_frac() < aux->conf.min_fr) {
                     uni->set_pass(0);
@@ -508,6 +515,7 @@ namespace bmf {
             "##FORMAT=<ID=FM_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
             "##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
             "##FORMAT=<ID=FR_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
+            "##FORMAT=<ID=MD_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed for mismatch density filter.\">",
             "##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
             "##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
             "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
