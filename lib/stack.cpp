@@ -191,14 +191,16 @@ namespace bmf {
 
     void UniqueObservation::add_obs(const bam_pileup1_t& plp, stack_aux_t *aux) {
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
+#if !NDEBUG
+        for(auto tag: {"PV", "FA"})
+            if(!bam_aux_get(plp.b, tag)) LOG_WARNING("Missing tag %s.\n", tag);
+#endif
         size += bam_itag(plp.b, "FM");
         base2 = plp_bc(plp);
         cycle2 = dlib::arr_qpos(&plp);
         mq2 = (uint32_t)plp.b->core.qual;
         is_reverse2 = bam_is_rev(plp.b);
         is_overlap = 1;
-        assert(bam_aux_get(plp.b, "PV"));
-        assert(bam_aux_get(plp.b, "FA"));
         rv += (uint32_t)dlib::int_tag_zero(plp.b, "RV");
         if(base2 == base1) {
             discordant = 0;
@@ -222,23 +224,20 @@ namespace bmf {
         if(md2 > md) md = md2;
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
+        unsigned i;
         const char refbase = aux->get_ref_base(ttid, tpos);
         int ambig[2] = {0, 0};
         std::unordered_set<char> base_set{refbase};
-        for(auto& pair: tumor.templates) {
-            if(pair.first == 'N') {
+        for(auto& pair: tumor.templates)
+            if(pair.first == 'N')
                ambig[0] = pair.second.size();
-               continue;
-            }
-            base_set.insert(pair.first);
-        }
-        for(auto& pair: normal.templates) {
-            if(pair.first == 'N') {
+            else
+                base_set.insert(pair.first);
+        for(auto& pair: normal.templates)
+            if(pair.first == 'N')
                ambig[1] = pair.second.size();
-               continue;
-            }
-            base_set.insert(pair.first);
-        }
+            else
+                base_set.insert(pair.first);
         std::vector<char> base_calls(base_set.begin(), base_set.end());
         const size_t n_base_calls = base_calls.size();
         const size_t nbc2(n_base_calls * 2);
@@ -392,7 +391,7 @@ namespace bmf {
         kstring_t allele_str = {0, 0, nullptr};
         ks_resize(&allele_str, 8uL);
         kputc(refbase, &allele_str);
-        for(unsigned i = 1; i < n_base_calls; ++i) {
+        for(i = 1; i < n_base_calls; ++i) {
             kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
             nsuspect_phreds.emplace_back();
             nconfident_phreds.emplace_back();
@@ -490,18 +489,15 @@ namespace bmf {
         rv_fractions.reserve(nbc2);
         allele_fractions.reserve(nbc2);
         quant_est.reserve(nbc2);
-        {
-        unsigned i;
-            for(i = 0; i < n_base_calls; ++i) {
-                rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
-                allele_fractions.push_back((float)counts[i] / total_depth_tumor);
-                quant_est.push_back(estimate_quantity(tconfident_phreds, tsuspect_phreds, i));
-            }
-            for(i = 0; i < n_base_calls; ++i) {
-                rv_fractions.push_back((float)reverse_counts[i + n_base_calls] / counts[i + n_base_calls]);
-                allele_fractions.push_back((float)counts[i + n_base_calls] / total_depth_normal);
-                quant_est.push_back(estimate_quantity(nconfident_phreds, nsuspect_phreds, i));
-            }
+        for(i = 0; i < n_base_calls; ++i) {
+            rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
+            allele_fractions.push_back((float)counts[i] / total_depth_tumor);
+            quant_est.push_back(estimate_quantity(tconfident_phreds, tsuspect_phreds, i));
+        }
+        for(i = 0; i < n_base_calls; ++i) {
+            rv_fractions.push_back((float)reverse_counts[i + n_base_calls] / counts[i + n_base_calls]);
+            allele_fractions.push_back((float)counts[i + n_base_calls] / total_depth_normal);
+            quant_est.push_back(estimate_quantity(nconfident_phreds, nsuspect_phreds, i));
         }
         assert(allele_fractions.size() == 2 * n_base_calls);
         std::vector<int> adp_pass;
