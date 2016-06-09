@@ -252,12 +252,10 @@ namespace bmf {
         hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
         if(!idx) LOG_EXIT("Could not load bam index for %s.\n", aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
-        case vcf:
-            return vet_core_nobed(aux);
+        case vcf: return vet_core_nobed(aux);
             // Tabix indexed vcfs don't work currently. Throws a segfault in htslib.
         case bcf:
-            bcf_idx = bcf_index_load(aux->vcf_fp->fn);
-            if(!bcf_idx) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+            if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
             break;
         default:
             LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
@@ -268,11 +266,11 @@ namespace bmf {
             LOG_EXIT("Require an indexed variant file. Abort!\n");
         }
         */
-        bcf1_t *vrec = bcf_init();
+        bcf1_t *vrec(bcf_init());
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
         vrec->rid = -1;
-        hts_itr_t *vcf_iter = nullptr;
+        hts_itr_t *vcf_iter(nullptr);
 
         std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
@@ -315,38 +313,24 @@ namespace bmf {
                     }
                     if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
                         LOG_DEBUG("Outside of bed region. Skip.\n");
-                        continue; // Only handle simple SNVs
+                        continue; // Only handle variants in region.
                     }
-                    /*
-                    while(j < kh_val(aux->bed, ki).n && vrec->pos > get_stop(kh_val(aux->bed, ki).intervals[j])) {
-                        LOG_DEBUG("New interval!\n");
-                        ++j;
-                    }
-                    while(kh_key(aux->bed, ki) < vrec->rid) {
-                        LOG_DEBUG("New interval!\n");
-                        ki = keys[++kint];
-                    }
-                    while(j < kh_val(aux->bed, ki).n && vrec->pos > get_stop(kh_val(aux->bed, ki).intervals[j])) ++j;
-                    */
-                    bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
                     if(pos > vrec->pos) LOG_EXIT("pos is after variant. WTF?");
-                    while(pos < vrec->pos && tid <= vrec->rid && (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0);
-                    //assert(pos == vrec->pos);
-                        //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
-                        /* Zoom ahead until you're at the correct position */
+                    while(pos < vrec->pos && tid <= vrec->rid &&
+                          (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0);
+                    // Zoom ahead until you're at the correct position */
                     if(!plp) {
                         if(n_plp == -1) {
                             LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
                                         aux->header->target_name[tid], start, stop, n_plp, pos, tid);
-                        }
-                        else if(n_plp == 0){
+                        } else if(n_plp == 0){
                             LOG_WARNING("No reads at position. Skip this variant.\n");
                         } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                     }
                     //LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
                     if(pos != vrec->pos || tid != vrec->rid) {
                         //LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
-                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n",
+                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird....\n",
                                     aux->header->target_name[vrec->rid], vrec->pos + 1);
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue;
@@ -391,10 +375,10 @@ namespace bmf {
         int n_skipped = 0;
 #endif
         int n_plp;
-        const bam_pileup1_t *plp;
-        tbx_t *vcf_idx = nullptr;
-        hts_idx_t *bcf_idx = nullptr;
-        hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
+        const bam_pileup1_t *plp(nullptr);
+        tbx_t *vcf_idx(nullptr);
+        hts_idx_t *bcf_idx(nullptr);
+        hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
             //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
@@ -633,19 +617,14 @@ namespace bmf {
         if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == nullptr) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
         // Add lines to header
-        for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
-            LOG_DEBUG("Adding header line %s.\n", bmf_header_lines[i]);
-            if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]))
-                LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
-        }
+        for(auto line: bmf_header_lines)
+            if(bcf_hdr_append(aux.vcf_header, line))
+                LOG_EXIT("Could not add header line '%s'. Abort!\n", line);
         bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed ? bed: "FullGenomeAnalysis");
-        kstring_t tmpstr = {0};
+        kstring_t tmpstr{0};
         ksprintf(&tmpstr, "##cmdline=");
-        kputs("bmftools ", &tmpstr);
-        for(int i = 0; i < argc; ++i) {
-            kputs(argv[i], &tmpstr);
-            kputc(' ', &tmpstr);
-        }
+        kputs("bmftools", &tmpstr);
+        for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
         bcf_hdr_append(aux.vcf_header, tmpstr.s);
         tmpstr.l = 0;
         // Add in settings
@@ -663,10 +642,7 @@ namespace bmf {
         bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
         // Open out vcf
-        int ret = vet_core(&aux);
-        if(ret) fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
-                        __func__, __LINE__, ret);
-        else LOG_INFO("Successfully completed bmftools vet!\n");
+        const int ret(vet_core(&aux));
         sam_close(aux.fp);
         bam_hdr_destroy(aux.header);
         vcf_close(aux.vcf_fp);
@@ -675,7 +651,9 @@ namespace bmf {
         if(aux.bed) dlib::bed_destroy_hash(aux.bed);
         cond_free(outvcf);
         cond_free(bed);
-        return ret;
+        if(ret) LOG_EXIT("vet_core returned non-zero exit status '%i'. Abort!\n");
+        LOG_INFO("Successfully completed bmftools vet!\n");
+        return 0;
     }
 
 } /* namespace bmf */

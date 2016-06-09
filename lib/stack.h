@@ -11,22 +11,31 @@
 
 namespace bmf {
 
+static inline char plp_bc(const bam_pileup1_t &plp) {
+    return seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
+}
+struct stack_aux_t;
+static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *aux); // Forward declaration
+
 struct stack_conf_t {
     float min_fr; // Minimum fraction of family members agreed on base
     float minAF; // Minimum aligned fraction
     float min_allele_frac; // Minimum allele fraction
     int max_depth;
-    uint32_t minFA:10;
+    uint32_t md_thresh:16; // if mismatch density >= this number, skip observation in pileups.
     uint32_t minPV:16;
+    uint32_t minFA:15;
     uint32_t minFM:15;
-    uint32_t output_bcf:1;
-    uint32_t skip_improper:1;
-    uint32_t minmq:8;
+    uint16_t output_bcf:1;
+    uint16_t skip_improper:1;
+    uint16_t minmq:8;
+    uint16_t flanksz:8;
     int min_count;
     int min_duplex;
     int min_overlap;
     uint32_t skip_flag; // Skip reads with any bits set to true
 };
+
 
 class SampleVCFPos;
 
@@ -39,13 +48,18 @@ uint32_t quality:16;
 uint32_t mq1:8;
 uint32_t mq2:8;
 uint32_t rv:16;
+public:
+uint32_t md:8;
+private:
 uint32_t discordant:1;
 uint32_t is_duplex1:1;
 uint32_t is_duplex2:1;
 uint32_t is_reverse1:1;
 uint32_t is_reverse2:1;
 uint32_t is_overlap:1;
+public:
 uint32_t pass:1;
+private:
 double pvalue;
 int flag; // BAM flag
 char base1;
@@ -54,9 +68,6 @@ char base_call;
 uint32_t agreed;
 uint32_t size;
 public:
-    int is_pass() {
-        return pass;
-    }
     uint32_t get_size() {
         return size;
     }
@@ -83,7 +94,7 @@ public:
     int get_duplex() {
         return is_duplex1 + (mate_added() ? is_duplex2: 0);
     }
-    UniqueObservation(const bam_pileup1_t& plp):
+    UniqueObservation(const bam_pileup1_t& plp, stack_aux_t *aux):
         qname(bam_get_qname(plp.b)),
         cycle1(dlib::arr_qpos(&plp)),
         cycle2(-1),
@@ -91,6 +102,7 @@ public:
         mq1(plp.b->core.qual),
         mq2((uint8_t)-1),
         rv(dlib::int_tag_zero(bam_aux_get(plp.b, "RV"))),
+        md(get_mismatch_density(plp, aux)),
         discordant(0),
         is_duplex1(dlib::int_tag_zero(bam_aux_get(plp.b, "DR"))),
         is_duplex2(0),
@@ -107,7 +119,7 @@ public:
         size(bam_itag(plp.b, "FM"))
     {
     }
-    void add_obs(const bam_pileup1_t& plp);
+    void add_obs(const bam_pileup1_t& plp, stack_aux_t *aux);
 };
 
 static const int MAX_COUNT = 1 << 16;
@@ -126,7 +138,7 @@ struct stack_aux_t {
         if(tumor.iter) hts_itr_destroy(tumor.iter);
         tumor.iter = bam_itr_queryi(tumor.idx, bamtid, start, stop);
         while((tumor.pileups = bam_plp_auto(tumor.plp, &tid, &pos, &n_plp)) != 0) {
-            if(pos < start && tid == bamtid) continue;
+            if((pos < start) & (tid == bamtid)) continue;
             if(pos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
                 break;
@@ -147,7 +159,7 @@ struct stack_aux_t {
         tumor.iter = bam_itr_queryi(tumor.idx, bamtid, start, stop);
         normal.iter = bam_itr_queryi(normal.idx, bamtid, start, stop);
         while((tumor.pileups = bam_plp_auto(tumor.plp, &ttid, &tpos, &tn_plp)) != 0) {
-            if(tpos < start && ttid == bamtid) continue;
+            if((tpos < start) & (ttid == bamtid)) continue;
             if(tpos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", tpos, start);
                 break;
@@ -155,7 +167,7 @@ struct stack_aux_t {
             LOG_EXIT("Wrong tid (ttid: %i, bamtid %i)? wrong pos? tpos, stop %i, %i", ttid, bamtid, tpos, stop);
         }
         while((normal.pileups = bam_plp_auto(normal.plp, &ntid, &npos, &nn_plp)) != 0) {
-            if(npos < start && ntid == bamtid) continue;
+            if((npos < start) & (ntid == bamtid)) continue;
             if(npos >= start) {
                 //LOG_DEBUG("Breaking? %i >= start (%i)\n", npos, start);
                 break;
@@ -173,16 +185,14 @@ struct stack_aux_t {
         return 0;
     }
     int next_paired_pileup(int *ttid, int *tpos, int *tn_plp, int *ntid, int *npos, int *nn_plp, int stop) {
-        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0 &&
-                (normal.pileups = bam_plp_auto(normal.plp, ntid, npos, nn_plp)) != 0) {
+        if(((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0) &
+           ((normal.pileups = bam_plp_auto(normal.plp, ntid, npos, nn_plp)) != 0))
             return *npos < stop;
-        }
         return 0;
     }
     int next_single_pileup(int *ttid, int *tpos, int *tn_plp, int stop) {
-        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)) != 0) {
+        if((tumor.pileups = bam_plp_auto(tumor.plp, ttid, tpos, tn_plp)))
             return *tpos < stop;
-        }
         return 0;
     }
     stack_aux_t(char *tumor_path, char *vcf_path, bcf_hdr_t *vh, stack_conf_t conf_):
@@ -301,6 +311,27 @@ static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confiden
                                                            : ret + putative_suspects - expected_false_positives;
 }
 void add_stack_lines(bcf_hdr_t *hdr);
+
+static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *aux) {
+    const int tid(plp.b->core.tid);
+    const int wlen(aux->conf.flanksz * 2 + 1);
+    const uint8_t *seq(bam_get_seq(plp.b));
+    int start, stop, ret = 0;
+    if(wlen <= plp.b->core.l_qseq) start=0, stop=plp.b->core.l_qseq;
+    else {
+        if(plp.qpos + aux->conf.flanksz + 1 > plp.b->core.l_qseq) {
+            start = plp.b->core.l_qseq - wlen;
+            stop = plp.b->core.l_qseq;
+        } else if(plp.qpos < aux->conf.flanksz) {
+            start = 0;
+            stop = wlen;
+        } else start = plp.qpos - aux->conf.flanksz, stop = plp.qpos + aux->conf.flanksz + 1;
+    }
+    for(int i(start); i < stop; ++i)
+        ret += (bam_seqi(seq, i) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]
+                && bam_seqi(seq, i) != dlib::htseq::HTS_N);
+    return ret;
+}
 
 } /* namespace bmf */
 

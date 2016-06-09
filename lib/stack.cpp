@@ -43,6 +43,7 @@ namespace bmf {
         std::vector<int> fr_failed(n_base_calls);
         std::vector<int> fa_failed(n_base_calls);
         std::vector<int> fm_failed(n_base_calls);
+        std::vector<int> md_failed(n_base_calls);
         std::vector<int> duplex_counts(n_base_calls);
         std::vector<int> overlap_counts(n_base_calls);
         std::vector<int> reverse_counts(n_base_calls);
@@ -60,22 +61,26 @@ namespace bmf {
             counts[0] = match->second.size();
             for(auto uni: match->second) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[0];
                 }
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[0];
                 }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[0];
                 }
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                    uni->pass = 0;
+                    ++md_failed[0];
+                }
                 if(uni->get_frac() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[0];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     suspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[0];
                 } else {
@@ -102,22 +107,26 @@ namespace bmf {
                 counts[i] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i];
                     }
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i];
                     }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i];
                     }
-                    if(!uni->is_pass()) {
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i];
+                    }
+                    if(!uni->pass) {
                         suspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i];
                     } else {
@@ -168,12 +177,14 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
+        if(aux->conf.md_thresh)
+            bcf_update_format_int32(aux->vcf.vh, vrec, "MD_FAILED", static_cast<const void *>(md_failed.data()), md_failed.size());
     }
 
-    void UniqueObservation::add_obs(const bam_pileup1_t& plp) {
+    void UniqueObservation::add_obs(const bam_pileup1_t& plp, stack_aux_t *aux) {
         LOG_ASSERT(strcmp(qname.c_str(), bam_get_qname(plp.b)) == 0);
         size += bam_itag(plp.b, "FM");
-        base2 = seq_nt16_str[bam_seqi(bam_get_seq(plp.b), plp.qpos)];
+        base2 = plp_bc(plp);
         cycle2 = dlib::arr_qpos(&plp);
         mq2 = (uint32_t)plp.b->core.qual;
         is_reverse2 = bam_is_rev(plp.b);
@@ -198,6 +209,8 @@ namespace bmf {
             quality = 0;
             pvalue = 1.;
         }
+        const int md2(get_mismatch_density(plp, aux));
+        if(md2 > md) md = md2;
     }
     void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         const char refbase = aux->get_ref_base(ttid, tpos);
@@ -242,6 +255,7 @@ namespace bmf {
         std::vector<int> fr_failed(nbc2);
         std::vector<int> fa_failed(nbc2);
         std::vector<int> fm_failed(nbc2);
+        std::vector<int> md_failed(nbc2);
         std::vector<int> duplex_counts(nbc2);
         std::vector<int> overlap_counts(nbc2);
         std::vector<int> reverse_counts(nbc2);
@@ -263,22 +277,26 @@ namespace bmf {
             counts[0] = match->second.size();
             for(auto uni: tumor.templates[refbase]) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[0];
                 }
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[0];
                 }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[0];
                 }
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                    uni->pass = 0;
+                    ++md_failed[0];
+                }
                 if(uni->get_frac() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[0];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     tsuspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[0];
                 } else {
@@ -311,22 +329,26 @@ namespace bmf {
             counts[n_base_calls] = match->second.size();
             for(auto uni: normal.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++pv_failed[n_base_calls];
                 }
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fm_failed[n_base_calls];
                 }
+                if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                    uni->pass = 0;
+                    ++md_failed[n_base_calls];
+                }
                 if(uni->get_agreed() < aux->conf.minFA) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fa_failed[n_base_calls];
                 }
                 if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                    uni->set_pass(0);
+                    uni->pass = 0;
                     ++fr_failed[n_base_calls];
                 }
-                if(!uni->is_pass()) {
+                if(!uni->pass) {
                     nsuspect_phreds[0].push_back(uni->get_quality());
                     ++failed_counts[n_base_calls];
                 } else {
@@ -368,22 +390,26 @@ namespace bmf {
                 counts[i + n_base_calls] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i + n_base_calls];
                     }
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i + n_base_calls];
                     }
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i + n_base_calls];
+                    }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i + n_base_calls];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i + n_base_calls];
                     }
-                    if(!uni->is_pass()) {
+                    if(!uni->pass) {
                         nsuspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i + n_base_calls];
                     } else {
@@ -397,46 +423,31 @@ namespace bmf {
                 allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.min_duplex &&
                                                    nconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                                    overlap_counts[i + n_base_calls] >= aux->conf.min_overlap);
-#if 0
-                if(allele_passes[i + n_base_calls]) {
-                    LOG_DEBUG("Normal allele is passing duplex. %i > %i.", duplex_counts[i + n_base_calls], aux->conf.min_duplex);
-                    LOG_DEBUG("Normal allele is passing counts. %lu > %i.", nconfident_phreds[i].size(), aux->conf.min_count);
-                    LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
-                } else {
-                    LOG_DEBUG("Fail!\n Which of the below?\n");
-                    if(duplex_counts[i + n_base_calls] < aux->conf.min_duplex) {
-                        LOG_DEBUG("Normal allele duplex. %i > %i.\n", duplex_counts[i + n_base_calls], aux->conf.min_duplex)
-                    }
-                    if(nconfident_phreds[i].size() < aux->conf.min_count) {
-                        LOG_DEBUG("Normal allele counts. %lu > %i. unconfident: %lu.\n", nconfident_phreds[i].size(), aux->conf.min_count,
-                                nsuspect_phreds[i].size());
-                    }
-                    if(overlap_counts[i + n_base_calls] < aux->conf.min_overlap) {
-                        LOG_DEBUG("Normal allele overlap counts. %lu > %i.\n", overlap_counts[i + n_base_calls], aux->conf.min_overlap);
-                    }
-                }
-#endif
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
                 counts[i] = match->second.size();
                 for(auto uni: match->second) {
                     if(uni->get_quality() < aux->conf.minPV) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++pv_failed[i];
                     }
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fm_failed[i];
                     }
                     if(uni->get_agreed() < aux->conf.minFA) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fa_failed[i];
                     }
                     if((float)uni->get_agreed() / uni->get_size() < aux->conf.min_fr) {
-                        uni->set_pass(0);
+                        uni->pass = 0;
                         ++fr_failed[i];
                     }
-                    if(!uni->is_pass()) {
+                    if(aux->conf.md_thresh && uni->md >= aux->conf.md_thresh) {
+                        uni->pass = 0;
+                        ++md_failed[i];
+                    }
+                    if(!uni->pass) {
                         tsuspect_phreds[i].push_back(uni->get_quality());
                         ++failed_counts[i];
                     } else {
@@ -450,13 +461,8 @@ namespace bmf {
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
                                     tconfident_phreds[i].size() >= (unsigned)aux->conf.min_count &&
                                     overlap_counts[i] >= aux->conf.min_overlap);
-                if(vrec->rid == 6 && vrec->pos == 55249070) {
-                    LOG_DEBUG("Duplex counts: %i.\n", duplex_counts[i]);
-                    //LOG_DEBUG("%i/%i pass duplex filter? %i, (%i, %i).\n", vrec->rid, vrec->pos, (int)(duplex_counts[n_base_calls] >= aux->conf.min_duplex),
-                    //          duplex_counts[n_base_calls], aux->conf.min_duplex);
-                }
             }
-            somatic.push_back(allele_passes[i] && !allele_passes[i + n_base_calls]);
+            somatic.push_back(allele_passes[i] & !allele_passes[i + n_base_calls]);
         }
         assert(n_base_calls == tconfident_phreds.size());
         assert(n_base_calls == tsuspect_phreds.size());
@@ -465,8 +471,7 @@ namespace bmf {
         const int total_depth_tumor(std::accumulate(counts.begin(), counts.begin() + n_base_calls, 0));
         const int total_depth_normal(std::accumulate(counts.begin() + n_base_calls, counts.end(), 0));
         //LOG_DEBUG("Got total depths %i,%i.\n", total_depth_tumor, total_depth_normal);
-        std::vector<float> rv_fractions;
-        std::vector<float> allele_fractions;
+        std::vector<float> rv_fractions, allele_fractions;
         std::vector<int> quant_est;
         rv_fractions.reserve(nbc2);
         allele_fractions.reserve(nbc2);
@@ -498,6 +503,7 @@ namespace bmf {
         assert(allele_passes.size() == nbc2);
         assert(fa_failed.size() == nbc2);
 #endif
+        // @Daniel TODO: Use normal quantity to filter out technical noise.
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
         bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
@@ -510,18 +516,14 @@ namespace bmf {
         bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
+        if(aux->conf.md_thresh)
+            bcf_int32_vec(aux->vcf.vh, vrec, "MD_FAILED", md_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
         bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig) * 2);
         assert(somatic.size() == n_base_calls);
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
     } /* PairVCFLine::to_bcf */
-
-    void add_hdr_lines(bcf_hdr_t *hdr, const char *lines[], size_t n) {
-        while(n--)
-            if(bcf_hdr_append(hdr, lines[n]))
-                LOG_EXIT("Could not add header line %s. Abort!\n", lines[n]);
-    }
 
     static const char *stack_vcf_lines[] = {
             "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
@@ -533,22 +535,25 @@ namespace bmf {
             "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
-            "##FORMAT=<ID=BMF_QUANT,Number=.,Type=Integer,Description=\"Estimated quantitation for variant allele.\">",
+            "##FORMAT=<ID=BMF_QUANT,Number=R,Type=Integer,Description=\"Estimated quantitation for each allele.\">",
             "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
-            "##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
-            "##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
+            "##FORMAT=<ID=FA_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
+            "##FORMAT=<ID=FM_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
             "##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
-            "##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
+            "##FORMAT=<ID=FR_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
+            "##FORMAT=<ID=MD_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed for mismatch density filter.\">",
             "##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
             "##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
             "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
-            "##FORMAT=<ID=PV_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
+            "##FORMAT=<ID=PV_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {
-        add_hdr_lines(hdr, stack_vcf_lines, COUNT_OF(stack_vcf_lines));
+        for(auto line: stack_vcf_lines)
+            if(bcf_hdr_append(hdr, line))
+                LOG_EXIT("Could not add header line %s. Abort!\n", line);
     }
 
 
