@@ -82,7 +82,9 @@ namespace bmf {
 
             qname = bam_get_qname(aux->tumor.pileups[i].b);
             if((found = tobs.find(qname)) == tobs.end())
-                tobs.emplace(qname, UniqueObservation(aux->tumor.pileups[i], aux));
+            	tobs.emplace(std::piecewise_construct, std::forward_as_tuple(qname), std::forward_as_tuple(aux->tumor.pileups[i], aux));
+                //tobs.emplace(std::make_pair<std::string, UniqueObservation>(std::forward_as_tuple(qname),
+                //		std::forward_as_tuple(aux->tumor.pileups[i], aux)));
             else ++olap_count[0], found->second.add_obs(aux->tumor.pileups[i], aux);
         }
         for(auto& pair: tobs)
@@ -103,7 +105,8 @@ namespace bmf {
             }
             qname = bam_get_qname(aux->normal.pileups[i].b);
             if((found = nobs.find(qname)) == nobs.end())
-                nobs.emplace(qname, UniqueObservation(aux->normal.pileups[i], aux));
+                nobs.emplace(std::piecewise_construct, std::forward_as_tuple(qname),
+                		std::forward_as_tuple(aux->normal.pileups[i], aux));
             else ++olap_count[1], found->second.add_obs(aux->normal.pileups[i], aux);
         }
         for(auto& pair: nobs)
@@ -150,7 +153,7 @@ namespace bmf {
             qname = bam_get_qname(aux->tumor.pileups[i].b);
             if((found = obs.find(qname)) == obs.end()) {
                 //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
-                obs.emplace(qname, UniqueObservation(aux->tumor.pileups[i], aux));
+                obs.emplace(std::piecewise_construct, std::forward_as_tuple(qname), std::forward_as_tuple(aux->tumor.pileups[i], aux));
             } else {
                 ++olap_count;
                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
