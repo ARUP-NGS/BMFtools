@@ -21,6 +21,7 @@ namespace bmf {
 
     void SampleVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, const char refbase) {
         int ambig(0);
+        unsigned i;
         std::unordered_set<char> base_set{refbase};
         for(auto& pair: templates) {
             if(pair.first == 'N')
@@ -29,7 +30,7 @@ namespace bmf {
                 base_set.insert(pair.first);
         }
         std::vector<char> base_calls(base_set.begin(), base_set.end());
-        const size_t n_base_calls = base_calls.size();
+        const size_t n_base_calls(base_calls.size());
         std::vector<std::vector<uint32_t>> confident_phreds;
         std::vector<std::vector<uint32_t>> suspect_phreds;
         confident_phreds.reserve(n_base_calls);
@@ -60,7 +61,7 @@ namespace bmf {
         confident_phreds.emplace_back();
         if(match != templates.end()) {
             counts[0] = match->second.size();
-            for(auto uni: match->second) {
+            for(auto&& uni: match->second) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
                     uni->pass = 0;
                     ++fm_failed[0];
@@ -101,13 +102,13 @@ namespace bmf {
         kstring_t allele_str{0, 0, nullptr};
         ks_resize(&allele_str, 8uL);
         kputc(refbase, &allele_str);
-        for(unsigned i = 1; i < n_base_calls; ++i) {
+        for(i = 1; i < n_base_calls; ++i) {
             kputc(',', &allele_str), kputc(base_calls[i], &allele_str);
             suspect_phreds.emplace_back();
             confident_phreds.emplace_back();
             if((match = templates.find(base_calls[i])) != templates.end()) {
                 counts[i] = match->second.size();
-                for(auto uni: match->second) {
+                for(auto&& uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
                         uni->pass = 0;
                         ++fm_failed[i];
@@ -158,7 +159,7 @@ namespace bmf {
         rv_fractions.reserve(n_base_calls);
         allele_fractions.reserve(n_base_calls);
         quant_est.reserve(n_base_calls);
-        for(unsigned i = 0; i < n_base_calls; ++i) {
+        for(i = 0; i < n_base_calls; ++i) {
             rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
             allele_fractions.push_back((float)counts[i] / total_depth);
             quant_est.push_back(estimate_quantity(confident_phreds, suspect_phreds, i));
@@ -167,23 +168,23 @@ namespace bmf {
         std::vector<int> adp_pass;
         assert(duplex_counts.size() == n_base_calls);
         adp_pass.reserve(n_base_calls);
-        for(auto& i: confident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
+        for(auto i: confident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_ALL", static_cast<const void *>(counts.data()), counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADP_PASS", static_cast<const void *>(adp_pass.data()), adp_pass.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPD", static_cast<const void *>(duplex_counts.data()), duplex_counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPO", static_cast<const void *>(overlap_counts.data()), overlap_counts.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "ADPR", static_cast<const void *>(reverse_counts.data()), reverse_counts.size());
-        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_PASS", static_cast<const void *>(allele_passes.data()), allele_passes.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "BMF_QUANT", static_cast<const void *>(quant_est.data()), quant_est.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FA_FAILED", static_cast<const void *>(fa_failed.data()), fa_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FM_FAILED", static_cast<const void *>(fm_failed.data()), fm_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "FR_FAILED", static_cast<const void *>(fr_failed.data()), fr_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "PV_FAILED", static_cast<const void *>(pv_failed.data()), pv_failed.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_ALL", counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADP_PASS", adp_pass);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPD", duplex_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPO", overlap_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPR", reverse_counts);
+        bcf_int32_vec(aux->vcf.vh, vrec, "ADPRV", rv_sums);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_PASS", allele_passes);
+        bcf_int32_vec(aux->vcf.vh, vrec, "BMF_QUANT", quant_est);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FA_FAILED", fa_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FM_FAILED", fm_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "FR_FAILED", fr_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "PV_FAILED", pv_failed);
+        bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
         bcf_update_format_float(aux->vcf.vh, vrec, "REVERSE_FRAC", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
-        bcf_update_format_int32(aux->vcf.vh, vrec, "RVC", static_cast<const void *>(rv_sums.data()), rv_sums.size());
+        bcf_update_format_float(aux->vcf.vh, vrec, "AFR", static_cast<const void *>(allele_fractions.data()), allele_fractions.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
         if(aux->conf.md_thresh)
             bcf_update_format_int32(aux->vcf.vh, vrec, "MD_FAILED", static_cast<const void *>(md_failed.data()), md_failed.size());
@@ -228,12 +229,12 @@ namespace bmf {
         const char refbase = aux->get_ref_base(ttid, tpos);
         int ambig[2] = {0, 0};
         std::unordered_set<char> base_set{refbase};
-        for(auto& pair: tumor.templates)
+        for(auto&& pair: tumor.templates)
             if(pair.first == 'N')
                ambig[0] = pair.second.size();
             else
                 base_set.insert(pair.first);
-        for(auto& pair: normal.templates)
+        for(auto&& pair: normal.templates)
             if(pair.first == 'N')
                ambig[1] = pair.second.size();
             else
@@ -284,7 +285,7 @@ namespace bmf {
         nconfident_phreds.emplace_back();
         if(match != tumor.templates.end()) {
             counts[0] = match->second.size();
-            for(auto uni: tumor.templates[refbase]) {
+            for(auto&& uni: tumor.templates[refbase]) {
                 if(uni->get_size() < (unsigned)aux->conf.minFM) {
                     uni->pass = 0;
                     ++fm_failed[0];
@@ -337,7 +338,7 @@ namespace bmf {
         }
         if((match = normal.templates.find(refbase)) != normal.templates.end()) {
             counts[n_base_calls] = match->second.size();
-            for(auto uni: normal.templates[refbase]) {
+            for(auto&& uni: normal.templates[refbase]) {
                 if(uni->get_quality() < aux->conf.minPV) {
                     uni->pass = 0;
                     ++pv_failed[n_base_calls];
@@ -386,9 +387,9 @@ namespace bmf {
                 }
 #endif
         }
-        somatic.push_back(allele_passes[0] && !allele_passes[n_base_calls]);
+        somatic.push_back(allele_passes[0] & !allele_passes[n_base_calls]);
 
-        kstring_t allele_str = {0, 0, nullptr};
+        kstring_t allele_str{0, 0, nullptr};
         ks_resize(&allele_str, 8uL);
         kputc(refbase, &allele_str);
         for(i = 1; i < n_base_calls; ++i) {
@@ -399,7 +400,7 @@ namespace bmf {
             tconfident_phreds.emplace_back();
             if((match = normal.templates.find(base_calls[i])) != normal.templates.end()) {
                 counts[i + n_base_calls] = match->second.size();
-                for(auto uni: match->second) {
+                for(auto&& uni: match->second) {
                     if(uni->get_size() < (unsigned)aux->conf.minFM) {
                         uni->pass = 0;
                         ++fm_failed[i + n_base_calls];
@@ -438,7 +439,7 @@ namespace bmf {
             }
             if((match = tumor.templates.find(base_calls[i])) != tumor.templates.end()) {
                 counts[i] = match->second.size();
-                for(auto uni: match->second) {
+                for(auto&& uni: match->second) {
                     if(uni->get_quality() < aux->conf.minPV) {
                         uni->pass = 0;
                         ++pv_failed[i];
@@ -503,8 +504,8 @@ namespace bmf {
         std::vector<int> adp_pass;
         assert(duplex_counts.size() == nbc2);
         adp_pass.reserve(nbc2);
-        for(auto& i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
-        for(auto& i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
+        for(auto i: tconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
+        for(auto i: nconfident_phreds) adp_pass.push_back(static_cast<int>(i.size()));
         bcf_update_alleles_str(aux->vcf.vh, vrec, allele_str.s), free(allele_str.s);
 #if !NDEBUG
         if(vrec->pos == 55249070) {
@@ -543,6 +544,7 @@ namespace bmf {
             "##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">",
             "##FORMAT=<ID=ADP_PASS,Number=.,Type=Integer,Description=\"Number of high-confidence unique observations for each allele.\">",
             "##FORMAT=<ID=ADPR,Number=R,Type=Integer,Description=\"Total number of reads aligned to reverse strand.\">",
+            "##FORMAT=<ID=ADPRV,Number=R,Type=Integer,Description=\"Number of reads supporting allele which were reversed (inline chemistry).\">",
             "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
@@ -559,7 +561,6 @@ namespace bmf {
             "##FORMAT=<ID=PV_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
             "##FORMAT=<ID=REVERSE_FRAC,Number=R,Type=Float,Description=\"Fraction of reads supporting allele aligned to the reverse strand.\">",
-            "##FORMAT=<ID=RVC,Number=R,Type=Integer,Description=\"Number of reads supporting allele which were reversed (inline chemistry).\">",
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {

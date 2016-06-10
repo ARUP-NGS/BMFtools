@@ -315,19 +315,23 @@ namespace bmf {
         add_stack_lines(vh);
         // Add samples
         int tmp;
-        if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
-            LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        if(!is_single)
+        if(is_single) {
+            if((tmp = bcf_hdr_add_sample(vh, "Sample")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Sample", tmp);
+        }
+        else {
+            if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
             if((tmp = bcf_hdr_add_sample(vh, "Normal")))
                 LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        }
         // Add header lines
-        bcf_hdr_add_sample(vh, nullptr);
         bcf_hdr_nsamples(vh) = (is_single) ? 1: 2;
         // Add command line call
         kstring_t tmpstr{0};
         ksprintf(&tmpstr, "##cmdline=");
-        kputs("bmftools ", &tmpstr);
-        for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, "%s ", argv[i]);
+        kputs("bmftools", &tmpstr);
+        for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
         bcf_hdr_append(vh, tmpstr.s);
         tmpstr.l = 0;
         bcf_hdr_printf(vh, "##bed_filename=\"%s\"", bedpath ? bedpath: "FullGenomeAnalysis");
@@ -344,9 +348,8 @@ namespace bmf {
         bam_hdr_destroy(hdr);
         if(!(aux.fai = fai_load(refpath))) LOG_EXIT("failed to open fai. Abort!\n");
         LOG_DEBUG("Bedpath: %s.\n", bedpath);
-        if(bedpath == nullptr) LOG_EXIT("Bed path for analysis required.\n");
         if(!(aux.bed = dlib::parse_bed_hash(bedpath, aux.tumor.header, padding)))
-            LOG_EXIT("Could not open bedfile.\n");
+            LOG_EXIT("Could not open bedfile %s.\n", bedpath);
         // Check for required tags.
         for(auto tag: {"FM", "FA", "PV", "FP"}) dlib::check_bam_tag_exit(aux.tumor.fp->fn, tag);
         int ret(is_single ? stack_core_single(&aux): stack_core(&aux));

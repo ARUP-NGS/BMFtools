@@ -210,13 +210,14 @@ bmftools <subcommand> <-h>
     TODO: Fill in details on these tags.
     VCF Header Fields:
     * BMF_PASS: 1 if variant passes, 0 otherwise.
-    * BMF_QUANT
+    * BMF_QUANT: Estimated quantity given observation for each allele.
     * ADP_PASS: Number of high-confidence unique observations for allele.
     * ADP_ALL: Number of all unique observations for each allele, inc. both low- and high-confidence
     * ADPO: Number of overlapping read pair observations for allele.
     * ADPD: Number of duplex observations for allele.
-    * ADPR: Number of original reversed observations for allele.
-    * RVF: Fraction of RV observations supporting allele.
+    * ADPR: Number of original reverse strand-aligned observations for allele.
+    * ADPRV: Number of original RV observations for allele.
+    * REVERSE_FRAC: Fraction of reads aligned to the reverse strand supporting allele.
     * QSS: Q Score Sum supporting allele.
     * AMBIG: Number of ambiguous base calls at position.
     * SOMATIC_CALL: Boolean value for a somatic call for allele.
@@ -255,6 +256,7 @@ bmftools <subcommand> <-h>
 
     VCF Header Fields:
     * BMF_VET:  1 if a variant passes, 0 otherwise. 
+    * BMF_QUANT: Estimated quantity given observation for each allele.
     * BMF_UNIOBS: Number of unique observations supporting a variant at that position.
     * BMF_DUPLEX: Number of duplex observations supporting a variant at that position.
     * BMF_FAIL: NUmber of reads at position failing filters.
