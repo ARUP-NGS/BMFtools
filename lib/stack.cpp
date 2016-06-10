@@ -50,6 +50,7 @@ namespace bmf {
         std::vector<int> failed_counts(n_base_calls);
         std::vector<int> allele_passes(n_base_calls);
         std::vector<int> qscore_sums(n_base_calls);
+        std::vector<int> rv_sums(n_base_calls);
         vrec->rid = tid;
         vrec->pos = pos;
         vrec->qual = 0;
@@ -89,6 +90,7 @@ namespace bmf {
                     overlap_counts[0] += uni->get_overlap();
                     reverse_counts[0] += uni->get_reverse();
                     qscore_sums[0] += uni->get_quality();
+                    rv_sums[0] += uni->rv;
                 }
             }
             allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
@@ -135,6 +137,7 @@ namespace bmf {
                         overlap_counts[i] += uni->get_overlap();
                         reverse_counts[i] += uni->get_reverse();
                         qscore_sums[i] += uni->get_quality();
+                        rv_sums[i] += uni->rv;
                     }
                 }
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
@@ -145,6 +148,10 @@ namespace bmf {
         assert(n_base_calls == confident_phreds.size());
         assert(n_base_calls == suspect_phreds.size());
         const int total_depth(std::accumulate(counts.begin(), counts.end(), 0));
+#if !NDEBUG
+        const int total_rv(std::accumulate(reverse_counts.begin(), reverse_counts.end(), 0));
+        LOG_DEBUG("total RV: %i.\n", total_rv);
+#endif
         std::vector<float> rv_fractions;
         std::vector<float> allele_fractions;
         std::vector<int> quant_est;
@@ -175,7 +182,8 @@ namespace bmf {
         bcf_update_format_int32(aux->vcf.vh, vrec, "FR_FAILED", static_cast<const void *>(fr_failed.data()), fr_failed.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "PV_FAILED", static_cast<const void *>(pv_failed.data()), pv_failed.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "QSS", static_cast<const void *>(qscore_sums.data()), qscore_sums.size());
-        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
+        bcf_update_format_float(aux->vcf.vh, vrec, "REVERSE_FRAC", static_cast<const void *>(rv_fractions.data()), rv_fractions.size());
+        bcf_update_format_int32(aux->vcf.vh, vrec, "RVC", static_cast<const void *>(rv_sums.data()), rv_sums.size());
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(&ambig), 1);
         if(aux->conf.md_thresh)
             bcf_update_format_int32(aux->vcf.vh, vrec, "MD_FAILED", static_cast<const void *>(md_failed.data()), md_failed.size());
@@ -193,7 +201,7 @@ namespace bmf {
         mq2 = (uint32_t)plp.b->core.qual;
         is_reverse2 = bam_is_rev(plp.b);
         is_overlap = 1;
-        rv = (uint32_t)bam_itag(plp.b, "RV");
+        rv += (uint32_t)dlib::int_tag_zero(plp.b, "RV");
         if(base2 == base1) {
             discordant = 0;
             agreed += ((uint32_t *)dlib::array_tag(plp.b, "FA"))[cycle2];
@@ -262,6 +270,7 @@ namespace bmf {
         std::vector<int> failed_counts(nbc2);
         std::vector<int> allele_passes(nbc2);
         std::vector<int> qscore_sums(nbc2);
+        std::vector<int> rv_sums(nbc2);
         std::vector<int> somatic;
         somatic.reserve(n_base_calls);
         vrec->rid = tumor.tid;
@@ -305,6 +314,7 @@ namespace bmf {
                     overlap_counts[0] += uni->get_overlap();
                     reverse_counts[0] += uni->get_reverse();
                     qscore_sums[0] += uni->get_quality();
+                    rv_sums[0] += uni->rv;
                 }
             }
             allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
@@ -357,6 +367,7 @@ namespace bmf {
                     overlap_counts[n_base_calls] += uni->get_overlap();
                     reverse_counts[n_base_calls] += uni->get_reverse();
                     qscore_sums[n_base_calls] += uni->get_quality();
+                    rv_sums[n_base_calls] += uni->rv;
                 }
             }
             allele_passes[n_base_calls] = (duplex_counts[n_base_calls] >= aux->conf.min_duplex &&
@@ -418,6 +429,7 @@ namespace bmf {
                         overlap_counts[i + n_base_calls] += uni->get_overlap();
                         reverse_counts[i + n_base_calls] += uni->get_reverse();
                         qscore_sums[i + n_base_calls] += uni->get_quality();
+                        rv_sums[i + n_base_calls] += uni->rv;
                     }
                 }
                 allele_passes[i + n_base_calls] = (duplex_counts[i + n_base_calls] >= aux->conf.min_duplex &&
@@ -456,6 +468,7 @@ namespace bmf {
                         overlap_counts[i] += uni->get_overlap();
                         reverse_counts[i] += uni->get_reverse();
                         qscore_sums[i] += uni->get_quality();
+                        rv_sums[i] += uni->rv;
                     }
                 }
                 allele_passes[i] = (duplex_counts[i] >= aux->conf.min_duplex &&
@@ -516,7 +529,8 @@ namespace bmf {
         if(aux->conf.md_thresh)
             bcf_int32_vec(aux->vcf.vh, vrec, "MD_FAILED", md_failed);
         bcf_int32_vec(aux->vcf.vh, vrec, "QSS", qscore_sums);
-        bcf_update_format_float(aux->vcf.vh, vrec, "RVF", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
+        bcf_int32_vec(aux->vcf.vh, vrec, "RVC", rv_sums);
+        bcf_update_format_float(aux->vcf.vh, vrec, "REVERSE_FRAC", static_cast<const void *>(rv_fractions.data()), rv_fractions.size() * 2);
         bcf_update_format_int32(aux->vcf.vh, vrec, "AMBIG", static_cast<const void *>(ambig), COUNT_OF(ambig) * 2);
         assert(somatic.size() == n_base_calls);
         bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
@@ -544,7 +558,8 @@ namespace bmf {
             "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
             "##FORMAT=<ID=PV_FAILED,Number=R,Type=Integer,Description=\"Number of observations failed per sample for p value cutoff.\">",
             "##FORMAT=<ID=QSS,Number=R,Type=Integer,Description=\"Q Score Sum for each allele for each sample.\">",
-            "##FORMAT=<ID=RVF,Number=R,Type=Float,Description=\"Fraction of reads supporting allele which were reversed.\">",
+            "##FORMAT=<ID=REVERSE_FRAC,Number=R,Type=Float,Description=\"Fraction of reads supporting allele aligned to the reverse strand.\">",
+            "##FORMAT=<ID=RVC,Number=R,Type=Integer,Description=\"Number of reads supporting allele which were reversed (inline chemistry).\">",
     };
 
     void add_stack_lines(bcf_hdr_t *hdr) {

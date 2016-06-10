@@ -47,8 +47,8 @@ int16_t cycle2; // Masked, from other read, if it was found.
 uint32_t quality:16;
 uint32_t mq1:8;
 uint32_t mq2:8;
-uint32_t rv:16;
 public:
+uint32_t rv:16;
 uint32_t md:8;
 private:
 uint32_t discordant:1;
