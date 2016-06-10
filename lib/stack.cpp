@@ -152,7 +152,7 @@ namespace bmf {
         allele_fractions.reserve(n_base_calls);
         quant_est.reserve(n_base_calls);
         for(unsigned i = 0; i < n_base_calls; ++i) {
-           rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
+            rv_fractions.push_back((float)reverse_counts[i] / counts[i]);
             allele_fractions.push_back((float)counts[i] / total_depth);
             quant_est.push_back(estimate_quantity(confident_phreds, suspect_phreds, i));
         }
@@ -528,7 +528,7 @@ namespace bmf {
             "##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">",
             "##FORMAT=<ID=ADPO,Number=R,Type=Integer,Description=\"Number of unique observations of overlapped read pairs for each allele.\">",
             "##FORMAT=<ID=ADP_PASS,Number=.,Type=Integer,Description=\"Number of high-confidence unique observations for each allele.\">",
-            "##FORMAT=<ID=ADPR,Number=R,Type=Integer,Description=\"Total number of original reversed reads supporting allele.\">",
+            "##FORMAT=<ID=ADPR,Number=R,Type=Integer,Description=\"Total number of reads aligned to reverse strand.\">",
             "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">",
             "##FORMAT=<ID=AMBIG,Number=1,Type=Integer,Description=\"Number of ambiguous (N) base calls at position.\">",
             "##FORMAT=<ID=BMF_PASS,Number=R,Type=Integer,Description=\"1 if variant passes, 0 otherwise.\">",
