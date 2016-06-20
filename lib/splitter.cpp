@@ -40,12 +40,12 @@ namespace bmf {
         cond_free(settings.ffq_prefix);
     }
 
-    splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+    splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings, mark_splitter_t *splitter_ptr)
     {
-        if(!settings_ptr) {
+        if(!settings) {
             LOG_EXIT("Settings pointer null. Abort!\n");
         }
-        if(!settings_ptr->tmp_basename) {
+        if(!settings->tmp_basename) {
             fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
             exit(EXIT_FAILURE);
         }
@@ -56,13 +56,13 @@ namespace bmf {
         kstring_t ks = {0, 0, nullptr};
         splitterhash_params_t *ret = (splitterhash_params_t *)calloc(1, sizeof(splitterhash_params_t));
         ret->n = splitter_ptr->n_handles;
-        if(settings_ptr->is_se) {
+        if(settings->is_se) {
             ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
             ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
             for(int i = 0; i < splitter_ptr->n_handles; ++i) {
                 ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
                 ks.l = 0;
-                ksprintf(&ks, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
+                ksprintf(&ks, "%s.%i.dmp.fastq", settings->tmp_basename, i);
                 ret->outfnames_r1[i] = ks_release(&ks);
             }
         } else {
@@ -74,10 +74,10 @@ namespace bmf {
                 ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
                 ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
                 ks.l = 0;
-                ksprintf(&ks, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
+                ksprintf(&ks, "%s.%i.R1.dmp.fastq", settings->tmp_basename, i);
                 ret->outfnames_r1[i] = strdup(ks.s);
                 ks.l = 0;
-                ksprintf(&ks, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
+                ksprintf(&ks, "%s.%i.R2.dmp.fastq", settings->tmp_basename, i);
                 ret->outfnames_r2[i] = strdup(ks.s);
             }
             free(ks.s);
@@ -99,55 +99,56 @@ namespace bmf {
     }
 
 
-    mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
+    mark_splitter_t init_splitter_pe(marksplit_settings_t* settings)
     {
         mark_splitter_t ret = {
-            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
-            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r2
-            settings_ptr->n_nucs, // n_nucs
-            (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
+            (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
+            (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r2
+            settings->n_nucs, // n_nucs
+            (int)dlib::ipow(4, settings->n_nucs), // n_handles
             (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
             (char **)calloc(ret.n_handles, sizeof(char *))  // infnames_r2
         };
         kstring_t ks = {0, 0, nullptr};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
-            ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
+            ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings->tmp_basename, i);
             ret.fnames_r1[i] = dlib::kstrdup(&ks);
+            LOG_DEBUG("Opening temporary file %s with mode '%s'.\n", ks.s, settings->mode);
             ks.l = 0;
-            ksprintf(&ks, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);
+            ksprintf(&ks, "%s.tmp.%i.R2.fastq", settings->tmp_basename, i);
             ret.fnames_r2[i] = dlib::kstrdup(&ks);
-            ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
-            ret.tmp_out_handles_r2[i] = gzopen(ret.fnames_r2[i], settings_ptr->mode);
+            ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings->mode);
+            ret.tmp_out_handles_r2[i] = gzopen(ret.fnames_r2[i], settings->mode);
         }
         return ret;
     }
 
-    mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
+    mark_splitter_t init_splitter_se(marksplit_settings_t* settings)
     {
         mark_splitter_t ret = {
-            (gzFile *)calloc(settings_ptr->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
+            (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
             nullptr, // tmp_out_handles_r2
-            settings_ptr->n_nucs, // n_nucs
-            (int)dlib::ipow(4, settings_ptr->n_nucs), // n_handles
+            settings->n_nucs, // n_nucs
+            (int)dlib::ipow(4, settings->n_nucs), // n_handles
             (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
             nullptr  // infnames_r2
         };
         kstring_t ks = {0, 0, nullptr};
         for (int i = 0; i < ret.n_handles; i++) {
             ks.l = 0;
-            ksprintf(&ks, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
+            ksprintf(&ks, "%s.tmp.%i.fastq", settings->tmp_basename, i);
             ret.fnames_r1[i] = dlib::kstrdup(&ks);
-            ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings_ptr->mode);
+            ret.tmp_out_handles_r1[i] = gzopen(ret.fnames_r1[i], settings->mode);
         }
         free(ks.s);
         return ret;
     }
 
-    mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
+    mark_splitter_t init_splitter(marksplit_settings_t* settings)
     {
-        return settings_ptr->is_se ? init_splitter_se(settings_ptr)
-                                   : init_splitter_pe(settings_ptr);
+        return settings->is_se ? init_splitter_se(settings)
+                               : init_splitter_pe(settings);
     }
 
 } /* namespace bmf */

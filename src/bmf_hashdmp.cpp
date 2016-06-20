@@ -155,7 +155,13 @@ namespace bmf {
                                 int max_blen) {
         if(max_blen < 0) max_blen = blen;
         char mode[4];
-        sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
+#pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
+    // If not set, zlib compresses all our files enormously.
+    sprintf(mode, level > 0 ? "wb%i": "wb0", level % 10);
+#else
+    sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#endif
         if(level > 0) {
             if(strcmp(out1, "-") && strcmp(strrchr(out1, '\0') - 3, ".gz") != 0) {
                 LOG_WARNING("Output gzip compressed but filename not terminated with .gz. FYI\n");
@@ -379,7 +385,14 @@ namespace bmf {
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
         char mode[4];
+#if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
+#pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
+    // If not set, zlib compresses all our files enormously.
+        sprintf(mode, level > 0 ? "wb%i": "wb0", level % 10);
+#else
         sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#endif
+        LOG_DEBUG("zlib write mode: %s.\n", mode);
         FILE *in_handle(dlib::open_ifp(infname));
         gzFile out_handle(gzopen(outfname, mode));
         if(!in_handle) {

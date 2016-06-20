@@ -27,7 +27,7 @@ namespace bmf {
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
                         "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
-                        "-F, --skip-recommended\tSkip reads marked as QC fail, duplicate, or secondary. Equivalent to -P -r -2 -q\n"
+                        "-F, --skip-recommended\tSkip reads marked as QC fail, duplicate, or secondary or as improper pairs. Equivalent to -P -r -2 -q\n"
                         "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                         "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                         "-p, --padding\tNumber of bases outside of bed region to pad.\n"
