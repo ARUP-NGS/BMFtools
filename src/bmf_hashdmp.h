@@ -11,7 +11,7 @@ extern "C" {
 #define ifn_stream(fname) ((fname) ? (fname): "stream")
 #endif
 
-namespace BMF {
+namespace bmf {
 
     //KHASH_MAP_INIT_STR(dmp, kingfisher_t *)
     void hash_dmp_core(char *infname, char *outfname, int level);

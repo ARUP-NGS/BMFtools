@@ -1,15 +1,15 @@
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 #include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 #include "dlib/logging_util.h"
 
 extern "C" {
     extern int sort_main(int argc, char *argv[]);
 }
 
-namespace BMF {
+namespace bmf {
     extern int cap_main(int argc, char *argv[]);
     extern int depth_main(int argc, char *argv[]);
     extern int dmp_main(int argc, char *argv[]);
@@ -18,7 +18,6 @@ namespace BMF {
     extern int filter_main(int argc, char *argv[]);
     extern int hashdmp_main(int argc, char *argv[]);
     extern int hashdmp_inmem_main(int argc, char *argv[]);
-    extern int infer_main(int argc, char *argv[]);
     extern int mark_main(int argc, char *argv[]);
     extern int rsq_main(int argc, char *argv[]);
     extern int sdmp_main(int argc, char *argv[]);

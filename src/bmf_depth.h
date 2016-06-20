@@ -1,12 +1,12 @@
 #ifndef BMF_DEPTH_H
 #define BMF_DEPTH_H
-#include <stdint.h>
+#include <cstdint>
 extern "C" {
     #include "htslib/khash.h"
 }
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
-namespace BMF {
+namespace bmf {
     KHASH_MAP_INIT_INT(depth, uint64_t)
     int depth_main(int argc, char *argv[]);
 }

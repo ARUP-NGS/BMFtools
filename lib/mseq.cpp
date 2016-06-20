@@ -2,7 +2,7 @@
 
 #include "dlib/misc_util.h"
 
-namespace BMF {
+namespace bmf {
 
     void mseq_destroy(mseq_t *mvar)
     {
@@ -83,4 +83,4 @@ namespace BMF {
         cond_free(var);
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

@@ -1,16 +1,18 @@
-#include "bmf_vetter.h"
+#include "bmf_vet.h"
 
 #include <getopt.h>
 #include <algorithm>
+#include <assert.h>
 
 #include "dlib/bam_util.h"
 #include "dlib/vcf_util.h"
 #include "include/igamc_cephes.h"
 #include "htslib/tbx.h"
 
-namespace BMF {
+namespace bmf {
 
     KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
+    static int max_depth = (1 << 20); // 262144
 
     void vetter_usage(int retcode)
     {
@@ -22,17 +24,22 @@ namespace BMF {
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-D, --min-duplex\tMinimum number of duplex reads required to pass a variant.\n"
+                        "-O, --min-overlap\tMinimum number of concordant overlapping read pairs required to pass a variant.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
                         "-r, --skip-duplicates\tSkip reads marked as duplicates.\n"
+                        "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-F, --skip-recommended.\tSkip secondary, qcfail, and pcr duplicates.\n"
-                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
-                        "-p, --padding\tNumber of bases outside of bed region to pad.\n"
-                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
-                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n"
+                        "-d, --max-depth\tMaximum depth for pileups. Default: %i.\n"
+                        "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call. Default: 0.0.\n"
+                        "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space. Default: 0.\n"
+                        "-p, --padding\tNumber of bases outside of bed region to pad. Default: 0.\n"
+                        "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call. Default: 0.\n"
+                        "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion. Default: 0.\n"
+                        "-B, --emit-bcf-format\tEmit bcf-formatted output. (Defaults to vcf).\n",
+                max_depth
                 );
         exit(retcode);
     }
@@ -60,9 +67,8 @@ namespace BMF {
         uint32_t skip_flag; // Skip reads with any bits set to true
     };
 
-    static int max_depth = (1 << 20); // 262144
 
-
+    int vet_core_nobed(vetter_aux_t *aux);
     void vetter_error(const char *message, int retcode)
     {
         fprintf(stderr, message);
@@ -86,14 +92,13 @@ namespace BMF {
             // Skip AF < minAF
             if ((b->core.flag & aux->skip_flag) ||
                 (aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
-                (int)b->core.qual < aux->minmq || (bam_itag(b, "FM") < aux->minFM) ||
+                (int)b->core.qual < aux->minmq ||
                 (bam_itag(b, "FP") == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
                     continue;
             break;
         }
         return ret;
     }
-
 
 
     /*
@@ -106,19 +111,24 @@ namespace BMF {
      */
     void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
             std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
-            int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
-        int khr, s, s2;
+            std::vector<int>& quant_est, std::vector<int>& qscore_sums, int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
+        int khr, s, s2, i;
         n_all_disagreed = n_all_overlaps = 0;
         khiter_t k;
         uint32_t *FA1, *PV1, *FA2, *PV2;
         char *qname;
-        uint8_t *seq, *seq2, *tmptag, *drdata;
+        uint8_t *seq, *seq2, *tmptag;
+        std::vector<std::vector<uint32_t>> confident_phreds;
+        std::vector<std::vector<uint32_t>> suspect_phreds;
+        memset(qscore_sums.data(), 0, qscore_sums.size() * sizeof(int));
+        confident_phreds.reserve(vrec->n_allele);
+        suspect_phreds.reserve(vrec->n_allele);
         // Build overlap hash
-        khash_t(names) *hash = kh_init(names);
+        khash_t(names) *hash(kh_init(names));
         const int sk = 1;
         // Set the r1/r2 flags for the reads to ignore to 0
         // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-        for(int i = 0; i < n_plp; ++i) {
+        for(i = 0; i < n_plp; ++i) {
             if(plp[i].is_del || plp[i].is_refskip) continue;
             // Skip any reads failed for FA < minFA or FR < min_fr
             qname = bam_get_qname(plp[i].b);
@@ -146,8 +156,8 @@ namespace BMF {
                 FA2 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
                 seq2 = bam_get_seq(plp[i].b);
                 s2 = bam_seqi(seq2, plp[i].qpos);
-                const int32_t arr_qpos1 = dlib::arr_qpos(kh_val(hash, k));
-                const int32_t arr_qpos2 = dlib::arr_qpos(&plp[i]);
+                const int32_t arr_qpos1(dlib::arr_qpos(kh_val(hash, k)));
+                const int32_t arr_qpos2(dlib::arr_qpos(&plp[i]));
                 if(s == s2) {
                     PV1[arr_qpos1] = agreed_pvalues(PV1[arr_qpos1], PV2[arr_qpos2]);
                     FA1[arr_qpos1] = FA1[arr_qpos1] + FA2[arr_qpos2];
@@ -164,41 +174,66 @@ namespace BMF {
                 }
             }
         }
-        for(int j = 0; j < vrec->n_allele; ++j) {
-            if(strcmp(vrec->d.allele[j], "<*>") == 0) continue;
+        // Reads in the pair have now been merged, and those to be skipped have been tagged "SK".
+        for(unsigned j = 0; j < vrec->n_allele; ++j) {
+            confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
+            suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
+            if(strcmp(vrec->d.allele[j], "<*>") == 0) {
+                LOG_DEBUG("Allele is meaningless/useless <*>. Continuing.\n");
+                continue;
+            }
+            const char allele(vrec->d.allele[j][0]);
+            //LOG_DEBUG("Checking stack for reads with base %c.\n", allele);
             for(int i = 0; i < n_plp; ++i) {
                 if(plp[i].is_del || plp[i].is_refskip) continue;
-                if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) {
-                    continue;
-                }
+                if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) continue;
 
                 seq = bam_get_seq(plp[i].b);
                 FA1 = (uint32_t *)dlib::array_tag(plp[i].b, "FA");
                 PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
-                if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)vrec->d.allele[j][0]]) { // Match!
+                if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)allele]) { // Match!
+                    //LOG_DEBUG("Found read supporting allele '%i', '%c'.\n", bam_seqi(seq, plp[i].qpos), allele);
                     const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
                     if(bam_itag(plp[i].b, "FM") < aux->minFM ||
-                            FA1[arr_qpos1] < aux->minFA || PV1[arr_qpos1] < aux->minPV ||
-                            (double)FA1[arr_qpos1] / bam_itag(plp[i].b, "FM") < aux->min_fr) {
+                       FA1[arr_qpos1] < aux->minFA ||
+                            PV1[arr_qpos1] < aux->minPV ||
+                            (double)FA1[arr_qpos1] / (tmptag ? bam_aux2i(tmptag): 1 ) < aux->min_fr) {
+                        /*
+                        LOG_DEBUG("Failed a read because FM ? %s FA? %s PV? %s\n",
+                                (tmptag ? bam_aux2i(tmptag): 1) < aux->minFM ? "true": "false",
+                                FA1[arr_qpos1] < aux->minFA ? "true": "false",
+                                PV1[arr_qpos1] < aux->minPV ? "true": "false"
+                                );
+                        */
                         ++n_failed[j];
-                        continue;
-                    }
-                    ++n_obs[j];
-                    if((drdata = bam_aux_get(plp[i].b, "DR")) != nullptr && bam_aux2i(drdata)) {
-                        ++n_duplex[j]; // Has DR tag and its value is nonzero.
-                    }
-                    if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
-                        ++n_overlaps[j];
-                        bam_aux_del(plp[i].b, tmptag);
+                        suspect_phreds[j].push_back(PV1[arr_qpos1]);
+                    } else {
+                        //LOG_DEBUG("Passed a read!\n");
+                        // TODO: replace n_obs vector with calls to size
+                        confident_phreds[j].push_back(PV1[arr_qpos1]);
+                        qscore_sums[j] += PV1[arr_qpos1];
+                        ++n_obs[j];
+                        if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr) {
+                            if(bam_aux2i(tmptag)) {
+                                ++n_duplex[j]; // Has DR tag and its value is nonzero.
+                                //LOG_DEBUG("Found a duplex read!\n");
+                            }
+                        }
+                        if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
+                            ++n_overlaps[j];
+                            bam_aux_del(plp[i].b, tmptag);
+                        }
                     }
                 }
             }
             pass_values[j] = n_obs[j] >= aux->min_count && n_duplex[j] >= aux->min_duplex && n_overlaps[j] >= aux->min_overlap;
+            quant_est[j] = estimate_quantity(confident_phreds, suspect_phreds, j);
             //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
-
         }
-        for(int i = 0; i < n_plp; ++i)
-            if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) bam_aux_del(plp[i].b, tmptag);
+        // Now estimate the fraction likely correct.
+        for(i = 0; i < n_plp; ++i)
+            if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr)
+                bam_aux_del(plp[i].b, tmptag);
         kh_destroy(names, hash);
         n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
     }
@@ -211,20 +246,16 @@ namespace BMF {
 
     int vet_core_bed(vetter_aux_t *aux) {
         int n_plp;
-        const bam_pileup1_t *plp;
-        tbx_t *vcf_idx = nullptr;
-        hts_idx_t *bcf_idx = nullptr;
-        hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
+        const bam_pileup1_t *plp(nullptr);
+        tbx_t *vcf_idx(nullptr);
+        hts_idx_t *bcf_idx(nullptr);
+        hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
+        if(!idx) LOG_EXIT("Could not load bam index for %s.\n", aux->fp->fn);
         switch(hts_get_format(aux->vcf_fp)->format) {
-        case vcf:
-            LOG_EXIT("Only bcf currently supported.\n");
-            //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
-            //vcf_idx = tbx_index_load(aux->vcf_fp->fn);
-            //if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
-            break;
+        case vcf: return vet_core_nobed(aux);
+            // Tabix indexed vcfs don't work currently. Throws a segfault in htslib.
         case bcf:
-            bcf_idx = bcf_index_load(aux->vcf_fp->fn);
-            if(!bcf_idx) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+            if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
             break;
         default:
             LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
@@ -235,83 +266,71 @@ namespace BMF {
             LOG_EXIT("Require an indexed variant file. Abort!\n");
         }
         */
-        bcf1_t *vrec = bcf_init();
+        bcf1_t *vrec(bcf_init());
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
         vrec->rid = -1;
-        hts_itr_t *vcf_iter = nullptr;
+        hts_itr_t *vcf_iter(nullptr);
 
         std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
         std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
-        for(khiter_t& ki: keys) {
-
+        for(khiter_t ki: keys) {
             for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
-                int tid, start, stop, pos = -1;
-                bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
-                bam_plp_set_maxcnt(pileup, max_depth);
+                int pos = -1;
 
                 // Handle coordinates
-                tid = kh_key(aux->bed, ki);
+                int tid(kh_key(aux->bed, ki));
                 // rid is set to -1 before use. This won't be triggered.
-                start = get_start(kh_val(aux->bed, ki).intervals[j]);
-                stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
+                int start(get_start(kh_val(aux->bed, ki).intervals[j]));
+                int stop(get_stop(kh_val(aux->bed, ki).intervals[j]));
                 //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
                 // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-                vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                   : nullptr;
+                vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
+                                   : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                                              : nullptr;
                 //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
-                int n_disagreed = 0;
-                int n_overlapped = 0;
-                int n_duplex = 0;
+                int n_disagreed (0);
+                int n_overlapped (0);
+                int n_duplex(0);
+                bam_plp_t pileup(bam_plp_init(read_bam, (void *)aux));
+                bam_plp_set_maxcnt(pileup, aux->max_depth);
+                if (aux->iter) hts_itr_destroy(aux->iter);
+                aux->iter = sam_itr_queryi(idx, tid, start - 500, stop);
                 while(read_bcf(aux, vcf_iter, vrec) >= 0) {
+                    //if (aux->iter) hts_itr_destroy(aux->iter);
                     if(!bcf_is_snp(vrec)) {
-                        //LOG_DEBUG("Variant isn't a snp. Skip!\n");
+                        LOG_DEBUG("Variant isn't a snp. Skip!\n");
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue; // Only handle simple SNVs
                     }
                     if(!dlib::vcf_bed_test(vrec, aux->bed) && !aux->vet_all) {
-                        continue; // Only handle simple SNVs
+                        LOG_DEBUG("Outside of bed region. Skip.\n");
+                        continue; // Only handle variants in region.
                     }
-                    /*
-                    while(vrec->pos > stop) {
-                        if(UNLIKELY(++j == kh_val(aux->bed, ki).n)) {
-                            LOG_EXIT("Record in bed region, but past region of interest on contig and no available contig is present?\n");
-                        }
-                        start = get_start(kh_val(aux->bed, ki).intervals[j]);
-                        stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-                    }
-                    */
-                    //LOG_DEBUG("Hey, I'm evaluating a variant record now.\n");
-                    bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
-                    if (aux->iter) hts_itr_destroy(aux->iter);
-                    aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
-                    //LOG_DEBUG("starting pileup. Pointer to iter: %p\n", (void *)aux->iter);
-                    plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
-                    //LOG_DEBUG("Finished pileup.\n");
-                    while ((tid < vrec->rid || (pos < vrec->pos && tid == vrec->rid)) &&
-                            ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
-                        //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
-                        /* Zoom ahead until you're at the correct position */
-                    }
+                    if(pos > vrec->pos) LOG_EXIT("pos is after variant. WTF?");
+                    while(pos < vrec->pos && tid <= vrec->rid &&
+                          (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0);
+                    // Zoom ahead until you're at the correct position */
                     if(!plp) {
                         if(n_plp == -1) {
                             LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
                                         aux->header->target_name[tid], start, stop, n_plp, pos, tid);
-                        }
-                        else if(n_plp == 0){
+                        } else if(n_plp == 0){
                             LOG_WARNING("No reads at position. Skip this variant.\n");
                         } else LOG_EXIT("No pileup stack, but n_plp doesn't signal an error or an empty stack?\n");
                     }
                     //LOG_DEBUG("tid: %i. rid: %i. var pos: %i.\n", tid, vrec->rid, vrec->pos);
                     if(pos != vrec->pos || tid != vrec->rid) {
                         //LOG_DEBUG("BAM: pos: %i. Contig: %s.\n", pos, aux->header->target_name[tid]);
-                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird...\n",
+                        LOG_WARNING("Position %s:%i (1-based) not found in pileups in bam. Writing unmodified. Super weird....\n",
                                     aux->header->target_name[vrec->rid], vrec->pos + 1);
                         bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                         continue;
@@ -323,18 +342,21 @@ namespace BMF {
                     memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                     // Perform tests to provide the results for the tags.
                     bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                                 fail_values, n_overlapped, n_duplex, n_disagreed);
+                                 fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
                     // Add tags
                     bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
                     bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
-                    bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (const void *)pass_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (const void *)fail_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (const void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (const void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (const void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
+                    bcf_update_info(aux->vcf_header, vrec, "BMF_QSS", (const void *)qscore_sums.data(), vrec->n_allele, BCF_HT_INT);
 
                     // Pass or fail them individually.
                     bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
+                    //bam_plp_reset(pileup);
                 }
                 if(vcf_iter) hts_itr_destroy(vcf_iter);
                 bam_plp_destroy(pileup);
@@ -353,15 +375,14 @@ namespace BMF {
         int n_skipped = 0;
 #endif
         int n_plp;
-        const bam_pileup1_t *plp;
-        tbx_t *vcf_idx = nullptr;
-        hts_idx_t *bcf_idx = nullptr;
-        hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
+        const bam_pileup1_t *plp(nullptr);
+        tbx_t *vcf_idx(nullptr);
+        hts_idx_t *bcf_idx(nullptr);
+        hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
         switch(hts_get_format(aux->vcf_fp)->format) {
         case vcf:
             //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
-            vcf_idx = tbx_index_load(aux->vcf_fp->fn);
-            if(!vcf_idx) LOG_WARNING("Could not load TBI index for %s. Iterating through full vcf!\n", aux->vcf_fp->fn);
+            vcf_idx = nullptr;
             /*
             if(vcf_idx) {
                 tbx_destroy(vcf_idx);
@@ -370,44 +391,39 @@ namespace BMF {
             */
             break;
         case bcf:
-            bcf_idx = bcf_index_load(aux->vcf_fp->fn);
-            if(!bcf_idx) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+            bcf_idx = nullptr;
             break;
         default:
             LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
             break; // This never happens -- LOG_EXIT exits.
         }
-        if(!(vcf_idx || bcf_idx)) {
-            LOG_EXIT("Require an indexed variant file. Abort!\n");
-        }
         bcf1_t *vrec = bcf_init();
         // Unpack all shared data -- up through INFO, but not including FORMAT
         vrec->max_unpack = BCF_UN_FMT;
         vrec->rid = -1;
-        hts_itr_t *vcf_iter = nullptr;
+        hts_itr_t *vcf_iter(nullptr);
 
         std::vector<int32_t> pass_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> uniobs_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> duplex_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> overlap_values(NUM_PREALLOCATED_ALLELES);
         std::vector<int32_t> fail_values(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> quant_est(NUM_PREALLOCATED_ALLELES);
+        std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
         bam_plp_t pileup(nullptr);
 
         for(int i = 0; i < aux->header->n_targets; ++i) {
 
             int pos = -1;
             int tid = i;
-            const int start = 0, stop = aux->header->target_len[tid];
+            const int start = 0;
+            const int stop = aux->header->target_len[tid];
 
             // Handle coordinates
             // rid is set to -1 before use. This won't be triggered.
             //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", tid + 1, aux->header->target_name[tid], start, stop);
 
             // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-            vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
-                               : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                         : nullptr;
-            //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
             int n_disagreed = 0;
             int n_overlapped = 0;
@@ -426,7 +442,8 @@ namespace BMF {
                 aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
                 //LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
                 if(pileup) bam_plp_destroy(pileup);
-                pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, max_depth);
+                pileup = bam_plp_init(read_bam, (void *)aux), bam_plp_set_maxcnt(pileup, aux->max_depth);
+                LOG_DEBUG("Max depth: %i.\n", aux->max_depth);
                 bam_plp_reset(pileup);
                 plp = bam_plp_auto(pileup, &tid, &pos, &n_plp);
                 //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
@@ -434,7 +451,7 @@ namespace BMF {
                 while (pos < vrec->pos &&
                        ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
                     assert(tid == vrec->rid);
-                    LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
+                    //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                     /* Zoom ahead until you're at the correct position */
                 }
                 assert(tid == vrec->rid);
@@ -478,15 +495,17 @@ namespace BMF {
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
                 bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                             fail_values, n_overlapped, n_duplex, n_disagreed);
+                             fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "DUPLEX_DEPTH", (void *)&n_duplex, 1);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)(&pass_values[0]), vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)(&fail_values[0]), vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)&duplex_values[0], vrec->n_allele, BCF_HT_INT);
-                bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)&uniobs_values[0], vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_VET", (void *)pass_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_FAIL", (void *)fail_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_DUPLEX", (void *)duplex_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_UNIOBS", (void *)uniobs_values.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_QUANT", (void *)quant_est.data(), vrec->n_allele, BCF_HT_INT);
+                bcf_update_info(aux->vcf_header, vrec, "BMF_QSS", (const void *)qscore_sums.data(), vrec->n_allele, BCF_HT_INT);
 
                 // Pass or fail them individually.
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
@@ -539,9 +558,9 @@ namespace BMF {
         htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
         vetter_aux_t aux = {0};
         aux.min_count = 1;
-        aux.max_depth = (1 << 18); // Default max depth
+        aux.max_depth = max_depth;
 
-        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVw", lopts, nullptr)) >= 0) {
+        while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:A:BP?hVwF", lopts, nullptr)) >= 0) {
             switch (c) {
             case 'B': output_bcf = 1; break;
             case 'a': aux.minFA = atoi(optarg); break;
@@ -549,7 +568,10 @@ namespace BMF {
             case 'c': aux.min_count = atoi(optarg); break;
             case 'D': aux.min_duplex = atoi(optarg); break;
             case 's': aux.minFM = atoi(optarg); break;
-            case 'm': aux.minmq = atoi(optarg); break;
+            case 'm':
+                aux.minmq = atoi(optarg);
+                if(aux.minmq < atoi(optarg)) LOG_EXIT("minmq must be <255. Provided: %i.\n", atoi(optarg));
+            break;
             case 'v': aux.minPV = atoi(optarg); break;
             case '2': aux.skip_flag |= BAM_FSECONDARY; break;
             case 'S': aux.skip_flag |= BAM_FSUPPLEMENTARY; break;
@@ -595,25 +617,18 @@ namespace BMF {
         if((aux.vcf_header = bcf_hdr_read(aux.vcf_fp)) == nullptr) LOG_EXIT("Could not read variant header from file (%s).\n", aux.vcf_fp->fn);
 
         // Add lines to header
-        for(unsigned i = 0; i < COUNT_OF(bmf_header_lines); ++i) {
-            LOG_DEBUG("Adding header line %s.\n", bmf_header_lines[i]);
-            if(bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]))
-                LOG_EXIT("Could not add header line '%s'. Abort!\n", bmf_header_lines[i]);
-        }
+        for(auto line: bmf_header_lines)
+            if(bcf_hdr_append(aux.vcf_header, line))
+                LOG_EXIT("Could not add header line '%s'. Abort!\n", line);
         bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed ? bed: "FullGenomeAnalysis");
-        { // New block so tmpstr is cleared
-            kstring_t tmpstr = {0};
-            ksprintf(&tmpstr, "##cmdline=");
-            kputs("bmftools ", &tmpstr);
-            for(int i = 0; i < argc; ++i) {
-                kputs(argv[i], &tmpstr);
-                kputc(' ', &tmpstr);
-            }
-            bcf_hdr_append(aux.vcf_header, tmpstr.s);
-            tmpstr.l = 0;
-            // Add in settings
-            free(tmpstr.s);
-        }
+        kstring_t tmpstr{0};
+        ksprintf(&tmpstr, "##cmdline=");
+        kputs("bmftools", &tmpstr);
+        for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
+        bcf_hdr_append(aux.vcf_header, tmpstr.s);
+        tmpstr.l = 0;
+        // Add in settings
+        free(tmpstr.s);
         bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", BMF_VERSION);
         std::string timestring("", 16uL);
         dlib::string_fmt_time(timestring);
@@ -627,10 +642,7 @@ namespace BMF {
         bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
 
         // Open out vcf
-        int ret = vet_core(&aux);
-        if(ret) fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
-                        __func__, __LINE__, ret);
-        else LOG_INFO("Successfully completed bmftools vet!\n");
+        const int ret(vet_core(&aux));
         sam_close(aux.fp);
         bam_hdr_destroy(aux.header);
         vcf_close(aux.vcf_fp);
@@ -639,7 +651,9 @@ namespace BMF {
         if(aux.bed) dlib::bed_destroy_hash(aux.bed);
         cond_free(outvcf);
         cond_free(bed);
-        return ret;
+        if(ret) LOG_EXIT("vet_core returned non-zero exit status '%i'. Abort!\n");
+        LOG_INFO("Successfully completed bmftools vet!\n");
+        return 0;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

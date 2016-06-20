@@ -4,7 +4,7 @@
 #include "lib/mseq.h"
 
 
-namespace BMF {
+namespace bmf {
     void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
                                 char *homing, int blen, int threshold, int level=0, int mask=0,
                                 int max_blen=-1);
@@ -118,7 +118,11 @@ namespace BMF {
             hashdmp_usage();
             exit(EXIT_FAILURE);
         }
-        if(argc - 2 != optind) LOG_EXIT("Require exactly two input fastqs.\n");
+        if(argc - 2 != optind) {
+            if(argc - 1 != optind)
+                LOG_EXIT("Require at least one input fastq.\n");
+            LOG_EXIT("raise NotImplementedError(\"Single-end inmem not implemented.\")\n")
+        }
         if(blen < 0) LOG_EXIT("Barcode length required.");
         if(!homing) LOG_EXIT("Homing sequence required.\n");
         if(strcmp(outfname1, outfname2) == 0) LOG_EXIT("read 1 and read 2 must be separate files. Abort!\n");
@@ -151,7 +155,13 @@ namespace BMF {
                                 int max_blen) {
         if(max_blen < 0) max_blen = blen;
         char mode[4];
-        sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
+#pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
+    // If not set, zlib compresses all our files enormously.
+    sprintf(mode, level > 0 ? "wb%i": "wb0", level % 10);
+#else
+    sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#endif
         if(level > 0) {
             if(strcmp(out1, "-") && strcmp(strrchr(out1, '\0') - 3, ".gz") != 0) {
                 LOG_WARNING("Output gzip compressed but filename not terminated with .gz. FYI\n");
@@ -375,7 +385,14 @@ namespace BMF {
     void hash_dmp_core(char *infname, char *outfname, int level)
     {
         char mode[4];
+#if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
+#pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
+    // If not set, zlib compresses all our files enormously.
+        sprintf(mode, level > 0 ? "wb%i": "wb0", level % 10);
+#else
         sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+#endif
+        LOG_DEBUG("zlib write mode: %s.\n", mode);
         FILE *in_handle(dlib::open_ifp(infname));
         gzFile out_handle(gzopen(outfname, mode));
         if(!in_handle) {
@@ -612,4 +629,4 @@ namespace BMF {
         tmpvars_destroy(tmp);
     }
 
-} /* namespace BMF */
+} /* namespace bmf */

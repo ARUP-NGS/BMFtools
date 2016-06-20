@@ -2,7 +2,7 @@
 #define BMF_STACK_H
 #include "lib/stack.h"
 
-namespace BMF {
+namespace bmf {
     int stack_main(int argc, char *argv[]);
 }
 

@@ -1,7 +1,7 @@
 #ifndef BMF_TARGET_H
 #define BMF_TARGET_H
 
-namespace BMF {
+namespace bmf {
     struct target_counts_t {
         uint64_t count;
         uint64_t n_skipped;
@@ -11,6 +11,6 @@ namespace BMF {
     };
 
     target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint32_t minmq, uint64_t notification_interval);
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif /* ifndef BMF_TARGET_H */

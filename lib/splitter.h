@@ -1,9 +1,9 @@
 #ifndef SPLITTER_H
 #define SPLITTER_H
-#include <stdint.h>
+#include <cstdint>
 #include <zlib.h>
 
-namespace BMF {
+namespace bmf {
 
     struct marksplit_settings_t {
         uint32_t blen:16;
@@ -60,6 +60,6 @@ namespace BMF {
     void splitterhash_destroy(splitterhash_params_t *params);
     splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif /* SPLITTER_H */

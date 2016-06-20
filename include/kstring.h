@@ -26,10 +26,10 @@
 #ifndef KSTRING_H
 #define KSTRING_H
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <string.h>
 #include <stdarg.h>
-#include <stdint.h>
+#include <cstdint>
 #include <stdio.h>
 
 #ifndef kroundup32

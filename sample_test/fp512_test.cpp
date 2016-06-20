@@ -10,7 +10,7 @@ int usage(char **argv, int retcode=EXIT_FAILURE) {
 int test_fail(bam1_t *b1, bam1_t *b2, void *data) {
     assert(bam_itag(b1, "FP") == 0 ? b1->core.flag & BAM_FQCFAIL: 1);
     assert(bam_itag(b2, "FP") == 0 ? b2->core.flag & BAM_FQCFAIL: 1);
-    return 1;
+    return 0;
 }
 
 int main(int argc, char *argv[]) {

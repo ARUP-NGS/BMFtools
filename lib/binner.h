@@ -1,10 +1,10 @@
 #ifndef BINNER_H
 #define BINNER_H
-#include <stdint.h>
+#include <cstdint>
 #include "dlib/compiler_util.h"
 #include "dlib/math_util.h"
 
-namespace BMF {
+namespace bmf {
 
 /* get_binner is written in a type-generic way.
  * You must declare the binner with DECLARE_BINNER and then use

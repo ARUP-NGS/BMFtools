@@ -5,7 +5,7 @@
 
 #define NQSCORES 39uL // Number of q scores in sequencing.
 
-namespace BMF {
+namespace bmf {
 
     /*
      * @func rescale_qscore
@@ -91,6 +91,6 @@ namespace BMF {
         return ret;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif // ARRAY_PARSER_H

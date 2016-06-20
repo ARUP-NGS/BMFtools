@@ -24,11 +24,12 @@ extern "C" {
 }
 #endif
 
-enum sort_order {
-    SAMTOOLS,
+
+enum SORT_ORDER {
     QNAME,
-    BMF_POS,
-    BMF_UCS
+    POS,
+    BMF,
+    UCS
 };
 
 

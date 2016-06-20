@@ -7,7 +7,7 @@
 #define STACK_START 128
 #define READ_HD_LIMIT 6
 
-namespace BMF {
+namespace bmf {
 
     enum cmpkey {
         POSITION,
@@ -89,6 +89,6 @@ namespace BMF {
         return 1;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */
 
 #endif /* BMF_RSQ_H */

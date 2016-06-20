@@ -1,24 +1,24 @@
 #include <zlib.h>
-#include <stdio.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdint>
 #include <getopt.h>
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 #include <omp.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include "bmf_dmp.h"
 #include "lib/binner.h"
 #include "dlib/nix_util.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
 
-namespace BMF {
+namespace bmf {
 
     void sdmp_usage(char *argv[])
     {
             fprintf(stderr,
                             "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
-                            "Usage: bmftools %s <options> <Fq.R1.seq> <Fq.R2.seq>\n"
+                            "Usage: bmftools collapse %s <options> <r1.fq> <r2.fq>\n"
                             "Flags:\n"
                             "-i: Index fastq path. REQUIRED.\n"
                             "-t: Homopolymer failure threshold. A molecular barcode with a homopolymer of length >= this limit is flagged as QC fail. Default: 10\n"
@@ -277,7 +277,7 @@ namespace BMF {
         cleanup:
         splitter_destroy(&splitter);
         free_marksplit_settings(settings);
-        LOG_INFO("Successfully completed bmftools sdmp!\n");
+        LOG_INFO("Successfully completed bmftools collapse secondary!\n");
         return EXIT_SUCCESS;
     }
 

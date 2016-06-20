@@ -3,20 +3,7 @@
 #include <getopt.h>
 #include <algorithm>
 
-namespace BMF {
-
-    const char *vcf_header_lines[] =  {
-            "##FORMAT=<ID=FR_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for fraction agreed.\">",
-            "##FORMAT=<ID=FM_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for family size.\">",
-            "##FORMAT=<ID=FA_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for number of supporting observations.\">",
-            "##FORMAT=<ID=FP_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for being a barcode QC fail.\">",
-            "##FORMAT=<ID=AF_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for aligned fraction below minimm.\">",
-            "##FORMAT=<ID=MQ_FAILED,Number=1,Type=Integer,Description=\"Number of observations failed per sample for insufficient mapping quality.\">",
-            "##FORMAT=<ID=IMPROPER,Number=1,Type=Integer,Description=\"Number of reads per sample labeled as not being in a proper pair.\">",
-            "##FORMAT=<ID=OVERLAP,Number=1,Type=Integer,Description=\"Number of overlapping read pairs.\">",
-            "##FORMAT=<ID=AFR,Number=R,Type=Float,Description=\"Allele fractions per allele, including the reference allele.\">"
-    };
-
+namespace bmf {
 
     void stack_usage(int retcode)
     {
@@ -24,16 +11,23 @@ namespace BMF {
                         "Builds a stack summary for base calls and performs simple filters"
                         " to produce a maximally permissive 'variant caller'.\n"
                         "Usage:\nbmftools stack <opts> <tumor.srt.indexed.bam> <normal.srt.indexed.bam>\n"
+                        "Omit normal bam for single-bam analysis.\n"
                         "Optional arguments:\n"
                         "-R, --ref\tPath to fasta reference. REQUIRED.\n"
                         "-o, --outpath\tPath to output file. Defaults to stdout.\n"
                         "-b, --bedpath\tPath to bed file to only validate variants in said region. REQUIRED.\n"
                         "-c, --min-count\tMinimum number of observations for a given allele passing filters to pass variant. Default: 1.\n"
                         "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+                        "-D, --min-duplex\tMinimum number of duplex reads supporting a variant to pass it. Default: 0.\n"
+                        "-O, --min-overlap\tMinimum number of concordant overlapping read-pairs supporting a variant to pass it. Default: 0.\n"
+                        "-M, --mismatch-density-threshold\tFail reads in pileups where the # of mismatches within 2 * flanksize bp of the SNV is >= <parameter>.\n"
+                        "-=, --flank-size\tSet flank size for mismatch density threshold. Default: 20.\n"
+                        "-P, --skip-improper\tSkip reads not marked as being in a proper pair.\n"
                         "-2, --skip-secondary\tSkip secondary alignments.\n"
                         "-S, --skip-supplementary\tSkip supplementary alignments.\n"
                         "-q, --skip-qcfail\tSkip reads marked as QC fail.\n"
                         "-r, --skip-duplicates\tSkip reads marked as being PCR or optical duplicates.\n"
+                        "-F, --skip-recommended\tSkip reads marked as QC fail, duplicate, or secondary or as improper pairs. Equivalent to -P -r -2 -q\n"
                         "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
                         "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
                         "-p, --padding\tNumber of bases outside of bed region to pad.\n"
@@ -48,115 +42,83 @@ namespace BMF {
     static int read_bam(dlib::BamHandle *data, bam1_t *b)
     {
         int ret;
-        for(;;)
+        FOREVER
         {
             if(!data->iter) LOG_EXIT("Need to access bam with index.\n");
             ret = sam_itr_next(data->fp, data->iter, b);
             if ( ret<0 ) break;
-            // Skip unmapped, secondary, qcfail, duplicates.
-            if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) == 0)
-                break;
+            if(bam_itag(b, "FP"))
+                if((b->core.flag & BAM_FUNMAP) == 0)
+                    break;
         }
         return ret;
     }
 
-    void process_matched_pileups(BMF::stack_aux_t *aux, bcf1_t *ret,
+    void process_matched_pileups(bmf::stack_aux_t *aux, bcf1_t *ret,
                             const int& tn_plp, const int& tpos, const int& ttid,
                             const int& nn_plp, const int& npos, const int& ntid) {
         // Build overlap hash
-        std::unordered_map<std::string, BMF::UniqueObservation> tobs, nobs;
-        std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
+        std::unordered_map<std::string, bmf::UniqueObservation> tobs, nobs;
+        std::unordered_map<std::string, bmf::UniqueObservation>::iterator found;
         int flag_failed[2]{0};
         int af_failed[2]{0};
-        int fa_failed[2]{0};
-        int fm_failed[2]{0};
-        int fr_failed[2]{0};
-        int fp_failed[2]{0};
         int mq_failed[2]{0};
         int improper_count[2]{0};
         int olap_count[2]{0};
         std::string qname;
         for(int i = 0; i < tn_plp; ++i) {
-            uint8_t *data;
-             if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
-             if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
-                 ++flag_failed[0];
-                 continue;
-             }
-             if((aux->tumor.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
-                 ++improper_count[0];
-                 if(aux->conf.skip_improper) continue;
-             }
-             if(bam_itag(aux->tumor.pileups[i].b, "FP") == 0) {
-                 ++fp_failed[0]; continue;
-             }
-             if((data = bam_aux_get(aux->tumor.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
-                 ++af_failed[0]; continue;
-             }
-             qname = bam_get_qname(aux->tumor.pileups[i].b);
-             if((found = tobs.find(qname)) == tobs.end()) {
-                 //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
-                 tobs.emplace(qname, aux->tumor.pileups[i]);
-             } else {
-                 ++olap_count[0];
-                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
-                 found->second.add_obs(aux->tumor.pileups[i]);
-             }
+            if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
+            if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
+                ++flag_failed[0]; continue;
+            }
+            if((aux->tumor.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
+                ++improper_count[0];
+                if(aux->conf.skip_improper) continue;
+            }
+            if(dlib::bam_frac_align(aux->tumor.pileups[i].b) < aux->conf.minAF) {
+                ++af_failed[0]; continue;
+            }
+            // Add in
+
+            qname = bam_get_qname(aux->tumor.pileups[i].b);
+            if((found = tobs.find(qname)) == tobs.end())
+                tobs.emplace(std::piecewise_construct, std::forward_as_tuple(qname), std::forward_as_tuple(aux->tumor.pileups[i], aux));
+                //tobs.emplace(std::make_pair<std::string, UniqueObservation>(std::forward_as_tuple(qname),
+                //        std::forward_as_tuple(aux->tumor.pileups[i], aux)));
+            else ++olap_count[0], found->second.add_obs(aux->tumor.pileups[i], aux);
         }
-        for(auto& pair: tobs) {
-            if(pair.second.get_size() < aux->conf.minFM)
-                ++fm_failed[0], pair.second.set_pass(0);
-            if(pair.second.get_agreed() < aux->conf.minFA)
-                ++fa_failed[0], pair.second.set_pass(0);
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.min_fr)
-                ++fr_failed[0], pair.second.set_pass(0);
-            if(pair.second.get_meanMQ() < aux->conf.minmq)
+        for(auto& pair: tobs)
+            if(pair.second.get_max_mq() < aux->conf.minmq)
                 ++mq_failed[0], pair.second.set_pass(0);
-        }
         for(int i = 0; i < nn_plp; ++i) {
-            uint8_t *data;
-             if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
-             if(aux->conf.skip_flag & aux->normal.pileups[i].b->core.flag) {
-                 ++flag_failed[1];
-                 continue;
-             }
-             if((aux->normal.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
-                 ++improper_count[1];
-                 if(aux->conf.skip_improper) continue;
-             }
-             if(bam_itag(aux->normal.pileups[i].b, "FP") == 0) {
-                 ++fp_failed[1]; continue;
-             }
-             if((data = bam_aux_get(aux->normal.pileups[i].b, "AF")) != nullptr && bam_aux2f(data) <aux->conf.minAF) {
-                 ++af_failed[1]; continue;
-             }
-             qname = bam_get_qname(aux->normal.pileups[i].b);
-             if((found = nobs.find(qname)) == nobs.end()) {
-                 nobs.emplace(qname, aux->normal.pileups[i]);
-             } else {
-                 ++olap_count[1];
-                 //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
-                 found->second.add_obs(aux->normal.pileups[i]);
-             }
+            if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
+            if(aux->conf.skip_flag & aux->normal.pileups[i].b->core.flag) {
+                ++flag_failed[1];
+                continue;
+            }
+            if((aux->normal.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
+                ++improper_count[1];
+                if(aux->conf.skip_improper) continue;
+            }
+            if(dlib::bam_frac_align(aux->normal.pileups[i].b) < aux->conf.minAF) {
+                ++af_failed[1]; continue;
+            }
+            qname = bam_get_qname(aux->normal.pileups[i].b);
+            if((found = nobs.find(qname)) == nobs.end())
+                nobs.emplace(std::piecewise_construct, std::forward_as_tuple(qname),
+                        std::forward_as_tuple(aux->normal.pileups[i], aux));
+            else ++olap_count[1], found->second.add_obs(aux->normal.pileups[i], aux);
         }
-        for(auto& pair: nobs) {
-            if(pair.second.get_size() < aux->conf.minFM) ++fm_failed[1], pair.second.set_pass(0);
-            if(pair.second.get_agreed() < aux->conf.minFA) ++fa_failed[1], pair.second.set_pass(0);
-            if((float)pair.second.get_agreed() / pair.second.get_size() < aux->conf.min_fr) ++fr_failed[1], pair.second.set_pass(0);
-            if(pair.second.get_meanMQ() < aux->conf.minmq) ++mq_failed[1], pair.second.set_pass(0);
-        }
+        for(auto& pair: nobs)
+            if(pair.second.get_max_mq() < aux->conf.minmq)
+                ++mq_failed[1], pair.second.set_pass(0);
         //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
-        BMF::PairVCFPos vcfline = BMF::PairVCFPos(tobs, nobs, ttid, tpos);
+        bmf::PairVCFPos vcfline(tobs, nobs, ttid, tpos);
         vcfline.to_bcf(ret, aux, ttid, tpos);
-        bcf_update_format_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)fr_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)fa_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "FP_FAILED", (void *)fp_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "FM_FAILED", (void *)fm_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "MQ_FAILED", (void *)mq_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "AF_FAILED", (void *)af_failed, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "IMPROPER", (void *)improper_count, 2);
-        bcf_update_format_int32(aux->vcf.vh, ret, "OVERLAP", (void *)olap_count, 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "MQ_FAILED", (void *)mq_failed, COUNT_OF(mq_failed) * 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "AF_FAILED", (void *)af_failed, COUNT_OF(af_failed) * 2);
+        bcf_update_format_int32(aux->vcf.vh, ret, "OVERLAP", (void *)olap_count, COUNT_OF(olap_count) * 2);
         //LOG_INFO("Ret for writing vcf to file: %i.\n", aux->vcf.write(ret));
         aux->vcf.write(ret);
         bcf_clear(ret);
@@ -165,88 +127,105 @@ namespace BMF {
     /*
      * Needs a rewrite after the T/N pair rewrite!
      */
-    void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, BMF::stack_aux_t *aux) {
-        std::string qname;
+    void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, int tid, bmf::stack_aux_t *aux) {
         // Build overlap hash
-        std::unordered_map<std::string, BMF::UniqueObservation> obs;
-        std::unordered_map<std::string, BMF::UniqueObservation>::iterator found;
-        int flag_failed = 0;
-        int af_failed = 0;
-        int fa_failed = 0;
-        int fm_failed = 0;
-        int fp_failed = 0;
-        int fr_failed = 0;
-        int mq_failed = 0;
-        int improper_count = 0;
-        // Capturing found  by reference to avoid making unneeded temporary variables.
-        std::for_each(plp, plp + n_plp, [&](const bam_pileup1_t& plp) {
-            if(plp.is_del || plp.is_refskip) return;
-            if(aux->conf.skip_flag & plp.b->core.flag) {
+        std::unordered_map<std::string, bmf::UniqueObservation> obs;
+        std::unordered_map<std::string, bmf::UniqueObservation>::iterator found;
+        int flag_failed(0);
+        int af_failed(0);
+        int mq_failed(0);
+        int improper_count(0);
+        int olap_count(0);
+        std::string qname;
+        for(int i = 0; i < n_plp; ++i) {
+            if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
+            if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
                 ++flag_failed;
-                return;
+                continue;
             }
-            if((plp.b->core.flag & BAM_FPROPER_PAIR) == 0) {
+            if((aux->tumor.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
                 ++improper_count;
-                if(aux->conf.skip_improper) return;
+                if(aux->conf.skip_improper) continue;
             }
-            // If a read's mate is here with a sufficient mapping quality, we should keep it, shouldn't we? Put this later.
-            if(plp.b->core.qual < aux->conf.minmq) {
-                ++mq_failed; return;
+            if(dlib::bam_frac_align(aux->tumor.pileups[i].b) < aux->conf.minAF) {
+                ++af_failed; continue;
             }
-            const int FM = bam_itag(plp.b, "FM");
-            if(bam_itag(plp.b, "FP") == 0) {
-                ++fp_failed; return;
+            qname = bam_get_qname(aux->tumor.pileups[i].b);
+            if((found = obs.find(qname)) == obs.end()) {
+                //LOG_DEBUG("Put in entry at index %i with tn_plp as %i\n", i, tn_plp);
+                obs.emplace(std::piecewise_construct, std::forward_as_tuple(qname), std::forward_as_tuple(aux->tumor.pileups[i], aux));
+            } else {
+                ++olap_count;
+                //LOG_DEBUG("Added other in pair with qname %s.\n", qname.c_str());
+                found->second.add_obs(aux->tumor.pileups[i], aux);
             }
-            if(bam_aux2f(bam_aux_get(plp.b, "AF")) < aux->conf.minAF) {
-                ++af_failed; return;
-            }
-            const int qpos = dlib::arr_qpos(&plp);
-            const uint32_t FA = ((uint32_t *)dlib::array_tag(plp.b, "FA"))[qpos];
-            if(FA < aux->conf.minFA) {
-                ++fa_failed; return;
-            }
-            if((float)FA / FM < aux->conf.min_fr) {
-                ++fr_failed; return;
-            }
-            // Should I be failing FA/FM/PV before merging overlapping reads? NO.
-            qname = bam_get_qname(plp.b);
-            if((found = obs.find(qname)) == obs.end())
-                obs.emplace(std::make_pair(qname, BMF::UniqueObservation(plp)));
-            else found->second.add_obs(plp);
-        });
+        }
+        for(auto& pair: obs)
+            if(pair.second.get_max_mq() < aux->conf.minmq)
+                ++mq_failed, pair.second.set_pass(0);
+        //LOG_DEBUG("Making PairVCFPos.\n");
         // Build vcfline struct
-        BMF::SampleVCFPos vcfline = BMF::SampleVCFPos(obs, tid, pos);
-        vcfline.to_bcf(ret, aux->vcf.vh, aux->get_ref_base(tid, pos));
-        bcf_update_info_int32(aux->vcf.vh, ret, "FR_FAILED", (void *)&fr_failed, 1);
-        bcf_update_info_int32(aux->vcf.vh, ret, "FA_FAILED", (void *)&fa_failed, 1);
-        bcf_update_info_int32(aux->vcf.vh, ret, "FP_FAILED", (void *)&fp_failed, 1);
-        bcf_update_info_int32(aux->vcf.vh, ret, "FM_FAILED", (void *)&fm_failed, 1);
+        bmf::SampleVCFPos vcfline(obs, tid, pos);
+        vcfline.to_bcf(ret, aux, aux->get_ref_base(tid, pos));
         bcf_update_info_int32(aux->vcf.vh, ret, "MQ_FAILED", (void *)&mq_failed, 1);
         bcf_update_info_int32(aux->vcf.vh, ret, "AF_FAILED", (void *)&af_failed, 1);
         bcf_update_info_int32(aux->vcf.vh, ret, "IMPROPER", (void *)&improper_count, 1);
+        bcf_update_format_int32(aux->vcf.vh, ret, "OVERLAP", (void *)&olap_count, 1);
         aux->vcf.write(ret);
         bcf_clear(ret);
     }
 
-    int stack_core(BMF::stack_aux_t *aux)
+    int stack_core_single(bmf::stack_aux_t *aux)
+    {
+        if(!aux->tumor.idx)
+            LOG_EXIT("Could not load bam index. Abort!\n");
+        aux->tumor.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->tumor);
+        LOG_DEBUG("Max depth: %i.\n", aux->conf.max_depth);
+        bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
+        LOG_DEBUG("Making sorted keys.\n");
+        std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
+        int tid, pos, n_plp;
+        bcf1_t *v(bcf_init1());
+        for(unsigned k = 0; k < sorted_keys.size(); ++k) {
+            const khiter_t key = sorted_keys[k];
+            LOG_DEBUG("Now iterating through tid %i.\n", kh_key(aux->bed, key));
+            const size_t n = kh_val(aux->bed, key).n;
+            for(uint64_t i = 0; i < n; ++i) {
+                const int start(get_start(kh_val(aux->bed, key).intervals[i]));
+                const int stop(get_stop(kh_val(aux->bed, key).intervals[i]));
+                const int bamtid(static_cast<int>(kh_key(aux->bed, key)));
+                if(aux->single_region_itr(bamtid, start, stop, n_plp, pos, tid))
+                    continue;  // Could not load reads in one of the two bams.
+                process_pileup(v, aux->tumor.pileups, n_plp, pos, tid, aux);
+                while(aux->next_single_pileup(&tid, &pos, &n_plp, stop))
+                    process_pileup(v, aux->tumor.pileups, n_plp, pos, tid, aux);
+            }
+        }
+        bcf_destroy(v);
+        return 0;
+    }
+
+    int stack_core(bmf::stack_aux_t *aux)
     {
         if(!aux->tumor.idx || !aux->normal.idx)
             LOG_EXIT("Could not load bam indices. Abort!\n");
         aux->tumor.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->tumor);
         aux->normal.plp = bam_plp_init((bam_plp_auto_f)read_bam, (void *)&aux->normal);
+        LOG_DEBUG("Max depth: %i.\n", aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->tumor.plp, aux->conf.max_depth);
         bam_plp_set_maxcnt(aux->normal.plp, aux->conf.max_depth);
+        LOG_DEBUG("Making sorted keys.\n");
         std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
         int ttid, tpos, tn_plp, ntid, npos, nn_plp;
-        bcf1_t *v = bcf_init1();
-        for(unsigned k = 0; k < sorted_keys.size(); ++k) {
-            const khiter_t key = sorted_keys[k];
-            const size_t n = kh_val(aux->bed, key).n;
-            for(uint64_t i = 0; i < n; ++i) {
+        bcf1_t *v(bcf_init1());
+        for(khiter_t key :sorted_keys) {
+            LOG_DEBUG("Now iterating through tid %i.\n", kh_key(aux->bed, key));
+            for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
                 const int start = get_start(kh_val(aux->bed, key).intervals[i]);
                 const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
                 const int bamtid = (int)kh_key(aux->bed, key);
-                aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid);
+                if(aux->pair_region_itr(bamtid, start, stop, tn_plp, tpos, ttid, nn_plp, npos, ntid))
+                    continue;  // Could not load reads in one of the two bams.
                 process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
                 while(aux->next_paired_pileup(&ttid, &tpos, &tn_plp, &ntid, &npos, &nn_plp, stop))
                     process_matched_pileups(aux, v, tn_plp, tpos, ttid, nn_plp, npos, ntid);
@@ -260,32 +239,35 @@ namespace BMF {
         int c;
         unsigned padding = (unsigned)-1;
         if(argc < 2) stack_usage(EXIT_FAILURE);
-        char *outvcf = nullptr, *refpath = nullptr;
+        char *outvcf = (char *)"-", *refpath = nullptr;
         char *bedpath = nullptr;
-        struct BMF::stack_conf_t conf = {0};
-        const struct option lopts[] = {
+        struct bmf::stack_conf_t conf{0};
+        static const struct option lopts[] = {
             {"skip-secondary", no_argument, nullptr, '2'},
             {"min-family-agreed", required_argument, nullptr, 'a'},
             {"bedpath", required_argument, nullptr, 'b'},
             {"emit-bcf", no_argument, nullptr, 'B'},
+            {"flank-size", required_argument, nullptr, '='},
             {"min-count", required_argument, nullptr, 'c'},
             {"max-depth", required_argument, nullptr, 'd'},
             {"min-duplex", required_argument, nullptr, 'D'},
             {"min-fraction-agreed", required_argument, nullptr, 'f'},
             {"min-mapping-quality", required_argument, nullptr, 'm'},
             {"min-overlap", required_argument, nullptr, 'O'},
+            {"mismatch-density-threshold", required_argument, nullptr, 'M'},
             {"out-vcf", required_argument, nullptr, 'o'},
             {"skip-improper", no_argument, nullptr, 'P'},
             {"padding", required_argument, nullptr, 'p'},
             {"skip-qcfail", no_argument, nullptr, 'q'},
-            {"skip-duplicates", required_argument, nullptr, 'r'},
+            {"skip-duplicates", no_argument, nullptr, 'r'},
+            {"skip-recommended", no_argument, nullptr, 'F'},
             {"ref", required_argument, nullptr, 'R'},
             {"min-family-size", required_argument, nullptr, 's'},
             {"skip-supplementary", no_argument, nullptr, 'S'},
             {"min-phred-quality", required_argument, nullptr, 'v'},
             {0, 0, 0, 0}
         };
-        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:BP?hV", lopts, nullptr)) >= 0) {
+        while ((c = getopt_long(argc, argv, "R:D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:=:M:BP?hVF", lopts, nullptr)) >= 0) {
             switch (c) {
                 case '2': conf.skip_flag |= BAM_FSECONDARY; break;
                 case 'a': conf.minFA = atoi(optarg); break;
@@ -294,8 +276,14 @@ namespace BMF {
                 case 'c': conf.min_count = atoi(optarg); break;
                 case 'd': conf.max_depth = atoi(optarg); break;
                 case 'D': conf.min_duplex = atoi(optarg); break;
+                case 'F':
+                          conf.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
+                          conf.skip_improper = 1;
+                          break;
                 case 'f': conf.min_fr = (float)atof(optarg); break;
                 case 'm': conf.minmq = atoi(optarg); break;
+                case 'M': conf.md_thresh = atoi(optarg); break;
+                case '=': conf.flanksz = (uint8_t)atoi(optarg); break;
                 case 'O': conf.min_overlap = atoi(optarg); break;
                 case 'o': outvcf = optarg; break;
                 case 'P': conf.skip_improper = 1; break;
@@ -309,49 +297,67 @@ namespace BMF {
                 case 'h': case '?': stack_usage(EXIT_SUCCESS);
             }
         }
-        if(optind >= argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
+        if(!conf.flanksz) conf.flanksz = 20u;
+        /*
+        if(!conf.max_depth) {
+            conf.max_depth = DEFAULT_MAX_DEPTH;
+        }
+        */
+        const int is_single((argc - 1 == optind));
+        if(is_single) LOG_INFO("One bam provided. Running in se mode.\n");
+        if(optind > argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
         if(padding < 0) {
             LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
             padding = DEFAULT_PADDING;
         }
-        if(!refpath) {
-            LOG_EXIT("refpath required. Abort!\n");
-        }
-        if(!outvcf) outvcf = (char *)"-";
-        bcf_hdr_t *vh = bcf_hdr_init(conf.output_bcf ? "wb": "w");
-        for(auto line: vcf_header_lines) {
-            LOG_DEBUG("Adding line %s.\n", line);
-            if(bcf_hdr_append(vh, line))
-                LOG_EXIT("Could not add line %s to header. Abort!\n", line);
-        }
-        for(auto line: stack_vcf_lines)
-            if(bcf_hdr_append(vh, line))
-                LOG_EXIT("Could not add line %s to header. Abort!\n", line);
+        if(!refpath) LOG_EXIT("refpath required. Abort!\n");
+        bcf_hdr_t *vh(bcf_hdr_init(conf.output_bcf ? "wb": "w"));
+        add_stack_lines(vh);
         // Add samples
         int tmp;
-        if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
-            LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
-        if((tmp = bcf_hdr_add_sample(vh, "Normal")))
-            LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
-        bcf_hdr_add_sample(vh, nullptr);
-        bcf_hdr_nsamples(vh) = 2;
-        LOG_DEBUG("N samples: %i.\n", bcf_hdr_nsamples(vh));
-        // Add lines to the header for the bed file?
-        BMF::stack_aux_t aux(argv[optind], argv[optind + 1], outvcf, vh, conf);
+        if(is_single) {
+            if((tmp = bcf_hdr_add_sample(vh, "Sample")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Sample", tmp);
+        }
+        else {
+            if((tmp = bcf_hdr_add_sample(vh, "Tumor")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Tumor", tmp);
+            if((tmp = bcf_hdr_add_sample(vh, "Normal")))
+                LOG_EXIT("Could not add name %s. Code: %i.\n", "Normal", tmp);
+        }
+        // Add header lines
+        bcf_hdr_nsamples(vh) = (is_single) ? 1: 2;
+        // Add command line call
+        kstring_t tmpstr{0};
+        ksprintf(&tmpstr, "##cmdline=");
+        kputs("bmftools", &tmpstr);
+        for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
+        bcf_hdr_append(vh, tmpstr.s);
+        tmpstr.l = 0;
+        bcf_hdr_printf(vh, "##bed_filename=\"%s\"", bedpath ? bedpath: "FullGenomeAnalysis");
+        samFile *tmpfp = sam_open(argv[optind], "r");
+        bam_hdr_t *hdr = sam_hdr_read(tmpfp);
+        free(tmpstr.s);
+        std::string timestring("", 16uL);
+        dlib::string_fmt_time(timestring);
+        bcf_hdr_printf(vh, "##StartTime=\"%s\"", timestring.c_str());
+        dlib::bcf_add_bam_contigs(vh, hdr);
+        bmf::stack_aux_t aux(argv[optind], argc - 1 == optind ? nullptr: argv[optind + 1],
+                             outvcf, vh, conf);
         bcf_hdr_destroy(vh);
-        if((aux.fai = fai_load(refpath)) == nullptr)
-            LOG_EXIT("failed to open fai. Abort!\n");
-        // TODO: Make BCF header
+        bam_hdr_destroy(hdr);
+        if(!(aux.fai = fai_load(refpath))) LOG_EXIT("failed to open fai. Abort!\n");
         LOG_DEBUG("Bedpath: %s.\n", bedpath);
-        aux.bed = bedpath ? dlib::parse_bed_hash(bedpath, aux.normal.header, padding)
-                          : dlib::build_ref_hash(aux.normal.header);
-        if(!aux.bed) LOG_EXIT("Could not open bedfile.\n");
+        if(!(aux.bed = dlib::parse_bed_hash(bedpath, aux.tumor.header, padding)))
+            LOG_EXIT("Could not open bedfile %s.\n", bedpath);
         // Check for required tags.
-        for(auto tag: {"FM", "FA", "PV", "FP", "DR"})
-            dlib::check_bam_tag_exit(aux.normal.fp->fn, tag);
-        int ret = stack_core(&aux);
-        LOG_INFO("Successfully complete bmftools stack!\n");
+        for(auto tag: {"FM", "FA", "PV", "FP"}) dlib::check_bam_tag_exit(aux.tumor.fp->fn, tag);
+        int ret(is_single ? stack_core_single(&aux): stack_core(&aux));
+        if(ret)
+            LOG_EXIT("stack core %s returned non-zero exit status %i.\n",
+                     is_single ? "single": "paired", ret);
+        LOG_INFO("Successfully completed bmftools stack!\n");
         return ret;
     }
 
-} /* namespace BMF */
+} /* namespace bmf */
