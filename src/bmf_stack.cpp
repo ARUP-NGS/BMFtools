@@ -140,8 +140,7 @@ namespace bmf {
         for(int i = 0; i < n_plp; ++i) {
             if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
             if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
-                ++flag_failed;
-                continue;
+                ++flag_failed; continue;
             }
             if((aux->tumor.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
                 ++improper_count;

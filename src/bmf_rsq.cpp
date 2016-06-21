@@ -23,8 +23,9 @@ namespace bmf {
     static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                    &same_stack_ucs, &same_stack_ucs_se};
 
-    inline void bam2ffq(bam1_t *b, FILE *fp)
+    inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp=0)
     {
+        static const int sp = 1;
         int i;
         uint8_t *rvdata;
         kstring_t ks{0, 120uL, (char *)malloc(120uL)};
@@ -41,6 +42,7 @@ namespace bmf {
         write_if_found(rvdata, b, "NC", ks);
         write_if_found(rvdata, b, "DR", ks);
         write_if_found(rvdata, b, "NP", ks);
+        if(is_supp) bam_aux_append(b, "SP", 'i', sizeof(int), (uint8_t *)&sp);
         kputc('\n', &ks);
         uint8_t *seq(bam_get_seq(b));
         char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -57,7 +59,7 @@ namespace bmf {
         seqbuf[b->core.l_qseq] = '\0';
         assert(strlen(seqbuf) == (uint64_t)b->core.l_qseq);
         kputs(seqbuf, &ks);
-        kputs("\n+\n", &ks);
+        kputsnl("\n+\n", &ks);
         uint8_t *qual(bam_get_qual(b));
         for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
         if (b->core.flag & BAM_FREVERSE) { // reverse
@@ -237,10 +239,7 @@ namespace bmf {
         uint8_t *data;
         for(unsigned i = 0; i < stack->n; ++i) {
             if(stack->a[i]) {
-                //LOG_DEBUG("Starting to work on this read.\n");
-                data = bam_aux_get(stack->a[i], "NC");
-                //LOG_DEBUG("Got data.\n");
-                if(data) {
+                if((data = bam_aux_get(stack->a[i], "NC"))) {
                     //LOG_DEBUG("Trying to write.\n");
                     std::string&& qname = bam_get_qname(stack->a[i]);
                     if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -258,7 +257,7 @@ namespace bmf {
                         // Clear entry, as there can only be two.
                         settings->realign_pairs.erase(qname);
                     }
-                } else if(settings->write_supp && (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
+                } else if(settings->write_supp & (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
                     LOG_DEBUG("Trying to write write supp or stuff.\n");
                     // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                     std::string&& qname = bam_get_qname(stack->a[i]);
@@ -271,10 +270,10 @@ namespace bmf {
                         if(stack->a[i]->core.flag & BAM_FREAD2) {
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                             //bam2ffq(stack->a[i], settings->fqh, qname);
-                            bam2ffq(stack->a[i], settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh, 1);
                         } else {
                             //bam2ffq(stack->a[i], settings->fqh, qname);
-                            bam2ffq(stack->a[i], settings->fqh);
+                            bam2ffq(stack->a[i], settings->fqh, 1);
                             fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
                         }
                         // Clear entry, as there can only be two.
@@ -288,7 +287,7 @@ namespace bmf {
                     sam_write1(settings->out, settings->hdr, stack->a[i]);
                 }
                 bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-            } else {LOG_DEBUG("DNE\n");}
+            }
         }
     }
 
@@ -340,11 +339,9 @@ KHASH_SET_INIT_STR(names)
                     //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 #if !NDEBUG
                     if((k = kh_get(names, tmphash, bam_get_qname(stack->a[i])) == kh_end(tmphash))) {
-                        LOG_DEBUG("Writing read %s to file \n", bam_get_qname(stack->a[i]));
+                        //LOG_DEBUG("Writing read %s to file \n", bam_get_qname(stack->a[i]));
                         k = kh_put(names, tmphash, bam_get_qname(stack->a[i]), &khr);
                         sam_write1(tmp, hdr, stack->a[i]);
-                    } else {
-                        LOG_DEBUG("Read %s already in hash.\n", bam_get_qname(stack->a[i]));
                     }
                     if((k = kh_get(names, tmphash, bam_get_qname(stack->a[j])) == kh_end(tmphash))) {
                         k = kh_put(names, tmphash, bam_get_qname(stack->a[j]), &khr);
@@ -393,7 +390,7 @@ KHASH_SET_INIT_STR(names)
 
     static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
-    void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
+    void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::function<int (bam1_t *, bam1_t *)> fn)
     {
 #if !NDEBUG
         samFile *tmp = sam_open("prersq_reads.bam", "wb");
@@ -402,7 +399,6 @@ KHASH_SET_INIT_STR(names)
 #endif
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
@@ -478,11 +474,10 @@ KHASH_SET_INIT_STR(names)
         dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
     }
 
-    void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack)
+    void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::function<int (bam1_t *, bam1_t *)> fn)
     {
         // This selects the proper function to use for deciding if reads belong in the same stack.
         // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-        const std::function<int (bam1_t *, bam1_t *)> fn = fns[settings->is_se | (settings->cmpkey<<1)];
         if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
             LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                      dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
@@ -530,8 +525,8 @@ KHASH_SET_INIT_STR(names)
     void bam_rsq_bookends(rsq_aux_t *settings)
     {
         dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
-        settings->infer ? infer_core(settings, &stack)
-                        : rsq_core(settings, &stack);
+        settings->infer ? infer_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)])
+                        : rsq_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)]);
         free(stack.a);
     }
 
