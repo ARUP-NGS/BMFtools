@@ -1662,6 +1662,17 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
         case UCS:
             //return (((uint64_t)a->core.tid<<32|(ucs(a)+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(ucs(b)+1)<<1|bam_is_rev(b)));
+#if !NDEBUG
+            if((uint64_t)a->core.tid != (uint64_t)b->core.tid ) {
+                if(a->core.tid < b->core.tid && a->core.tid != -1) {
+                    assert(bam1_lt_ucs(a, b));
+                } else if(b->core.tid != -1) {
+                    assert(bam1_lt_ucs(b, a));
+                }
+            }
+#endif
+            assert(ucs(a) + 1 >= 0);
+            assert(ucs(b) + 1 >= 0);
             return bam1_lt_ucs(a, b);
         case BMF:
             return bam1_lt_bmf(a, b);
@@ -1968,7 +1979,7 @@ int sort_main(int argc, char *argv[])
         }
     }
     const char *types[4] = {"qname", "pos", "bmf", "ucs"};
-    LOG_INFO("Comparing records bys %s.\n", types[l_cmpkey]);
+    LOG_INFO("Comparing records by %s.\n", types[l_cmpkey]);
 
     nargs = argc - optind;
     if (nargs == 0 && isatty(STDIN_FILENO)) {

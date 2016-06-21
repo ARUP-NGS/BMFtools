@@ -50,7 +50,7 @@ BINS=bmftools bmftools_db bmftools_p
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
 
-all: update_dlib libhts.a tests $(BINS)
+all: libhts.a tests $(BINS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -81,11 +81,11 @@ src/%.o: src/%.cpp cstr_util.o
 
 libhts.a:
 	+cd htslib && echo "/* Empty config.h */" >> config.h && make -j $(THREADS) && cp libhts.a ../
-bmftools_db: $(D_OBJS) libhts.a
+bmftools_db: $(D_OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
-bmftools_p: $(P_OBJS) libhts.a
+bmftools_p: $(P_OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
-bmftools: $(OBJS) libhts.a
+bmftools: $(OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test

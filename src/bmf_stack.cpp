@@ -55,8 +55,8 @@ namespace bmf {
     }
 
     void process_matched_pileups(bmf::stack_aux_t *aux, bcf1_t *ret,
-                            const int& tn_plp, const int& tpos, const int& ttid,
-                            const int& nn_plp, const int& npos, const int& ntid) {
+                                 const int& tn_plp, const int& tpos, const int& ttid,
+                                 const int& nn_plp, const int& npos, const int& ntid) {
         // Build overlap hash
         std::unordered_map<std::string, bmf::UniqueObservation> tobs, nobs;
         std::unordered_map<std::string, bmf::UniqueObservation>::iterator found;
