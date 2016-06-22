@@ -302,7 +302,7 @@ static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_ve
 }
 
 static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
-    const int ret = confident_phreds[j].size();
+    const int ret(confident_phreds[j].size());
     const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
     const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
     /*
