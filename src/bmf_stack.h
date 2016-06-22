@@ -3,7 +3,9 @@
 #include "lib/stack.h"
 
 namespace bmf {
-    int stack_main(int argc, char *argv[]);
+
+int stack_main(int argc, char *argv[]);
+
 }
 
 

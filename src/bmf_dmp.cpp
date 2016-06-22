@@ -157,7 +157,7 @@ void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params
         ksprintf(&ks, " %s", params->outfnames_r1[i]);
     }
     ksprintf(&ks, " > %s", ffq_r1);
-    if(settings->gzip_output) kputs(".gz", &ks);
+    if(settings->gzip_output) kputsnl(".gz", &ks);
     dlib::check_popen(ks.s);
     free(ks.s);
 }
@@ -183,7 +183,7 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
     ks_resize(&str1, 1 << 10);
     for(int i = 0; i < settings->n_handles; ++i)
         ksprintf(&str1, " %s", params->outfnames_r1[i]);
-    kputs(" | paste -d'~' - - - - ", &str1);
+    kputsnl(" | paste -d'~' - - - - ", &str1);
     str2.s = dlib::kstrdup(&str1); // strdup the string.
     for(uint32_t i = 0; i < str2.l; ++i) {
         LOG_DEBUG("Current str.s + i: %s.\n", str2.s + i);
@@ -207,14 +207,14 @@ void cat_fastqs(marksplit_settings_t *settings, splitterhash_params_t *params, c
 void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
     kstring_t ks1 = {0, 0, nullptr};
-    kputs("> ", &ks1), kputs(ffq_r1, &ks1);
-    if(settings->gzip_output) kputs(".gz", &ks1);
+    kputsnl("> ", &ks1), kputs(ffq_r1, &ks1);
+    if(settings->gzip_output) kputsnl(".gz", &ks1);
     // Clear output files.
     //ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
     dlib::check_call(ks1.s); ks1.l = 0;
     ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
     dlib::check_call(ks1.s); ks1.l = 0;
-    kputs("/bin/cat ", &ks1);
+    kputsnl("/bin/cat ", &ks1);
     kstring_t ks2 = {0};
     ksprintf(&ks2, ks1.s);
     for(int i = 0; i < settings->n_handles; ++i) {
@@ -230,8 +230,8 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     ksprintf(&ks1, " > %s", ffq_r1);
     ksprintf(&ks2, " > %s", ffq_r2);
     if(settings->gzip_output) {
-        kputs(".gz", &ks1);
-        kputs(".gz", &ks2);
+        kputsnl(".gz", &ks1);
+        kputsnl(".gz", &ks2);
     }
     FILE *c1_popen = popen(ks1.s, "w");
     FILE *c2_popen = popen(ks2.s, "w");

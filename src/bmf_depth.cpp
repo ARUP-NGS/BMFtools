@@ -361,7 +361,7 @@ int depth_main(int argc, char *argv[])
 
         for(i = 0; i < n; ++i) {
             kputc('\t', &str);
-            kputs(region_name.c_str(), &str);
+            kputsn(region_name.c_str(), region_name.size(), &str);
             std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
             std::sort(aux[i]->collapsed_counts.begin(), aux[i]->collapsed_counts.end());
             std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
@@ -385,7 +385,7 @@ int depth_main(int argc, char *argv[])
             kputc('|', &str);
             ksprintf(&str, "%f%%", singleton_mean / collapsed_mean * 100);
         }
-        kputs(str.s, &cov_str);
+        kputsn(str.s, str.l, &cov_str);
         kputc('\n', &cov_str);
         bam_mplp_destroy(mplp);
         ++lineno;
