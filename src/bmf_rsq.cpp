@@ -334,12 +334,12 @@ void update_bam1(bam1_t *p, bam1_t *b)
     int n_changed(dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata));
     if(pdata) bam_aux_del(p, pdata);
     // If the collapsed observation is now duplex but wasn't before, this updates the DR tag.
-    if(pTMP != pFM && pTMP != 0 && (pdata = bam_aux_get(p, "DR")) != nullptr && bam_aux2i(pdata) == 0) {
+    if(pTMP != pFM && pTMP != 0 && (pdata = bam_aux_get(p, "DR")) && bam_aux2i(pdata) == 0) {
         pTMP = 1;
         bam_aux_del(p, pdata);
         bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
     }
-    if((pdata = bam_aux_get(p, "NP")) != nullptr) {
+    if((pdata = bam_aux_get(p, "NP"))) {
         bdata = bam_aux_get(b, "NP");
         pTMP = bam_aux2i(pdata) + (bdata ? bam_aux2i(bdata) : 1);
         bam_aux_del(p, pdata);
