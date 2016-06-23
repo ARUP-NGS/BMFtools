@@ -483,8 +483,9 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
             last_tid = b->core.tid;
             cond_free(ref);
             LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-            ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
-            if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+            ;
+            if((ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen))== nullptr)
+                LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
         }
         pos = b->core.pos;
         if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
@@ -540,13 +541,13 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
     if(!f->r1) f->r1 = readerr_init(f->l);
     if(!f->r2) f->r2 = readerr_init(f->l);
-    samFile *fp = sam_open_format(fname, "r", open_fmt);
-    bam_hdr_t *hdr = sam_hdr_read(fp);
+    samFile *fp(sam_open_format(fname, "r", open_fmt));
+    bam_hdr_t *hdr(sam_hdr_read(fp));
     if (!hdr)
         LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
     int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1;
     unsigned ind;
-    bam1_t *b = bam_init1();
+    bam1_t *b(bam_init1());
     char *ref = nullptr; // Will hold the sequence for a  chromosome
     if(f->refcontig) {
         for(i = 0; i < hdr->n_targets; ++i) {

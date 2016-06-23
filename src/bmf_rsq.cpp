@@ -57,7 +57,6 @@ struct Stack {
         free(a);
     }
     void add(const bam1_t *b) {
-        LOG_DEBUG("N: %u.\n", n);
         if(n + 1 >= m) {
             kroundup32(m);
             LOG_DEBUG("Max increased to %lu.\n", m);
@@ -66,11 +65,7 @@ struct Stack {
             memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
             for(unsigned i = n; i < m; ++i) stack[i] = a + i;
         }
-        LOG_DEBUG("a + n ->data: %p.\n", (void *)(a + n)->data);
-        bam_copy1(a + n, b);
-        LOG_DEBUG("a + n ->data: %p.\n", (void *)(a + n)->data);
-        LOG_DEBUG("Copied to el %u.\n", n);
-        ++n;
+        bam_copy1(a + n++, b);
     }
     void clear() {
         memset(a, 0, n * sizeof(bam1_t));
