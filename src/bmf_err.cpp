@@ -422,7 +422,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
     int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
     char *ref = nullptr; // Will hold the sequence for a  chromosome
     khash_t(obs) *hash;
-    uint8_t *seq, *drdata, *fpdata;
+    uint8_t *seq;
     uint32_t *cigar, *pv_array, *fa_array;
     khiter_t k;
     if(f->refcontig) {
@@ -438,11 +438,10 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
         if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
         pv_array = (uint32_t *)dlib::array_tag(b, "PV");
         fa_array = (uint32_t *)dlib::array_tag(b, "FA");
-        FM = bam_itag(b, "FM");
-        drdata = bam_aux_get(b, "DR");
-        fpdata = bam_aux_get(b, "FP");
-        DR = dlib::int_tag_zero(drdata);
-        FP = dlib::int_tag_zero(fpdata);
+        FM = (seq = bam_aux_get(b, "FM")) ? bam_aux2i(seq): 1;
+        FM = dlib::int_tag_zero(b, "FM");
+        DR = dlib::int_tag_zero(b, "DR");
+        FP = dlib::int_tag_zero(b, "FP");
         // Pass reads without FP tag.
         if(b->core.flag & (BAM_FSECONDARY | BAM_FUNMAP | BAM_FQCFAIL | BAM_FDUP)) {
             ++f->nskipped;
