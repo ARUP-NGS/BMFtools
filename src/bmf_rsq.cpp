@@ -19,11 +19,102 @@ struct rsq_aux_t {
     bam_hdr_t *hdr; // BAM header
     std::unordered_map<std::string, std::string> realign_pairs;
 };
+inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp=0);
+
+struct Stack {
+	unsigned n; // Number used
+	unsigned m; // Maximum allocated
+	bam1_t *a; // Array
+
+	Stack(unsigned _m=0): n(0), m(_m), a((bam1_t *)malloc(m * sizeof(bam1_t)))
+	{}
+	~Stack() {
+		std::for_each(a + m, a, [](bam1_t const b)->void {
+			free(b.data);
+		});
+	}
+	void add(const bam1_t *b) {
+		if(n + 1 >= m) {
+			kroundup32(m);
+			LOG_DEBUG("Max increased to %lu.\n", m);
+			a = (bam1_t *)realloc(a, sizeof(bam1_t) * m); //
+			memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
+		}
+		bam_copy1(a + n++, b);
+	}
+	void clear() {
+		memset(a, 0, n * sizeof(bam1_t));
+		n = 0;
+	}
+	void write_stack_pe(rsq_aux_t *settings);
+	void write_stack_se(rsq_aux_t *settings);
+};
+
+void Stack::write_stack_se(rsq_aux_t *settings) {}
+
+void Stack::write_stack_pe(rsq_aux_t *settings)
+{
+    if(settings->is_se) return write_stack_se(settings);
+    //size_t n = 0;
+    //LOG_DEBUG("Starting to write stack\n");
+    uint8_t *data;
+    std::string qname;
+    for(unsigned i = 0; i < n; ++i) {
+        if(a[i].data) {
+            if((data = bam_aux_get(a + i, "NC"))) {
+                //LOG_DEBUG("Trying to write.\n");
+                qname = bam_get_qname(a + i);
+                if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+                    settings->realign_pairs[qname] = dlib::bam2cppstr(a + i);
+                } else {
+                    // Make sure the read names/barcodes match.
+                    // Write read 1 out first.
+                    if((a + i)->core.flag & BAM_FREAD2) {
+                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                        bam2ffq((a + i), settings->fqh);
+                    } else {
+                        bam2ffq((a + i), settings->fqh);
+                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                    }
+                    // Clear entry, as there can only be two.
+                    settings->realign_pairs.erase(qname);
+                }
+            } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
+                LOG_DEBUG("Trying to write write supp or stuff.\n");
+                // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
+                qname = bam_get_qname((a + i));
+                if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+                    settings->realign_pairs[qname] = dlib::bam2cppstr((a + i));
+                } else {
+                    // Make sure the read names/barcodes match.
+                    //assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
+                    // Write read 1 out first.
+                    if((a + i)->core.flag & BAM_FREAD2) {
+                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                        //bam2ffq((a + i), settings->fqh, qname);
+                        bam2ffq((a + i), settings->fqh, 1);
+                    } else {
+                        //bam2ffq((a + i), settings->fqh, qname);
+                        bam2ffq((a + i), settings->fqh, 1);
+                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
+                    }
+                    // Clear entry, as there can only be two.
+                    settings->realign_pairs.erase(qname);
+                }
+            } else {
+                for(const char *tag: {"MU", "ms", "LM"})
+                    if((data = bam_aux_get((a + i), tag)))
+                        bam_aux_del((a + i), data);
+                sam_write1(settings->out, settings->hdr, (a + i));
+            }
+        }
+    }
+}
 
 static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
                                                                &same_stack_ucs, &same_stack_ucs_se};
 
-inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp=0)
+inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 {
     static const int sp = 1;
     int i;
@@ -292,13 +383,15 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 }
 
 
-inline int stringhd(char *a, char *b) {
+inline int stringhd(char *a, char *b)
+{
     int hd = 0;
     while(*a) hd += (*a++ != *b++);
     return hd;
 }
 
-inline int string_linear(char *a, char *b, int mmlim) {
+inline int string_linear(char *a, char *b, int mmlim)
+{
     int hd = 0;
     while(*a)
         if(*a++ != *b++)

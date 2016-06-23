@@ -9,7 +9,7 @@ namespace bmf {
 
 int vet_main(int, char **);
 
-const uint64_t NUM_PREALLOCATED_ALLELES = 4uL;
+static uint64_t NUM_PREALLOCATED_ALLELES = 4uL;
 const char *bmf_header_lines[] =  {
         "##INFO=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">",
         "##INFO=<ID=BMF_QSS,Number=A,Type=Integer,Description=\"Q Score Sum for BMF-passing observations for allele.\">",

@@ -564,7 +564,9 @@ int vet_main(int argc, char *argv[])
         switch (c) {
         case 'B': output_bcf = 1; break;
         case 'a': aux.minFA = atoi(optarg); break;
-        case 'A': NUM_PREALLOCATED_ALLELES = strtoull(optarg, 0, 0); LOG_DEBUG("Num preallocated: %lu\n", NUM_PREALLOCATED_ALLELES); break;
+        case 'A': NUM_PREALLOCATED_ALLELES = strtoull(optarg, 0, 0);
+                  LOG_DEBUG("Num preallocated: %lu\n", NUM_PREALLOCATED_ALLELES);
+                  break;
         case 'c': aux.min_count = atoi(optarg); break;
         case 'D': aux.min_duplex = atoi(optarg); break;
         case 's': aux.minFM = atoi(optarg); break;
