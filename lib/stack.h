@@ -8,10 +8,10 @@
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 #define bcf_int32_vec(header, vrec, tag, vector) \
-	do {\
-		int i;\
+    do {\
+        int i;\
         if((i = bcf_update_format_int32(header, vrec, tag, (void *)vector.data(), vector.size())))\
-		    LOG_EXIT("Could not update header tag %s. Failure code %i.\n");\
+            LOG_EXIT("Could not update header tag %s. Failure code %i.\n");\
     } while(0)
 
 namespace bmf {

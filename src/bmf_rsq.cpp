@@ -9,6 +9,8 @@ namespace bmf {
 
 static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
+static const int sp(1);
+
 struct rsq_aux_t {
     FILE *fqh;
     samFile *in;
@@ -40,7 +42,7 @@ struct Stack {
             a((bam1_t *)calloc(m, sizeof(bam1_t))),
             stack((bam1_t **)malloc(m * sizeof(bam1_t *)))
     {
-    	for(unsigned i = 0; i < m; ++i) stack[i] = a + i;
+        for(unsigned i = 0; i < m; ++i) stack[i] = a + i;
     }
     ~Stack() {
         std::for_each(a + m, a, [](bam1_t const b)->void {
@@ -82,17 +84,27 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
                  dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
     bam1_t *b(bam_init1());
     uint64_t count(0);
+    int last_pos = -1;
+    int last_tid = -1;
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
-        if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
+        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
             sam_write1(settings->out, settings->hdr, b);
+            continue;
+        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
         if(n == 0 || fn(b, a) == 0) {
             //LOG_DEBUG("Flattening stack\n");
             // New stack -- flatten what we have and write it out.
-        	write_stack_pe(settings); // Flattens and clears stack.
+            if(a->core.pos < last_pos && a->core.tid == last_tid) {
+                LOG_EXIT("%i, %i, %s.\n", a->core.pos, last_pos, bam_get_qname(a));
+            }
+            last_pos = a->core.pos;
+            last_tid = a->core.tid;
+            write_stack_pe(settings); // Flattens and clears stack.
         }
         add(b);
     }
@@ -130,8 +142,7 @@ void Stack::flatten()
                 assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
                 update_bam1(stack[j], stack[i]);
-                bam_destroy1(stack[i]);
-                stack[i] = nullptr;
+                stack[i]->data = nullptr;
                 break;
                 // "break" in case there are multiple within hamming distance.
                 // Otherwise, I'll end up having memory mistakes.
@@ -163,6 +174,12 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
     //LOG_DEBUG("Starting to write stack\n");
     uint8_t *data;
     std::string qname;
+#if 0
+    const int pos = a[0].core.pos;
+    for(unsigned i = 0; i < n; ++i) {
+        assert(a[i].core.pos == pos);
+    }
+#endif
     for(unsigned i = 0; i < n; ++i) {
         if(a[i].data) {
             if((data = bam_aux_get(a + i, "NC"))) {
@@ -184,9 +201,10 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
                     settings->realign_pairs.erase(qname);
                 }
             } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
-                LOG_DEBUG("Trying to write write supp or stuff.\n");
+                //LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                 qname = bam_get_qname((a + i));
+                bam_aux_append(a + i, "SP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t*>(&sp)));
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                     settings->realign_pairs[qname] = dlib::bam2cppstr((a + i));
                 } else {
@@ -221,12 +239,11 @@ static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, 
 
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 {
-    static const int sp = 1;
     int i;
     uint8_t *rvdata;
     kstring_t ks{0, 120uL, (char *)malloc(120uL)};
-    ks.l = 1, ks.s[0] ='@', ks.s[1] = '\0';
-    kputsn(bam_get_qname(b), b->core.l_qname, &ks);
+    kputc('@', &ks);
+    kputsn(bam_get_qname(b), b->core.l_qname - 1, &ks);
     kputsnl(" PV:B:I", &ks);
     auto fa((uint32_t *)dlib::array_tag(b, "FA"));
     auto pv((uint32_t *)dlib::array_tag(b, "PV"));
@@ -238,7 +255,10 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
     write_if_found(rvdata, b, "NC", ks);
     write_if_found(rvdata, b, "DR", ks);
     write_if_found(rvdata, b, "NP", ks);
-    if(is_supp) bam_aux_append(b, "SP", 'i', sizeof(int), (uint8_t *)&sp);
+    if(is_supp) {
+        LOG_DEBUG("Writing supplemental.\n");
+        kputsnl("\tSP:i:1", &ks);
+    }
     kputc('\n', &ks);
     uint8_t *seq(bam_get_seq(b));
     char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -289,7 +309,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
     }
     int bFM(bam_aux2i(bdata));
     int pFM(bam_aux2i(pdata));
-    int pTMP;
+    int pTMP(0);
     if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
         memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
         assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
@@ -426,7 +446,6 @@ void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     }
 }
 
-
 void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 {
     if(settings->is_se) return write_stack_se(stack, settings);
@@ -456,7 +475,7 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
             } else if(settings->write_supp & (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
                 LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
-                std::string&& qname = bam_get_qname(stack->a[i]);
+                std::string&& qname(bam_get_qname(stack->a[i]));
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
                     settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
                 } else {
@@ -714,9 +733,9 @@ void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::functi
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
 #ifndef OLDRSQ
-	Stack stack(settings->mmlim, 1 << 8);
-	if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
-	else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
+    Stack stack(settings->mmlim, 1 << 8);
+    if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
+    else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
 #else
     dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
     settings->infer ? infer_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)])
