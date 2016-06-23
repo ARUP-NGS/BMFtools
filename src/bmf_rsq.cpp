@@ -7,6 +7,8 @@
 
 namespace bmf {
 
+static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
+
 struct rsq_aux_t {
     FILE *fqh;
     samFile *in;
@@ -19,41 +21,143 @@ struct rsq_aux_t {
     bam_hdr_t *hdr; // BAM header
     std::unordered_map<std::string, std::string> realign_pairs;
 };
+
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp=0);
 
-struct Stack {
-	unsigned n; // Number used
-	unsigned m; // Maximum allocated
-	bam1_t *a; // Array
+void update_bam1(bam1_t *p, bam1_t *b);
 
-	Stack(unsigned _m=0): n(0), m(_m), a((bam1_t *)malloc(m * sizeof(bam1_t)))
-	{}
-	~Stack() {
-		std::for_each(a + m, a, [](bam1_t const b)->void {
-			free(b.data);
-		});
-	}
-	void add(const bam1_t *b) {
-		if(n + 1 >= m) {
-			kroundup32(m);
-			LOG_DEBUG("Max increased to %lu.\n", m);
-			a = (bam1_t *)realloc(a, sizeof(bam1_t) * m); //
-			memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
-		}
-		bam_copy1(a + n++, b);
-	}
-	void clear() {
-		memset(a, 0, n * sizeof(bam1_t));
-		n = 0;
-	}
-	void write_stack_pe(rsq_aux_t *settings);
-	void write_stack_se(rsq_aux_t *settings);
+struct Stack {
+    int mmlim;
+    unsigned n; // Number used
+    unsigned m; // Maximum allocated
+    bam1_t *a; // Array
+    bam1_t **stack; // Pointers to reads.
+
+    Stack(int _mmlim, unsigned _m=0):
+            mmlim(_mmlim),
+            n(0),
+            m(_m),
+            a((bam1_t *)calloc(m, sizeof(bam1_t))),
+            stack((bam1_t **)malloc(m * sizeof(bam1_t *)))
+    {
+    	for(unsigned i = 0; i < m; ++i) stack[i] = a + i;
+    }
+    ~Stack() {
+        std::for_each(a + m, a, [](bam1_t const b)->void {
+            free(b.data);
+        });
+        free(stack);
+    }
+    void add(const bam1_t *b) {
+        if(n + 1 >= m) {
+            kroundup32(m);
+            LOG_DEBUG("Max increased to %lu.\n", m);
+            a = (bam1_t *)realloc(a, sizeof(bam1_t) * m); //
+            stack = (bam1_t **)realloc(stack, sizeof(bam1_t *) * m); //
+            memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
+            for(unsigned i = n; i < m; ++i) stack[i] = a + i;
+        }
+        bam_copy1(a + n++, b);
+    }
+    void clear() {
+        memset(a, 0, n * sizeof(bam1_t));
+        n = 0;
+    }
+    void write_stack_pe(rsq_aux_t *settings);
+    void write_stack_se(rsq_aux_t *settings);
+    void flatten();
+    void pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
+    void se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
 };
 
-void Stack::write_stack_se(rsq_aux_t *settings) {}
+void Stack::se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn){
+}
+
+void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn)
+{
+    // This selects the proper function to use for deciding if reads belong in the same stack.
+    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+    bam1_t *b(bam_init1());
+    uint64_t count(0);
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+        if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
+            sam_write1(settings->out, settings->hdr, b);
+            continue;
+        }
+        //LOG_DEBUG("Read a read!\n");
+        if(n == 0 || fn(b, a) == 0) {
+            //LOG_DEBUG("Flattening stack\n");
+            // New stack -- flatten what we have and write it out.
+        	write_stack_pe(settings); // Flattens and clears stack.
+        }
+        add(b);
+    }
+    write_stack_pe(settings);
+    bam_destroy1(b);
+    // Handle any unpaired reads, though there shouldn't be any in real datasets.
+    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
+    if(settings->realign_pairs.size()) {
+        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+        for(auto pair: settings->realign_pairs)
+            puts(pair.second.c_str());
+#endif
+    }
+}
+
+void Stack::flatten()
+{
+    unsigned i, j;
+    for(i = 0; i < n; ++i) stack[i] = a + i;
+    std::sort(stack, stack + n, [](bam1_t *a, bam1_t *b) {
+            return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+    });
+    for(i = 0; i < n; ++i) {
+        for(j = i + 1; j < n; ++j) {
+            //assert(key == ucs_sort_core_key(stack->a[j]));
+            //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
+            //assert(tid == stack->a[j]->core.tid);
+            //assert(mucs == bam_itag(stack->a[j], "MU"));
+            if(stack[i]->core.l_qseq != stack[j]->core.l_qseq)
+                continue;
+            if(stack[i]->core.l_qname != stack[j]->core.l_qname)
+                continue;
+            if(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim) {
+                assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
+                //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
+                update_bam1(stack[j], stack[i]);
+                bam_destroy1(stack[i]);
+                stack[i] = nullptr;
+                break;
+                // "break" in case there are multiple within hamming distance.
+                // Otherwise, I'll end up having memory mistakes.
+                // Besides, that read set will get merged into the later read in the set.
+            }
+        }
+    }
+}
+
+void Stack::write_stack_se(rsq_aux_t *settings)
+{
+    uint8_t *data;
+    for(unsigned i = 0; i < n; ++i) {
+        if((a + i)->data) {
+            if((data = bam_aux_get((a + i), "NC")))
+                bam2ffq((a + i), settings->fqh);
+            else
+                sam_write1(settings->out, settings->hdr, (a + i));
+        }
+    }
+    clear();
+}
 
 void Stack::write_stack_pe(rsq_aux_t *settings)
 {
+    flatten();
     if(settings->is_se) return write_stack_se(settings);
     //size_t n = 0;
     //LOG_DEBUG("Starting to write stack\n");
@@ -109,6 +213,7 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
             }
         }
     }
+    clear();
 }
 
 static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
@@ -225,7 +330,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
     uint8_t *pSeq(bam_get_seq(p));
     uint8_t *bQual(bam_get_qual(b));
     uint8_t *pQual(bam_get_qual(p));
-    const int qlen = p->core.l_qseq;
+    const int qlen(p->core.l_qseq);
     int8_t ps, bs;
 
     if(p->core.flag & (BAM_FREVERSE)) {
@@ -383,13 +488,6 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 }
 
 
-inline int stringhd(char *a, char *b)
-{
-    int hd = 0;
-    while(*a) hd += (*a++ != *b++);
-    return hd;
-}
-
 inline int string_linear(char *a, char *b, int mmlim)
 {
     int hd = 0;
@@ -427,8 +525,8 @@ static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
                 continue;
             if(stack->a[i]->core.l_qname != stack->a[j]->core.l_qname)
                 continue;
-            if(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim) {
-                assert(stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
+            if(dlib::stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim) {
+                assert(dlib::stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
 #if !NDEBUG
                 if((k = kh_get(names, tmphash, bam_get_qname(stack->a[i])) == kh_end(tmphash))) {
@@ -480,8 +578,6 @@ static inline void flatten_stack_infer(dlib::tmp_stack_t *stack, int mmlim)
         }
     }
 }
-
-static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
 
 void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::function<int (bam1_t *, bam1_t *)> fn)
 {
@@ -617,10 +713,16 @@ void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::functi
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
+#ifndef OLDRSQ
+	Stack stack(settings->mmlim, 1 << 8);
+	if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
+	else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
+#else
     dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
     settings->infer ? infer_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)])
                     : rsq_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)]);
     free(stack.a);
+#endif
 }
 
 int rsq_usage(int retcode)
