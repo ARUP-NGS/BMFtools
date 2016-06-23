@@ -45,12 +45,19 @@ struct Stack {
         for(unsigned i = 0; i < m; ++i) stack[i] = a + i;
     }
     ~Stack() {
-        std::for_each(a + m, a, [](bam1_t const b)->void {
-            free(b.data);
-        });
+        LOG_DEBUG("m: %u.\n", m);
+        for(unsigned i = 0; i < m; ++i) {
+            LOG_DEBUG("Cleaning up.\n")
+            if(a[i].data) {
+                LOG_DEBUG("NONZERO %p\n", (void *)a[i].data);
+                free(a[i].data);
+            }
+        }
         free(stack);
+        free(a);
     }
     void add(const bam1_t *b) {
+        LOG_DEBUG("N: %u.\n", n);
         if(n + 1 >= m) {
             kroundup32(m);
             LOG_DEBUG("Max increased to %lu.\n", m);
@@ -59,7 +66,11 @@ struct Stack {
             memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
             for(unsigned i = n; i < m; ++i) stack[i] = a + i;
         }
-        bam_copy1(a + n++, b);
+        LOG_DEBUG("a + n ->data: %p.\n", (void *)(a + n)->data);
+        bam_copy1(a + n, b);
+        LOG_DEBUG("a + n ->data: %p.\n", (void *)(a + n)->data);
+        LOG_DEBUG("Copied to el %u.\n", n);
+        ++n;
     }
     void clear() {
         memset(a, 0, n * sizeof(bam1_t));
@@ -363,6 +374,13 @@ void update_bam1(bam1_t *p, bam1_t *b)
                 pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                 pFA[i] += bFA[i];
                 if(bQual[qleni1] > pQual[qleni1]) pQual[qleni1] = bQual[qleni1];
+#if !NDEBUG
+            } else {
+                n_base(pSeq, qleni1);
+                pFA[i] = 0;
+                pPV[i] = 0;
+            }
+#else
             } else if(ps == dlib::htseq::HTS_N) {
                 bam_set_base(pSeq, bSeq, qleni1);
                 pFA[i] = bFA[i];
@@ -381,6 +399,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
                 pQual[qleni1] = bQual[qleni1];
                 ++n_changed;
             }
+#endif
             if(pPV[i] < 3) {
                 pFA[i] = 0;
                 pPV[i] = 0;
