@@ -202,6 +202,7 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
             } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
                 //LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
+            	LOG_DEBUG("Writing supplemental.\n");
                 qname = bam_get_qname((a + i));
                 bam_aux_append(a + i, "SP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t*>(&sp)));
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
