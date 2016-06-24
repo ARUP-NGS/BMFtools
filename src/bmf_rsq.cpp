@@ -90,8 +90,6 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
                  dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
     bam1_t *b(bam_init1());
     uint64_t count(0);
-    int last_pos = -1;
-    int last_tid = -1;
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
         if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
@@ -105,11 +103,6 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
         if(n == 0 || fn(b, a) == 0) {
             //LOG_DEBUG("Flattening stack\n");
             // New stack -- flatten what we have and write it out.
-            if(a->core.pos < last_pos && a->core.tid == last_tid) {
-                LOG_EXIT("%i, %i, %s.\n", a->core.pos, last_pos, bam_get_qname(a));
-            }
-            last_pos = a->core.pos;
-            last_tid = a->core.tid;
             write_stack_pe(settings); // Flattens and clears stack.
         }
         add(b);
@@ -412,6 +405,14 @@ void update_bam1(bam1_t *p, bam1_t *b)
                 pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
                 pFA[i] += bFA[i];
                 if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
+#if !NDEBUG
+            } else {
+                n_base(pSeq, i);
+                pFA[i] = 0;
+                pPV[i] = 0;
+                pQual[i] = 2;
+            }
+#else
             } else if(ps == dlib::htseq::HTS_N) {
                 bam_set_base(pSeq, bSeq, i);
                 pFA[i] = bFA[i];
@@ -437,6 +438,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
                 pQual[i] = 2;
                 n_base(pSeq, i);
             }
+#endif
         }
     }
     bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
