@@ -227,10 +227,9 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
-        if(n == 0 || fn(b, a) == 0) {
-            //LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
-            write_stack_pe(settings); // Flattens and clears stack.
+        if(fn(b, a) == 0) write_stack_pe(settings); // Flattens and clears stack.
+        if(strcmp("ACCCTCTATCCAGCTGCA", bam_get_qname(b)) == 0) {
+            LOG_DEBUG("Adding ACCCTCTATCCAGCTGCA to stack at pos %i.\n", b->core.pos);
         }
         add(b);
     }
@@ -284,9 +283,15 @@ void Stack::flatten()
     if(infer) return flatten_infer();
     unsigned i, j;
     for(i = 0; i < n; ++i) stack[i] = a + i;
-    std::sort(stack, stack + n, [](bam1_t *a, bam1_t *b) {
+    std::sort(stack, stack + n, [](const bam1_t *a, const bam1_t *b) {
             return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
     });
+#if !NDEBUG
+    const int pos(a->core.pos);
+    for(unsigned i = 0; i < n; ++i){
+        assert(a[i].core.pos == pos);
+    }
+#endif
     for(i = 0; i < n; ++i) {
         for(j = i + 1; j < n; ++j) {
             //assert(key == ucs_sort_core_key(stack->a[j]));
@@ -345,8 +350,13 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
                 //LOG_DEBUG("Trying to write.\n");
                 qname = bam_get_qname(a + i);
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+                    if(strcmp(qname.c_str(), "ACCCTCTATCCAGCTGCA") == 0) {
+                            LOG_DEBUG("Adding read with name ACCCTCTATCCAGCTGCA to hash.\n");
+                    }
                     settings->realign_pairs[qname] = dlib::bam2cppstr(a + i);
                 } else {
+                    if(strcmp(qname.c_str(), "ACCCTCTATCCAGCTGCA") == 0)
+                        LOG_DEBUG("Found entry ACCCTCTATCCAGCTGCA.\n");
                     // Make sure the read names/barcodes match.
                     // Write read 1 out first.
                     if((a + i)->core.flag & BAM_FREAD2) {
@@ -362,7 +372,6 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
             } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
                 //LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
-                LOG_DEBUG("Writing supplemental.\n");
                 qname = bam_get_qname((a + i));
                 bam_aux_append(a + i, "SP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t*>(&sp)));
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -387,6 +396,12 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
                 for(const char *tag: {"MU", "ms", "LM"})
                     if((data = bam_aux_get((a + i), tag)))
                         bam_aux_del((a + i), data);
+#if !NDEBUG
+                if(strcmp(bam_get_qname(a + i), "ACCCTCTATCCAGCTGCA") == 0) {
+                    LOG_DEBUG("Writing out read in pair which wasn't marked as NC.\n");
+                    assert(!bam_aux_get(a + i, "NC"));
+                }
+#endif
                 sam_write1(settings->out, settings->hdr, (a + i));
             }
         }
