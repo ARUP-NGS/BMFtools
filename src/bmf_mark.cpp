@@ -62,7 +62,7 @@ static int add_pe_tags(bam1_t *b1, bam1_t *b2, void *data)
     return ret;
 }
 
-static int mark_usage() {
+static void mark_usage() {
     fprintf(stderr,
                     "Adds positional bam tags for a read and its mate for bmftools rsq and bmftools infer.\n"
                     "Meant primarily for piping to avoid I/O. Default compression is therefore 0. Typical compression for writing to disk: 6.\n"
@@ -123,13 +123,10 @@ int mark_main(int argc, char *argv[])
     dlib::BamHandle inHandle(in);
     dlib::add_pg_line(inHandle.header, argc, argv, "bmftools mark", BMF_VERSION, "bmftools", "Adds mate information to aux tags");
     dlib::BamHandle outHandle(out, inHandle.header, "wb");
-    if(is_se) {
-        ret = dlib::abstract_single_iter(inHandle.fp, inHandle.header, outHandle.fp,
-                                         &add_se_tags, &settings);
-    } else {
-        ret = dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
-                                       &add_pe_tags, &settings);
-    }
+    ret = is_se ? dlib::abstract_single_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                             &add_se_tags, &settings)
+                : dlib::abstract_pair_iter(inHandle.fp, inHandle.header, outHandle.fp,
+                                           &add_pe_tags, &settings);
 
     if(ret == EXIT_SUCCESS)
         LOG_INFO("Successfully complete bmftools mark.\n");

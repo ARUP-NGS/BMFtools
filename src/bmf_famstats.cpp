@@ -23,8 +23,9 @@ KHASH_MAP_INIT_INT64(fm, uint64_t)
 
 struct famstats_t {
     uint64_t n_pass;
-    uint64_t fp_fail_count;
+    uint64_t n_fp_fail;
     uint64_t n_fm_fail;
+    uint64_t n_mq_fail;
     uint64_t n_flag_fail;
     uint64_t allfm_sum;
     uint64_t allfm_counts;
@@ -114,13 +115,18 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 
 static void print_stats(famstats_t *stats, FILE *fp, famstats_fm_settings_t *settings)
 {
+    const uint64_t total_failed(stats->n_fm_fail +
+                                stats->n_flag_fail +
+                                stats->n_mq_fail +
+                                (settings->skip_fp_fail ? stats->n_fp_fail: 0));
     fprintf(fp, "#Number passing filters: %lu\n", stats->n_pass);
-    fprintf(fp, "#Number failing filters: %lu\n", stats->fp_fail_count + stats->n_fm_fail + stats->n_flag_fail);
+    fprintf(fp, "#Number failing filters: %lu\n", total_failed);
     if(settings->skip_fp_fail)
-        fprintf(fp, "#Number failing FP filters: %lu\n", stats->fp_fail_count);
+        fprintf(fp, "#Number failing FP filters: %lu\n", stats->n_fp_fail);
     else
-        fprintf(fp, "#Count for FP failed reads, still included in total counts: %lu\n", stats->fp_fail_count);
+        fprintf(fp, "#Count for FP failed reads, still included in total counts: %lu\n", stats->n_fp_fail);
     fprintf(fp, "#Number failing FM filters: %lu\n", stats->n_fm_fail);
+    fprintf(fp, "#Number failing MQ filters: %lu\n", stats->n_mq_fail);
     fprintf(fp, "#Number failing flag filters (secondary, supplementary): %lu\n", stats->n_flag_fail);
     fprintf(fp, "#Summed FM (total founding reads): %lu\n", stats->allfm_sum);
     fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu\n", stats->realfm_sum);
@@ -144,9 +150,12 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settin
 {
     uint8_t *data;
     if(b->core.flag & BAM_FREAD2) return; // Silently skip all read 2s since they have the same FM values.
-    if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) ||
-            b->core.qual < settings->minmq) {
+    if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY))) {
         ++s->n_flag_fail;
+        return;
+    }
+    if(b->core.qual < settings->minmq) {
+        ++s->n_mq_fail;
         return;
     }
     const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
@@ -158,7 +167,7 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settin
         return;
     }
     if(bam_itag(b, "FP") == 0) {
-        ++s->fp_fail_count;
+        ++s->n_fp_fail;
         if(settings->skip_fp_fail) return;
     }
     ++s->n_pass;
@@ -241,6 +250,7 @@ static int famstats_fm_usage(int exit_status)
                     "Flags:\n"
                     "-m Set minimum mapping quality. Default: 0.\n"
                     "-f Set minimum family size. Default: 0.\n"
+                    "-F Skip reads marked as qc fail. By default, includes.\n"
             );
     exit(exit_status);
     return exit_status;
