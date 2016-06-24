@@ -359,86 +359,77 @@ void update_bam1(bam1_t *p, bam1_t *b)
             ps = bam_seqi(pSeq, qleni1);
             bs = bam_seqi(bSeq, qleni1);
             if(ps == bs) {
-                pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
-                pFA[i] += bFA[i];
-                if(bQual[qleni1] > pQual[qleni1]) pQual[qleni1] = bQual[qleni1];
-#if !NDEBUG
-            } else {
-                n_base(pSeq, qleni1);
-                pFA[i] = 0;
-                pPV[i] = 0;
-            }
-#else
+                if((pPV[i] = agreed_pvalues(pPV[i], bPV[i])) < 3) {
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    pQual[qleni1] = 2;
+                } else {
+                    pFA[i] += bFA[i];
+                    if(bQual[qleni1] > pQual[qleni1])
+                        pQual[qleni1] = bQual[qleni1];
+                }
             } else if(ps == dlib::htseq::HTS_N) {
                 bam_set_base(pSeq, bSeq, qleni1);
                 pFA[i] = bFA[i];
-                pPV[i] = bPV[i];
-                pQual[qleni1] = bQual[qleni1];
-                ++n_changed; // Note: goes from N to a useable nucleotide.
-                continue;
+                if(bPV[i] < 3) {
+                    pPV[i] = 0;
+                    pFA[i] = 0;
+                    pQual[qleni1] = 2;
+                } else {
+                    pPV[i] = bPV[i];
+                    pFA[i] = bFA[i];
+                    pQual[qleni1] = bQual[qleni1];
+                    ++n_changed; // Note: goes from N to a useable nucleotide.
+                }
             } else if(bs == dlib::htseq::HTS_N) {
                 continue;
             } else {
-                if(pPV[i] > bPV[i]) {
-                    bam_set_base(pSeq, bSeq, qleni1);
-                    pPV[i] = disc_pvalues(pPV[i], bPV[i]);
-                } else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
-                pFA[i] = bFA[i];
-                pQual[qleni1] = bQual[qleni1];
-                ++n_changed;
-            }
-#endif
-            if(pPV[i] < 3) {
+                n_base(pSeq, qleni1);
                 pFA[i] = 0;
                 pPV[i] = 0;
-                pQual[qleni1] = 2;
-                n_base(pSeq, qleni1);
-                continue;
             }
-            if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
         }
     } else {
         for(int i = 0; i < qlen; ++i) {
             ps = bam_seqi(pSeq, i);
             bs = bam_seqi(bSeq, i);
             if(ps == bs) {
-                pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
-                pFA[i] += bFA[i];
-                if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
-#if !NDEBUG
-            } else {
-                n_base(pSeq, i);
-                pFA[i] = 0;
-                pPV[i] = 0;
-                pQual[i] = 2;
-            }
-#else
+                if((pPV[i] = agreed_pvalues(pPV[i], bPV[i])) > 2) {
+                    pFA[i] += bFA[i];
+                    if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
+                } else {
+                    n_base(pSeq, i);
+                    pPV[i] = 0;
+                    pFA[i] = 0;
+                }
             } else if(ps == dlib::htseq::HTS_N) {
-                bam_set_base(pSeq, bSeq, i);
-                pFA[i] = bFA[i];
-                pPV[i] = bPV[i];
-                ++n_changed; // Note: goes from N to a useable nucleotide.
+                if(bPV[i] > 2) {
+                    bam_set_base(pSeq, bSeq, i);
+                    pFA[i] = bFA[i];
+                    pPV[i] = bPV[i];
+                    pQual[i] = bQual[i];
+                    ++n_changed; // Note: goes from N to a useable nucleotide.
+                } else {
+                    n_base(pSeq, i);
+                    pPV[i] = 0;
+                    pFA[i] = 0;
+                    pQual[i] = 2;
+                }
                 continue;
             } else if(bs == dlib::htseq::HTS_N) {
+                if(pPV[i] < 3) {
+                    n_base(pSeq, i);
+                    pPV[i] = 0;
+                    pFA[i] = 0;
+                    pQual[i] = 2;
+                }
                 continue;
             } else {
-                if(pPV[i] > bPV[i]) {
-                    bam_set_base(pSeq, bSeq, i);
-                    pPV[i] = disc_pvalues(pPV[i], bPV[i]);
-                } else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
-                pFA[i] = bFA[i];
-                pQual[i] = bQual[i];
-                ++n_changed;
-            }
-            if(pPV[i] > 2) {
-                if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
-            } else {
+                n_base(pSeq, i);
                 pFA[i] = 0;
                 pPV[i] = 0;
                 pQual[i] = 2;
-                n_base(pSeq, i);
             }
-#endif
         }
     }
     bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
