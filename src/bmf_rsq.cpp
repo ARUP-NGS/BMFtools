@@ -15,28 +15,35 @@ struct rsq_aux_t {
     FILE *fqh;
     samFile *in;
     samFile *out;
-    int mmlim; // Mismatch failure threshold.
+    uint32_t mmlim:6;
     uint32_t cmpkey:1; // 0 for pos, 1 for unclipped start position
     uint32_t is_se:1;
     uint32_t write_supp:1; // Write reads with supplementary alignments
     uint32_t infer:1; // Use inference instead of barcodes.
+    uint32_t trust_unmasked:1;
     bam_hdr_t *hdr; // BAM header
     std::unordered_map<std::string, std::string> realign_pairs;
 };
 
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp=0);
+inline void add_dummy_tags(bam1_t *b);
 
 void update_bam1(bam1_t *p, bam1_t *b);
+void update_bam1_unmasked(bam1_t *p, bam1_t *b);
 
 struct Stack {
-    int mmlim;
+    uint16_t mmlim:8;
+    uint16_t trust_unmasked:1;
+    uint16_t infer:1;
     unsigned n; // Number used
     unsigned m; // Maximum allocated
     bam1_t *a; // Array
     bam1_t **stack; // Pointers to reads.
 
-    Stack(int _mmlim, unsigned _m=0):
-            mmlim(_mmlim),
+    Stack(rsq_aux_t *settings, unsigned _m=0):
+            mmlim(settings->mmlim),
+            trust_unmasked(settings->trust_unmasked),
+            infer(settings->infer),
             n(0),
             m(_m),
             a((bam1_t *)calloc(m, sizeof(bam1_t))),
@@ -74,11 +81,129 @@ struct Stack {
     void write_stack_pe(rsq_aux_t *settings);
     void write_stack_se(rsq_aux_t *settings);
     void flatten();
+    inline void flatten_infer();
     void pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
+    void pe_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
     void se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
+    void se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
 };
 
+void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn){
+    // This selects the proper function to use for deciding if reads belong in the same stack.
+    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+    bam1_t *b(bam_init1());
+    uint64_t count(0);
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+        add_dummy_tags(b);
+        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
+            sam_write1(settings->out, settings->hdr, b);
+            continue;
+        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
+            continue;
+        }
+        //LOG_DEBUG("Read a read!\n");
+        if(n == 0 || fn(b, a) == 0) {
+            //LOG_DEBUG("Flattening stack\n");
+            // New stack -- flatten what we have and write it out.
+            write_stack_se(settings); // Flattens and clears stack.
+        }
+        add(b);
+    }
+    write_stack_se(settings);
+    bam_destroy1(b);
+    // Handle any unpaired reads, though there shouldn't be any in real datasets.
+    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
+    if(settings->realign_pairs.size()) {
+        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+        for(auto pair: settings->realign_pairs)
+            puts(pair.second.c_str());
+#endif
+    }
+}
+
 void Stack::se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn){
+    // This selects the proper function to use for deciding if reads belong in the same stack.
+    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+    if(infer) return se_core_infer(settings, fn);
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+    bam1_t *b(bam_init1());
+    uint64_t count(0);
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
+            sam_write1(settings->out, settings->hdr, b);
+            continue;
+        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
+            continue;
+        }
+        //LOG_DEBUG("Read a read!\n");
+        if(n == 0 || fn(b, a) == 0) {
+            //LOG_DEBUG("Flattening stack\n");
+            // New stack -- flatten what we have and write it out.
+            write_stack_se(settings); // Flattens and clears stack.
+        }
+        add(b);
+    }
+    write_stack_se(settings);
+    bam_destroy1(b);
+    // Handle any unpaired reads, though there shouldn't be any in real datasets.
+    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
+    if(settings->realign_pairs.size()) {
+        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+        for(auto pair: settings->realign_pairs)
+            puts(pair.second.c_str());
+#endif
+    }
+}
+
+void Stack::pe_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn)
+{
+    // This selects the proper function to use for deciding if reads belong in the same stack.
+    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
+                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+    bam1_t *b(bam_init1());
+    uint64_t count(0);
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+        add_dummy_tags(b);
+        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
+            sam_write1(settings->out, settings->hdr, b);
+            continue;
+        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
+            continue;
+        }
+        //LOG_DEBUG("Read a read!\n");
+        if(n == 0 || fn(b, a) == 0) {
+            //LOG_DEBUG("Flattening stack\n");
+            // New stack -- flatten what we have and write it out.
+            write_stack_pe(settings); // Flattens and clears stack.
+        }
+        add(b);
+    }
+    write_stack_pe(settings);
+    bam_destroy1(b);
+    // Handle any unpaired reads, though there shouldn't be any in real datasets.
+    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
+    if(settings->realign_pairs.size()) {
+        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
+#if !NDEBUG
+        for(auto pair: settings->realign_pairs)
+            puts(pair.second.c_str());
+#endif
+    }
 }
 
 void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn)
@@ -120,8 +245,41 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
     }
 }
 
+inline void Stack::flatten_infer()
+{
+    unsigned i, j;
+    for(i = 0; i < n; ++i) stack[i] = a + i;
+    std::sort(stack, stack + n, [](bam1_t *a, bam1_t *b) {
+            return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
+    });
+    for(i = 0; i < n; ++i) {
+        for(j = i + 1; j < n; ++j) {
+            //assert(key == ucs_sort_core_key(a[j]));
+            //assert(ucs == dlib::get_unclipped_start(a[j]));
+            //assert(tid == a[j]->core.tid);
+            //assert(mucs == bam_itag(a[j], "MU"));
+            if(stack[i]->core.l_qseq != stack[j]->core.l_qseq)
+                continue;
+            if(stack[i]->core.l_qname != stack[j]->core.l_qname)
+                continue;
+            //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(a[i]), bam_get_qname(a[j]));
+            if(trust_unmasked) {
+                update_bam1_unmasked(a + j, a + i);
+            } else {
+                update_bam1(a + j, a + i);
+            }
+            (a + i)->data = nullptr;
+            break;
+            // "break" in case there are multiple within hamming distance.
+            // Otherwise, I'll end up having memory mistakes.
+            // Besides, that read set will get merged into the later read in the set.
+        }
+    }
+}
+
 void Stack::flatten()
 {
+    if(infer) return flatten_infer();
     unsigned i, j;
     for(i = 0; i < n; ++i) stack[i] = a + i;
     std::sort(stack, stack + n, [](bam1_t *a, bam1_t *b) {
@@ -140,7 +298,12 @@ void Stack::flatten()
             if(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim) {
                 assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
-                update_bam1(stack[j], stack[i]);
+                if(trust_unmasked) {
+                    update_bam1_unmasked(stack[j], stack[i]);
+                } else {
+                    update_bam1(stack[j], stack[i]);
+                }
+                free(stack[i]->data);
                 stack[i]->data = nullptr;
                 break;
                 // "break" in case there are multiple within hamming distance.
@@ -153,6 +316,7 @@ void Stack::flatten()
 
 void Stack::write_stack_se(rsq_aux_t *settings)
 {
+    flatten();
     uint8_t *data;
     for(unsigned i = 0; i < n; ++i) {
         if((a + i)->data) {
@@ -202,7 +366,7 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
             } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
                 //LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
-            	LOG_DEBUG("Writing supplemental.\n");
+                LOG_DEBUG("Writing supplemental.\n");
                 qname = bam_get_qname((a + i));
                 bam_aux_append(a + i, "SP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t*>(&sp)));
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
@@ -299,7 +463,7 @@ inline int switch_names(char *n1, char *n2) {
 }
 
 
-void update_bam1(bam1_t *p, bam1_t *b)
+void update_bam1_unmasked(bam1_t *p, bam1_t *b)
 {
     uint8_t *bdata(bam_aux_get(b, "FM"));
     uint8_t *pdata(bam_aux_get(p, "FM"));
@@ -326,9 +490,10 @@ void update_bam1(bam1_t *p, bam1_t *b)
     pdata = bam_aux_get(p, "NC");
     bdata = bam_aux_get(b, "NC");
     int n_changed(dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata));
+    const int was_merged(((!!pdata) << 1) | (!!bdata));
     if(pdata) bam_aux_del(p, pdata);
     // If the collapsed observation is now duplex but wasn't before, this updates the DR tag.
-    if(pTMP != pFM && pTMP != 0 && (pdata = bam_aux_get(p, "DR")) && bam_aux2i(pdata) == 0) {
+    if(pTMP != pFM && pTMP && (pdata = bam_aux_get(p, "DR")) && bam_aux2i(pdata) == 0) {
         pTMP = 1;
         bam_aux_del(p, pdata);
         bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
@@ -370,6 +535,12 @@ void update_bam1(bam1_t *p, bam1_t *b)
                         pQual[qleni1] = bQual[qleni1];
                 }
             } else if(ps == dlib::htseq::HTS_N) {
+                if(was_merged & 2) {
+                    n_base(pSeq, qleni1);
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    continue;
+                }
                 bam_set_base(pSeq, bSeq, qleni1);
                 pFA[i] = bFA[i];
                 if(bPV[i] < 3) {
@@ -383,11 +554,18 @@ void update_bam1(bam1_t *p, bam1_t *b)
                     ++n_changed; // Note: goes from N to a useable nucleotide.
                 }
             } else if(bs == dlib::htseq::HTS_N) {
+                if(was_merged & 1) {
+                    n_base(pSeq, qleni1);
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    pQual[i] = 2;
+                }
                 continue;
             } else {
                 n_base(pSeq, qleni1);
                 pFA[i] = 0;
                 pPV[i] = 0;
+                pQual[i] = 2;
             }
         }
     } else {
@@ -404,6 +582,13 @@ void update_bam1(bam1_t *p, bam1_t *b)
                     pFA[i] = 0;
                 }
             } else if(ps == dlib::htseq::HTS_N) {
+                if(was_merged & 2) {
+                    n_base(pSeq, i);
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    pQual[i] = 2;
+                    continue;
+                }
                 if(bPV[i] > 2) {
                     bam_set_base(pSeq, bSeq, i);
                     pFA[i] = bFA[i];
@@ -418,6 +603,13 @@ void update_bam1(bam1_t *p, bam1_t *b)
                 }
                 continue;
             } else if(bs == dlib::htseq::HTS_N) {
+                if(was_merged & 1) {
+                    n_base(pSeq, i);
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    pQual[i] = 2;
+                    continue;
+                }
                 if(pPV[i] < 3) {
                     n_base(pSeq, i);
                     pPV[i] = 0;
@@ -425,6 +617,107 @@ void update_bam1(bam1_t *p, bam1_t *b)
                     pQual[i] = 2;
                 }
                 continue;
+            } else {
+                n_base(pSeq, i);
+                pFA[i] = 0;
+                pPV[i] = 0;
+                pQual[i] = 2;
+            }
+        }
+    }
+    bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
+}
+
+void update_bam1(bam1_t *p, bam1_t *b)
+{
+    uint8_t *bdata(bam_aux_get(b, "FM"));
+    uint8_t *pdata(bam_aux_get(p, "FM"));
+    if(UNLIKELY(!bdata || !pdata)) {
+        fprintf(stderr, "Required FM tag not found. Abort mission!\n");
+        exit(EXIT_FAILURE);
+    }
+    int bFM(bam_aux2i(bdata));
+    int pFM(bam_aux2i(pdata));
+    int pTMP(0);
+    if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
+        memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+        assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
+    }
+    pFM += bFM;
+    bam_aux_del(p, pdata);
+    bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
+    if((pdata = bam_aux_get(p, "RV")) != nullptr) {
+        pTMP = bam_aux2i(pdata) + bam_itag(b, "RV");
+        bam_aux_del(p, pdata);
+        bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pTMP);
+    }
+    // Handle NC (Number Changed) tag
+    pdata = bam_aux_get(p, "NC");
+    bdata = bam_aux_get(b, "NC");
+    int n_changed(dlib::int_tag_zero(pdata) + dlib::int_tag_zero(bdata));
+    if(pdata) bam_aux_del(p, pdata);
+    // If the collapsed observation is now duplex but wasn't before, this updates the DR tag.
+    if(pTMP != pFM && pTMP && (pdata = bam_aux_get(p, "DR")) && bam_aux2i(pdata) == 0) {
+        pTMP = 1;
+        bam_aux_del(p, pdata);
+        bam_aux_append(p, "DR", 'i', sizeof(int), (uint8_t *)&pTMP);
+    }
+    if((pdata = bam_aux_get(p, "NP"))) {
+        bdata = bam_aux_get(b, "NP");
+        pTMP = bam_aux2i(pdata) + (bdata ? bam_aux2i(bdata) : 1);
+        bam_aux_del(p, pdata);
+    } else {
+        bdata = bam_aux_get(b, "NP");
+        pTMP = (bdata ? bam_aux2i(bdata) : 1) + 1;
+    }
+    bam_aux_append(p, "NP", 'i', sizeof(int), reinterpret_cast<uint8_t *>(&pTMP));
+    uint32_t *bPV((uint32_t *)dlib::array_tag(b, "PV")); // Length of this should be b->l_qseq
+    uint32_t *pPV((uint32_t *)dlib::array_tag(p, "PV"));
+    uint32_t *bFA((uint32_t *)dlib::array_tag(b, "FA"));
+    uint32_t *pFA((uint32_t *)dlib::array_tag(p, "FA"));
+    uint8_t *bSeq(bam_get_seq(b));
+    uint8_t *pSeq(bam_get_seq(p));
+    uint8_t *bQual(bam_get_qual(b));
+    uint8_t *pQual(bam_get_qual(p));
+    const int qlen(p->core.l_qseq);
+    int8_t ps, bs;
+
+    if(p->core.flag & (BAM_FREVERSE)) {
+        int qleni1;
+        for(int i = 0; i < qlen; ++i) {
+            qleni1 = qlen - i - 1;
+            ps = bam_seqi(pSeq, qleni1);
+            bs = bam_seqi(bSeq, qleni1);
+            if(ps == bs) {
+                if((pPV[i] = agreed_pvalues(pPV[i], bPV[i])) < 3) {
+                    pFA[i] = 0;
+                    pPV[i] = 0;
+                    pQual[qleni1] = 2;
+                } else {
+                    pFA[i] += bFA[i];
+                    if(bQual[qleni1] > pQual[qleni1])
+                        pQual[qleni1] = bQual[qleni1];
+                }
+            } else {
+                n_base(pSeq, qleni1);
+                pFA[i] = 0;
+                pPV[i] = 0;
+                pQual[qleni1] = 2;
+            }
+        }
+    } else {
+        for(int i = 0; i < qlen; ++i) {
+            ps = bam_seqi(pSeq, i);
+            bs = bam_seqi(bSeq, i);
+            if(ps == bs) {
+                if((pPV[i] = agreed_pvalues(pPV[i], bPV[i])) > 2) {
+                    pFA[i] += bFA[i];
+                    if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
+                } else {
+                    n_base(pSeq, i);
+                    pPV[i] = 0;
+                    pFA[i] = 0;
+                }
             } else {
                 n_base(pSeq, i);
                 pFA[i] = 0;
@@ -525,59 +818,6 @@ inline int string_linear(char *a, char *b, int mmlim)
     return 1;
 }
 
-KHASH_SET_INIT_STR(names)
-
-#if !NDEBUG
-static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim, bam_hdr_t *hdr, samFile *tmp, khash_t(names) *tmphash)
-#else
-static inline void flatten_stack_linear(dlib::tmp_stack_t *stack, int mmlim)
-#endif
-{
-    std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
-            return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
-    });
-#if !NDEBUG
-    khiter_t k;
-    int khr;
-#endif
-    for(unsigned i = 0; i < stack->n; ++i) {
-        for(unsigned j = i + 1; j < stack->n; ++j) {
-            //assert(key == ucs_sort_core_key(stack->a[j]));
-            //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
-            //assert(tid == stack->a[j]->core.tid);
-            //assert(mucs == bam_itag(stack->a[j], "MU"));
-            assert(stack->a[i]);
-            assert(stack->a[j]);
-            if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
-                continue;
-            if(stack->a[i]->core.l_qname != stack->a[j]->core.l_qname)
-                continue;
-            if(dlib::stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim) {
-                assert(dlib::stringhd(bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j])) <= mmlim);
-                //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-#if !NDEBUG
-                if((k = kh_get(names, tmphash, bam_get_qname(stack->a[i])) == kh_end(tmphash))) {
-                    //LOG_DEBUG("Writing read %s to file \n", bam_get_qname(stack->a[i]));
-                    k = kh_put(names, tmphash, bam_get_qname(stack->a[i]), &khr);
-                    sam_write1(tmp, hdr, stack->a[i]);
-                }
-                if((k = kh_get(names, tmphash, bam_get_qname(stack->a[j])) == kh_end(tmphash))) {
-                    k = kh_put(names, tmphash, bam_get_qname(stack->a[j]), &khr);
-                    sam_write1(tmp, hdr, stack->a[j]);
-                }
-#endif
-                update_bam1(stack->a[j], stack->a[i]);
-                bam_destroy1(stack->a[i]);
-                stack->a[i] = nullptr;
-                break;
-                // "break" in case there are multiple within hamming distance.
-                // Otherwise, I'll end up having memory mistakes.
-                // Besides, that read set will get merged into the later read in the set.
-            }
-        }
-    }
-}
-
 static inline void flatten_stack_infer(dlib::tmp_stack_t *stack, int mmlim)
 {
     std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
@@ -604,67 +844,6 @@ static inline void flatten_stack_infer(dlib::tmp_stack_t *stack, int mmlim)
             // Besides, that read set will get merged into the later read in the set.
         }
     }
-}
-
-void rsq_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::function<int (bam1_t *, bam1_t *)> fn)
-{
-#if !NDEBUG
-    samFile *tmp = sam_open("prersq_reads.bam", "wb");
-    sam_hdr_write(tmp, settings->hdr);
-    khash_t(names) *tmphash = kh_init(names);
-#endif
-    // This selects the proper function to use for deciding if reads belong in the same stack.
-    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
-        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
-    bam1_t *b = bam_init1();
-    uint64_t count = 0;
-    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
-        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
-        if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
-            sam_write1(settings->out, settings->hdr, b);
-            continue;
-        }
-        //LOG_DEBUG("Read a read!\n");
-        if(stack->n == 0 || fn(b, *stack->a) == 0) {
-            //LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
-#if !NDEBUG
-            flatten_stack_linear(stack, settings->mmlim, settings->hdr, tmp, tmphash); // Change this later if the chemistry necessitates it.
-#else
-            flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
-            write_stack(stack, settings);
-            stack->n = 1;
-            stack->a[0] = bam_dup1(b);
-            //LOG_DEBUG("Flattened stack\n");
-        } else {
-            //LOG_DEBUG("Stack now has size %lu.\n", stack->n);
-            stack_insert(stack, b);
-        }
-    }
-#if !NDEBUG
-    flatten_stack_linear(stack, settings->mmlim, settings->hdr, tmp, tmphash); // Change this later if the chemistry necessitates it.
-#else
-    flatten_stack_linear(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-#endif
-    write_stack(stack, settings);
-    stack->n = 0;
-    bam_destroy1(b);
-    // Handle any unpaired reads, though there shouldn't be any in real datasets.
-    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
-    if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
-#if !NDEBUG
-        for(auto pair: settings->realign_pairs)
-            puts(pair.second.c_str());
-#endif
-    }
-#if !NDEBUG
-    sam_close(tmp);
-    kh_destroy(names, tmphash);
-#endif
 }
 
 static const std::vector<uint32_t> ONES(300uL, 1);
@@ -740,16 +919,9 @@ void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::functi
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
-#ifndef OLDRSQ
-    Stack stack(settings->mmlim, 1 << 8);
+    Stack stack(settings, 1 << 8);
     if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
     else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
-#else
-    dlib::tmp_stack_t stack{0, STACK_START, (bam1_t **)malloc(STACK_START * sizeof(bam1_t *))};
-    settings->infer ? infer_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)])
-                    : rsq_core(settings, &stack, fns[settings->is_se | (settings->cmpkey<<1)]);
-    free(stack.a);
-#endif
 }
 
 int rsq_usage(int retcode)
@@ -766,6 +938,7 @@ int rsq_usage(int retcode)
                     "-S      Flag to indicate that this rescue is for single-end data.\n"
                     "-t      Mismatch limit. Default: 2\n"
                     "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
+                    "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
                     "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
                     "Note: -u requires pre-processing with bmftools mark_unclipped.\n"
                     "-i      Flag to ignore barcodes and infer solely by positional information. [THIS IS BROKEN]\n"
@@ -788,10 +961,11 @@ int rsq_main(int argc, char *argv[])
 
     if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-    while ((c = getopt(argc, argv, "l:f:t:iSHush?")) >= 0) {
+    while ((c = getopt(argc, argv, "l:f:t:miSHush?")) >= 0) {
         switch (c) {
         case 's': settings.write_supp = 1; break;
         case 'S': settings.is_se = 1; break;
+        case 'm': settings.trust_unmasked = 1; break;
         case 'u':
             settings.cmpkey = cmpkey::UNCLIPPED;
             LOG_INFO("Unclipped start position chosen for cmpkey.\n");
