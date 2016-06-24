@@ -337,12 +337,6 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
     //LOG_DEBUG("Starting to write stack\n");
     uint8_t *data;
     std::string qname;
-#if 0
-    const int pos = a[0].core.pos;
-    for(unsigned i = 0; i < n; ++i) {
-        assert(a[i].core.pos == pos);
-    }
-#endif
     for(unsigned i = 0; i < n; ++i) {
         if(a[i].data) {
             if((data = bam_aux_get(a + i, "NC"))) {
@@ -430,9 +424,9 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
     seqbuf[i] = '\0';
     if (b->core.flag & BAM_FREVERSE) { // reverse complement
         for(i = 0; i < b->core.l_qseq>>1; ++i) {
-            const int8_t t = seqbuf[b->core.l_qseq - i - 1];
+            const int8_t t = nuc_cmpl(seqbuf[b->core.l_qseq - i - 1]);
             seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
-            seqbuf[i] = nuc_cmpl(t);
+            seqbuf[i] = t;
         }
         if(b->core.l_qseq&1) seqbuf[i] = nuc_cmpl(seqbuf[i]);
     }
