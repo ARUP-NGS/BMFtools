@@ -4,7 +4,9 @@
 #include <zlib.h>
 #include <unordered_set>
 #include <algorithm>
+#include <numeric>
 #include <vector>
+#include <cmath>
 #include "htslib/kseq.h"
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"

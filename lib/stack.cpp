@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <numeric>
 #include "include/igamc_cephes.h"
 #include "dlib/misc_util.h"
 

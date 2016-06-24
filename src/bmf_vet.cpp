@@ -2,6 +2,7 @@
 
 #include <getopt.h>
 #include <algorithm>
+#include <numeric>
 #include <assert.h>
 
 #include "dlib/bam_util.h"
