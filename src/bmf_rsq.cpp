@@ -65,16 +65,18 @@ struct Stack {
     }
     void add(const bam1_t *b) {
         if(n + 1 >= m) {
-            kroundup32(m);
+            m <<= 1;
             LOG_DEBUG("Max increased to %lu.\n", m);
             a = (bam1_t *)realloc(a, sizeof(bam1_t) * m); //
             stack = (bam1_t **)realloc(stack, sizeof(bam1_t *) * m); //
             memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
             for(unsigned i = n; i < m; ++i) stack[i] = a + i;
+            LOG_DEBUG("Finished adding.\n");
         }
         bam_copy1(a + n++, b);
     }
     void clear() {
+        for(unsigned i = 0; i < n; ++i) free((a + i)->data);
         memset(a, 0, n * sizeof(bam1_t));
         n = 0;
     }
