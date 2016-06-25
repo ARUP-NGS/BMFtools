@@ -31,17 +31,16 @@ char *make_salted_fname(char *base);
  */
 CONST static inline int test_hp(char *barcode, int threshold)
 {
-    int run = 0; char last = '\0';
+    int run(0);
+    char last('\0');
     while(*barcode) {
         if(*barcode == 'N') {
             return 0;
         }
         if(*barcode == last) {
-            if(++run == threshold) {
-                return 0;
-            }
+            if(++run == threshold) return 0;
         } else last = *barcode, run = 0;
-        barcode++;
+        ++barcode;
     }
     return 1;
 }
@@ -57,9 +56,9 @@ CONST static inline int test_hp(char *barcode, int threshold)
     do {\
         if(settings.rescaler) {\
             int readlen##_settings = dlib::count_lines(settings.rescaler_path);\
-            for(int i = 0; i < 2; ++i) {\
-                for(int j = 0; j < readlen##_settings; ++j) {\
-                    for(int k = 0; k < NQSCORES; ++k) {\
+            for(int i(0); i < 2; ++i) {\
+                for(int j(0); j < readlen##_settings; ++j) {\
+                    for(int k (0); k < NQSCORES; ++k) {\
                         cond_free(settings.rescaler[i][j][k]);\
                     }\
                     cond_free(settings.rescaler[i][j]);\
@@ -73,7 +72,7 @@ CONST static inline int test_hp(char *barcode, int threshold)
 
 static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
-    for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+    for(int i(settings_ptr->blen + settings_ptr->offset); i <= settings_ptr->max_blen; ++i) {
         if(memcmp(seq->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
             *pass_fail = 1;
             return i + settings_ptr->homing_sequence_length;
@@ -85,7 +84,7 @@ static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr
 
 static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
-    for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+    for(int i(settings_ptr->blen1_2 + settings_ptr->offset); i <= settings_ptr->max_blen; ++i) {
         if(!memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length)) {
             *pass_fail = 1;
             return i + settings_ptr->homing_sequence_length;

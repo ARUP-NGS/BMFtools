@@ -98,7 +98,7 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
 {
     if(!settings->cleanup) return;
     #pragma omp parallel for
-    for(int i(0); i < params->n; ++i) {
+    for(int i = 0; i < params->n; ++i) {
         kstring_t ks{0, 0, nullptr};
         ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
         dlib::check_call(ks.s);
@@ -113,7 +113,7 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
 {
     #pragma omp parallel for schedule(dynamic, 1)
-    for(int i(0); i < settings->n_handles; ++i) {
+    for(int i = 0; i < settings->n_handles; ++i) {
         LOG_DEBUG("Now running hash dmp core on input filename %s and output filename %s.\n",
                  params->infnames_r1[i], params->outfnames_r1[i]);
         func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
@@ -129,7 +129,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
         return; // Don't dmp imaginary files....
     }
     #pragma omp parallel for schedule(dynamic, 1)
-    for(int i(0); i < settings->n_handles; ++i) {
+    for(int i = 0; i < settings->n_handles; ++i) {
         LOG_DEBUG("Now running hash dmp core on input filename %s and output filename %s.\n",
                   params->infnames_r2[i], params->outfnames_r2[i]);
         func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
@@ -234,7 +234,7 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
         kputsnl(".gz", &ks2);
     }
     FILE *c1_popen(popen(ks1.s, "w"));
-    FILE *c2_popen = popen((ks2.s, "w"));
+    FILE *c2_popen(popen(ks2.s, "w"));
     if(pclose(c2_popen) || pclose(c1_popen)) {
         LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
     }
@@ -341,7 +341,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     mark_splitter_t splitter(init_splitter(settings));
     gzFile fp1(gzopen(settings->input_r1_path, "r"));
     gzFile fp2(gzopen(settings->input_r2_path, "r"));
-    kseq_t *seq1(kseq_init(fp1), *seq2(kseq_init(fp2));
+    kseq_t *seq1(kseq_init(fp1));
+    kseq_t *seq2(kseq_init(fp2));
     // Manually process the first pair of reads so that we have the read length.
     int pass_fail(1);
     if(kseq_read(seq1) < 0 || kseq_read(seq2) < 0) {
@@ -356,10 +357,7 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     const int default_nlen(settings->blen1_2 + settings->offset + settings->homing_sequence_length);
     int n_len(nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
     mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
-    mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 0));
-    rseq1 = ;
-    rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
-    rseq1->barcode[settings->blen] = '\0';
+    mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1));
     if(switch_reads) {
         memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
         memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -371,7 +369,7 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     // Get first barcode.
     update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
     update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
-    uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+    uint64_t bin(get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t));
     assert(bin < (uint64_t)settings->n_handles);
     if(switch_reads) {
         mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
@@ -380,7 +378,7 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
         mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
         mseq2fq_stranded(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
     }
-    uint64_t count = 1uL;
+    uint64_t count(1uL);
     while(LIKELY(kseq_read(seq1) >= 0 && kseq_read(seq2) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
@@ -413,7 +411,7 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     }
     LOG_INFO("Collapsing %lu initial read pairs....\n", count);
     LOG_DEBUG("Cleaning up.\n");
-    for(int i = 0; i < splitter.n_handles; ++i) {
+    for(int i(0); i < splitter.n_handles; ++i) {
         gzclose(splitter.tmp_out_handles_r1[i]);
         gzclose(splitter.tmp_out_handles_r2[i]);
     }
@@ -444,7 +442,7 @@ int idmp_main(int argc, char *argv[])
     if(argc == 1) idmp_usage(), exit(EXIT_FAILURE);
     // Build settings struct
 
-    marksplit_settings_t settings = {0};
+    marksplit_settings_t settings{0};
 
     settings.hp_threshold = 10;
     settings.n_nucs = DEFAULT_N_NUCS;
@@ -566,15 +564,15 @@ int idmp_main(int argc, char *argv[])
 
     if(!settings.tmp_basename) {
         // If tmp_basename unset, create a random temporary file prefix.
-        kstring_t rs = salted_rand_string(settings.input_r1_path, RANDSTR_SIZE);
+        kstring_t rs{salted_rand_string(settings.input_r1_path, RANDSTR_SIZE)};
         settings.tmp_basename = ks_release(&rs);
         LOG_INFO("Temporary basename not provided. Defaulting to random: %s.\n",
                   settings.tmp_basename);
     }
 
     // Run core
-    mark_splitter_t splitter = settings.is_se ? pp_split_inline_se(&settings)
-                                              : pp_split_inline(&settings);
+    mark_splitter_t splitter(settings.is_se ? pp_split_inline_se(&settings)
+                                            : pp_split_inline(&settings));
     splitterhash_params_t *params(init_splitterhash(&settings, &splitter));
     kstring_t ffq_r1{0,0,nullptr};
     kstring_t ffq_r2{0,0,nullptr};

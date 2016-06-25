@@ -148,9 +148,9 @@ static inline int pv2ph(double pv)
 #define arr3d_init(var, l, type) \
     do {\
     var = (type ***)calloc(4, sizeof(type **));\
-    for(unsigned i_ = 0; i_ < 4u; ++i_) {\
+    for(unsigned i_(0); i_ < 4u; ++i_) {\
         var[i_] = (type **)calloc(NQSCORES, sizeof(type *));\
-        for(unsigned j_ = 0; j_ < NQSCORES; ++j_) {\
+        for(unsigned j_(0); j_ < NQSCORES; ++j_) {\
             var[i_][j_] = (type *)calloc(l, sizeof(type));\
         }\
     }} while(0)
@@ -159,15 +159,15 @@ static inline int pv2ph(double pv)
 #define arr2d_init(var, l, type) \
     do {\
     var = (type **)calloc(4, sizeof(type *));\
-    for(int i_ = 0; i_ < 4; ++i_) {\
+    for(int i_(0); i_ < 4; ++i_) {\
         var[i_] = (type *)calloc(l, sizeof(type));\
     }} while(0)
 
 
-const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
 namespace {
-    uint64_t default_min_obs = 10000uL;
+    const uint64_t default_min_obs{10000uL};
+    const int bamseq2i[]{-1, 0, 1, -1, 2, -1, -1, -1, 3};
 }
 
 int err_main_main(int argc, char *argv[]);
@@ -190,8 +190,8 @@ RegionErr::RegionErr(region_set_t set, int i):
 
 uint64_t get_max_obs(khash_t(obs) *hash)
 {
-    uint64_t ret = 0;
-    for(khiter_t k = kh_begin(hash); k != kh_end(hash); ++k)
+    uint64_t ret(0);
+    for(khiter_t k(kh_begin(hash)); k != kh_end(hash); ++k)
         if(kh_exist(hash, k))
             if(kh_val(hash, k).obs > ret)
                 ret = kh_val(hash, k).obs;

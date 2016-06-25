@@ -320,7 +320,7 @@ int depth_main(int argc, char *argv[])
         if(*p == '\t') {
             q = ++p;
             while(*q != '\t' && *q != '\n') ++q;
-            constint c(*q); *q = '\0';
+            const int c(*q); *q = '\0';
             region_name = p;
             *q = c;
         } else region_name = (char *)NO_ID_STR;
