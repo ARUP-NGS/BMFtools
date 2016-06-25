@@ -23,7 +23,7 @@ namespace {
 
 static int add_se_tags(bam1_t *b1, void *data)
 {
-    int ret = 0;
+    int ret(0);
     ret |= (dlib::bitset_qcfail_se(b1) & ((mark_settings_t *)data)->remove_qcfail);
     if(((mark_settings_t *)data)->min_insert_length)
         ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
@@ -42,7 +42,7 @@ static int add_pe_tags(bam1_t *b1, bam1_t *b2, void *data)
 {
     if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
         LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
-    int ret = 0;
+    int ret(0);
     dlib::add_unclipped_mate_starts(b1, b2);
     dlib::add_mate_SA_tag(b1, b2);
     dlib::add_qseq_len(b1, b2);

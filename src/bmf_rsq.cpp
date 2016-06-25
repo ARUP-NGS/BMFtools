@@ -101,11 +101,11 @@ void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
         add_dummy_tags(b);
-        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
-            sam_write1(settings->out, settings->hdr, b);
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
             continue;
         }
-        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
+        if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
+            sam_write1(settings->out, settings->hdr, b);
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
@@ -219,11 +219,9 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
     uint64_t count(0);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) continue;
         if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
             sam_write1(settings->out, settings->hdr, b);
-            continue;
-        }
-        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
