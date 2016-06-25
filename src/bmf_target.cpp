@@ -43,7 +43,7 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
             ++counts.n_skipped;
             continue;
         }
-        const int FM = ((data = bam_aux_get(handle.rec, "FM")) != nullptr) ? bam_aux2i(data): 1;
+        const int FM(((data = bam_aux_get(handle.rec, "FM")) != nullptr) ? bam_aux2i(data): 1);
         test = dlib::bed_test(handle.rec, bed);
         if(UNLIKELY(++counts.count % notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", counts.count);
@@ -63,8 +63,8 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
 int target_main(int argc, char *argv[])
 {
     char *bedpath = nullptr;
-    uint32_t padding = (uint32_t)-1, minmq = 0;
-    uint64_t notification_interval = 1000000;
+    uint32_t padding((uint32_t)-1), minmq(0);
+    uint64_t notification_interval(1000000);
 
 
     if(argc < 4) return target_usage(EXIT_SUCCESS);
@@ -101,7 +101,7 @@ int target_main(int argc, char *argv[])
         return target_usage(EXIT_FAILURE);
     }
 
-    target_counts_t counts = target_core(bedpath, argv[optind], padding, minmq, notification_interval);
+    target_counts_t counts(target_core(bedpath, argv[optind], padding, minmq, notification_interval));;
 
     // Open [smt]am file.
 

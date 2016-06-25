@@ -80,14 +80,11 @@ int bam_test(bam1_t *b, void *options) {
 
 int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle& refused, opts *param)
 {
-    uint64_t count = 0;
+    uint64_t count(0);
     while(in.next() >= 0) {
         if(++count % 1000000 == 0) LOG_INFO("%lu records processed.\n", count);
-        if(bam_test(in.rec, (void *)param)) {
-            refused.write(in.rec);
-        } else {
-            out.write(in.rec);
-        }
+        if(bam_test(in.rec, (void *)param)) refused.write(in.rec);
+        else out.write(in.rec);
     }
     return EXIT_SUCCESS;
 }
@@ -99,9 +96,9 @@ int filter_main(int argc, char *argv[]) {
         return usage(argv, EXIT_SUCCESS);
     int c;
     char out_mode[4]{"wb"};
-    opts param = {0};
-    char *bedpath = nullptr;
-    int padding = DEFAULT_PADDING;
+    opts param{0};
+    char *bedpath(nullptr);
+    int padding(DEFAULT_PADDING);
     std::string refused_path("");
     while((c = getopt(argc, argv, "s:a:r:P:b:m:F:f:l:hAv?")) > -1) {
         switch(c) {
@@ -131,7 +128,7 @@ int filter_main(int argc, char *argv[]) {
         dlib::check_bam_tag_exit(argv[optind], "MF");
     dlib::BamHandle out(argv[optind + 1], in.header, out_mode);
     // Core
-    int ret = -1;
+    int ret(-1);
     if(refused_path.size()) { // refused path is set.
         LOG_DEBUG("Writing passing records to %s, failing to %s.\n", out.fp->fn, refused_path.c_str());
         dlib::BamHandle refused(refused_path.c_str(), in.header, out_mode);

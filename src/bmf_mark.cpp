@@ -6,20 +6,21 @@
 namespace bmf {
 
 namespace {
-    struct mark_settings_t {
-        // I might add more options later, hence the use of the bitfield.
-        uint32_t remove_qcfail:1;
-        uint32_t min_insert_length:8;
-        double min_frac_unambiguous;
-        mark_settings_t() :
-            remove_qcfail(0),
-            min_insert_length(0),
-            min_frac_unambiguous(0.0)
-        {
-        }
-    };
+struct mark_settings_t {
+    // I might add more options later, hence the use of the bitfield.
+    uint32_t remove_qcfail:1;
+    uint32_t min_insert_length:8;
+    double min_frac_unambiguous;
+    mark_settings_t() :
+        remove_qcfail(0),
+        min_insert_length(0),
+        min_frac_unambiguous(0.0)
+    {
+    }
+};
 
 }
+
 
 static int add_se_tags(bam1_t *b1, void *data)
 {
@@ -87,7 +88,7 @@ static void mark_usage() {
 int mark_main(int argc, char *argv[])
 {
     char wmode[4]{"wb0"};
-    int c, is_se = 0, ret = -1;
+    int c, is_se(0), ret(-1);
     mark_settings_t settings;
     while ((c = getopt(argc, argv, "l:i:u:Sdq?h")) >= 0) {
         switch (c) {
@@ -110,7 +111,7 @@ int mark_main(int argc, char *argv[])
         }
     }
 
-    char *in = (char *)"-", *out = (char *)"-";
+    char *in((char *)"-"), *out((char *)"-");
     if(optind + 2 == argc) {
         in = argv[optind];
         out = argv[optind + 1];

@@ -31,6 +31,7 @@ inline void add_dummy_tags(bam1_t *b);
 void update_bam1(bam1_t *p, bam1_t *b);
 void update_bam1_unmasked(bam1_t *p, bam1_t *b);
 
+template<int (*fn)(bam1_t *, bam1_t *)>
 struct Stack {
     uint16_t mmlim:8;
     uint16_t trust_unmasked:1;
@@ -53,7 +54,7 @@ struct Stack {
     }
     ~Stack() {
         LOG_DEBUG("m: %u.\n", m);
-        for(unsigned i = 0; i < m; ++i) {
+        for(unsigned i(0); i < m; ++i) {
             LOG_DEBUG("Cleaning up.\n")
             if(a[i].data) {
                 LOG_DEBUG("NONZERO %p\n", (void *)a[i].data);
@@ -84,13 +85,14 @@ struct Stack {
     void write_stack_se(rsq_aux_t *settings);
     void flatten();
     inline void flatten_infer();
-    void pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
-    void pe_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
-    void se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
-    void se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn);
+    void pe_core(rsq_aux_t *settings);
+    void pe_core_infer(rsq_aux_t *settings);
+    void se_core(rsq_aux_t *settings);
+    void se_core_infer(rsq_aux_t *settings);
 };
 
-void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn){
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
     if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
@@ -109,8 +111,7 @@ void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
-        if(fn(b, a) == 0)
-            write_stack_se(settings); // Flattens and clears stack.
+        if(fn(b, a) == 0) write_stack_se(settings); // Flattens and clears stack.
         add(b);
     }
     write_stack_se(settings);
@@ -120,16 +121,17 @@ void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *
     if(settings->realign_pairs.size()) {
         LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
 #if !NDEBUG
-        for(auto pair: settings->realign_pairs)
+        for(auto& pair: settings->realign_pairs)
             puts(pair.second.c_str());
 #endif
     }
 }
 
-void Stack::se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn){
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::se_core(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(infer) return se_core_infer(settings, fn);
+    if(infer) return se_core_infer(settings);
     if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                  dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
@@ -165,7 +167,8 @@ void Stack::se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
     }
 }
 
-void Stack::pe_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn)
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
@@ -205,7 +208,8 @@ void Stack::pe_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *
     }
 }
 
-void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1_t *)> fn)
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::pe_core(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
@@ -238,7 +242,8 @@ void Stack::pe_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
     }
 }
 
-inline void Stack::flatten_infer()
+template<int (*fn)(bam1_t *, bam1_t *)>
+inline void Stack<fn>::flatten_infer()
 {
     unsigned i, j;
     for(i = 0; i < n; ++i) stack[i] = a + i;
@@ -256,11 +261,8 @@ inline void Stack::flatten_infer()
             if(stack[i]->core.l_qname != stack[j]->core.l_qname)
                 continue;
             //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(a[i]), bam_get_qname(a[j]));
-            if(trust_unmasked) {
-                update_bam1_unmasked(a + j, a + i);
-            } else {
-                update_bam1(a + j, a + i);
-            }
+            if(trust_unmasked) update_bam1_unmasked(a + j, a + i);
+            else update_bam1(a + j, a + i);
             (a + i)->data = nullptr;
             break;
             // "break" in case there are multiple within hamming distance.
@@ -270,7 +272,8 @@ inline void Stack::flatten_infer()
     }
 }
 
-void Stack::flatten()
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::flatten()
 {
     if(infer) return flatten_infer();
     unsigned i, j;
@@ -291,10 +294,8 @@ void Stack::flatten()
             if(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim) {
                 assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
-                if(trust_unmasked)
-                    update_bam1_unmasked(stack[j], stack[i]);
-                else
-                    update_bam1(stack[j], stack[i]);
+                if(trust_unmasked) update_bam1_unmasked(stack[j], stack[i]);
+                else update_bam1(stack[j], stack[i]);
                 free(stack[i]->data);
                 stack[i]->data = nullptr;
                 break;
@@ -306,7 +307,8 @@ void Stack::flatten()
     }
 }
 
-void Stack::write_stack_se(rsq_aux_t *settings)
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::write_stack_se(rsq_aux_t *settings)
 {
     flatten();
     uint8_t *data;
@@ -321,7 +323,8 @@ void Stack::write_stack_se(rsq_aux_t *settings)
     clear();
 }
 
-void Stack::write_stack_pe(rsq_aux_t *settings)
+template<int (*fn)(bam1_t *, bam1_t *)>
+void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
 {
     flatten();
     if(settings->is_se) return write_stack_se(settings);
@@ -384,6 +387,10 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
 
 static const std::function<int (bam1_t *, bam1_t *)> fns[4]{&same_stack_pos, &same_stack_pos_se,
                                                             &same_stack_ucs, &same_stack_ucs_se};
+/*
+static const Stack[4]{Stack<same_stack_pos>, Stack<same_stack_pos_se>,
+                      Stack<same_stack_ucs>, Stack<same_stack_ucs_se>};
+*/
 
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 {
@@ -437,9 +444,7 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 
 
 inline int switch_names(char *n1, char *n2) {
-    for(;*n1;++n1, ++n2)
-        if(*n1 != *n2)
-            return *n1 < *n2;
+    for(;*n1;++n1, ++n2) if(*n1 != *n2) return *n1 < *n2;
     return 0; // If identical, don't switch. Should never happen.
 }
 
@@ -550,7 +555,7 @@ void update_bam1_unmasked(bam1_t *p, bam1_t *b)
             }
         }
     } else {
-        for(int i = 0; i < qlen; ++i) {
+        for(int i(0); i < qlen; ++i) {
             ps = bam_seqi(pSeq, i);
             bs = bam_seqi(bSeq, i);
             if(ps == bs) {
@@ -822,9 +827,34 @@ inline void add_dummy_tags(bam1_t *b)
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
-    Stack stack(settings, 1 << 8);
-    if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
-    else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
+    switch(settings->is_se | (settings->cmpkey<<1)) {
+    case 0:
+    {
+        Stack<same_stack_pos> stack(settings, 1 << 8);
+        stack.pe_core(settings);
+        break;
+    }
+    case 1:
+    {
+        Stack<same_stack_pos_se> stack(settings, 1 << 8);
+        stack.se_core(settings);
+        break;
+    }
+    case 2:
+    {
+        Stack<same_stack_ucs> stack(settings, 1 << 8);
+        stack.pe_core(settings);
+        break;
+    }
+    case 3:
+    {
+        Stack<same_stack_pos_se> stack(settings, 1 << 8);
+        stack.se_core(settings);
+        break;
+    }
+    default:
+        LOG_EXIT("Invalid analysis key. (This should never happen.)");
+    }
 }
 
 

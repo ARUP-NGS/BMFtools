@@ -262,7 +262,7 @@ int famstats_fm_main(int argc, char *argv[])
     famstats_t *s;
     int c;
     famstats_fm_settings_t settings{0};
-    settings.notification_interval(1000000uL);
+    settings.notification_interval = 1000000;
 
     while ((c = getopt(argc, argv, "m:f:n:Fh?")) >= 0) {
         switch (c) {

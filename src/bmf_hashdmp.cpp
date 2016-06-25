@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <cassert>
 #include "bmf_dmp.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
@@ -10,7 +10,8 @@ void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
                             int max_blen=-1);
 
 
-void hashdmp_usage() {
+void hashdmp_usage()
+{
     fprintf(stderr,
                     "Molecularly demultiplexes marked temporary fastqs into final unique observation records.\n"
                     "bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.\n"
@@ -23,7 +24,8 @@ void hashdmp_usage() {
                     "If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
             );
 }
-void inmem_usage() {
+void inmem_usage()
+{
     fprintf(stderr,
                     "Molecularly demultiplexes marked temporary fastqs into final unique observation records.\n"
                     "bmftools hashdmp does so in one large hashmap. This may require huge amounts of memory.\n"
@@ -62,10 +64,10 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 int hashdmp_main(int argc, char *argv[])
 {
     if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
-    char *outfname = nullptr, *infname = nullptr;
+    char *outfname(nullptr), *infname(nullptr);
     int c;
-    int stranded_analysis = 1;
-    int level = -1;
+    int stranded_analysis(1);
+    int level(-1);
     while ((c = getopt(argc, argv, "l:o:sh?")) >= 0) {
         switch(c) {
             case 'l': level = atoi(optarg)%10; break;
@@ -91,15 +93,15 @@ int hashdmp_main(int argc, char *argv[])
 int hashdmp_inmem_main(int argc, char *argv[])
 {
     if(argc == 1) inmem_usage(), exit(EXIT_FAILURE);
-    char *outfname1 = const_cast<char *>("-");
-    char *outfname2 = const_cast<char *>("-");
-    char *homing = nullptr;
+    char *outfname1(const_cast<char *>("-"));
+    char *outfname2(const_cast<char *>("-"));
+    char *homing(nullptr);
     int c;
-    int blen = -1;
-    int max_blen = -1;
-    int mask = 0;
-    int threshold = 10;
-    int level = 0; // uncompressed
+    int blen(-1);
+    int max_blen(-1);
+    int mask(0);
+    int threshold(10);
+    int level(0); // uncompressed
     while ((c = getopt(argc, argv, "1:2:v:l:L:l:m:s:t:h?")) >= 0) {
         switch(c) {
             case '1': outfname1 = optarg; break;
@@ -144,7 +146,7 @@ namespace {
 }
 
 inline int get_blen(char *seq, char *homing, int homing_len, int blen, int max_blen, int mask) {
-    for(int i = blen; i <= max_blen; ++i)
+    for(int i(blen); i <= max_blen; ++i)
         if(memcmp(seq + i, homing, homing_len) == 0)
             return i - mask;
     return -1;
@@ -179,7 +181,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
     FILE *in_handle2(dlib::open_ifp(in2));
     gzFile out_handle1(dlib::open_gzfile(out1, mode));
     gzFile out_handle2(dlib::open_gzfile(out2, mode));
-    const int homing_len = strlen(homing);
+    const int homing_len(strlen(homing));
     if(!in_handle1) {
         if(dlib::isfile(in1)) {
             LOG_DEBUG("%s a file, but it's empty....\n", in1);
@@ -200,11 +202,11 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
     gzFile fp2(gzdopen(fileno(in_handle2), "r"));
     kseq_t *seq1(kseq_init(fp1));
     kseq_t *seq2(kseq_init(fp2));
-    kingfisher_hash_t *hash1f = nullptr, *hash2f = nullptr, *hash1r = nullptr, *hash2r = nullptr;
-    kingfisher_hash_t *ce1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-    kingfisher_hash_t *ce2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
+    kingfisher_hash_t *hash1f(nullptr), *hash2f(nullptr), *hash1r(nullptr), *hash2r(nullptr);
+    kingfisher_hash_t *ce1((kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)));
+    kingfisher_hash_t *ce2((kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)));
     kingfisher_hash_t *tmp_hk1 = ce1, *tmp_hk2 = ce2; // Save the pointer location for later comparison.
-    kstring_t barcode = {0, 32, (char *)malloc(32uL * sizeof(char))};
+    kstring_t barcode{0, 32, (char *)malloc(32uL * sizeof(char))};
     unsigned blen1, blen2;
     unsigned offset1, offset2;
     char pass;
@@ -336,7 +338,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
     kstring_t ks1{0, 0, nullptr};
     kstring_t ks2{0, 0, nullptr};
     tmpbuffers_t tmp;
-    kingfisher_hash_t *t2 = nullptr;
+    kingfisher_hash_t *t2(nullptr);
     HASH_ITER(hh, hash1f, ce1, tmp_hk1) {
         HASH_FIND_STR(hash1r, ce1->id, t2);
         HASH_FIND_STR(hash2f, ce1->id, ce2);
@@ -406,7 +408,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
     gzFile fp(gzdopen(fileno(in_handle), "r"));
     kseq_t *seq(kseq_init(fp));
     // Initialized kseq
-    int l = kseq_read(seq);
+    int l(kseq_read(seq));
     if(l < 0) {
         gzclose(fp);
         fclose(in_handle);
@@ -417,19 +419,19 @@ void hash_dmp_core(char *infname, char *outfname, int level)
     char *bs_ptr(barcode_mem_view(seq));
     const int blen(infer_barcode_length(bs_ptr));
     LOG_DEBUG("Barcode length (inferred): %i.\n", blen);
-    tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
+    tmpvars_t *tmp(init_tmpvars_p(bs_ptr, blen, seq->seq.l));
     memcpy(tmp->key, bs_ptr, blen);
     tmp->key[blen] = '\0';
     // Start hash table
-    kingfisher_hash_t *hash = nullptr;
-    kingfisher_hash_t *current_entry = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-    kingfisher_hash_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
+    kingfisher_hash_t *hash(nullptr);
+    kingfisher_hash_t *current_entry((kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)));
+    kingfisher_hash_t *tmp_hk(current_entry); // Save the pointer location for later comparison.
     cp_view2buf(bs_ptr + 1, current_entry->id);
     current_entry->value = init_kfp(tmp->readlen);
     HASH_ADD_STR(hash, id, current_entry);
     pushback_kseq(current_entry->value, seq, blen);
 
-    uint64_t count = 0;
+    uint64_t count(0);
     // Add barcodes to the hash table
     while(LIKELY((l = kseq_read(seq)) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0))
@@ -503,11 +505,11 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     memcpy(tmp->key, bs_ptr, blen);
     tmp->key[blen] = '\0';
     // Start hash table
-    kingfisher_hash_t *hfor = nullptr, *hrev = nullptr; // Hash forward, hash reverse
-    kingfisher_hash_t *crev = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)); // Current reverse, current forward.
-    kingfisher_hash_t *cfor = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
-    kingfisher_hash_t *tmp_hkr = crev, *tmp_hkf = cfor;
-    uint64_t count = 1, fcount = 0;
+    kingfisher_hash_t *hfor(nullptr), *hrev(nullptr); // Hash forward, hash reverse
+    kingfisher_hash_t *crev((kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t))); // Current reverse, current forward
+    kingfisher_hash_t *cfor((kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t)));
+    kingfisher_hash_t *tmp_hkr(crev), *tmp_hkf(cfor);
+    uint64_t count(1), fcount(0);
     /* Handle first record.
      * We read in a record from the fastq to get the length of the reads
      * and the barcodes.
@@ -560,12 +562,12 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
         }
     }
 #if !NDEBUG
-    const uint64_t rcount = count - fcount;
+    const uint64_t rcount(count - fcount);
 #endif
     LOG_DEBUG("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
     LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
     // Write out all unmatched in forward and handle all barcodes handled from both strands.
-    uint64_t duplex = 0, non_duplex = 0, non_duplex_fm = 0;
+    uint64_t duplex(0), non_duplex(0), non_duplex_fm(0);
     kstring_t ks{0, 0, nullptr};
     // Demultiplex and empty the hash.
 #if !NDEBUG
@@ -602,7 +604,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     }
 #if !NDEBUG
     fprintf(stderr, "#HD\tCount\n");
-    for(khiter_t ki = kh_begin(hds); ki != kh_end(hds); ++ki)
+    for(khiter_t ki(kh_begin(hds)); ki != kh_end(hds); ++ki)
         if(kh_exist(hds, ki))
             fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
     kh_destroy(hd, hds);

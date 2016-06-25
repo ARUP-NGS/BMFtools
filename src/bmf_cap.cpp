@@ -37,7 +37,7 @@ static inline int cap_bam_dnd(bam1_t *b, cap_settings_t *settings) {
     const int FM(bam_itag(b, "FM"));
     if(FM < settings->minFM)
         return 1;
-    const int l_qseq (b->core.l_qseq);
+    const int l_qseq(b->core.l_qseq);
     char *qual((char *)bam_get_qual(b));
     if(b->core.flag & BAM_FREVERSE) {
         for(i = 0; i < l_qseq; ++i) {
@@ -123,8 +123,8 @@ int cap_main(int argc, char *argv[])
                                                   : (single_aux_fn)&cap_bam_q,
                                      (void *)&settings, wmode));
     if(ret) {
-    	fprintf(stderr, "bmftools cap returned non-zero exit status %i.\n", ret);
-    	return ret;
+        fprintf(stderr, "bmftools cap returned non-zero exit status %i.\n", ret);
+        return ret;
     }
     LOG_INFO("Successfully completed bmftools cap!\n");
     return ret;

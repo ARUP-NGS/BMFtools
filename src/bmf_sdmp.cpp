@@ -44,7 +44,7 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
 {
     LOG_DEBUG("Path to index fq: %s.\n", settings->index_fq_path);
     gzFile fp_read1, fp_read2, fp_index;
-    kseq_t *seq1 = nullptr, *seq2 = nullptr, *seq_index = nullptr;
+    kseq_t *seq1(nullptr), *seq2(nullptr), *seq_index(nullptr);
     int l1, l2, l_index;
     mark_splitter_t splitter(init_splitter(settings));
     for(auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
@@ -61,7 +61,7 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     seq_index = kseq_init(fp_index),
     l_index = kseq_read(seq_index);
 
-    uint64_t bin = 0;
+    uint64_t bin(0);
     int pass_fail = 1;
     tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
     if(l1 < 0 || l2 < 0 || l_index < 0)
@@ -98,7 +98,7 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     mseq_destroy(rseq1); mseq_destroy(rseq2);
     kseq_destroy(seq1); kseq_destroy(seq2); kseq_destroy(seq_index);
     gzclose(fp_read1); gzclose(fp_read2); gzclose(fp_index);
-    for(int j = 0; j < settings->n_handles; ++j) {
+    for(int j(0); j < settings->n_handles; ++j) {
         gzclose(splitter.tmp_out_handles_r1[j]);
         gzclose(splitter.tmp_out_handles_r2[j]);
         splitter.tmp_out_handles_r1[j] = splitter.tmp_out_handles_r2[j] = nullptr;
@@ -110,7 +110,7 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
 static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
 {
     gzFile fp, fp_index;
-    kseq_t *seq = nullptr, *seq_index = nullptr;
+    kseq_t *seq(nullptr), *seq_index(nullptr);
     int l, l_index;
     mark_splitter_t splitter(init_splitter(settings));
     if(!dlib::isfile(settings->input_r1_path) ||
@@ -147,7 +147,7 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     mseq_destroy(rseq);
     kseq_destroy(seq); kseq_destroy(seq_index);
     gzclose(fp); gzclose(fp_index);
-    for(int j = 0; j < settings->n_handles; ++j) {
+    for(int j(0); j < settings->n_handles; ++j) {
         gzclose(splitter.tmp_out_handles_r1[j]);
         splitter.tmp_out_handles_r1[j] = nullptr;
     }
@@ -253,7 +253,7 @@ int sdmp_main(int argc, char *argv[])
                 __func__, settings.tmp_basename);
     }
 
-    splitterhash_params_t *params = nullptr;
+    splitterhash_params_t *params(nullptr);
     mark_splitter_t splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
     if(!settings.run_hash_dmp) {
         fprintf(stderr, "[%s] Finished mark/split. Skipping dmp.\n", __func__);

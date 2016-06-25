@@ -199,7 +199,7 @@ int depth_main(int argc, char *argv[])
     uint64_t *counts;
     const bam_pileup1_t **plp;
     int usage(0), max_depth(DEFAULT_MAX_DEPTH), minFM(0), n_quantiles(4),
-    		padding(DEFAULT_PADDING), minmq(0), requireFP(0);
+        padding(DEFAULT_PADDING), minmq(0), requireFP(0);
     char *bedpath(nullptr), *outpath(nullptr);
     FILE *histfp(nullptr);
     khiter_t k(0);

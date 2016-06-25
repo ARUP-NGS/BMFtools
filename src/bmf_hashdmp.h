@@ -28,11 +28,10 @@ struct kingfisher_hash_t {
 
 CONST static inline int infer_barcode_length(char *bs_ptr)
 {
-    char *const current = bs_ptr;
+    char *const current(bs_ptr);
     for (;;) {
         switch(*bs_ptr++) {
-        case '|': case '\0':
-            return bs_ptr - current - 1;
+        case '|': case '\0': return bs_ptr - current - 1;
         }
     }
     return -1; // This never happens.
@@ -50,8 +49,8 @@ static inline void cp_view2buf(char *view, char *buf)
 
 static inline kingfisher_t *init_kfp(size_t readlen)
 {
-    const size_t r5 = readlen * 5;
-    kingfisher_t *ret = (kingfisher_t *)calloc(1, sizeof(kingfisher_t));
+    const size_t r5(readlen * 5);
+    kingfisher_t *ret((kingfisher_t *)calloc(1, sizeof(kingfisher_t)));
     ret->readlen = readlen;
     ret->max_phreds = (char *)malloc((r5) * sizeof(char));
     ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
