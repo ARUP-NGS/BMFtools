@@ -16,6 +16,11 @@
 #include "include/bam.h"
 #include "include/sam_opts.h"
 
+
+typedef bam1_t *bam1_p;
+static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b);
+static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b);
+
 #ifdef __cplusplus
 extern "C" {
 #endif

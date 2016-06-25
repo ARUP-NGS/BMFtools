@@ -72,6 +72,7 @@ KLIST_INIT(hdrln, char*, hdrln_free_char)
 
 static int g_cmpkey = POS;
 
+
 static int strnum_cmp(const char *_a, const char *_b)
 {
     const unsigned char *a = (const unsigned char*)_a, *b = (const unsigned char*)_b;
@@ -109,11 +110,22 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    if (g_cmpkey == QNAME) {
-        if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
-        const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
-        return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
-    } else return __pos_cmp(a, b);
+    switch(g_cmpkey) {
+        case QNAME:
+            if (a.b == NULL || b.b == NULL) return !a.b;
+            {
+                const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
+                return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
+            }
+        case BMF:
+           if(a.b == NULL || b.b == NULL) return __pos_cmp(a, b);
+           return bam1_lt_bmf(a.b, b.b);
+        case UCS:
+           if(a.b == NULL || b.b == NULL) return __pos_cmp(a, b);
+           return bam1_lt_ucs(a.b, b.b);
+        default:
+        case POS: return __pos_cmp(a, b);
+    }
 }
 
 KSORT_INIT(heap, heap1_t, heap_lt)
@@ -1566,8 +1578,6 @@ end:
  ***************/
 
 #include <pthread.h>
-
-typedef bam1_t *bam1_p;
 
 static int change_SO(bam_hdr_t *h, const char *so)
 {
