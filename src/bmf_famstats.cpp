@@ -4,7 +4,7 @@
 
 namespace bmf {
 
-const char *tags_to_check[] = {"FP", "FM", "FA"};
+const char *tags_to_check[]{"FP", "FM", "FA"};
 
 
 int famstats_frac_usage(int exit_status)
@@ -51,7 +51,7 @@ struct famstats_fm_settings_t {
     uint32_t minFM:16;
 };
 
-struct fm_t{
+struct fm_t {
     uint64_t n; // Number of times observed
     uint64_t fm; // Number of times observed
 };
@@ -59,7 +59,7 @@ struct fm_t{
 
 int get_nbins(khash_t(fm) *table)
 {
-    int ret = 0;
+    int ret(0);
     for(khiter_t k = kh_begin(table); k != kh_end(table); ++k)
         if(kh_exist(table, k))
             ++ret;
@@ -96,7 +96,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
     }
     // Handle stats->np
     fms.resize(stats->np->n_occupied);
-    size_t n_rsq_fams = 0;
+    size_t n_rsq_fams(0);
     for(i = 0, ki = kh_begin(stats->np); ki != kh_end(stats->np); ++ki) {
         if(kh_exist(stats->np, ki)) {
             fms[i++] = {kh_val(stats->np, ki), kh_key(stats->np, ki)};
@@ -158,9 +158,9 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settin
         ++s->n_mq_fail;
         return;
     }
-    const int FM = ((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0);
-    const int NP = ((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1);
-    int RV = ((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1);
+    const int FM(((data = bam_aux_get(b, "FM")) != nullptr ? bam_aux2i(data) : 0));
+    const int NP(((data = bam_aux_get(b, "NP")) != nullptr ? bam_aux2i(data) : -1));
+    int RV(((data = bam_aux_get(b, "RV")) != nullptr ? bam_aux2i(data) : -1));
     if(UNLIKELY(FM == 0)) LOG_EXIT("Missing required FM tag. Abort!\n");
     if(FM < settings->minFM) {
         ++s->n_fm_fail;
@@ -199,7 +199,7 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settin
     }
 
     // If the Duplex Read tag is present, increment duplex read counts
-    uint8_t *dr_data = bam_aux_get(b, "DR");
+    uint8_t *const dr_data(bam_aux_get(b, "DR"));
     if(dr_data && bam_aux2i(dr_data)) {
         if(RV < 0) RV = 0;
         s->dr_sum += FM;
@@ -212,8 +212,8 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstats_fm_settin
 
 famstats_t *famstats_fm_core(dlib::BamHandle& handle, famstats_fm_settings_t *settings)
 {
-    uint64_t count = 0;
-    famstats_t *s = (famstats_t*)calloc(1, sizeof(famstats_t));
+    uint64_t count(0);
+    famstats_t *s((famstats_t*)calloc(1, sizeof(famstats_t)));
     int ret;
     s->fm = kh_init(fm);
     s->rc = kh_init(fm);
@@ -262,7 +262,7 @@ int famstats_fm_main(int argc, char *argv[])
     famstats_t *s;
     int c;
     famstats_fm_settings_t settings{0};
-    settings.notification_interval = 1000000uL;
+    settings.notification_interval(1000000uL);
 
     while ((c = getopt(argc, argv, "m:f:n:Fh?")) >= 0) {
         switch (c) {
@@ -303,7 +303,7 @@ int famstats_fm_main(int argc, char *argv[])
 int famstats_frac_main(int argc, char *argv[])
 {
     int c;
-    uint64_t notification_interval = 1000000;
+    uint64_t notification_interval(1000000);
 
     if(argc < 2) famstats_frac_usage(EXIT_FAILURE);
     if(strcmp(argv[1], "--help") == 0) famstats_frac_usage(EXIT_SUCCESS);
@@ -322,11 +322,11 @@ int famstats_frac_main(int argc, char *argv[])
         else famstats_frac_usage(EXIT_FAILURE);
     }
 
-    uint32_t minFM = strtoul(argv[optind], nullptr, 10);
+    uint32_t minFM(strtoul(argv[optind], nullptr, 10));
     LOG_INFO("MinFM %i.\n", minFM);
     for(const char *tag: tags_to_check) dlib::check_bam_tag_exit(argv[optind+1], tag);
     dlib::BamHandle handle(argv[optind + 1]);
-    uint64_t fm_above = 0, total_fm = 0, count = 0;
+    uint64_t fm_above(0), total_fm(0), count(0);
     // Check to see if the required tags are present before starting.
     int FM;
     int ret;
