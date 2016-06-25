@@ -42,6 +42,46 @@ tags to all alignments for each read.
 
 The metadata tags have now been parsed into auxiliary tags in the output bam file and can be used by downstream tools.
 
+####Rescue
+Because errors occur in reading barcodes, this initial exact-matching step is not completely successful in grouping
+reads from the same original template molecule. To account for this, an optional rescue protocol has been implemented.
+
+This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
+collapsing reads sharing these signatures with similar barcodes into single observations.
+
+"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
+or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
+a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
+
+Because reads need both their and their mates' alignment information, including read length, the preprocessing
+`bmftools mark` is required prior to bmftools sort.
+
+
+Because reads that have been modified may align elsewhere, these reads are all realigned. In addition, this regenerates
+all of the secondary and supplementary alignments.
+
+
+In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
+If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
+
+`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
+
+For position:
+
+`bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
+
+For unclipped start:
+
+`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
+
+
+Realigned reads are then sorted and merged in with the other reads in the dataset.
+
+`bwa mem -pCYT0 -t<threads> <reference> -f<tmp.fq> | bmftools mark |  samtools sort -l 0 -Obam -T <tmp_prefix> | samtools merge -cpfh final_output_prefix.tmprsq.bam final_output_prefix.rsqmerged.bam final_output_prefix.tmprsq.bam -`
+
+For efficiency, this can be heavily piped to reduce I/O and unnecessary compression/decompression.
+At this point, final_output_prefix.tmprsq.bam contains supplementary and secondary alignments for all template molecules, and reads have been rescued using alignment information.
+
 ####Post-Alignment: Now what?
 
 If you're not interested in taking advantage of the barcode metadata (new p values, family sizes, &c.), this bam is ready for downstream analysis.
@@ -95,6 +135,12 @@ bmftools <subcommand> <-h>
 
 
 `bmftools filter -s2 input.bam output.bam`
+
+
+`bmftools mark -l0 input.bam output.bam`
+
+
+`bmftools rsq -u -f tmp.fastq input.bam tmp.out.bam`
 
 
 `bmftools sort -T tmp_prefix -k ucs input.bam output.bam`
@@ -419,3 +465,45 @@ bmftools <subcommand> <-h>
     > -P:    Number of bases around the bed file with which to pad.
     > -r:    If set, write failing reads to bam at <parameter>.
     > -v:    Invert pass/fail. (Analogous to grep.)
+
+
+### Utilities
+
+####<b>sort</b>
+  Description:
+  > Sorts an alignment file in preparation for read consolidation using positional information.
+  > Essentially a modification of samtools sort.
+
+  Options:
+
+    > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
+    > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
+    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
+    > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
+    > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
+    > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
+    > -@ INT       Set number of sorting and compression threads [1]
+    > -s           Flag to split the bam into a list of file handles.
+    > -p           If splitting into a list of handles, this sets the file prefix.
+    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
+    > -h/-?        Print usage.
+
+####<b>mark</b>
+  Description:
+  > Marks a sets of template bam records with auxiliary tags for use in downstream tools.
+  > Required for sort and rsq.
+  > Intended primarily for piping. Default compression is therefore 0. Typical compression for writing to disk: 6.
+
+  Usage: bmftools mark <opts> <input.namesrt.bam> <output.bam>
+
+  Options:
+
+    > -l:    Sets bam compression level. (Valid: 1-9). Default: 0.
+    > -q:    Skip read pairs which fail.
+    > -d:    Set bam compression level to default (6).
+    > -i:    Skip read pairs whose insert size is less than <INT>.
+    > -u:    Skip read pairs where both reads have a fraction of unambiguous base calls >= <parameter>
+    > -S:    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.
+    > Set input.namesrt.bam to '-' or 'stdin' to read from stdin.
+    > Set output.bam to '-' or 'stdout' or omit to stdout.
+    > Thus `bmftools mark` defaults to reading and writing from stdin and stdout, respectively, in paired-end mode.
