@@ -109,11 +109,8 @@ void Stack::se_core_infer(rsq_aux_t *settings, const std::function<int (bam1_t *
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
-        if(n == 0 || fn(b, a) == 0) {
-            //LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
+        if(fn(b, a) == 0)
             write_stack_se(settings); // Flattens and clears stack.
-        }
         add(b);
     }
     write_stack_se(settings);
@@ -281,12 +278,6 @@ void Stack::flatten()
     std::sort(stack, stack + n, [](const bam1_t *a, const bam1_t *b) {
             return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
     });
-#if 0
-    const int pos(a->core.pos);
-    for(unsigned i = 0; i < n; ++i){
-        assert(a[i].core.pos == pos);
-    }
-#endif
     for(i = 0; i < n; ++i) {
         for(j = i + 1; j < n; ++j) {
             //assert(key == ucs_sort_core_key(stack->a[j]));
@@ -805,46 +796,15 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 inline int string_linear(char *a, char *b, int mmlim)
 {
     int hd = 0;
-    while(*a)
-        if(*a++ != *b++)
-            if(++hd > mmlim)
-                return 0;
+    while(*a) if(*a++ != *b++) if(++hd > mmlim) return 0;
     return 1;
-}
-
-static inline void flatten_stack_infer(dlib::tmp_stack_t *stack, int mmlim)
-{
-    std::sort(stack->a, stack->a + stack->n, [](bam1_t *a, bam1_t *b) {
-            return a ? (b ? 0: 1): b ? strcmp(bam_get_qname(a), bam_get_qname(b)): 0;
-    });
-    for(unsigned i = 0; i < stack->n; ++i) {
-        for(unsigned j = i + 1; j < stack->n; ++j) {
-            //assert(key == ucs_sort_core_key(stack->a[j]));
-            //assert(ucs == dlib::get_unclipped_start(stack->a[j]));
-            //assert(tid == stack->a[j]->core.tid);
-            //assert(mucs == bam_itag(stack->a[j], "MU"));
-            assert(stack->a[i]);
-            assert(stack->a[j]);
-            assert(bam_is_rev(stack->a[i]) == bam_is_rev(stack->a[j]));
-            if(stack->a[i]->core.l_qseq != stack->a[j]->core.l_qseq)
-                continue;
-            //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack->a[i]), bam_get_qname(stack->a[j]));
-            update_bam1(stack->a[j], stack->a[i]);
-            bam_destroy1(stack->a[i]);
-            stack->a[i] = nullptr;
-            break;
-            // "break" in case there are multiple within hamming distance.
-            // Otherwise, I'll end up having memory mistakes.
-            // Besides, that read set will get merged into the later read in the set.
-        }
-    }
 }
 
 static const std::vector<uint32_t> ONES(300uL, 1);
 
 inline void add_dummy_tags(bam1_t *b)
 {
-    const int one(1);
+    static const int one(1);
     int i;
     std::vector<uint32_t> pvbuf;
     pvbuf.reserve(b->core.l_qseq);
@@ -863,53 +823,6 @@ inline void add_dummy_tags(bam1_t *b)
     dlib::bam_aux_array_append(b, "PV", 'I', sizeof(uint32_t), b->core.l_qseq, const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pvbuf.data())));
 }
 
-void infer_core(rsq_aux_t *settings, dlib::tmp_stack_t *stack, const std::function<int (bam1_t *, bam1_t *)> fn)
-{
-    // This selects the proper function to use for deciding if reads belong in the same stack.
-    // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
-        LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
-    bam1_t *b = bam_init1();
-    uint64_t count = 0;
-    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
-        if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
-        add_dummy_tags(b);
-        if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY | BAM_FUNMAP | BAM_FMUNMAP)) {
-            sam_write1(settings->out, settings->hdr, b);
-            continue;
-        }
-        //LOG_DEBUG("Read a read!\n");
-        if(stack->n == 0 || fn(b, *stack->a) == 0) {
-            LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
-            flatten_stack_infer(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-            LOG_DEBUG("Flattened!\n")
-            write_stack(stack, settings);
-            LOG_DEBUG("Written\n");
-            stack->n = 1;
-            stack->a[0] = bam_dup1(b);
-            //LOG_DEBUG("Flattened stack\n");
-        } else {
-            LOG_DEBUG("Stack now has size %lu.\n", stack->n);
-            stack_insert(stack, b);
-        }
-    }
-    LOG_DEBUG("Loop exit.\n");
-    flatten_stack_infer(stack, settings->mmlim); // Change this later if the chemistry necessitates it.
-    write_stack(stack, settings);
-    stack->n = 0;
-    bam_destroy1(b);
-    // Handle any unpaired reads, though there shouldn't be any in real datasets.
-    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
-    if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
-#if !NDEBUG
-        for(auto pair: settings->realign_pairs)
-            puts(pair.second.c_str());
-#endif
-    }
-}
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
@@ -917,6 +830,7 @@ void bam_rsq_bookends(rsq_aux_t *settings)
     if(settings->is_se) stack.se_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
     else stack.pe_core(settings, fns[settings->is_se | (settings->cmpkey<<1)]);
 }
+
 
 int rsq_usage(int retcode)
 {
