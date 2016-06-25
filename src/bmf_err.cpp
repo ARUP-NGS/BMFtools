@@ -201,8 +201,8 @@ uint64_t get_max_obs(khash_t(obs) *hash)
 
 uint64_t get_max_err(khash_t(obs) *hash)
 {
-    uint64_t ret = 0;
-    for(khiter_t k = kh_begin(hash); k != kh_end(hash); ++k)
+    uint64_t ret(0);
+    for(khiter_t k(kh_begin(hash)); k != kh_end(hash); ++k)
         if(kh_exist(hash, k))
             if(kh_val(hash, k).err > ret)
                 ret = kh_val(hash, k).err;
@@ -283,17 +283,17 @@ int err_region_usage(int exit_status)
 
 void write_final(FILE *fp, fullerr_t *e)
 {
-    for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
-        for(uint32_t qn = 0; qn < NQSCORES; ++qn) {
+    for(uint32_t cycle(0); cycle < e->l; ++cycle) {
+        for(uint32_t qn(0); qn < NQSCORES; ++qn) {
             fprintf(fp, "%i", e->r1->final[0][qn][cycle]);
-            for(uint32_t bn = 1; bn < 4; ++bn)
+            for(uint32_t bn(1); bn < 4; ++bn)
                 fprintf(fp, ":%i", e->r1->final[bn][qn][cycle]);
             if(qn != NQSCORES - 1) fprintf(fp, ",");
         }
         fputc('|', fp);
-        for(uint32_t qn = 0; qn < NQSCORES; ++qn) {
+        for(uint32_t qn(0); qn < NQSCORES; ++qn) {
             fprintf(fp, "%i", e->r2->final[0][qn][cycle]);
-            for(uint32_t bn = 1; bn < 4; ++bn)
+            for(uint32_t bn(1); bn < 4; ++bn)
                 fprintf(fp, ":%i", e->r2->final[bn][qn][cycle]);
             if(qn != NQSCORES - 1) fprintf(fp, ",");
         }
@@ -325,12 +325,12 @@ void err_fm_report(FILE *fp, fmerr_t *f)
             f->flag & REFUSE_DUPLEX ? "True": "False");
     fprintf(fp, "##STATS\n##nread:%lu\n##nskipped:%lu\n", f->nread, f->nskipped);
     fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Errors\tRead 1 Counts\tRead 2 Errors\tRead 2 Counts\n");
-    int *tmp = (int *)malloc(key_union->n_occupied * sizeof(int));
+    int *tmp((int *)malloc(key_union->n_occupied * sizeof(int)));
     for(k = kh_begin(key_union), khr = 0; k != kh_end(key_union); ++k)
         if(kh_exist(key_union, k))
             tmp[khr++] = kh_key(key_union, k);
     std::sort(tmp, tmp + key_union->n_occupied);
-    for(unsigned i = 0; i < key_union->n_occupied; ++i) {
+    for(unsigned i(0); i < key_union->n_occupied; ++i) {
         fm = tmp[i];
         fprintf(fp, "%i\t", fm);
 
@@ -362,12 +362,12 @@ void err_report(FILE *fp, fullerr_t *f)
 {
     LOG_DEBUG("Beginning error main report.\n");
     fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", f->nread, f->nskipped);
-    uint64_t n1_obs = 0, n1_err = 0, n1_ins = 0;
-    uint64_t n2_obs = 0, n2_err = 0, n2_ins = 0;
+    uint64_t n1_obs(0), n1_err(0), n1_ins(0);
+    uint64_t n2_obs(0), n2_err(0), n2_ins(0);
     // n_ins is number with insufficient observations to report.
-    for(int i = 0; i < 4; ++i) {
-        for(unsigned j = 0; j < NQSCORES; ++j) {
-            for(unsigned k = 0; k < f->l; ++k) {
+    for(int i(0); i < 4; ++i) {
+        for(unsigned j(0); j < NQSCORES; ++j) {
+            for(unsigned k(0); k < f->l; ++k) {
                 n1_obs += f->r1->obs[i][j][k]; n1_err += f->r1->err[i][j][k];
                 n2_obs += f->r2->obs[i][j][k]; n2_err += f->r2->err[i][j][k];
                 if(f->r1->obs[i][j][k] < f->min_obs) ++n1_ins;
@@ -375,7 +375,7 @@ void err_report(FILE *fp, fullerr_t *f)
             }
         }
     }
-    uint64_t n_cases = NQSCORES * 4 * f->l;
+    const uint64_t n_cases(NQSCORES * 4 * f->l);
     fprintf(stderr, "{\"read1\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
             ",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
             (double)n1_err / n1_obs, n1_obs, n1_err, n1_ins, n_cases);
@@ -388,8 +388,8 @@ void err_report(FILE *fp, fullerr_t *f)
 
 void readerr_destroy(readerr_t *e)
 {
-    for(int i = 0; i < 4; ++i) {
-        for(unsigned j = 0; j < NQSCORES; ++j) {
+    for(int i(0); i < 4; ++i) {
+        for(unsigned j(0); j < NQSCORES; ++j) {
             cond_free(e->obs[i][j]);
             cond_free(e->err[i][j]);
             cond_free(e->final[i][j]);
@@ -415,18 +415,19 @@ void readerr_destroy(readerr_t *e)
 
 void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 {
-    samFile *fp = sam_open(fname, "r");
-    bam_hdr_t *hdr = sam_hdr_read(fp);
+    samFile *fp(sam_open(fname, "r"));
+    bam_hdr_t *hdr(sam_hdr_read(fp));
     if (!hdr) LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-    bam1_t *b = bam_init1();
-    int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
-    char *ref = nullptr; // Will hold the sequence for a  chromosome
+    bam1_t *b(bam_init1());
+    int32_t cycle, ind, s, i, fc, rc, r, khr, DR, FP, FM,
+           reflen, length, pos, tid_to_study(-1), last_tid(-1);
+    char *ref(nullptr); // Will hold the sequence for a  chromosome
     khash_t(obs) *hash;
     uint8_t *seq;
     uint32_t *cigar, *pv_array, *fa_array;
     khiter_t k;
     if(f->refcontig) {
-        for(int i = 0; i < hdr->n_targets; ++i) {
+        for(int i(0); i < hdr->n_targets; ++i) {
             if(!strcmp(hdr->target_name[i], f->refcontig)) {
                 tid_to_study = i; break;
             }
@@ -482,7 +483,6 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
             last_tid = b->core.tid;
             cond_free(ref);
             LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-            ;
             if((ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen))== nullptr)
                 LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
         }
@@ -544,10 +544,10 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
     bam_hdr_t *hdr(sam_hdr_read(fp));
     if (!hdr)
         LOG_EXIT("Failed to read input header from bam %s. Abort!\n", fname);
-    int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1;
+    int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid(-1), tid_to_study(-1);
     unsigned ind;
     bam1_t *b(bam_init1());
-    char *ref = nullptr; // Will hold the sequence for a  chromosome
+    char *ref(nullptr); // Will hold the sequence for a  chromosome
     if(f->refcontig) {
         for(i = 0; i < hdr->n_targets; ++i) {
             if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -669,7 +669,7 @@ void write_base_rates(FILE *fp, fullerr_t *f)
 {
     fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     int i;
-    for(uint64_t l = 0; l < f->l; ++l) {
+    for(uint64_t l(0); l < f->l; ++l) {
         fprintf(fp, "%lu\t", l + 1);
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
         fputc('|', fp);
@@ -686,9 +686,9 @@ void write_global_rates(FILE *fp, fullerr_t *f)
     fputs("Duplex required: ", fp);
     fputs((f->flag & REQUIRE_DUPLEX) ? "True": "False", fp);
     fputc('\n', fp);
-    uint64_t sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
-    for(uint64_t l = 0; l < f->l; ++l) {
-        for(int i = 0; i < 4; ++i) {
+    uint64_t sum1(0), sum2(0), counts1(0), counts2(0);
+    for(uint64_t l(0); l < f->l; ++l) {
+        for(int i(0); i < 4; ++i) {
             sum1 += f->r1->qerr[i][l];
             counts1 += f->r1->qobs[i][l];
             sum2 += f->r2->qerr[i][l];
@@ -706,8 +706,8 @@ void write_global_rates(FILE *fp, fullerr_t *f)
 void set_max_readlen(fullerr_t *f)
 {
     for(; f->l;--f->l)
-        for(int i = 0; i < 4; ++i)
-            for(unsigned j = 0; j < NQSCORES; ++j)
+        for(int i(0); i < 4; ++i)
+            for(unsigned j(0); j < NQSCORES; ++j)
                 if(f->r1->obs[i][j][f->l - 1] || f->r2->obs[i][j][f->l - 1])
                     return;
 }
@@ -717,10 +717,10 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 {
     fputs("#Cycle\tRead 1 Error Rate\tRead 2 Error Rate\tRead 1 Error Count\t"
             "Read 1 Obs Count\tRead 2 Error Count\tRead 2 Obs Count\n", fp);
-    for(uint64_t l = 0; l < f->l; ++l) {
+    for(uint64_t l(0); l < f->l; ++l) {
         fprintf(fp, "%lu\t", l + 1);
-        uint64_t sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
-        for(int i = 0; i < 4; ++i) {
+        uint64_t sum1(0), sum2(0), counts1(0), counts2(0);
+        for(int i(0); i < 4; ++i) {
             sum1 += f->r1->qerr[i][l];
             counts1 += f->r1->qobs[i][l];
             sum2 += f->r2->qerr[i][l];
@@ -734,14 +734,14 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 
 void impute_scores(fullerr_t *f)
 {
-    for(unsigned i = 0; i < 4u; ++i) {
-        for(uint64_t l = 0; l < f->l; ++l) {
+    for(unsigned i(0); i < 4u; ++i) {
+        for(uint64_t l(0); l < f->l; ++l) {
             // Handle qscores of 2
             f->r1->final[i][0][l] = f->r1->obs[i][0][l] >= f->min_obs ? pv2ph((double)f->r1->err[i][0][l] / f->r1->obs[i][0][l])
                                                                       : 2;
             f->r2->final[i][0][l] = f->r2->obs[i][0][l] >= f->min_obs ? pv2ph((double)f->r2->err[i][0][l] / f->r2->obs[i][0][l])
                                                                       : 2;
-            for(unsigned j = 1; j < NQSCORES; ++j) {
+            for(unsigned j(1); j < NQSCORES; ++j) {
                 f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2;
                 if(f->r1->final[i][j][l] < 2) f->r1->final[i][j][l] = 2;
                 f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
@@ -758,7 +758,7 @@ void fill_qvals(fullerr_t *f)
     uint64_t l;
     for(i = 0; i < 4; ++i) {
         for(l = 0; l < f->l; ++l) {
-            for(unsigned j = 1; j < NQSCORES; ++j) { // Skip qualities of 2
+            for(unsigned j(1); j < NQSCORES; ++j) { // Skip qualities of 2
                 f->r1->qpvsum[i][l] += std::pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
                 f->r1->qobs[i][l] += f->r1->obs[i][j][l];
                 f->r1->qerr[i][l] += f->r1->err[i][j][l];
@@ -783,9 +783,9 @@ void fill_qvals(fullerr_t *f)
 
 void fill_sufficient_obs(fullerr_t *f)
 {
-    for(int i = 0; i < 4; ++i) {
-        for(unsigned j = 0; j < NQSCORES; ++j) {
-            for(uint64_t l = 0; l < f->l; ++l) {
+    for(int i(0); i < 4; ++i) {
+        for(unsigned j(0); j < NQSCORES; ++j) {
+            for(uint64_t l(0); l < f->l; ++l) {
                 if(f->r1->obs[i][j][l] >= f->min_obs)
                     f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
                 if(f->r2->obs[i][j][l] >= f->min_obs)
@@ -798,7 +798,7 @@ void fill_sufficient_obs(fullerr_t *f)
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
-    FILE *dictwrite = fopen("dict.txt", "w");
+    FILE *dictwrite(fopen("dict.txt", "w"));
     fprintf(dictwrite, "{\n\t");
     unsigned i, j, l;
     for(l = 0; l < f->l; ++l) {
@@ -837,7 +837,7 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 void write_3d_offsets(FILE *fp, fullerr_t *f)
 {
     fprintf(fp, "#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n");
-    for(uint64_t l = 0; l < f->l; ++l) {
+    for(uint64_t l(0); l < f->l; ++l) {
         fprintf(fp, "%lu\t", l + 1);
         int i;
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%i": "%i", f->r1->qdiffs[i][l]);
@@ -855,7 +855,7 @@ namespace {
 
 readerr_t *readerr_init(size_t l) {
     l += VLEN_BUFFER; // Extra buffer in case of variable length barcodes.
-    readerr_t *ret = (readerr_t *)calloc(1, sizeof(readerr_t));
+    readerr_t *ret((readerr_t *)calloc(1, sizeof(readerr_t)));
     arr3d_init(ret->obs, l, uint64_t);
     arr3d_init(ret->err, l, uint64_t);
     arr3d_init(ret->final, l, int);
@@ -871,12 +871,11 @@ readerr_t *readerr_init(size_t l) {
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
                         int padding, int minFM, int maxFM, int flag,
                         int minmq, uint32_t minPV, uint64_t min_obs) {
-    fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
+    fullerr_t *ret((fullerr_t *)calloc(1, sizeof(fullerr_t)));
     ret->l = l;
     ret->r1 = readerr_init(l);
     ret->r2 = readerr_init(l);
-    if(bedpath)
-        ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
+    if(bedpath) ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
     ret->minFM = minFM;
     ret->maxFM = maxFM;
     ret->flag = flag;
@@ -891,22 +890,18 @@ void fullerr_destroy(fullerr_t *e) {
     if(e->r1) readerr_destroy(e->r1), e->r1 = nullptr;
     if(e->r2) readerr_destroy(e->r2), e->r2 = nullptr;
     cond_free(e->refcontig);
-    if(e->bed) {
-        kh_destroy(bed, e->bed);
-    }
+    if(e->bed) kh_destroy(bed, e->bed);
     free(e);
 }
 
 
 fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, const char *refcontig, int padding, int flag, int minmq, uint32_t minPV, double min_fr) {
-    fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
+    fmerr_t *ret((fmerr_t *)calloc(1, sizeof(fmerr_t)));
     if(bedpath && *bedpath) {
         ret->bed = dlib::parse_bed_hash(bedpath, hdr, padding);
         ret->bedpath = strdup(bedpath);
     }
-    if(refcontig && *refcontig) {
-        ret->refcontig = strdup(refcontig);
-    }
+    if(refcontig && *refcontig) ret->refcontig = strdup(refcontig);
     ret->hash1 = kh_init(obs);
     ret->hash2 = kh_init(obs);
     ret->flag = flag;
@@ -962,25 +957,26 @@ int err_main(int argc, char *argv[])
 
 int err_main_main(int argc, char *argv[])
 {
-    htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
-    samFile *fp = nullptr;
-    bam_hdr_t *header = nullptr;
-    int c, minmq = 0;
+    htsFormat open_fmt{sequence_data, bam, {1, 3}, gzip, 0, nullptr};
+    samFile *fp(nullptr);
+    bam_hdr_t *header(nullptr);
+    int c, minmq(0);
     std::string outpath("");
     if(argc < 2) return err_main_usage(EXIT_FAILURE);
 
     if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(EXIT_SUCCESS);
 
 
-    FILE *ofp = nullptr, *d3 = nullptr, *df = nullptr, *dbc = nullptr, *dc = nullptr, *global_fp = nullptr;
+    FILE *ofp(nullptr), *d3(nullptr), *df(nullptr),
+        *dbc(nullptr), *dc(nullptr), *global_fp(nullptr);
     char refcontig[200] = "";
-    char *bedpath = nullptr;
-    int padding = -1;
-    int minFM = 0;
-    int maxFM = INT_MAX;
-    int flag = 0;
-    uint32_t minPV = 0;
-    uint64_t min_obs = default_min_obs;
+    char *bedpath(nullptr);
+    int padding(-1);
+    int minFM(0);
+    int maxFM(INT_MAX);
+    int flag(0);
+    uint32_t minPV(0);
+    uint64_t min_obs(default_min_obs);
     while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:S:O:h?FdDP")) >= 0) {
         switch (c) {
         case 'a': minmq = atoi(optarg); break;
@@ -1011,7 +1007,7 @@ int err_main_main(int argc, char *argv[])
     if (argc != optind+2)
         return err_main_usage(EXIT_FAILURE);
 
-    faidx_t *fai = fai_load(argv[optind]);
+    faidx_t *fai(fai_load(argv[optind]));
 
     if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == nullptr)
         LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
@@ -1025,10 +1021,10 @@ int err_main_main(int argc, char *argv[])
     if(minFM || maxFM != INT_MAX) dlib::check_bam_tag_exit(argv[optind + 1], "FM");
 
     // Get read length from the first read
-    bam1_t *b = bam_init1();
+    bam1_t *b(bam_init1());
     c = sam_read1(fp, header, b);
-    fullerr_t *f = fullerr_init(b->core.l_qseq, bedpath, header,
-                                padding, minFM, maxFM, flag, minmq, minPV, min_obs);
+    fullerr_t *f(fullerr_init(b->core.l_qseq, bedpath, header,
+                              padding, minFM, maxFM, flag, minmq, minPV, min_obs));
     sam_close(fp);
     fp = nullptr;
     bam_destroy1(b);
@@ -1081,9 +1077,9 @@ int err_fm_main(int argc, char *argv[])
     open_fmt.format = bam;
     open_fmt.version.major = 1;
     open_fmt.version.minor = 3;
-    samFile *fp = nullptr;
-    bam_hdr_t *header = nullptr;
-    char *outpath = nullptr;
+    samFile *fp(nullptr);
+    bam_hdr_t *header(nullptr);
+    char *outpath(nullptr);
 
     if(argc < 2) return err_fm_usage(EXIT_FAILURE);
 
@@ -1091,12 +1087,12 @@ int err_fm_main(int argc, char *argv[])
 
 
 
-    FILE *ofp = nullptr;
+    FILE *ofp(nullptr);
     std::string refcontig("");
-    char *bedpath = nullptr;
-    int flag = 0, padding = -1, minmq = 0, c;
-    uint32_t minPV = 0;
-    double min_fr = 0.;
+    char *bedpath(nullptr);
+    int flag(0), padding(-1), minmq(0), c;
+    uint32_t minPV(0);
+    double min_fr{0.};
     while ((c = getopt(argc, argv, "S:p:b:r:o:a:f:Fh?dP")) >= 0) {
         switch (c) {
         case 'a': minmq = atoi(optarg); break;
@@ -1128,7 +1124,7 @@ int err_fm_main(int argc, char *argv[])
     if (argc != optind+2)
         return err_fm_usage(EXIT_FAILURE);
 
-    faidx_t *fai = fai_load(argv[optind]);
+    faidx_t *fai(fai_load(argv[optind]));
 
     if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == nullptr) {
         LOG_EXIT("Cannot open input file \"%s\"", argv[optind]);
@@ -1141,7 +1137,7 @@ int err_fm_main(int argc, char *argv[])
     if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX))
         dlib::check_bam_tag_exit(argv[optind + 1], "DR");
 
-    fmerr_t *f = fm_init(bedpath, header, refcontig.c_str(), padding, flag, minmq, minPV, min_fr);
+    fmerr_t *f(fm_init(bedpath, header, refcontig.c_str(), padding, flag, minmq, minPV, min_fr));
     // Get read length from the first
     bam_hdr_destroy(header); header = nullptr;
     err_fm_core(argv[optind + 1], fai, f, &open_fmt);
@@ -1176,8 +1172,8 @@ static int read_bam(RegionExpedition *navy, bam1_t *b)
 inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
 {
     int i, rc, fc, length, ind, s;
-    uint32_t *const cigar = bam_get_cigar(b);
-    uint8_t *seq = bam_get_seq(b);
+    uint32_t *const cigar(bam_get_cigar(b));
+    uint8_t *seq(bam_get_seq(b));
     for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
         length = bam_cigar_oplen(cigar[i]);
         switch(bam_cigar_op(cigar[i])) {
@@ -1204,19 +1200,19 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
 void err_region_core(RegionExpedition *Holloway)
 {
     // Make region_counts classes. These can now be filled from the bam.
-    char *ref = nullptr;
+    char *ref(nullptr);
     int len;
-    bam1_t *b = bam_init1();
+    bam1_t *b(bam_init1());
     std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
     Holloway->region_counts.reserve(sorted_keys.size());
-    for(khiter_t& k: sorted_keys) {
+    for(khiter_t k: sorted_keys) {
         if(!kh_exist(Holloway->bed, k)) continue;
         if(ref) free(ref);
         LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
         ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
-        for(unsigned i = 0; i < kh_val(Holloway->bed, k).n; ++i) {
-            const int start = get_start(kh_val(Holloway->bed, k).intervals[i]);
-            const int stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
+        for(unsigned i(0); i < kh_val(Holloway->bed, k).n; ++i) {
+            const int start(get_start(kh_val(Holloway->bed, k).intervals[i]));
+            const int stop(get_stop(kh_val(Holloway->bed, k).intervals[i]));
             Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                             start, stop);
             Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
@@ -1246,9 +1242,9 @@ int err_region_main(int argc, char *argv[])
     if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
         return err_region_usage(EXIT_SUCCESS);
 
-    FILE *ofp = nullptr;
-    int padding = -1, minmq = 0, minFM = 0, c, requireFP = 0;
-    char *bedpath = nullptr, *outpath = nullptr;
+    FILE *ofp(nullptr);
+    int padding(-1), minmq(0), minFM(0), c, requireFP(0);
+    char *bedpath(nullptr), *outpath(nullptr);
     faidx_t *fai;
     while ((c = getopt(argc, argv, "p:b:r:o:a:h?q")) >= 0) {
         switch (c) {
