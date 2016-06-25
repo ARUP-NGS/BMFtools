@@ -63,6 +63,11 @@ Then, reads with exactly-matching barcode are collapsed, with a meta-analysis pe
 
 bmftools collapse inline collapses templates where both strands were sequenced, whereas collapse secondary lacks strand information.
 
+####bmftools rsq
+bmftools rsq uses positional information to collapse reads sharing alignment signatures with close barcodes
+under the assumption that they came from the same original founding molecule but with errors in reading the
+barcode.
+
 ### Manipulation
 
 ####bmftools cap

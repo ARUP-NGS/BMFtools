@@ -59,8 +59,8 @@ CONST static inline int read_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMI
     const uint8_t *const bseq = bam_get_seq(b);
     const uint8_t *const pseq = bam_get_seq(p);
     uint8_t bc, pc;
-    int hd = 0;
-    for(int i = 0; i < b->core.l_qseq; ++i) {
+    int hd(0);
+    for(int i(0); i < b->core.l_qseq; ++i) {
         bc = bam_seqi(bseq, i);
         pc = bam_seqi(pseq, i);
         if(bc != pc)
@@ -76,8 +76,8 @@ CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD
     const uint8_t *const bseq = bam_get_seq(b);
     const uint8_t *const pseq = bam_get_seq(p);
     uint8_t bc, pc;
-    int hd = 0;
-    for(int i = 0; i < b->core.l_qseq; ++i) {
+    int hd(0);
+    for(int i(0); i < b->core.l_qseq; ++i) {
         bc = bam_seqi(bseq, i);
         pc = bam_seqi(pseq, i);
         if(bc != pc &&

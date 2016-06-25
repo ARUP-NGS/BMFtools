@@ -120,8 +120,8 @@ void write_hist(depth_aux_t **aux, FILE *fp, int n_samples, char *bedpath)
 template<typename T>
 double stdev(T *arr, size_t l, double mean)
 {
-    double ret = 0.0, tmp;
-    for(unsigned i = 0; i < l; ++i) {
+    double ret(0.0), tmp;
+    for(unsigned i(0); i < l; ++i) {
         tmp = arr[i] - mean;
         ret += tmp * tmp;
     }
@@ -136,9 +136,9 @@ static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
     if(!n_plp) return 0;
-    uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
+    uint8_t *data(n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr);
     if(!data) return n_plp;
-    int ret = 0;
+    int ret(0);
     std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
         if(bam_itag(plp.b, "FM") == 1) ++ret;
     });
@@ -152,9 +152,9 @@ static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
-    uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
+    uint8_t *data(n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr);
     if(!data) return n_plp;
-    int ret = 0;
+    int ret(0);
     std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
         ret += bam_itag(plp.b, "FM");
     });
@@ -172,13 +172,13 @@ static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
  */
 static int read_bam(void *data, bam1_t *b)
 {
-    depth_aux_t *aux = (depth_aux_t*)data; // data in fact is a pointer to an auxiliary structure
+    depth_aux_t *aux((depth_aux_t*)data); // data in fact is a pointer to an auxiliary structure
     int ret;
     for(;;)
     {
         ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
         if ( ret<0 ) break;
-        uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
+        uint8_t *data(bam_aux_get(b, "FM")), *fpdata(bam_aux_get(b, "FP"));
         if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
             b->core.qual < aux->minmq || (data && bam_aux2i(data) < aux->minFM) ||
             (aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
@@ -195,14 +195,14 @@ int depth_main(int argc, char *argv[])
     kstream_t *ks;
     hts_idx_t **idx;
     depth_aux_t **aux;
-    int *n_plp, dret, i, n, c, minmq = 0;
+    int *n_plp, dret, i, n, c, khr;
     uint64_t *counts;
     const bam_pileup1_t **plp;
-    int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
-    int requireFP = 0;
-    char *bedpath = nullptr, *outpath = nullptr;
-    FILE *histfp = nullptr;
-    khiter_t k = 0;
+    int usage(0), max_depth(DEFAULT_MAX_DEPTH), minFM(0), n_quantiles(4),
+    		padding(DEFAULT_PADDING), minmq(0), requireFP(0);
+    char *bedpath(nullptr), *outpath(nullptr);
+    FILE *histfp(nullptr);
+    khiter_t k(0);
     if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
         depth_usage(EXIT_SUCCESS);
 

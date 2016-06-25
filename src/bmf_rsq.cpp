@@ -7,7 +7,7 @@
 
 namespace bmf {
 
-static const char *sorted_order_strings[2] = {"positional_rescue", "unclipped_rescue"};
+static const char *sorted_order_strings[2]{"positional_rescue", "unclipped_rescue"};
 
 static const int sp(1);
 
@@ -49,7 +49,7 @@ struct Stack {
             a((bam1_t *)calloc(m, sizeof(bam1_t))),
             stack((bam1_t **)malloc(m * sizeof(bam1_t *)))
     {
-        for(unsigned i = 0; i < m; ++i) stack[i] = a + i;
+        for(unsigned i(0); i < m; ++i) stack[i] = a + i;
     }
     ~Stack() {
         LOG_DEBUG("m: %u.\n", m);
@@ -70,13 +70,13 @@ struct Stack {
             a = (bam1_t *)realloc(a, sizeof(bam1_t) * m); //
             stack = (bam1_t **)realloc(stack, sizeof(bam1_t *) * m); //
             memset(a + n, 0, (m - n) * sizeof(bam1_t)); // Zero-initialize later records.
-            for(unsigned i = n; i < m; ++i) stack[i] = a + i;
+            for(unsigned i(n); i < m; ++i) stack[i] = a + i;
             LOG_DEBUG("Finished adding.\n");
         }
         bam_copy1(a + n++, b);
     }
     void clear() {
-        for(unsigned i = 0; i < n; ++i) free((a + i)->data);
+        for(unsigned i(0); i < n; ++i) free((a + i)->data);
         memset(a, 0, n * sizeof(bam1_t));
         n = 0;
     }
@@ -145,7 +145,7 @@ void Stack::se_core(rsq_aux_t *settings, const std::function<int (bam1_t *, bam1
             continue;
         }
         //LOG_DEBUG("Read a read!\n");
-        if(n == 0 || fn(b, a) == 0) {
+        if(fn(b, a) == 0) {
             //LOG_DEBUG("Flattening stack\n");
             // New stack -- flatten what we have and write it out.
             write_stack_se(settings); // Flattens and clears stack.
@@ -291,11 +291,10 @@ void Stack::flatten()
             if(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim) {
                 assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
                 //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
-                if(trust_unmasked) {
+                if(trust_unmasked)
                     update_bam1_unmasked(stack[j], stack[i]);
-                } else {
+                else
                     update_bam1(stack[j], stack[i]);
-                }
                 free(stack[i]->data);
                 stack[i]->data = nullptr;
                 break;
@@ -311,7 +310,7 @@ void Stack::write_stack_se(rsq_aux_t *settings)
 {
     flatten();
     uint8_t *data;
-    for(unsigned i = 0; i < n; ++i) {
+    for(unsigned i(0); i < n; ++i) {
         if((a + i)->data) {
             if((data = bam_aux_get((a + i), "NC")))
                 bam2ffq((a + i), settings->fqh);
@@ -330,7 +329,7 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
     //LOG_DEBUG("Starting to write stack\n");
     uint8_t *data;
     std::string qname;
-    for(unsigned i = 0; i < n; ++i) {
+    for(unsigned i(0); i < n; ++i) {
         if(a[i].data) {
             if((data = bam_aux_get(a + i, "NC"))) {
                 //LOG_DEBUG("Trying to write.\n");
@@ -383,8 +382,8 @@ void Stack::write_stack_pe(rsq_aux_t *settings)
     clear();
 }
 
-static const std::function<int (bam1_t *, bam1_t *)> fns[4] = {&same_stack_pos, &same_stack_pos_se,
-                                                               &same_stack_ucs, &same_stack_ucs_se};
+static const std::function<int (bam1_t *, bam1_t *)> fns[4]{&same_stack_pos, &same_stack_pos_se,
+                                                            &same_stack_ucs, &same_stack_ucs_se};
 
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 {
@@ -404,10 +403,7 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
     write_if_found(rvdata, b, "NC", ks);
     write_if_found(rvdata, b, "DR", ks);
     write_if_found(rvdata, b, "NP", ks);
-    if(is_supp) {
-        LOG_DEBUG("Writing supplemental.\n");
-        kputsnl("\tSP:i:1", &ks);
-    }
+    if(is_supp) kputsnl("\tSP:i:1", &ks);
     kputc('\n', &ks);
     uint8_t *seq(bam_get_seq(b));
     char *seqbuf((char *)malloc(b->core.l_qseq + 1));
@@ -415,7 +411,7 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
     seqbuf[i] = '\0';
     if (b->core.flag & BAM_FREVERSE) { // reverse complement
         for(i = 0; i < b->core.l_qseq>>1; ++i) {
-            const int8_t t = nuc_cmpl(seqbuf[b->core.l_qseq - i - 1]);
+            const int8_t t(nuc_cmpl(seqbuf[b->core.l_qseq - i - 1]));
             seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seqbuf[i]);
             seqbuf[i] = t;
         }
@@ -429,7 +425,7 @@ inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
     for(i = 0; i < b->core.l_qseq; ++i) seqbuf[i] = 33 + qual[i];
     if (b->core.flag & BAM_FREVERSE) { // reverse
         for (i = 0; i < b->core.l_qseq>>1; ++i) {
-            const int8_t t = seqbuf[b->core.l_qseq - 1 - i];
+            const int8_t t(seqbuf[b->core.l_qseq - 1 - i]);
             seqbuf[b->core.l_qseq - 1 - i] = seqbuf[i];
             seqbuf[i] = t;
         }
@@ -505,7 +501,7 @@ void update_bam1_unmasked(bam1_t *p, bam1_t *b)
 
     if(p->core.flag & (BAM_FREVERSE)) {
         int qleni1;
-        for(int i = 0; i < qlen; ++i) {
+        for(int i(0); i < qlen; ++i) {
             qleni1 = qlen - i - 1;
             ps = bam_seqi(pSeq, qleni1);
             bs = bam_seqi(bSeq, qleni1);
@@ -669,7 +665,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
 
     if(p->core.flag & (BAM_FREVERSE)) {
         int qleni1;
-        for(int i = 0; i < qlen; ++i) {
+        for(int i(0); i < qlen; ++i) {
             qleni1 = qlen - i - 1;
             ps = bam_seqi(pSeq, qleni1);
             bs = bam_seqi(bSeq, qleni1);
@@ -691,7 +687,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
             }
         }
     } else {
-        for(int i = 0; i < qlen; ++i) {
+        for(int i(0); i < qlen; ++i) {
             ps = bam_seqi(pSeq, i);
             bs = bam_seqi(bSeq, i);
             if(ps == bs) {
@@ -719,7 +715,7 @@ void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 {
     //size_t n = 0;
     uint8_t *data;
-    for(unsigned i = 0; i < stack->n; ++i) {
+    for(unsigned i(0); i < stack->n; ++i) {
         if(stack->a[i]) {
             if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
                 LOG_DEBUG("Trying to write.\n");
@@ -738,7 +734,7 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
     //size_t n = 0;
     //LOG_DEBUG("Starting to write stack\n");
     uint8_t *data;
-    for(unsigned i = 0; i < stack->n; ++i) {
+    for(unsigned i(0); i < stack->n; ++i) {
         if(stack->a[i]) {
             if((data = bam_aux_get(stack->a[i], "NC"))) {
                 //LOG_DEBUG("Trying to write.\n");
@@ -795,7 +791,7 @@ void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
 
 inline int string_linear(char *a, char *b, int mmlim)
 {
-    int hd = 0;
+    int hd(0);
     while(*a) if(*a++ != *b++) if(++hd > mmlim) return 0;
     return 1;
 }
@@ -812,7 +808,7 @@ inline void add_dummy_tags(bam1_t *b)
     bam_aux_append(b, "FM", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
     // Pass the read
     bam_aux_append(b, "FP", 'i', sizeof(int), const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&one)));
-    uint8_t *qual = bam_get_qual(b);
+    uint8_t *qual(bam_get_qual(b));
     if(b->core.flag & BAM_FREVERSE)
         for(i = b->core.l_qseq; i;)
             pvbuf.push_back(static_cast<uint32_t>(qual[--i]));
@@ -859,13 +855,13 @@ int rsq_usage(int retcode)
 int rsq_main(int argc, char *argv[])
 {
     int c;
-    char wmode[4] = "wb";
+    char wmode[4]{"wb"};
 
-    rsq_aux_t settings = {0};
+    rsq_aux_t settings{0};
     settings.mmlim = 2;
     settings.cmpkey = cmpkey::POSITION;
 
-    char *fqname = nullptr;
+    char *fqname(nullptr);
 
     if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
