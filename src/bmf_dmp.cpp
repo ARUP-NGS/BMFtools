@@ -52,7 +52,7 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret = {0, 0, nullptr};
+    kstring_t ret{0, 0, nullptr};
     ksprintf(&ret, infname);
     char *tmp;
     /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
@@ -70,18 +70,18 @@ kstring_t salted_rand_string(char *infname, size_t n_rand) {
  */
 char *make_salted_fname(char *base)
 {
-    int has_period = 0;
-    for(int i = 0; base[i]; ++i) {
+    int has_period(0);
+    for(int i(0); base[i]; ++i) {
         if(base[i] == '.') {
             has_period = 1; break;
         }
     }
     if(has_period) {
-        kstring_t rs = salted_rand_string(base, RANDSTR_SIZE);
+        kstring_t rs{salted_rand_string(base, RANDSTR_SIZE)};
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", base);
         return rs.s;
     } else {
-        char *tmp = (char *)malloc(RANDSTR_SIZE + 1);
+        char *tmp((char *)malloc(RANDSTR_SIZE + 1));
         return dlib::rand_string(tmp, RANDSTR_SIZE);
     }
 }
@@ -98,8 +98,8 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
 {
     if(!settings->cleanup) return;
     #pragma omp parallel for
-    for(int i = 0; i < params->n; ++i) {
-        kstring_t ks = {0, 0, nullptr};
+    for(int i(0); i < params->n; ++i) {
+        kstring_t ks{0, 0, nullptr};
         ksprintf(&ks, "rm %s %s", params->outfnames_r1[i], settings->is_se ? "": params->outfnames_r2[i]);
         dlib::check_call(ks.s);
         free(ks.s);
@@ -113,12 +113,12 @@ void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *para
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
 {
     #pragma omp parallel for schedule(dynamic, 1)
-    for(int i = 0; i < settings->n_handles; ++i) {
+    for(int i(0); i < settings->n_handles; ++i) {
         LOG_DEBUG("Now running hash dmp core on input filename %s and output filename %s.\n",
                  params->infnames_r1[i], params->outfnames_r1[i]);
         func(params->infnames_r1[i], params->outfnames_r1[i], settings->gzip_compression);
         if(settings->cleanup) {
-            kstring_t ks = {0, 0, nullptr};
+            kstring_t ks{0, 0, nullptr};
             ksprintf(&ks, "rm %s", params->infnames_r1[i]);
             dlib::check_call(ks.s);
             free(ks.s);
@@ -129,12 +129,12 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
         return; // Don't dmp imaginary files....
     }
     #pragma omp parallel for schedule(dynamic, 1)
-    for(int i = 0; i < settings->n_handles; ++i) {
+    for(int i(0); i < settings->n_handles; ++i) {
         LOG_DEBUG("Now running hash dmp core on input filename %s and output filename %s.\n",
                   params->infnames_r2[i], params->outfnames_r2[i]);
         func(params->infnames_r2[i], params->outfnames_r2[i], settings->gzip_compression);
         if(settings->cleanup) {
-            kstring_t ks = {0, 0, nullptr};
+            kstring_t ks{0, 0, nullptr};
             ksprintf(&ks, "rm %s", params->infnames_r2[i]);
             dlib::check_call(ks.s);
             free(ks.s);
@@ -145,13 +145,13 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 
 void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
-    kstring_t ks = {0, 0, nullptr};
+    kstring_t ks{0, 0, nullptr};
     // Clear output files.
     ksprintf(&ks, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
     dlib::check_call(ks.s);
     ks.l = 0;
     ksprintf(&ks, "/bin/cat ");
-    for(int i = 0; i < settings->n_handles; ++i) {
+    for(int i(0); i < settings->n_handles; ++i) {
         if(!dlib::isfile(params->outfnames_r1[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
         ksprintf(&ks, " %s", params->outfnames_r1[i]);
@@ -167,7 +167,7 @@ void cat_fastqs_se(marksplit_settings_t *settings, splitterhash_params_t *params
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
 {
     if(settings->rescaler)
-        for(int i = 0; i < arr_size; ++i)
+        for(int i(0); i < arr_size; ++i)
             if(settings->rescaler[i] <= 0)
                 LOG_EXIT("Invalid value in rescaler %i at index %i.\n", settings->rescaler[i], i);
 }
@@ -177,21 +177,21 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-    kstring_t str1 = {0, 0, nullptr}, str2 = {0, 0, nullptr};
-    kstring_t final = {0, 0, nullptr};
+    kstring_t str1{0, 0, nullptr}, str2{0, 0, nullptr};
+    kstring_t final{0, 0, nullptr};
     kputs((settings->gzip_output)? "zcat": "cat", &str1);
     ks_resize(&str1, 1 << 10);
-    for(int i = 0; i < settings->n_handles; ++i)
+    for(int i(0); i < settings->n_handles; ++i)
         ksprintf(&str1, " %s", params->outfnames_r1[i]);
     kputsnl(" | paste -d'~' - - - - ", &str1);
     str2.s = dlib::kstrdup(&str1); // strdup the string.
-    for(uint32_t i = 0; i < str2.l; ++i) {
+    for(uint32_t i(0); i < str2.l; ++i) {
         LOG_DEBUG("Current str.s + i: %s.\n", str2.s + i);
         if(memcmp(str2.s + i, "R1", 2) == 0)
             str2.s[i + 1] = '2';
     }
 
-    const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
+    const char final_template[]{"pr -mts'~' <(%s) <(%s) | tr '~' '\\n'"};
     ksprintf(&final, final_template, str1.s, str2.s);
     dlib::bash_system(final.s);
     free(str1.s), free(str2.s);
@@ -200,13 +200,13 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 
 void cat_fastqs(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-    settings->is_se ? cat_fastqs_se(settings, params, ffq_r1):
-            cat_fastqs_pe(settings, params, ffq_r1, ffq_r2);
+    settings->is_se ? cat_fastqs_se(settings, params, ffq_r1)
+                    : cat_fastqs_pe(settings, params, ffq_r1, ffq_r2);
 }
 
 void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-    kstring_t ks1 = {0, 0, nullptr};
+    kstring_t ks1{0, 0, nullptr};
     kputsnl("> ", &ks1), kputs(ffq_r1, &ks1);
     if(settings->gzip_output) kputsnl(".gz", &ks1);
     // Clear output files.
@@ -215,9 +215,9 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     ksprintf(&ks1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
     dlib::check_call(ks1.s); ks1.l = 0;
     kputsnl("/bin/cat ", &ks1);
-    kstring_t ks2 = {0};
+    kstring_t ks2{0};
     ksprintf(&ks2, ks1.s);
-    for(int i = 0; i < settings->n_handles; ++i) {
+    for(int i(0); i < settings->n_handles; ++i) {
         if(!dlib::isfile(params->outfnames_r1[i])) {
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
         }
@@ -233,8 +233,8 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
         kputsnl(".gz", &ks1);
         kputsnl(".gz", &ks2);
     }
-    FILE *c1_popen = popen(ks1.s, "w");
-    FILE *c2_popen = popen(ks2.s, "w");
+    FILE *c1_popen(popen(ks1.s, "w"));
+    FILE *c2_popen = popen((ks2.s, "w"));
     if(pclose(c2_popen) || pclose(c1_popen)) {
         LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
     }
@@ -314,7 +314,7 @@ mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
     }
     LOG_INFO("Collapsing %lu initial reads....\n", count);
     LOG_DEBUG("Cleaning up.\n");
-    for(int i = 0; i < splitter.n_handles; ++i)
+    for(int i(0); i < splitter.n_handles; ++i)
         gzclose(splitter.tmp_out_handles_r1[i]);
     tm_destroy(tmp);
     mseq_destroy(rseq);
@@ -339,11 +339,11 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     }
     if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
     mark_splitter_t splitter(init_splitter(settings));
-    gzFile fp1 = gzopen(settings->input_r1_path, "r");
-    gzFile fp2 = gzopen(settings->input_r2_path, "r");
-    kseq_t *seq1 = kseq_init(fp1), *seq2 = kseq_init(fp2);
+    gzFile fp1(gzopen(settings->input_r1_path, "r"));
+    gzFile fp2(gzopen(settings->input_r2_path, "r"));
+    kseq_t *seq1(kseq_init(fp1), *seq2(kseq_init(fp2));
     // Manually process the first pair of reads so that we have the read length.
-    int pass_fail = 1;
+    int pass_fail(1);
     if(kseq_read(seq1) < 0 || kseq_read(seq2) < 0) {
             free_marksplit_settings(*settings);
             splitter_destroy(&splitter);
@@ -351,12 +351,13 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     }
     LOG_DEBUG("Read length (inferred): %lu.\n", seq1->seq.l);
     check_rescaler(settings, seq1->seq.l * 4 * 2 * NQSCORES);
-    tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
-    int switch_reads = switch_test(seq1, seq2, settings->offset);
-    const int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
-    int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
-    mseq_t *rseq1, *rseq2;
-    rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
+    tmp_mseq_t *tmp(init_tm_ptr(seq1->seq.l, settings->blen));
+    int switch_reads(switch_test(seq1, seq2, settings->offset));
+    const int default_nlen(settings->blen1_2 + settings->offset + settings->homing_sequence_length);
+    int n_len(nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
+    mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
+    mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 0));
+    rseq1 = ;
     rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
     rseq1->barcode[settings->blen] = '\0';
     if(switch_reads) {

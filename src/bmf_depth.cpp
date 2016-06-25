@@ -227,8 +227,8 @@ int depth_main(int argc, char *argv[])
         }
         if (usage) break;
     }
-    FILE *ofp = outpath ? fopen(outpath, "w")
-                        : stdout;
+    FILE *ofp(outpath ? fopen(outpath, "w")
+                      : stdout);
     if (usage || optind > argc) // Require at least one bam
         depth_usage(EXIT_FAILURE);
     n = argc - optind;
@@ -255,9 +255,7 @@ int depth_main(int argc, char *argv[])
             return 2;
         }
     }
-    if(!bedpath) {
-        LOG_EXIT("Bed path required. Abort!\n");
-    }
+    if(!bedpath) LOG_EXIT("Bed path required. Abort!\n");
     counts = (uint64_t *)calloc(n, sizeof(uint64_t));
     std::string region_name;
 
@@ -267,7 +265,7 @@ int depth_main(int argc, char *argv[])
     ks = ks_init(fp);
     n_plp = (int *)calloc(n, sizeof(int));
     plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
-    int lineno = 1;
+    int lineno(1);
     // Write header
     // stderr ONLY for this development phase.
     kstring_t hdr_str{0, 0, nullptr};
@@ -277,14 +275,14 @@ int depth_main(int argc, char *argv[])
     ksprintf(&hdr_str, "##minFM=%i\n", minFM);
     ksprintf(&hdr_str, "##padding=%i\n", padding);
     ksprintf(&hdr_str, "##bmftools version=%s.\n", BMF_VERSION);
-    size_t capture_size = 0;
+    size_t capture_size(0);
     std::vector<uint64_t> collapsed_capture_counts(n);
     std::vector<uint64_t> raw_capture_counts(n);
     std::vector<uint64_t> singleton_capture_counts(n);
     kstring_t cov_str{0, 0, nullptr};
     kstring_t str{0};
 #if !NDEBUG
-    const int n_lines = dlib::count_bed_lines(bedpath);
+    const int n_lines(dlib::count_bed_lines(bedpath));
 #endif
     while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
         char *p, *q;
@@ -303,7 +301,7 @@ int depth_main(int argc, char *argv[])
         *p = 0; start = atoi(q); *p = '\t';
         for (q = p = p + 1; isdigit(*p); ++p);
         if (*p == '\t' || *p == 0) {
-            int c = *p;
+            const int c(*p);
             *p = 0; stop = atoi(q); *p = c;
         } else goto bed_error;
         // Add padding
@@ -322,7 +320,7 @@ int depth_main(int argc, char *argv[])
         if(*p == '\t') {
             q = ++p;
             while(*q != '\t' && *q != '\n') ++q;
-            int c = *q; *q = '\0';
+            constint c(*q); *q = '\0';
             region_name = p;
             *q = c;
         } else region_name = (char *)NO_ID_STR;
