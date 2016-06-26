@@ -12,7 +12,10 @@ if __name__ == "__main__":
     class Test(unittest.TestCase):
         def test_dmp_depth(self):
             samtools = int(float(check_output("echo $(samtools bedcov %s %s | cut -f4 | paste -sd+ | bc) / $(awk '{print $3 - $2}' %s | paste -sd+ | bc) | bc -l" % (bedpath, bampath, bedpath), shell=True).strip()))
-            line = [i for i in check_output("bmftools_db depth -b %s %s" % (bedpath, bampath), shell=True).split('\n') if "Mean DMP Coverage" in i][0]
+            line = [i for i in
+                    check_output("bmftools_db depth -b %s %s" % (bedpath, bampath),
+                                 shell=True).split('\n') if
+                    "Mean DMP Coverage" in i][0]
             bmftools = int(float(line.split(":")[1].split(".")[0].strip()))
             self.assertEqual(bmftools, samtools)
 

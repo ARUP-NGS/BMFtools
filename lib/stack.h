@@ -330,7 +330,8 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
         } else if(plp.qpos < aux->conf.flanksz) {
             start = 0;
             stop = wlen;
-        } else start = plp.qpos - aux->conf.flanksz, stop = plp.qpos + aux->conf.flanksz + 1;
+        } else start = plp.qpos - aux->conf.flanksz,
+               stop = plp.qpos + aux->conf.flanksz + 1;
     }
     for(int i(start); i < stop; ++i)
         ret += (bam_seqi(seq, i) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]
