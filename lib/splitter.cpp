@@ -53,13 +53,13 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings, mark_sp
         fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
         exit(EXIT_FAILURE);
     }
-    kstring_t ks = {0, 0, nullptr};
-    splitterhash_params_t *ret = (splitterhash_params_t *)calloc(1, sizeof(splitterhash_params_t));
+    kstring_t ks{0, 0, nullptr};
+    splitterhash_params_t *ret((splitterhash_params_t *)calloc(1, sizeof(splitterhash_params_t)));
     ret->n = splitter_ptr->n_handles;
     if(settings->is_se) {
         ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
         ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-        for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+        for(int i(0); i < splitter_ptr->n_handles; ++i) {
             ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
             ks.l = 0;
             ksprintf(&ks, "%s.%i.dmp.fastq", settings->tmp_basename, i);
@@ -88,10 +88,10 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings, mark_sp
 
 void splitter_destroy(mark_splitter_t *var)
 {
-    for(int i = 0; i < var->n_handles; i++)
+    for(int i(0); i < var->n_handles; i++)
         cond_free(var->fnames_r1);
     if(var->fnames_r2)
-        for(int i = 0; i < var->n_handles; ++i)
+        for(int i(0); i < var->n_handles; ++i)
             cond_free(var->fnames_r2[i]);
 
     cond_free(var->tmp_out_handles_r1);
@@ -101,7 +101,7 @@ void splitter_destroy(mark_splitter_t *var)
 
 mark_splitter_t init_splitter_pe(marksplit_settings_t* settings)
 {
-    mark_splitter_t ret = {
+    mark_splitter_t ret {
         (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
         (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r2
         settings->n_nucs, // n_nucs
@@ -109,8 +109,8 @@ mark_splitter_t init_splitter_pe(marksplit_settings_t* settings)
         (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
         (char **)calloc(ret.n_handles, sizeof(char *))  // infnames_r2
     };
-    kstring_t ks = {0, 0, nullptr};
-    for (int i = 0; i < ret.n_handles; i++) {
+    kstring_t ks {0, 0, nullptr};
+    for (int i(0); i < ret.n_handles; i++) {
         ks.l = 0;
         ksprintf(&ks, "%s.tmp.%i.R1.fastq", settings->tmp_basename, i);
         ret.fnames_r1[i] = dlib::kstrdup(&ks);
@@ -126,7 +126,7 @@ mark_splitter_t init_splitter_pe(marksplit_settings_t* settings)
 
 mark_splitter_t init_splitter_se(marksplit_settings_t* settings)
 {
-    mark_splitter_t ret = {
+    mark_splitter_t ret {
         (gzFile *)calloc(settings->n_handles, sizeof(gzFile)), // tmp_out_handles_r1
         nullptr, // tmp_out_handles_r2
         settings->n_nucs, // n_nucs
@@ -134,8 +134,8 @@ mark_splitter_t init_splitter_se(marksplit_settings_t* settings)
         (char **)calloc(ret.n_handles, sizeof(char *)), // infnames_r1
         nullptr  // infnames_r2
     };
-    kstring_t ks = {0, 0, nullptr};
-    for (int i = 0; i < ret.n_handles; i++) {
+    kstring_t ks {0, 0, nullptr};
+    for (int i(0); i < ret.n_handles; i++) {
         ks.l = 0;
         ksprintf(&ks, "%s.tmp.%i.fastq", settings->tmp_basename, i);
         ret.fnames_r1[i] = dlib::kstrdup(&ks);

@@ -42,13 +42,12 @@ struct tmp_mseq_t {
 
 CONST static inline char *mem_view(char *comment)
 {
-    int hits = 0;
+    int hits(0);
     for(;;) {
         switch(*comment++) {
             case '|': case '\0':
-                if(hits)
-                    return (char *)comment + 3;
-                else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
+                if(hits) return (char *)comment + 3;
+                else ++hits; // + 3 for |BS= minus 1, since we already incremented for the switch.
         }
     }
     return nullptr; // This shouldn't ever happen.
@@ -154,7 +153,7 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
     mvar->seq[seq->seq.l - n_len] = '\0';
     mvar->qual[seq->qual.l - n_len] = '\0';
     if(rescaler)
-        for(unsigned i = n_len; i < seq->seq.l; ++i)
+        for(unsigned i(n_len); i < seq->seq.l; ++i)
             mvar->qual[i - n_len] = rescale_qscore(is_read2, seq->qual.s[i], i,
                                                    seq->seq.s[i], seq->seq.l, rescaler);
     else memcpy(mvar->qual, seq->qual.s + n_len, seq->qual.l - n_len);

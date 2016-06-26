@@ -22,8 +22,8 @@ namespace bmf {
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler)
 {
     if(base == 'N') return '#';
-    int index = readnum;
-    int mult = 2;
+    int index(readnum);
+    int mult(2);
     index += cycle * mult;
     mult *= readlen;
     index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
@@ -43,11 +43,11 @@ static void period_to_null(char *instr)
 
 static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 {
-    int readlen, length, lnum;
+    int length, lnum;
     size_t arr_len, index;
     FILE *fp;
     char *buffer, *ret, *tok;
-    readlen = dlib::count_lines(qual_rescale_fname);
+    const int readlen(dlib::count_lines(qual_rescale_fname));
     LOG_DEBUG("Number of lines: %i.\n", readlen);
     if((fp = fopen(qual_rescale_fname, "rb")) == nullptr) {
         LOG_EXIT("Could not open file %s. Abort mission!\n", qual_rescale_fname);

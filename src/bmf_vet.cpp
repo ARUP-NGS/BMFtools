@@ -13,7 +13,8 @@
 namespace bmf {
 
 KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
-static int max_depth = (1 << 20); // 262144
+static int max_depth((1 << 20)); // 262144
+static uint64_t NUM_PREALLOCATED_ALLELES(4uL);
 
 void vetter_usage(int retcode)
 {
@@ -79,7 +80,7 @@ void vetter_error(const char *message, int retcode)
 
 static int read_bam(void *data, bam1_t *b)
 {
-    vetter_aux_t *aux = (vetter_aux_t*)data; // data in fact is a pointer to an auxiliary structure
+    vetter_aux_t *aux((vetter_aux_t*)data); // data in fact is a pointer to an auxiliary structure
     int ret;
     for(;;)
     {
@@ -126,7 +127,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
     suspect_phreds.reserve(vrec->n_allele);
     // Build overlap hash
     khash_t(names) *hash(kh_init(names));
-    const int sk = 1;
+    const int sk(1);
     // Set the r1/r2 flags for the reads to ignore to 0
     // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
     for(i = 0; i < n_plp; ++i) {
@@ -142,8 +143,8 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
             bam_aux_append(plp[i].b, "SK", 'i', sizeof(int), (uint8_t *)&sk); // Skip
             bam_aux_append(kh_val(hash, k)->b, "KR", 'i', sizeof(int), (uint8_t *)&sk); // Keep Read
             if((tmptag = bam_aux_get(kh_val(hash, k)->b, "fm")) == nullptr) {
-                uint8_t *FM1 = bam_aux_get(kh_val(hash, k)->b, "FM");
-                const int FM_sum = bam_aux2i(FM1) + bam_itag(plp[i].b, "FM");
+                uint8_t *FM1(bam_aux_get(kh_val(hash, k)->b, "FM"));
+                const int FM_sum(bam_aux2i(FM1) + bam_itag(plp[i].b, "FM"));
                 bam_aux_del(kh_val(hash, k)->b, FM1);
                 bam_aux_append(kh_val(hash, k)->b, "FM", 'i', sizeof(int), (uint8_t *)&FM_sum);
                 bam_aux_append(kh_val(hash, k)->b, "fm", 'i', sizeof(int), (uint8_t *)&sk);
@@ -176,7 +177,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
         }
     }
     // Reads in the pair have now been merged, and those to be skipped have been tagged "SK".
-    for(unsigned j = 0; j < vrec->n_allele; ++j) {
+    for(unsigned j(0); j < vrec->n_allele; ++j) {
         confident_phreds.emplace_back(); // Make the vector for PVs for this allele.
         suspect_phreds.emplace_back(); // Make the vector for PVs for this allele.
         if(strcmp(vrec->d.allele[j], "<*>") == 0) {
@@ -185,7 +186,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
         }
         const char allele(vrec->d.allele[j][0]);
         //LOG_DEBUG("Checking stack for reads with base %c.\n", allele);
-        for(int i = 0; i < n_plp; ++i) {
+        for(int i(0); i < n_plp; ++i) {
             if(plp[i].is_del || plp[i].is_refskip) continue;
             if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr) continue;
 
@@ -194,7 +195,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
             PV1 = (uint32_t *)dlib::array_tag(plp[i].b, "PV");
             if(bam_seqi(seq, plp[i].qpos) == seq_nt16_table[(uint8_t)allele]) { // Match!
                 //LOG_DEBUG("Found read supporting allele '%i', '%c'.\n", bam_seqi(seq, plp[i].qpos), allele);
-                const int32_t arr_qpos1 = dlib::arr_qpos(&plp[i]);
+                const int32_t arr_qpos1(dlib::arr_qpos(&plp[i]));
                 if(bam_itag(plp[i].b, "FM") < aux->minFM ||
                    FA1[arr_qpos1] < aux->minFA ||
                         PV1[arr_qpos1] < aux->minPV ||
@@ -256,17 +257,14 @@ int vet_core_bed(vetter_aux_t *aux) {
     case vcf: return vet_core_nobed(aux);
         // Tabix indexed vcfs don't work currently. Throws a segfault in htslib.
     case bcf:
-        if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr) LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+        if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr)
+        	LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
         break;
     default:
-        LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
+        LOG_EXIT("Unrecognized variant file type! (%i).\n",
+        		 hts_get_format(aux->vcf_fp)->format);
         break; // This never happens -- LOG_EXIT exits.
     }
-    /*
-    if(!(vcf_idx || bcf_idx)) {
-        LOG_EXIT("Require an indexed variant file. Abort!\n");
-    }
-    */
     bcf1_t *vrec(bcf_init());
     // Unpack all shared data -- up through INFO, but not including FORMAT
     vrec->max_unpack = BCF_UN_FMT;
@@ -282,8 +280,8 @@ int vet_core_bed(vetter_aux_t *aux) {
     std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
     std::vector<khiter_t> keys(dlib::make_sorted_keys(aux->bed));
     for(khiter_t ki: keys) {
-        for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
-            int pos = -1;
+        for(unsigned j(0); j < kh_val(aux->bed, ki).n; ++j) {
+            int pos(-1);
 
             // Handle coordinates
             int tid(kh_key(aux->bed, ki));
@@ -298,7 +296,7 @@ int vet_core_bed(vetter_aux_t *aux) {
                                           : nullptr;
             //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
 
-            int n_disagreed (0);
+            int n_disagreed(0);
             int n_overlapped (0);
             int n_duplex(0);
             bam_plp_t pileup(bam_plp_init(read_bam, (void *)aux));
@@ -373,7 +371,7 @@ int vet_core_bed(vetter_aux_t *aux) {
 
 int vet_core_nobed(vetter_aux_t *aux) {
 #if !NDEBUG
-    int n_skipped = 0;
+    int n_skipped(0);
 #endif
     int n_plp;
     const bam_pileup1_t *plp(nullptr);
@@ -398,7 +396,7 @@ int vet_core_nobed(vetter_aux_t *aux) {
         LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
         break; // This never happens -- LOG_EXIT exits.
     }
-    bcf1_t *vrec = bcf_init();
+    bcf1_t *vrec(bcf_init());
     // Unpack all shared data -- up through INFO, but not including FORMAT
     vrec->max_unpack = BCF_UN_FMT;
     vrec->rid = -1;
@@ -413,12 +411,12 @@ int vet_core_nobed(vetter_aux_t *aux) {
     std::vector<int32_t> qscore_sums(NUM_PREALLOCATED_ALLELES);
     bam_plp_t pileup(nullptr);
 
-    for(int i = 0; i < aux->header->n_targets; ++i) {
+    for(int i(0); i < aux->header->n_targets; ++i) {
 
-        int pos = -1;
-        int tid = i;
-        const int start = 0;
-        const int stop = aux->header->target_len[tid];
+        int pos(-1);
+        int tid(i);
+        const int start(0);
+        const int stop(aux->header->target_len[tid]);
 
         // Handle coordinates
         // rid is set to -1 before use. This won't be triggered.
@@ -426,9 +424,9 @@ int vet_core_nobed(vetter_aux_t *aux) {
 
         // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
 
-        int n_disagreed = 0;
-        int n_overlapped = 0;
-        int n_duplex = 0;
+        int n_disagreed(0);
+        int n_overlapped(0);
+        int n_duplex(0);
         while(read_bcf(aux, vcf_iter, vrec) >= 0) {
             if(!vcf_iter && vrec->rid != tid) {
                 i = tid = vrec->rid; // Finished the last contig, on the next one.
@@ -529,7 +527,7 @@ int vet_core(vetter_aux_t *aux) {
 int vet_main(int argc, char *argv[])
 {
     if(argc < 3) vetter_usage(EXIT_FAILURE);
-    const struct option lopts[] = {
+    const struct option lopts[] {
             {"min-family-agreed",         required_argument, nullptr, 'a'},
             {"min-family-size",          required_argument, nullptr, 's'},
             {"min-fraction-agreed",         required_argument, nullptr, 'f'},
@@ -551,13 +549,13 @@ int vet_main(int argc, char *argv[])
             {"emit-bcf", no_argument, nullptr, 'B'},
             {0, 0, 0, 0}
     };
-    char vcf_wmode[4] = "w";
-    char *outvcf = nullptr, *bed = nullptr;
+    char vcf_wmode[4]("w");
+    char *outvcf(nullptr), *bed(nullptr);
     int c;
-    int padding = 0, output_bcf = 0;
+    int padding(0), output_bcf(0);
     // Defaults to outputting textual (vcf)
-    htsFormat open_fmt = {sequence_data, bam, {1, 3}, gzip, 0, nullptr};
-    vetter_aux_t aux = {0};
+    htsFormat open_fmt{sequence_data, bam, {1, 3}, gzip, 0, nullptr};
+    vetter_aux_t aux{0};
     aux.min_count = 1;
     aux.max_depth = max_depth;
 
@@ -627,7 +625,7 @@ int vet_main(int argc, char *argv[])
     kstring_t tmpstr{0};
     ksprintf(&tmpstr, "##cmdline=");
     kputs("bmftools", &tmpstr);
-    for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
+    for(int i(0); i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
     bcf_hdr_append(aux.vcf_header, tmpstr.s);
     tmpstr.l = 0;
     // Add in settings

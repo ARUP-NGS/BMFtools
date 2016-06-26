@@ -52,7 +52,7 @@ void SampleVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, const char refbase) {
     vrec->pos = pos;
     vrec->qual = 0;
     vrec->n_sample = 1;
-    auto match = templates.find(refbase);
+    auto match(templates.find(refbase));
     suspect_phreds.emplace_back();
     confident_phreds.emplace_back();
     if(match != templates.end()) {
@@ -222,8 +222,8 @@ void UniqueObservation::add_obs(const bam_pileup1_t& plp, stack_aux_t *aux) {
 }
 void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
     unsigned i;
-    const char refbase = aux->get_ref_base(ttid, tpos);
-    int ambig[2] = {0, 0};
+    const char refbase(aux->get_ref_base(ttid, tpos));
+    int ambig[2] {0, 0};
     std::unordered_set<char> base_set{refbase};
     for(auto&& pair: tumor.templates)
         if(pair.first == 'N')
@@ -274,7 +274,7 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
     vrec->pos = tumor.pos;
     vrec->qual = 0;
     vrec->n_sample = 2;
-    auto match = tumor.templates.find(refbase);
+    auto match(tumor.templates.find(refbase));
     tsuspect_phreds.emplace_back();
     tconfident_phreds.emplace_back();
     nsuspect_phreds.emplace_back();
@@ -317,20 +317,6 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         allele_passes[0] = (duplex_counts[0] >= aux->conf.min_duplex &&
                             tconfident_phreds[0].size() >= (unsigned)aux->conf.min_count &&
                             overlap_counts[0] >= aux->conf.min_overlap);
-#if !NDEBUG
-        if(!allele_passes[0]) {
-            LOG_DEBUG("Ref allele failed at %i:%i.\n", vrec->rid, vrec->pos);
-            if(duplex_counts[0] < aux->conf.min_duplex) {
-                LOG_DEBUG("Ref allele failed duplex threshold.\n");
-            }
-            else if(tconfident_phreds[0].size() < (unsigned)aux->conf.min_count) {
-                LOG_DEBUG("Ref allele failed count threshold.\n");
-            }
-            else if(overlap_counts[0] < aux->conf.min_overlap) {
-                LOG_DEBUG("Failed olap threshold.\n");
-            }
-        }
-#endif
     }
     if((match = normal.templates.find(refbase)) != normal.templates.end()) {
         counts[n_base_calls] = match->second.size();
@@ -370,18 +356,6 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
         allele_passes[n_base_calls] = (duplex_counts[n_base_calls] >= aux->conf.min_duplex &&
                                        nconfident_phreds[0].size() >= (unsigned)aux->conf.min_count &&
                                        overlap_counts[n_base_calls] >= aux->conf.min_overlap);
-#if !NDEBUG
-            if(allele_passes[n_base_calls]) {
-                //LOG_DEBUG("Normal reference allele is passing duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
-                //LOG_DEBUG("Normal reference allele is passing counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
-                //LOG_DEBUG("Normal allele is overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
-            } else {
-                LOG_DEBUG("Fail!\n Which of the below?\n");
-                LOG_DEBUG("Normal reference allele duplex. %i > %i.", duplex_counts[n_base_calls], aux->conf.min_duplex);
-                LOG_DEBUG("Normal reference allele counts. %lu > %i.", nconfident_phreds[0].size(), aux->conf.min_count);
-                LOG_DEBUG("Normal reference allele overlap counts. %lu > %i.\n", overlap_counts[n_base_calls], aux->conf.min_overlap);
-            }
-#endif
     }
     somatic.push_back(allele_passes[0] & !allele_passes[n_base_calls]);
 
@@ -533,7 +507,7 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
     bcf_update_info_int32(aux->vcf.vh, vrec, "SOMATIC_CALL", static_cast<const void *>(somatic.data()), somatic.size());
 } /* PairVCFLine::to_bcf */
 
-static const char *stack_vcf_lines[] = {
+static const char *stack_vcf_lines[] {
         "##INFO=<ID=SOMATIC_CALL,Number=R,Type=Integer,Description=\"Boolean value for a somatic call for each allele.\">",
         "##FORMAT=<ID=ADP_ALL,Number=R,Type=Integer,Description=\"Number of all unique observations for each allele, inc. both low- and high-confidence.\">",
         "##FORMAT=<ID=ADPD,Number=R,Type=Integer,Description=\"Number of duplex observations for each allele. If both reads in an overlapping pair are duplex, this counts each separately.\">",

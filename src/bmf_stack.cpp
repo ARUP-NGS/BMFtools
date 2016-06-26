@@ -90,7 +90,7 @@ void process_matched_pileups(bmf::stack_aux_t *aux, bcf1_t *ret,
     for(auto& pair: tobs)
         if(pair.second.get_max_mq() < aux->conf.minmq)
             ++mq_failed[0], pair.second.set_pass(0);
-    for(int i = 0; i < nn_plp; ++i) {
+    for(int i(0); i < nn_plp; ++i) {
         if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
         if(aux->conf.skip_flag & aux->normal.pileups[i].b->core.flag) {
             ++flag_failed[1];
@@ -137,7 +137,7 @@ void process_pileup(bcf1_t *ret, const bam_pileup1_t *plp, int n_plp, int pos, i
     int improper_count(0);
     int olap_count(0);
     std::string qname;
-    for(int i = 0; i < n_plp; ++i) {
+    for(int i(0); i < n_plp; ++i) {
         if(aux->tumor.pileups[i].is_del || aux->tumor.pileups[i].is_refskip) continue;
         if(aux->conf.skip_flag & aux->tumor.pileups[i].b->core.flag) {
             ++flag_failed; continue;
@@ -185,11 +185,11 @@ int stack_core_single(bmf::stack_aux_t *aux)
     std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
     int tid, pos, n_plp;
     bcf1_t *v(bcf_init1());
-    for(unsigned k = 0; k < sorted_keys.size(); ++k) {
-        const khiter_t key = sorted_keys[k];
+    for(unsigned k(0); k < sorted_keys.size(); ++k) {
+        const khiter_t key(sorted_keys[k]);
         LOG_DEBUG("Now iterating through tid %i.\n", kh_key(aux->bed, key));
-        const size_t n = kh_val(aux->bed, key).n;
-        for(uint64_t i = 0; i < n; ++i) {
+        const size_t n(kh_val(aux->bed, key).n);
+        for(uint64_t i(0); i < n; ++i) {
             const int start(get_start(kh_val(aux->bed, key).intervals[i]));
             const int stop(get_stop(kh_val(aux->bed, key).intervals[i]));
             const int bamtid(static_cast<int>(kh_key(aux->bed, key)));
@@ -217,9 +217,9 @@ int stack_core(bmf::stack_aux_t *aux)
     std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(aux->bed));
     int ttid, tpos, tn_plp, ntid, npos, nn_plp;
     bcf1_t *v(bcf_init1());
-    for(khiter_t key :sorted_keys) {
+    for(khiter_t key: sorted_keys) {
         LOG_DEBUG("Now iterating through tid %i.\n", kh_key(aux->bed, key));
-        for(uint64_t i = 0; i < kh_val(aux->bed, key).n; ++i) {
+        for(uint64_t i(0); i < kh_val(aux->bed, key).n; ++i) {
             const int start = get_start(kh_val(aux->bed, key).intervals[i]);
             const int stop = get_stop(kh_val(aux->bed, key).intervals[i]);
             const int bamtid = (int)kh_key(aux->bed, key);
@@ -236,12 +236,12 @@ int stack_core(bmf::stack_aux_t *aux)
 
 int stack_main(int argc, char *argv[]) {
     int c;
-    unsigned padding = (unsigned)-1;
+    unsigned padding((unsigned)-1);
     if(argc < 2) stack_usage(EXIT_FAILURE);
-    char *outvcf = (char *)"-", *refpath = nullptr;
-    char *bedpath = nullptr;
+    char *outvcf((char *)"-"), *refpath(nullptr);
+    char *bedpath(nullptr);
     struct bmf::stack_conf_t conf{0};
-    static const struct option lopts[] = {
+    static const struct option lopts[] {
         {"skip-secondary", no_argument, nullptr, '2'},
         {"min-family-agreed", required_argument, nullptr, 'a'},
         {"bedpath", required_argument, nullptr, 'b'},
@@ -330,12 +330,12 @@ int stack_main(int argc, char *argv[]) {
     kstring_t tmpstr{0};
     ksprintf(&tmpstr, "##cmdline=");
     kputs("bmftools", &tmpstr);
-    for(int i = 0; i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
+    for(int i(0); i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
     bcf_hdr_append(vh, tmpstr.s);
     tmpstr.l = 0;
     bcf_hdr_printf(vh, "##bed_filename=\"%s\"", bedpath ? bedpath: "FullGenomeAnalysis");
-    samFile *tmpfp = sam_open(argv[optind], "r");
-    bam_hdr_t *hdr = sam_hdr_read(tmpfp);
+    samFile *tmpfp(sam_open(argv[optind], "r"));
+    bam_hdr_t *hdr(sam_hdr_read(tmpfp));
     free(tmpstr.s);
     std::string timestring("", 16uL);
     dlib::string_fmt_time(timestring);
@@ -352,9 +352,8 @@ int stack_main(int argc, char *argv[]) {
     // Check for required tags.
     for(auto tag: {"FM", "FA", "PV", "FP"}) dlib::check_bam_tag_exit(aux.tumor.fp->fn, tag);
     int ret(is_single ? stack_core_single(&aux): stack_core(&aux));
-    if(ret)
-        LOG_EXIT("stack core %s returned non-zero exit status %i.\n",
-                 is_single ? "single": "paired", ret);
+    if(ret) LOG_EXIT("stack core %s returned non-zero exit status %i.\n",
+                     is_single ? "single": "paired", ret);
     LOG_INFO("Successfully completed bmftools stack!\n");
     return ret;
 }

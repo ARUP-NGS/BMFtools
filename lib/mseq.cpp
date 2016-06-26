@@ -28,7 +28,7 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
         fprintf(stderr, "kseq for initiating p7_mseq is null. Abort!\n");
         exit(EXIT_FAILURE);
     }
-    mseq_t *ret = (mseq_t *)calloc(1, sizeof(mseq_t));
+    mseq_t *ret((mseq_t *)calloc(1, sizeof(mseq_t)));
     strcpy(ret->name, seq->name.s);
     strcpy(ret->comment, seq->comment.s);
     strcpy(ret->seq, seq->seq.s);
@@ -50,7 +50,7 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
  */
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2)
 {
-    mseq_t *ret = mseq_init(seq, rescaler, is_read2);
+    mseq_t *ret(mseq_init(seq, rescaler, is_read2));
     //fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);
     if(!tmp) {
         fprintf(stderr, "Tmpvars not allocated!\n");
@@ -63,7 +63,7 @@ mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_r
 
 tmp_mseq_t *init_tm_ptr(int readlen, int blen)
 {
-    tmp_mseq_t *ret = (tmp_mseq_t *)malloc(sizeof(tmp_mseq_t));
+    tmp_mseq_t *ret((tmp_mseq_t *)malloc(sizeof(tmp_mseq_t)));
     ret->tmp_seq = (char *)malloc(readlen * sizeof(char));
     ret->tmp_qual = (char *)malloc(readlen * sizeof(char));
     ret->tmp_barcode = (char *)malloc(blen * sizeof(char));

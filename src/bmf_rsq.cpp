@@ -385,13 +385,6 @@ void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
     clear();
 }
 
-static const std::function<int (bam1_t *, bam1_t *)> fns[4]{&same_stack_pos, &same_stack_pos_se,
-                                                            &same_stack_ucs, &same_stack_ucs_se};
-/*
-static const Stack[4]{Stack<same_stack_pos>, Stack<same_stack_pos_se>,
-                      Stack<same_stack_ucs>, Stack<same_stack_ucs_se>};
-*/
-
 inline void bam2ffq(bam1_t *b, FILE *fp, const int is_supp)
 {
     int i;

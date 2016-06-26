@@ -69,7 +69,7 @@ static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, ks
 }
 
 static inline void pb_pos(kingfisher_t *kfp, kseq_t *seq, int i) {
-    const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
+    const uint32_t posdata(nuc2num(seq->seq.s[i]) + i * 5);
     ++kfp->nuc_counts[posdata];
     kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
     if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
@@ -102,7 +102,7 @@ static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen)
         memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
         kfp->barcode[blen] = '\0';
     }
-    for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
+    for(int i(0); i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
 }
 
 

@@ -62,7 +62,7 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
 
 int target_main(int argc, char *argv[])
 {
-    char *bedpath = nullptr;
+    char *bedpath(nullptr);
     uint32_t padding((uint32_t)-1), minmq(0);
     uint64_t notification_interval(1000000);
 

@@ -21,10 +21,10 @@ namespace bmf {
 
 void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
 {
-    int i, diffs = kfp->length * kfp->readlen;
+    int i, diffs(kfp->length * kfp->readlen);
     for(i = 0; i < kfp->readlen; ++i) {
-        const int argmaxret = kfp_argmax(kfp, i);
-        const int index = argmaxret + i * 5;
+        const int argmaxret(kfp_argmax(kfp, i));
+        const int index(argmaxret + i * 5);
         dmp_pos(kfp, bufs, argmaxret, i, index, diffs);
     }
     ksprintf(ks, "@%s ", kfp->barcode + 1);
@@ -47,8 +47,8 @@ void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int
 
 std::vector<double> get_igamc_threshold(int family_size, int max_phred, double delta) {
     std::vector<double> ret;
-    double query = delta;
-    int last_pv = -1, current_pv = -1;
+    double query(delta);
+    int last_pv(-1), current_pv(-1);
     while((last_pv = -10 * log10(igamc_pvalues(family_size, query))) < 0)
         query += delta;
     assert(last_pv == 0);
@@ -76,7 +76,7 @@ std::vector<std::vector<double>> get_igamc_thresholds(size_t max_family_size, in
 int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2) {
     int ret(0);
     int argmaxret1, argmaxret2;
-    for(int i = 0; i < kf1->readlen; ++i) {
+    for(int i(0); i < kf1->readlen; ++i) {
         argmaxret1 = kfp_argmax(kf1, i);
         argmaxret2 = kfp_argmax(kf2, i);
         if(argmaxret1 != argmaxret2)
@@ -91,12 +91,11 @@ int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2) {
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
 void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
 {
-    const int FM = kfpf->length + kfpr->length;
-    int i, diffs = FM * kfpf->readlen;
-    int index;
+    const int FM (kfpf->length + kfpr->length);
+    int diffs(FM * kfpf->readlen), index, i;
     for(i = 0; i < kfpf->readlen; ++i) {
-        const int argmaxretf = kfp_argmax(kfpf, i); // Forward consensus nucleotide
-        const int argmaxretr = kfp_argmax(kfpr, i); // Reverse consensus nucleotide
+        const int argmaxretf(kfp_argmax(kfpf, i)); // Forward consensus nucleotide
+        const int argmaxretr(kfp_argmax(kfpr, i)); // Reverse consensus nucleotide
         if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
             index = i * 5 + argmaxretf;
             kfpf->phred_sums[index] += kfpr->phred_sums[index];

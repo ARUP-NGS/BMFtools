@@ -62,13 +62,13 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     l_index = kseq_read(seq_index);
 
     uint64_t bin(0);
-    int pass_fail = 1;
-    tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
+    int pass_fail(1);
+    tmp_mseq_t *tmp(init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt));
     if(l1 < 0 || l2 < 0 || l_index < 0)
         LOG_EXIT("Could not read input fastqs. Abort mission!\n");
     check_rescaler(settings, NQSCORES * 2 * 4 * seq1->seq.l);
-    mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
-    mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
+    mseq_t *rseq1(mseq_init(seq1, settings->rescaler, 0)); // rseq1 is initialized
+    mseq_t *rseq2(mseq_init(seq2, settings->rescaler, 1)); // rseq2 is initialized
     memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
     memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
     memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
@@ -79,7 +79,7 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
     mseq2fq(splitter.tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
     mseq2fq(splitter.tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
-    uint64_t count = 1uL;
+    uint64_t count(1uL);
     while(LIKELY((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0))
             && (l_index = kseq_read(seq_index)) >= 0) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
@@ -109,9 +109,6 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
 
 static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
 {
-    gzFile fp, fp_index;
-    kseq_t *seq(nullptr), *seq_index(nullptr);
-    int l, l_index;
     mark_splitter_t splitter(init_splitter(settings));
     if(!dlib::isfile(settings->input_r1_path) ||
        !dlib::isfile(settings->index_fq_path)) {
@@ -119,21 +116,22 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
                  settings->input_r1_path, settings->index_fq_path);
     }
     // Open fastqs
-    fp = gzopen(settings->input_r1_path, "r"), fp_index = gzopen(settings->index_fq_path, "r");
-    seq = kseq_init(fp), seq_index = kseq_init(fp_index);
-    l = kseq_read(seq), l_index = kseq_read(seq_index);
+    gzFile fp(gzopen(settings->input_r1_path, "r")), fp_index(gzopen(settings->index_fq_path, "r"));
+    kseq_t *seq(kseq_init(fp)), *seq_index(kseq_init(fp_index));
+    int l(kseq_read(seq));
+    int l_index(kseq_read(seq_index));
 
-    tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt);
+    tmp_mseq_t *tmp(init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt));
     if(l < 0 || l_index < 0)
         LOG_EXIT("Could not read input fastqs. Abort mission!\n");
-    mseq_t *rseq = mseq_init(seq, settings->rescaler, 0);
+    mseq_t *rseq(mseq_init(seq, settings->rescaler, 0));
     memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
     memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
     rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
     update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
     mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
             rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
-    uint64_t count = 1uL;
+    uint64_t count(1uL);
     while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
             fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
@@ -162,7 +160,7 @@ int sdmp_main(int argc, char *argv[])
         sdmp_usage(argv); return EXIT_FAILURE;
     }
     // Build settings struct
-    marksplit_settings_t settings = {0};
+    marksplit_settings_t settings{0};
     settings.hp_threshold = 10;
     settings.n_nucs = DEFAULT_N_NUCS;
     settings.notification_interval = 1000000;
@@ -211,7 +209,7 @@ int sdmp_main(int argc, char *argv[])
 
     settings.n_handles = dlib::ipow(4, settings.n_nucs);
     if(settings.n_handles * 3 > dlib::get_fileno_limit()) {
-        int o_fnl = dlib::get_fileno_limit();
+        const int o_fnl(dlib::get_fileno_limit());
         dlib::increase_nofile_limit(kroundup32(settings.n_handles));
         fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
                 kroundup32(settings.n_handles));
@@ -254,7 +252,8 @@ int sdmp_main(int argc, char *argv[])
     }
 
     splitterhash_params_t *params(nullptr);
-    mark_splitter_t splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
+    mark_splitter_t splitter(settings.is_se ? splitmark_core_rescale_se(&settings)
+    		                                : splitmark_core_rescale(&settings));
     if(!settings.run_hash_dmp) {
         fprintf(stderr, "[%s] Finished mark/split. Skipping dmp.\n", __func__);
         goto cleanup;
