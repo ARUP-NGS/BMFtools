@@ -258,11 +258,11 @@ int vet_core_bed(vetter_aux_t *aux) {
         // Tabix indexed vcfs don't work currently. Throws a segfault in htslib.
     case bcf:
         if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr)
-        	LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
+            LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
         break;
     default:
         LOG_EXIT("Unrecognized variant file type! (%i).\n",
-        		 hts_get_format(aux->vcf_fp)->format);
+                 hts_get_format(aux->vcf_fp)->format);
         break; // This never happens -- LOG_EXIT exits.
     }
     bcf1_t *vrec(bcf_init());

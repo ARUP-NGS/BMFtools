@@ -1,5 +1,5 @@
 #include <cassert>
-#include "bmf_dmp.h"
+#include "bmf_collapse.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
 
@@ -61,7 +61,7 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 
 
-int hashdmp_main(int argc, char *argv[])
+int hashcollapse_main(int argc, char *argv[])
 {
     if(argc == 1) hashdmp_usage(), exit(EXIT_FAILURE);
     char *outfname(nullptr), *infname(nullptr);

@@ -111,14 +111,13 @@ int filter_main(int argc, char *argv[]) {
         case 'f': param.require_flag = strtoul(optarg, nullptr, 0); break;
         case 'v': param.v = 1; break;
         case 'r': refused_path = optarg; break;
-        case 'l': out_mode[2] = atoi(optarg) % 10 + '0'; break;
+        case 'l': out_mode[2] = *optarg; break;
         case '?': case 'h': return usage(argv, EXIT_SUCCESS);
         }
     }
     dlib::check_bam_tag_exit(argv[optind], "FM");
-    if(argc - 2 != optind) {
+    if(argc - 2 != optind)
         LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
-    }
     dlib::BamHandle in(argv[optind]);
     param.bed = bedpath ? dlib::parse_bed_hash(bedpath, in.header, padding)
                         : nullptr;
