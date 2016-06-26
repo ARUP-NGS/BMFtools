@@ -2,7 +2,7 @@
 #define BMF_DMP_H
 
 #include "lib/kingfisher.h"
-#include "bmf_hashdmp.h"
+#include "lib/hashdmp.h"
 
 typedef void (*hash_dmp_fn)(char *, char *, int);
 

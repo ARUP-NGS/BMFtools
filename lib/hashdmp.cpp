@@ -1,5 +1,5 @@
 #include <cassert>
-#include "bmf_collapse.h"
+#include "src/bmf_collapse.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
 

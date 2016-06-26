@@ -28,7 +28,7 @@ PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-built
 DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
 		   dlib/bed_util.c dlib/misc_util.c
 
-SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c src/bmf_hashdmp.c \
+SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
           src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
           src/bmf_err.c \
           lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
