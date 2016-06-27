@@ -1838,6 +1838,7 @@ int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
         goto err;
     }
     change_SO(header, sort_keys[l_cmpkey]);
+    uint64_t count = 0;
     // write sub files
     for (;;) {
         if (k == max_k) {
@@ -1848,6 +1849,7 @@ int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
         }
         if (buf[k] == NULL) buf[k] = bam_init1();
         b = buf[k];
+        if(++count % 1000000 == 0) LOG_INFO("%lu records read.\n", count);
         if ((ret = sam_read1(fp, header, b)) < 0) break;
         if (b->l_data < b->m_data>>2) { // shrink
             b->m_data = b->l_data;

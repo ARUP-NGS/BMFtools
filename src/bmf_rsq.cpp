@@ -143,15 +143,9 @@ void Stack<fn>::se_core(rsq_aux_t *settings) {
             sam_write1(settings->out, settings->hdr, b);
             continue;
         }
-        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
-            continue;
-        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) continue;
         //LOG_DEBUG("Read a read!\n");
-        if(fn(b, a) == 0) {
-            //LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
-            write_stack_se(settings); // Flattens and clears stack.
-        }
+        if(fn(b, a) == 0) write_stack_se(settings); // Flattens and clears stack.
         add(b);
     }
     write_stack_se(settings);
@@ -184,15 +178,10 @@ void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
             sam_write1(settings->out, settings->hdr, b);
             continue;
         }
-        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY))
             continue;
-        }
-        //LOG_DEBUG("Read a read!\n");
-        if(n == 0 || fn(b, a) == 0) {
-            //LOG_DEBUG("Flattening stack\n");
-            // New stack -- flatten what we have and write it out.
+        if(n == 0 || fn(b, a) == 0)
             write_stack_pe(settings); // Flattens and clears stack.
-        }
         add(b);
     }
     write_stack_pe(settings);
@@ -256,9 +245,8 @@ inline void Stack<fn>::flatten_infer()
             //assert(ucs == dlib::get_unclipped_start(a[j]));
             //assert(tid == a[j]->core.tid);
             //assert(mucs == bam_itag(a[j], "MU"));
-            if(stack[i]->core.l_qseq != stack[j]->core.l_qseq)
-                continue;
-            if(stack[i]->core.l_qname != stack[j]->core.l_qname)
+            if(stack[i]->core.l_qseq != stack[j]->core.l_qseq ||
+               stack[i]->core.l_qname != stack[j]->core.l_qname)
                 continue;
             //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(a[i]), bam_get_qname(a[j]));
             if(trust_unmasked) update_bam1_unmasked(a + j, a + i);
