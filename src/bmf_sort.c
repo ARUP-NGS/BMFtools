@@ -71,6 +71,7 @@ KHASH_MAP_INIT_STR(c2i, int)
 KLIST_INIT(hdrln, char*, hdrln_free_char)
 
 static int g_cmpkey = POS;
+static int is_se = 0;
 
 
 static int strnum_cmp(const char *_a, const char *_b)
@@ -1648,6 +1649,7 @@ static inline int bam1_lt_ucs_test(const bam1_p a, const bam1_p b)
 #endif
 
 static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b) {
+    if(is_se) return ucs_se_sort_key(a) < ucs_se_sort_key(b);
     assert(bam1_lt_ucs_test(a, b) == ucslt(a, b));
     const uint64_t key_a = ucs_sort_core_key(a);
     const uint64_t key_b = ucs_sort_core_key(b);
@@ -1657,6 +1659,7 @@ static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b) {
 
 static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
 {
+    if(is_se) return bmfsort_se_key(a) < bmfsort_se_key(b);
     const uint64_t key_a = bmfsort_core_key(a);
     const uint64_t key_b = bmfsort_core_key(b);
     return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
@@ -1937,7 +1940,8 @@ static void sort_usage(FILE *fp)
 "  -o FILE    Write final output to FILE rather than standard output\n"
 "  -T PREFIX  Write temporary files to PREFIX.nnnn.bam\n"
 "  -@, --threads INT\n"
-"             Set number of sorting and compression threads [1]\n");
+"             Set number of sorting and compression threads [1]\n"
+"   -S        Single-end mode.\n");
     sam_global_opt_help(fp, "-.O..");
 }
 
@@ -1953,10 +1957,11 @@ int sort_main(int argc, char *argv[])
     static const struct option lopts[] = {
         SAM_OPT_GLOBAL_OPTIONS('-', 0, 'O', 0, 0),
         { "threads", required_argument, NULL, '@' },
+        { "single-end", no_argument, NULL, 'S' },
         { NULL, 0, NULL, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "l:m:k:o:O:T:@:", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "l:m:k:o:O:T:@:Sh?", lopts, NULL)) >= 0) {
         switch (c) {
         case 'o': fnout = optarg; o_seen = 1; break;
         case 'k':
@@ -1979,16 +1984,16 @@ int sort_main(int argc, char *argv[])
                 }
                 break;
             }
+        case 'S': is_se = 1; break;
         case 'T': kputs(optarg, &tmpprefix); break;
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
-
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
                   /* else fall-through */
-        case '?': sort_usage(stderr); ret = EXIT_FAILURE; goto sort_end;
+        case 'h': case '?': sort_usage(stderr); ret = EXIT_FAILURE; goto sort_end;
         }
     }
-    const char *types[4] = {"qname", "pos", "bmf", "ucs"};
+    static const char *types[4] = {"qname", "pos", "bmf", "ucs"};
     LOG_INFO("Comparing records by %s.\n", types[l_cmpkey]);
 
     nargs = argc - optind;
@@ -2007,6 +2012,11 @@ int sort_main(int argc, char *argv[])
         goto sort_end;
     }
 
+
+    static const char *tags[] = {"MU", "LM"};
+    if(is_se == 0)
+        for(unsigned i = 0; i < COUNT_OF(tags); ++i)
+            check_bam_tag_exit((nargs > 0)? argv[optind] : "-", tags[i]);
     strcpy(modeout, "wb");
     sam_open_mode(modeout+1, fnout, NULL);
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
