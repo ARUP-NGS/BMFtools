@@ -21,7 +21,7 @@ void idmp_usage()
 {
         fprintf(stderr,
                         "Collapses inline barcoded fastq data.\n"
-                        "Usage: bmftools dmp <options> <r1.fq> <r2.fq>"
+                        "Usage: bmftools collapse dmp <options> <r1.fq> <r2.fq>"
                         "\nFlags:\n"
                         "-S: Run in single-end mode. (Ignores read 2)\n"
                         "-=: Emit interleaved final output to stdout.\n"
@@ -606,7 +606,7 @@ void sdmp_usage(char *argv[])
 {
         fprintf(stderr,
                         "Performs molecular demultiplexing for secondary index barcoded experiments.\n"
-                        "Usage: bmftools collapse %s <options> <r1.fq> <r2.fq>\n"
+                        "Usage: bmftools collapse secondary <options> <r1.fq> <r2.fq>\n"
                         "Flags:\n"
                         "-i: Index fastq path. REQUIRED.\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with a homopolymer of length >= this limit is flagged as QC fail. Default: 10\n"
