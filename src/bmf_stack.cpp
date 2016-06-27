@@ -93,8 +93,7 @@ void process_matched_pileups(bmf::stack_aux_t *aux, bcf1_t *ret,
     for(int i(0); i < nn_plp; ++i) {
         if(aux->normal.pileups[i].is_del || aux->normal.pileups[i].is_refskip) continue;
         if(aux->conf.skip_flag & aux->normal.pileups[i].b->core.flag) {
-            ++flag_failed[1];
-            continue;
+            ++flag_failed[1]; continue;
         }
         if((aux->normal.pileups[i].b->core.flag & BAM_FPROPER_PAIR) == 0) {
             ++improper_count[1];
