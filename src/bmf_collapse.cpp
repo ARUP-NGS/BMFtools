@@ -625,7 +625,7 @@ void sdmp_usage(char *argv[])
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "-S: Single-end mode. Ignores read 2.\n"
                         "-=: Emit final fastqs to stdout in interleaved form. Ignores -f.\n"
-                , argv[0], DEFAULT_N_NUCS, DEFAULT_N_THREADS);
+                , DEFAULT_N_NUCS, DEFAULT_N_THREADS);
 }
 
 static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)

@@ -118,14 +118,8 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
                 const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
                 return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
             }
-        case BMF:
-           if(a.b == NULL || b.b == NULL) return __pos_cmp(a, b);
-           return bam1_lt_bmf(a.b, b.b);
-        case UCS:
-           if(a.b == NULL || b.b == NULL) return __pos_cmp(a, b);
-           return bam1_lt_ucs(a.b, b.b);
-        default:
-        case POS: return __pos_cmp(a, b);
+        case BMF: case UCS: case POS: default:
+            return __pos_cmp(a, b);
     }
 }
 
@@ -1077,6 +1071,17 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
 #define MERGE_COMBINE_PG 32 // Combine PG tags frather than redefining them
 #define MERGE_FIRST_CO   64 // Use only first file's @CO headers (sort cmd only)
 
+
+static inline uint64_t heap_pos(bam1_t *const b)
+{
+    switch(g_cmpkey)
+   {
+    case BMF: return bmfsort_core_key(b);
+    case UCS: return ucs_sort_core_key(b);
+    default: return ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
+   }
+}
+
 /*
  * How merging is handled
  *
@@ -1331,7 +1336,7 @@ int bam_merge_core2(int merge_cmpkey, const char *out, const char *mode,
         res = iter[i] ? sam_itr_next(fp[i], iter[i], h->b) : sam_read1(fp[i], hdr[i], h->b);
         if (res >= 0) {
             bam_translate(h->b, translation_tbl + i);
-            h->pos = ((uint64_t)h->b->core.tid<<32) | (uint32_t)((int32_t)h->b->core.pos+1)<<1 | bam_is_rev(h->b);
+            h->pos = heap_pos(h->b);
             h->idx = idx++;
         }
         else if (res == -1 && (!iter[i] || iter[i]->finished)) {
@@ -1373,7 +1378,7 @@ int bam_merge_core2(int merge_cmpkey, const char *out, const char *mode,
         }
         if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
             bam_translate(b, translation_tbl + heap->i);
-            heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
+            heap->pos = heap_pos(b);
             heap->idx = idx++;
         } else if (j == -1 && (!iter[heap->i] || iter[heap->i]->finished)) {
             heap->pos = HEAP_EMPTY;
