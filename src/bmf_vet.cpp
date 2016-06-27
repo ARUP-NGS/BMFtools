@@ -549,7 +549,7 @@ int vet_main(int argc, char *argv[])
             {"emit-bcf", no_argument, nullptr, 'B'},
             {0, 0, 0, 0}
     };
-    char vcf_wmode[4]("w");
+    char vcf_wmode[4]{"w"};
     char *outvcf(nullptr), *bed(nullptr);
     int c;
     int padding(0), output_bcf(0);

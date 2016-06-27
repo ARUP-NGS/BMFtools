@@ -77,7 +77,7 @@ char *make_salted_fname(char *base)
         }
     }
     if(has_period) {
-        kstring_t rs{salted_rand_string(base, RANDSTR_SIZE)};
+        kstring_t rs(salted_rand_string(base, RANDSTR_SIZE));
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", base);
         return rs.s;
     } else {
@@ -564,7 +564,7 @@ int idmp_main(int argc, char *argv[])
 
     if(!settings.tmp_basename) {
         // If tmp_basename unset, create a random temporary file prefix.
-        kstring_t rs{salted_rand_string(settings.input_r1_path, RANDSTR_SIZE)};
+        kstring_t rs(salted_rand_string(settings.input_r1_path, RANDSTR_SIZE));
         settings.tmp_basename = ks_release(&rs);
         LOG_INFO("Temporary basename not provided. Defaulting to random: %s.\n",
                   settings.tmp_basename);
