@@ -28,6 +28,8 @@ PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-built
 DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
 		   dlib/bed_util.c dlib/misc_util.c
 
+UTIL_SRC = util/fqc.c
+
 SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
           src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
           src/bmf_err.c \
@@ -87,6 +89,9 @@ bmftools_p: $(P_OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
+fqc: util/fqc.o
+    g++ util/fqc.o -I.. -I../htslib -std=c++11 -lz -o fqc
+
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
