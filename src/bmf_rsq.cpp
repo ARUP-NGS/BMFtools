@@ -198,6 +198,7 @@ void Stack<fn>::pe_core(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
+    LOG_DEBUG("Core!\n");
     if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
                  dlib::get_SO(settings->hdr).c_str(), SO_STR);
@@ -212,6 +213,11 @@ void Stack<fn>::pe_core(rsq_aux_t *settings)
         }
         //LOG_DEBUG("Read a read!\n");
         if(fn(b, a) == 0) write_stack_pe(settings); // Flattens and clears stack.
+#if !NDEBUG
+        else {
+            assert(bam_is_r1(b) == bam_is_r1(a));
+        }
+#endif
         add(b);
     }
     write_stack_pe(settings);
@@ -294,8 +300,14 @@ void Stack<fn>::flatten()
 template<int (*fn)(bam1_t *, bam1_t *)>
 void Stack<fn>::write_stack_se(rsq_aux_t *settings)
 {
+    LOG_DEBUG("Writing stack se.\n");
     flatten();
     uint8_t *data;
+#if !NDEBUG
+    for(unsigned i(0); i < n; ++i) {
+        assert(bam_is_r1(a) == bam_is_r1(i + a));
+    }
+#endif
     for(unsigned i(0); i < n; ++i) {
         if((a + i)->data) {
             if((data = bam_aux_get((a + i), "NC")))
@@ -726,11 +738,11 @@ inline void add_dummy_tags(bam1_t *b)
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
-	if(settings->is_se) {
-        Stack<same_stack_pos> stack(settings, 1 << 8);
-        stack.pe_core(settings);
-	} else {
+    if(settings->is_se) {
         Stack<same_stack_pos_se> stack(settings, 1 << 8);
+        stack.pe_core(settings);
+    } else {
+        Stack<same_stack_pos> stack(settings, 1 << 8);
         stack.se_core(settings);
     }
 }
@@ -765,6 +777,7 @@ int rsq_main(int argc, char *argv[])
 
     rsq_aux_t settings{0};
     settings.mmlim = 2;
+    assert(!settings.is_se);
 
     char *fqname(nullptr);
 

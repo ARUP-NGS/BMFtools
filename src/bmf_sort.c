@@ -228,16 +228,12 @@ static void trans_tbl_destroy(trans_tbl_t *tbl) {
      * The keys are unique to each hash entry, so they do have to go.
      */
 
-    for (iter = kh_begin(tbl->rg_trans); iter != kh_end(tbl->rg_trans); ++iter) {
-        if (kh_exist(tbl->rg_trans, iter)) {
+    for (iter = kh_begin(tbl->rg_trans); iter != kh_end(tbl->rg_trans); ++iter)
+        if (kh_exist(tbl->rg_trans, iter))
             free(kh_key(tbl->rg_trans, iter));
-        }
-    }
-    for (iter = kh_begin(tbl->pg_trans); iter != kh_end(tbl->pg_trans); ++iter) {
-        if (kh_exist(tbl->pg_trans, iter)) {
+    for (iter = kh_begin(tbl->pg_trans); iter != kh_end(tbl->pg_trans); ++iter)
+        if (kh_exist(tbl->pg_trans, iter))
             free(kh_key(tbl->pg_trans, iter));
-        }
-    }
 
     kh_destroy(c2c,tbl->rg_trans);
     kh_destroy(c2c,tbl->pg_trans);
@@ -1739,7 +1735,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   NOT thread safe.
  */
 
-static const char *sort_keys[4] = {"queryname", "coordinate", "positional_rescue", "unclipped_rescue"};
+#define SORT_KEY "positional_rescue"
 
 int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
                       const char *fnout, const char *modeout,
@@ -1768,7 +1764,7 @@ int bam_sort_core_ext(int l_cmpkey, const char *fn, const char *prefix,
         fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
         goto err;
     }
-    change_SO(header, sort_keys[l_cmpkey]);
+    change_SO(header, SORT_KEY);
     uint64_t count = 0;
     // write sub files
     for (;;) {

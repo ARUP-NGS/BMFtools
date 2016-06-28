@@ -49,9 +49,7 @@ reads from the same original template molecule. To account for this, an optional
 This rescue takes place in two steps -- first, a sort which groups together based on alignment signature, and second,
 collapsing reads sharing these signatures with similar barcodes into single observations.
 
-"Alignment signatures" consist of a read and its mate's alignment information, if paired. These can be grouped by start position
-or by unclipped start position. Unclipped start position is less sensitive to errors in the reads, whereas
-a bam sorted by signature using position can still be indexed for traditional use. Unclipped start position comes at the computational cost of an additional sort but with potentially increased success in rescue.
+"Alignment signatures" consist of a read and its mate's alignment information, if paired.
 
 Because reads need both their and their mates' alignment information, including read length, the preprocessing
 `bmftools mark` is required prior to bmftools sort.
@@ -66,13 +64,7 @@ If secondary and supplementary alignments are needed for other reads,these shoul
 
 `bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
 
-For position:
-
 `bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
-
-For unclipped start:
-
-`bmftools rsq [-u <unclipped start only>] -f<tmp.fq> <final_output_prefix.bmfsort.bam> - | samtools sort -O bam -T<tmp_prefix> -ofinal_output_prefix.tmprsq.bam`
 
 
 Realigned reads are then sorted and merged in with the other reads in the dataset.
@@ -478,14 +470,13 @@ bmftools <subcommand> <-h>
 
     > -l INT       Set compression level, from 0 (uncompressed) to 9 (best)
     > -m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]
-    > -k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.
     > -o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.
     > -O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.
     > -T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable')
     > -@ INT       Set number of sorting and compression threads [1]
     > -s           Flag to split the bam into a list of file handles.
     > -p           If splitting into a list of handles, this sets the file prefix.
-    > -S           Flag to specify single-end. Needed for unclipped start compatibility.
+    > -S           Flag to specify single-end.
     > -h/-?        Print usage.
 
 ####<b>mark</b>
