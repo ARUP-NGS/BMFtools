@@ -740,10 +740,10 @@ void bam_rsq_bookends(rsq_aux_t *settings)
 {
     if(settings->is_se) {
         Stack<same_stack_pos_se> stack(settings, 1 << 8);
-        stack.pe_core(settings);
+        stack.se_core(settings);
     } else {
         Stack<same_stack_pos> stack(settings, 1 << 8);
-        stack.se_core(settings);
+        stack.pe_core(settings);
     }
 }
 
