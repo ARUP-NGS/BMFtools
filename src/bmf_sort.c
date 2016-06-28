@@ -111,6 +111,20 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
+	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
     switch(g_cmpkey) {
         case QNAME:
             if (a.b == NULL || b.b == NULL) return !a.b;
@@ -1663,18 +1677,28 @@ static inline int bam1_lt_ucs_test(const bam1_p a, const bam1_p b)
 static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b) {
     if(is_se) return ucs_se_sort_key(a) < ucs_se_sort_key(b);
     assert(bam1_lt_ucs_test(a, b) == ucslt(a, b));
-    const uint64_t key_a = ucs_sort_core_key(a);
-    const uint64_t key_b = ucs_sort_core_key(b);
-    return (key_a != key_b) ? (key_a < key_b)
-                            : (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
+    uint64_t key_a = ucs_sort_core_key(a);
+    uint64_t key_b = ucs_sort_core_key(b);
+    if(key_a != key_b)
+    	return key_a < key_b;
+    key_a = ucs_sort_mate_key(a);
+    key_b = ucs_sort_mate_key(b);
+
+    return (key_a != key_b) ? key_a < key_b
+    		                : sort_rlen_key(a) < sort_rlen_key(b);
 }
 
 static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
 {
     if(is_se) return bmfsort_se_key(a) < bmfsort_se_key(b);
-    const uint64_t key_a = bmfsort_core_key(a);
-    const uint64_t key_b = bmfsort_core_key(b);
-    return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
+    uint64_t key_a = bmfsort_core_key(a);
+    uint64_t key_b = bmfsort_core_key(b);
+    if(key_a != key_b)
+    	return key_a < key_b;
+    key_a = bmfsort_mate_key(a);
+    key_b = bmfsort_mate_key(b);
+    return (key_a != key_b) ? key_a < key_b
+    		                : sort_rlen_key(a) < sort_rlen_key(b);
 }
 
 // Function to compare reads and determine which one is < the other
@@ -1696,8 +1720,6 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
                 }
             }
 #endif
-            assert(ucs(a) + 1 >= 0);
-            assert(ucs(b) + 1 >= 0);
             return bam1_lt_ucs(a, b);
         case BMF:
             return bam1_lt_bmf(a, b);
