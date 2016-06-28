@@ -111,17 +111,8 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    switch(g_cmpkey) {
-        case QNAME:
-            if (a.b == NULL || b.b == NULL) return !a.b;
-            {
-                const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
-                return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
-            }
-        case BMF: if(a.b && b.b) return !bam1_lt_bmf(a.b, b.b);
-        case UCS: if(a.b && b.b) return bam1_lt_ucs(a.b, b.b);
-        default: return __pos_cmp(a, b);
-    }
+    return (a.b && b.b) ? !bam1_lt_bmf(a.b, b.b)
+                        : __pos_cmp(a, b);
 }
 
 KSORT_INIT(heap, heap1_t, heap_lt)
@@ -1622,53 +1613,6 @@ static int change_SO(bam_hdr_t *h, const char *so)
     return 0;
 }
 
-#if !NDEBUG
-static inline int ucslt(const bam1_p a, const bam1_p b) {
-    const uint64_t key_a = ucs_sort_core_key(a);
-    const uint64_t key_b = ucs_sort_core_key(b);
-    return (key_a != key_b) ? (key_a < key_b)
-                            : (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
-}
-
-static inline int bam1_lt_ucs_test(const bam1_p a, const bam1_p b)
-{
-    if((uint64_t)a->core.tid != (uint64_t)b->core.tid) return (uint64_t)a->core.tid < (uint64_t)b->core.tid;
-    const int ucsa = get_unclipped_start(a);
-    const int ucsb = get_unclipped_start(b);
-    if(ucsa != ucsb) return ucsa < ucsb;
-    const int is_reva = bam_is_rev(a);
-    const int is_revb = bam_is_rev(b);
-    if(is_reva != is_revb) return is_reva < is_revb;
-    const int is_r1a = bam_is_r1(a);
-    const int is_r1b = bam_is_r1(b);
-    if(is_r1a != is_r1b) return is_r1a < is_r1b;
-    if((uint64_t)a->core.mtid != (uint64_t)b->core.mtid) return (uint64_t)a->core.mtid < (uint64_t)b->core.mtid;
-    if(bam_aux_get(a, "MU") == NULL) {
-        LOG_EXIT("Missing MU tag on read a.\n");
-    }
-    if(bam_aux_get(b, "MU") == NULL) {
-        LOG_EXIT("Missing MU tag on read b.\n");
-    }
-    const int ucsma = bam_itag(a, "MU");
-    const int ucsmb = bam_itag(b, "MU");
-    if(ucsma != ucsmb) return ucsma < ucsmb;
-    return bam_is_mrev(a) < bam_is_mrev(b);
-}
-#endif
-
-static inline int bam1_lt_ucs(const bam1_p a, const bam1_p b) {
-    if(is_se) return ucs_se_sort_key(a) < ucs_se_sort_key(b);
-    assert(bam1_lt_ucs_test(a, b) == ucslt(a, b));
-    uint64_t key_a = ucs_sort_core_key(a);
-    uint64_t key_b = ucs_sort_core_key(b);
-    if(key_a != key_b) return key_a < key_b;
-    key_a = ucs_sort_mate_key(a);
-    key_b = ucs_sort_mate_key(b);
-
-    return (key_a != key_b) ? key_a < key_b
-    		                : sort_rlen_key(a) < sort_rlen_key(b);
-}
-
 static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
 {
     if(is_se) return bmfsort_se_key(a) < bmfsort_se_key(b);
@@ -1678,38 +1622,11 @@ static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
     key_a = bmfsort_mate_key(a);
     key_b = bmfsort_mate_key(b);
     return (key_a != key_b) ? key_a < key_b
-    		                : sort_rlen_key(a) < sort_rlen_key(b);
+                            : sort_rlen_key(a) < sort_rlen_key(b);
 }
 
-// Function to compare reads and determine which one is < the other
-#define ucs(a) get_unclipped_start(a)
-static inline int bam1_lt(const bam1_p a, const bam1_p b)
-{
-    int t;
-    switch(g_cmpkey) {
-        case POS:
-            return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
-        case UCS:
-            //return (((uint64_t)a->core.tid<<32|(ucs(a)+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(ucs(b)+1)<<1|bam_is_rev(b)));
-#if !NDEBUG
-            if((uint64_t)a->core.tid != (uint64_t)b->core.tid ) {
-                if(a->core.tid < b->core.tid && a->core.tid != -1) {
-                    assert(bam1_lt_ucs(a, b));
-                } else if(b->core.tid != -1) {
-                    assert(bam1_lt_ucs(b, a));
-                }
-            }
-#endif
-            return bam1_lt_ucs(a, b);
-        case BMF:
-            return bam1_lt_bmf(a, b);
-        default: // QNAME
-            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-    }
-}
 
-KSORT_INIT(sort, bam1_p, bam1_lt)
+KSORT_INIT(sort, bam1_p, bam1_lt_bmf)
 
 typedef struct {
     size_t buf_len;
@@ -1952,7 +1869,6 @@ static void sort_usage(FILE *fp)
 "Options:\n"
 "  -l INT     Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "  -m INT     Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-"  -k KEY     Sort by comparison key. Default: samtools pos. bmf for rescue, ucs for unclipped-start based rescue.\n"
 "  -o FILE    Write final output to FILE rather than standard output\n"
 "  -T PREFIX  Write temporary files to PREFIX.nnnn.bam\n"
 "  -@, --threads INT\n"
@@ -1977,16 +1893,9 @@ int sort_main(int argc, char *argv[])
         { NULL, 0, NULL, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "l:m:k:o:O:T:@:Sh?", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "l:m:o:O:T:@:Sh?", lopts, NULL)) >= 0) {
         switch (c) {
         case 'o': fnout = optarg; o_seen = 1; break;
-        case 'k':
-            if(strcmp(optarg, "bmf") == 0) {l_cmpkey = BMF; break;}
-            if(strcmp(optarg, "ucs") == 0) {l_cmpkey = UCS; break;}
-            if(strcmp(optarg, "pos") == 0) {l_cmpkey = POS; break;}
-            if(strcmp(optarg, "qname") == 0) {l_cmpkey = QNAME; break;}
-            LOG_EXIT("Invalid comparison key %s provided.", optarg);
-            break;
         case 'm': {
                 char *q;
                 max_mem = strtol(optarg, &q, 0);
@@ -2009,8 +1918,6 @@ int sort_main(int argc, char *argv[])
         case 'h': case '?': sort_usage(stderr); ret = EXIT_FAILURE; goto sort_end;
         }
     }
-    static const char *types[4] = {"qname", "pos", "bmf", "ucs"};
-    LOG_INFO("Comparing records by %s.\n", types[l_cmpkey]);
 
     nargs = argc - optind;
     if (nargs == 0 && isatty(STDIN_FILENO)) {

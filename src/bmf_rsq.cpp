@@ -7,7 +7,7 @@
 
 namespace bmf {
 
-static const char *sorted_order_strings[2]{"positional_rescue", "unclipped_rescue"};
+static const char SO_STR[]{"positional_rescue"};
 
 static const int sp(1);
 
@@ -16,7 +16,6 @@ struct rsq_aux_t {
     samFile *in;
     samFile *out;
     uint32_t mmlim:6;
-    uint32_t cmpkey:1; // 0 for pos, 1 for unclipped start position
     uint32_t is_se:1;
     uint32_t write_supp:1; // Write reads with supplementary alignments
     uint32_t infer:1; // Use inference instead of barcodes.
@@ -95,9 +94,9 @@ template<int (*fn)(bam1_t *, bam1_t *)>
 void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+                 dlib::get_SO(settings->hdr).c_str(), SO_STR);
     bam1_t *b(bam_init1());
     uint64_t count(0);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
@@ -129,9 +128,9 @@ void Stack<fn>::se_core(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
     if(infer) return se_core_infer(settings);
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+                 dlib::get_SO(settings->hdr).c_str(), SO_STR);
     bam1_t *b(bam_init1());
     uint64_t count(0);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
@@ -163,9 +162,9 @@ void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+                 dlib::get_SO(settings->hdr).c_str(), SO_STR);
     bam1_t *b(bam_init1());
     uint64_t count(0);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
@@ -199,9 +198,9 @@ void Stack<fn>::pe_core(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
-    if(strcmp(dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]))
+    if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
         LOG_EXIT("Sort order (%s) is not expected %s for rescue mode. Abort!\n",
-                 dlib::get_SO(settings->hdr).c_str(), sorted_order_strings[settings->cmpkey]);
+                 dlib::get_SO(settings->hdr).c_str(), SO_STR);
     bam1_t *b(bam_init1());
     uint64_t count(0);
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
@@ -727,33 +726,12 @@ inline void add_dummy_tags(bam1_t *b)
 
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
-    switch(settings->is_se | (settings->cmpkey<<1)) {
-    case 0:
-    {
+	if(settings->is_se) {
         Stack<same_stack_pos> stack(settings, 1 << 8);
         stack.pe_core(settings);
-        break;
-    }
-    case 1:
-    {
+	} else {
         Stack<same_stack_pos_se> stack(settings, 1 << 8);
         stack.se_core(settings);
-        break;
-    }
-    case 2:
-    {
-        Stack<same_stack_ucs> stack(settings, 1 << 8);
-        stack.pe_core(settings);
-        break;
-    }
-    case 3:
-    {
-        Stack<same_stack_pos_se> stack(settings, 1 << 8);
-        stack.se_core(settings);
-        break;
-    }
-    default:
-        LOG_EXIT("Invalid analysis key. (This should never happen.)");
     }
 }
 
@@ -762,7 +740,7 @@ int rsq_usage(int retcode)
 {
     fprintf(stderr,
                     "Positional rescue. \n"
-                    "Reads with the same start position (or unclipped start, if -u is set) are compared.\n"
+                    "Reads with the same start position are compared.\n"
                     "If their barcodes are sufficiently similar, they are treated as having originated"
                     "from the same original template molecule.\n"
                     "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n"
@@ -773,8 +751,6 @@ int rsq_usage(int retcode)
                     "-t      Mismatch limit. Default: 2\n"
                     "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                     "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
-                    "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
-                    "Note: -u requires pre-processing with bmftools mark_unclipped.\n"
                     "-i      Flag to ignore barcodes and infer solely by positional information. [THIS IS BROKEN]\n"
                     "This flag adds artificial auxiliary tags to treat unbarcoded reads as if they were singletons.\n"
             );
@@ -789,21 +765,16 @@ int rsq_main(int argc, char *argv[])
 
     rsq_aux_t settings{0};
     settings.mmlim = 2;
-    settings.cmpkey = cmpkey::POSITION;
 
     char *fqname(nullptr);
 
     if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-    while ((c = getopt(argc, argv, "l:f:t:miSHush?")) >= 0) {
+    while ((c = getopt(argc, argv, "l:f:t:miSHsh?")) >= 0) {
         switch (c) {
         case 's': settings.write_supp = 1; break;
         case 'S': settings.is_se = 1; break;
         case 'm': settings.trust_unmasked = 1; break;
-        case 'u':
-            settings.cmpkey = cmpkey::UNCLIPPED;
-            LOG_INFO("Unclipped start position chosen for cmpkey.\n");
-            break;
         case 't': settings.mmlim = atoi(optarg); break;
         case 'f': fqname = optarg; break;
         case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
@@ -825,9 +796,6 @@ int rsq_main(int argc, char *argv[])
         LOG_EXIT("Failed to open output fastq for writing. Abort!\n");
 
 
-    if(settings.cmpkey == cmpkey::UNCLIPPED)
-        if(!settings.is_se)
-            dlib::check_bam_tag_exit(argv[optind], "MU");
     if(!settings.infer)
         for(const char *tag: {"FM", "FA", "PV", "FP"})
             dlib::check_bam_tag_exit(argv[optind], tag);
