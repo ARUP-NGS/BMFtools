@@ -103,12 +103,9 @@ void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0)) LOG_INFO("Records read: %lu.\n", count);
         add_dummy_tags(b);
-        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
-            continue;
-        }
+        if(b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) continue;
         if(b->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) {
-            sam_write1(settings->out, settings->hdr, b);
-            continue;
+            sam_write1(settings->out, settings->hdr, b); continue;
         }
         //LOG_DEBUG("Read a read!\n");
         if(fn(b, a) == 0) write_stack_se(settings); // Flattens and clears stack.
@@ -326,7 +323,7 @@ void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
                 //LOG_DEBUG("Trying to write.\n");
                 qname = bam_get_qname(a + i);
                 if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                    settings->realign_pairs[qname] = dlib::bam2cppstr(a + i);
+                    settings->realign_pairs.emplace(qname, dlib::bam2cppstr(a + i));
                 } else {
                     // Write read 1 out first.
                     if((a + i)->core.flag & BAM_FREAD2) {
@@ -694,84 +691,6 @@ void update_bam1(bam1_t *p, bam1_t *b)
         }
     }
     bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
-}
-
-
-void write_stack_se(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
-{
-    //size_t n = 0;
-    uint8_t *data;
-    for(unsigned i(0); i < stack->n; ++i) {
-        if(stack->a[i]) {
-            if((data = bam_aux_get(stack->a[i], "NC")) != nullptr) {
-                LOG_DEBUG("Trying to write.\n");
-                bam2ffq(stack->a[i], settings->fqh);
-            } else {
-                sam_write1(settings->out, settings->hdr, stack->a[i]);
-            }
-            bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-        }
-    }
-}
-
-void write_stack(dlib::tmp_stack_t *stack, rsq_aux_t *settings)
-{
-    if(settings->is_se) return write_stack_se(stack, settings);
-    //size_t n = 0;
-    //LOG_DEBUG("Starting to write stack\n");
-    uint8_t *data;
-    for(unsigned i(0); i < stack->n; ++i) {
-        if(stack->a[i]) {
-            if((data = bam_aux_get(stack->a[i], "NC"))) {
-                //LOG_DEBUG("Trying to write.\n");
-                std::string&& qname = bam_get_qname(stack->a[i]);
-                if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                    settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
-                } else {
-                    // Make sure the read names/barcodes match.
-                    // Write read 1 out first.
-                    if(stack->a[i]->core.flag & BAM_FREAD2) {
-                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                        bam2ffq(stack->a[i], settings->fqh);
-                    } else {
-                        bam2ffq(stack->a[i], settings->fqh);
-                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                    }
-                    // Clear entry, as there can only be two.
-                    settings->realign_pairs.erase(qname);
-                }
-            } else if(settings->write_supp & (bam_aux_get(stack->a[i], "SA") || bam_aux_get(stack->a[i], "ms"))) {
-                LOG_DEBUG("Trying to write write supp or stuff.\n");
-                // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
-                std::string&& qname(bam_get_qname(stack->a[i]));
-                if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
-                    settings->realign_pairs[qname] = dlib::bam2cppstr(stack->a[i]);
-                } else {
-                    // Make sure the read names/barcodes match.
-                    //assert(memcmp(settings->realign_pairs[qname].c_str() + 1, qname.c_str(), qname.size() - 1) == 0);
-                    // Write read 1 out first.
-                    if(stack->a[i]->core.flag & BAM_FREAD2) {
-                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                        //bam2ffq(stack->a[i], settings->fqh, qname);
-                        bam2ffq(stack->a[i], settings->fqh, 1);
-                    } else {
-                        //bam2ffq(stack->a[i], settings->fqh, qname);
-                        bam2ffq(stack->a[i], settings->fqh, 1);
-                        fputs(settings->realign_pairs[qname].c_str(), settings->fqh);
-                    }
-                    // Clear entry, as there can only be two.
-                    settings->realign_pairs.erase(qname);
-                }
-            } else {
-                uint8_t *data;
-                for(const char *tag: {"MU", "ms", "LM"})
-                    if((data = bam_aux_get(stack->a[i], tag)) != nullptr)
-                        bam_aux_del(stack->a[i], data);
-                sam_write1(settings->out, settings->hdr, stack->a[i]);
-            }
-            bam_destroy1(stack->a[i]), stack->a[i] = nullptr;
-        }
-    }
 }
 
 

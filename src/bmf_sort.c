@@ -118,8 +118,13 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
                 const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
                 return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
             }
-        case BMF: case UCS: case POS: default:
-            return __pos_cmp(a, b);
+        case BMF:
+            if(a.b && b.b)
+                return !bam1_lt_bmf(a.b, b.b);
+        case UCS:
+            if(a.b && b.b)
+                return !bam1_lt_ucs(a.b, b.b);
+        default: return __pos_cmp(a, b);
     }
 }
 
@@ -1337,6 +1342,7 @@ int bam_merge_core2(int merge_cmpkey, const char *out, const char *mode,
         if (res >= 0) {
             bam_translate(h->b, translation_tbl + i);
             h->pos = heap_pos(h->b);
+            assert(h->pos != HEAP_EMPTY);
             h->idx = idx++;
         }
         else if (res == -1 && (!iter[i] || iter[i]->finished)) {
@@ -1379,6 +1385,7 @@ int bam_merge_core2(int merge_cmpkey, const char *out, const char *mode,
         if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
             bam_translate(b, translation_tbl + heap->i);
             heap->pos = heap_pos(b);
+            assert(heap->pos != HEAP_EMPTY);
             heap->idx = idx++;
         } else if (j == -1 && (!iter[heap->i] || iter[heap->i]->finished)) {
             heap->pos = HEAP_EMPTY;
