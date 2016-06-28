@@ -118,12 +118,8 @@ static inline int heap_lt(const heap1_t a, const heap1_t b)
                 const int t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
                 return (t > 0 || (t == 0 && (a.b->core.flag&0xc0) > (b.b->core.flag&0xc0)));
             }
-        case BMF:
-            if(a.b && b.b)
-                return !bam1_lt_bmf(a.b, b.b);
-        case UCS:
-            if(a.b && b.b)
-                return !bam1_lt_ucs(a.b, b.b);
+        case BMF: if(a.b && b.b) return !bam1_lt_bmf(a.b, b.b);
+        case UCS: if(a.b && b.b) return !bam1_lt_ucs(a.b, b.b);
         default: return __pos_cmp(a, b);
     }
 }
