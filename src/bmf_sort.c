@@ -111,20 +111,6 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
-	LOG_DEBUG("Comparing heaps with keys %lu, %lu.\n", a.pos, b.pos);
     switch(g_cmpkey) {
         case QNAME:
             if (a.b == NULL || b.b == NULL) return !a.b;
