@@ -1,6 +1,6 @@
 ######################################
 # Makefile written by Daniel Baker   #
-#     d.nephi.baker@gmail.com       #
+#	 d.nephi.baker@gmail.com	   #
 ######################################
 
 
@@ -31,11 +31,11 @@ DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib
 UTIL_SRC = util/fqc.c
 
 SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
-          src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
-          src/bmf_err.c \
-          lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
-          src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vet.c src/bmf_sort.c src/bmf_stack.c \
-          lib/stack.c src/bmf_filter.c $(DLIB_SRC)
+		  src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
+		  src/bmf_err.c \
+		  lib/kingfisher.c src/bmf_mark.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
+		  src/bmf_main.c src/bmf_target.c src/bmf_depth.c src/bmf_vet.c src/bmf_sort.c src/bmf_stack.c \
+		  lib/stack.c src/bmf_filter.c $(DLIB_SRC)
 
 TEST_SOURCES = test/target_test.c test/ucs/ucs_test.c test/tag/array_tag_test.c
 
@@ -89,8 +89,6 @@ bmftools_p: $(P_OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
-fqc: util/fqc.o
-    g++ util/fqc.o -I.. -I../htslib -std=c++11 -lz -o fqc -O3
 
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
@@ -111,8 +109,8 @@ rsq_test: $(BINS)
 tests: $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
 
-python:
-	cd CyBMFtools && python setup.py build_ext && python setup.py install && cd ..
+fqc: util/fqc.o
+	$(CC) util/fqc.o -I.. -I../htslib -std=c++11 -lz -o fqc -O3
 
 
 clean: mostlyclean
@@ -123,4 +121,4 @@ update_dlib:
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
-		rm -f include/*.*o && rm -f lib/*.*o && rm -f $(find ./test -name '*o')
+	rm -f include/*.*o && rm -f lib/*.*o && rm -f $(find ./test -name '*o')
