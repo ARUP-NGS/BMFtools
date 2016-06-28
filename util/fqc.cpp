@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     if(seq == nullptr) LOG_EXIT("Could not open file %s as fastq.\n", argv[2]);
     uint64_t c(0);
     for(;kseq_read(seq) >= 0; ++c);
-    LOG_DEBUG("Clean up\n");
+    fprintf(stderr, "#Filename\tCount\n%s\t%lu\n", argv[1], c);
     kseq_destroy(seq);
     gzclose(in);
 }

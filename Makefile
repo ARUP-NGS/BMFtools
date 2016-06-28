@@ -90,7 +90,7 @@ bmftools_p: $(P_OBJS) libhts.a update_dlib
 bmftools: $(OBJS) libhts.a update_dlib
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 fqc: util/fqc.o
-    g++ util/fqc.o -I.. -I../htslib -std=c++11 -lz -o fqc
+    g++ util/fqc.o -I.. -I../htslib -std=c++11 -lz -o fqc -O3
 
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
