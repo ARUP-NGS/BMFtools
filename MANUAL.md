@@ -235,6 +235,8 @@ Flags:
     > -l:     Set bam compression level. Valid: 0-9. (0 == uncompresed)
     > -m:     Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.
     > -i:     Flag to work on unbarcoded data and infer solely by positional information. Treats all reads as singletons.
+    > -u:     Ignored unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.
+              Use this flag to still return a zero exit status, but only use if you know what you're doing.
     > -h/-?:  Print usage.
 
 ### Analysis
