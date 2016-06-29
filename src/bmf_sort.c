@@ -1932,7 +1932,7 @@ int sort_main(int argc, char *argv[])
     }
 
 
-    static const char *tags[] = {"MU", "LM"};
+    static const char *tags[] = {"LM"};
     if(is_se == 0)
         for(unsigned i = 0; i < COUNT_OF(tags); ++i)
             check_bam_tag_exit((nargs > 0)? argv[optind] : "-", tags[i]);
