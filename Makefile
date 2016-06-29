@@ -106,6 +106,10 @@ err_test: $(BINS)
 rsq_test: $(BINS)
 	cd test/rsq && python rsq_test.py  && cd ../..
 
+%: util/%.o libhts.a
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) util/$@.o libhts.a -o $@
+
+
 tests: $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
 
