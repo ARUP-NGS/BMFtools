@@ -217,6 +217,26 @@ bmftools <subcommand> <-h>
     > -w:    Leave temporary files.
     > -h/-?: Print usage.
 
+####<b>rsq</b>
+  Description:
+  > Positional rescue.
+  > Reads with the same start position are compared.
+  > If their barcodes are sufficiently similar, they are treated as having originatedfrom the same original template molecule.
+
+  Usage: `bmftools rsq -ftmp.fq input.bam tmp.bam`
+
+  Options:
+
+Flags:
+    > -f:     Path for the fastq for reads that need to be realigned. REQUIRED.
+    > -s:     Flag to write reads with supplementary alignments . Default: False.
+    > -S:     Flag to indicate that this rescue is for single-end data.
+    > -t:     Mismatch limit. Default: 2
+    > -l:     Set bam compression level. Valid: 0-9. (0 == uncompresed)
+    > -m:     Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.
+    > -i:     Flag to work on unbarcoded data and infer solely by positional information. Treats all reads as singletons.
+    > -h/-?:  Print usage.
+
 ### Analysis
 
 ####<b>stack</b>
@@ -293,7 +313,7 @@ bmftools <subcommand> <-h>
     > -B, --emit-bcf-format:       Emit bcf-formatted output instead of vcf.
 
     VCF Header Fields:
-    * BMF_VET:  1 if a variant passes, 0 otherwise. 
+    * BMF_VET:  1 if a variant passes, 0 otherwise.
     * BMF_QUANT: Estimated quantity given observation for each allele.
     * BMF_UNIOBS: Number of unique observations supporting a variant at that position.
     * BMF_DUPLEX: Number of duplex observations supporting a variant at that position.
