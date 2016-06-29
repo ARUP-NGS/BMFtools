@@ -667,8 +667,8 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 
 void write_base_rates(FILE *fp, fullerr_t *f)
 {
-    fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     int i;
+    fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     for(uint64_t l(0); l < f->l; ++l) {
         fprintf(fp, "%lu\t", l + 1);
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
@@ -751,6 +751,15 @@ void impute_scores(fullerr_t *f)
     }
 }
 
+/* If this meets the minimum observations, estimate measured error rate against expected error rate.
+ * Set the qdiff to be either 0 (use ILMN estimated quality score) or measured.
+*/
+#define __est_pv2ph_r1(f, i, l) ((f->r1->qobs[i][l] >= f->min_obs) ?\
+                                  (pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])) :\
+                                  0)
+#define __est_pv2ph_r2(f, i, l) ((f->r2->qobs[i][l] >= f->min_obs) ?\
+                                  (pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])) :\
+                                  0)
 
 void fill_qvals(fullerr_t *f)
 {
@@ -772,13 +781,13 @@ void fill_qvals(fullerr_t *f)
         for(l = 0; l < f->l; ++l) {
             f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
             f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-            f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
-                                                                    : 0;
-            f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
-                                                                    : 0;
+            f->r1->qdiffs[i][l] = __est_pv2ph_r1(f, i, l);
+            f->r2->qdiffs[i][l] = __est_pv2ph_r2(f, i, l);
         }
     }
 }
+#undef __est_pv2ph_r1
+#undef __est_pv2ph_r2
 
 
 void fill_sufficient_obs(fullerr_t *f)
@@ -849,7 +858,8 @@ void write_3d_offsets(FILE *fp, fullerr_t *f)
 }
 
 namespace {
-    size_t VLEN_BUFFER = 10uL;
+    size_t VLEN_BUFFER(10uL);
+
 }
 
 
@@ -868,9 +878,25 @@ readerr_t *readerr_init(size_t l) {
 }
 
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-                        int padding, int minFM, int maxFM, int flag,
-                        int minmq, uint32_t minPV, uint64_t min_obs) {
+fullerr_t fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
+                       int padding, int minFM, int maxFM, int flag,
+                       int minmq, uint32_t minPV, uint64_t min_obs) {
+    return {
+        0, // Number of records read
+        0, // Number of records read
+        readerr_init(l),
+        readerr_init(l),
+        l,
+        nullptr,
+        (bedpath) ? dlib::parse_bed_hash(bedpath, hdr, padding): nullptr, // parsed-in bed file hashmap.
+        minFM,
+        maxFM,
+        minmq,
+        minPV,
+        flag, // Filter flags. First use will simply be
+        min_obs
+    };
+    /*
     fullerr_t *ret((fullerr_t *)calloc(1, sizeof(fullerr_t)));
     ret->l = l;
     ret->r1 = readerr_init(l);
@@ -883,6 +909,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
     ret->minPV = minPV;
     ret->min_obs = min_obs;
     return ret;
+    */
 }
 
 
@@ -891,7 +918,6 @@ void fullerr_destroy(fullerr_t *e) {
     if(e->r2) readerr_destroy(e->r2), e->r2 = nullptr;
     cond_free(e->refcontig);
     if(e->bed) kh_destroy(bed, e->bed);
-    free(e);
 }
 
 
@@ -1023,47 +1049,47 @@ int err_main_main(int argc, char *argv[])
     // Get read length from the first read
     bam1_t *b(bam_init1());
     c = sam_read1(fp, header, b);
-    fullerr_t *f(fullerr_init(b->core.l_qseq, bedpath, header,
-                              padding, minFM, maxFM, flag, minmq, minPV, min_obs));
+    fullerr_t f(fullerr_init(b->core.l_qseq, bedpath, header,
+                             padding, minFM, maxFM, flag, minmq, minPV, min_obs));
     sam_close(fp);
     fp = nullptr;
     bam_destroy1(b);
-    if(*refcontig) f->refcontig = strdup(refcontig);
+    if(*refcontig) f.refcontig = strdup(refcontig);
     bam_hdr_destroy(header), header = nullptr;
-    err_main_core(argv[optind + 1], fai, f, &open_fmt);
+    err_main_core(argv[optind + 1], fai, &f, &open_fmt);
     fai_destroy(fai);
-    set_max_readlen(f);
-    fill_qvals(f);
-    impute_scores(f);
+    set_max_readlen(&f);
+    fill_qvals(&f);
+    impute_scores(&f);
     //fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
     if(outpath.size()) {
         ofp = fopen(outpath.c_str(), "w");
-        write_final(ofp, f);
+        write_final(ofp, &f);
         fclose(ofp);
     }
 
     if(d3) {
-        write_3d_offsets(d3, f);
+        write_3d_offsets(d3, &f);
         fclose(d3), d3 = nullptr;
     }
     if(df) {
-        write_full_rates(df, f);
+        write_full_rates(df, &f);
         fclose(df), df = nullptr;
     }
     if(dbc) {
-        write_base_rates(dbc, f);
+        write_base_rates(dbc, &f);
         fclose(dbc), dbc = nullptr;
     }
     if(dc) {
-        write_cycle_rates(dc, f);
+        write_cycle_rates(dc, &f);
         fclose(dc), dc = nullptr;
     }
     if(!global_fp) {
         LOG_INFO("No global rate outfile provided. Defaulting to stderr.\n");
         global_fp = stderr;
     }
-    write_global_rates(global_fp, f); fclose(global_fp);
-    fullerr_destroy(f);
+    write_global_rates(global_fp, &f); fclose(global_fp);
+    fullerr_destroy(&f);
     LOG_INFO("Successfully completed bmftools err main!\n");
     return EXIT_SUCCESS;
 }
@@ -1176,8 +1202,14 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
     uint8_t *seq(bam_get_seq(b));
     for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
         length = bam_cigar_oplen(cigar[i]);
-        switch(bam_cigar_op(cigar[i])) {
-        case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+        switch(bam_cigar_type(cigar[i])) {
+        case 1:
+            rc += length;
+            break;
+        case 2:
+            fc += length;
+            break;
+        case 3:
             for(ind = 0; ind < length; ++ind) {
                 s = bam_seqi(seq, ind + rc);
                 if(s == dlib::htseq::HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
@@ -1185,12 +1217,6 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
                 if(seq_nt16_table[(int8_t)ref[b->core.pos + fc + ind]] != s) counter.inc_err();
             }
             rc += length; fc += length;
-            break;
-        case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-            rc += length;
-            break;
-        case BAM_CREF_SKIP: case BAM_CDEL:
-            fc += length;
             break;
         }
     }
@@ -1201,7 +1227,7 @@ void err_region_core(RegionExpedition *Holloway)
 {
     // Make region_counts classes. These can now be filled from the bam.
     char *ref(nullptr);
-    int len;
+    int len, start, stop;
     bam1_t *b(bam_init1());
     std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
     Holloway->region_counts.reserve(sorted_keys.size());
@@ -1211,8 +1237,8 @@ void err_region_core(RegionExpedition *Holloway)
         LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
         ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
         for(unsigned i(0); i < kh_val(Holloway->bed, k).n; ++i) {
-            const int start(get_start(kh_val(Holloway->bed, k).intervals[i]));
-            const int stop(get_stop(kh_val(Holloway->bed, k).intervals[i]));
+            start = get_start(kh_val(Holloway->bed, k).intervals[i]);
+            stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
             Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                             start, stop);
             Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);

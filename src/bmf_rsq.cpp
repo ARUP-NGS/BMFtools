@@ -767,7 +767,7 @@ int rsq_usage(int retcode)
                     "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
                     "-i      Flag to ignore barcodes and infer solely by positional information.\n"
                     "-u      Ignore unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.\n"
-                    "        Use this flag to still return a non-zero exit status if you know what you're doiing.\n"
+                    "        Use this flag to still return a zero exit status, but only use if you know what you're doing.\n"
                     "This flag adds artificial auxiliary tags to treat unbarcoded reads as if they were singletons.\n"
             );
     return retcode;
