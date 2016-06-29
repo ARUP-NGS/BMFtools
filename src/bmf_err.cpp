@@ -751,6 +751,9 @@ void impute_scores(fullerr_t *f)
     }
 }
 
+/* If this meets the minimum observations, estimate measured error rate against expected error rate.
+ * Set the qdiff to be either 0 (use ILMN estimated quality score) or measured.
+*/
 #define __est_pv2ph_r1(f, i, l) ((f->r1->qobs[i][l] >= f->min_obs) ?\
                                   (pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])) :\
                                   0)
