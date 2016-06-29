@@ -132,7 +132,7 @@ bmftools <subcommand> <-h>
 `bmftools mark -l0 input.bam output.bam`
 
 
-`bmftools rsq -u -f tmp.fastq input.bam tmp.out.bam`
+`bmftools rsq -f tmp.fastq input.bam tmp.out.bam`
 
 
 `bmftools sort -T tmp_prefix -k ucs input.bam output.bam`
