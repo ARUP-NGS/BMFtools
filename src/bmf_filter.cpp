@@ -80,14 +80,11 @@ int bam_test(bam1_t *b, void *options) {
 
 int filter_split_core(dlib::BamHandle& in, dlib::BamHandle& out, dlib::BamHandle& refused, opts *param)
 {
-    uint64_t count = 0;
+    uint64_t count(0);
     while(in.next() >= 0) {
         if(++count % 1000000 == 0) LOG_INFO("%lu records processed.\n", count);
-        if(bam_test(in.rec, (void *)param)) {
-            refused.write(in.rec);
-        } else {
-            out.write(in.rec);
-        }
+        if(bam_test(in.rec, (void *)param)) refused.write(in.rec);
+        else out.write(in.rec);
     }
     return EXIT_SUCCESS;
 }
@@ -99,9 +96,9 @@ int filter_main(int argc, char *argv[]) {
         return usage(argv, EXIT_SUCCESS);
     int c;
     char out_mode[4]{"wb"};
-    opts param = {0};
-    char *bedpath = nullptr;
-    int padding = DEFAULT_PADDING;
+    opts param{0};
+    char *bedpath(nullptr);
+    int padding(DEFAULT_PADDING);
     std::string refused_path("");
     while((c = getopt(argc, argv, "s:a:r:P:b:m:F:f:l:hAv?")) > -1) {
         switch(c) {
@@ -114,14 +111,13 @@ int filter_main(int argc, char *argv[]) {
         case 'f': param.require_flag = strtoul(optarg, nullptr, 0); break;
         case 'v': param.v = 1; break;
         case 'r': refused_path = optarg; break;
-        case 'l': out_mode[2] = atoi(optarg) % 10 + '0'; break;
+        case 'l': out_mode[2] = *optarg; break;
         case '?': case 'h': return usage(argv, EXIT_SUCCESS);
         }
     }
     dlib::check_bam_tag_exit(argv[optind], "FM");
-    if(argc - 2 != optind) {
+    if(argc - 2 != optind)
         LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
-    }
     dlib::BamHandle in(argv[optind]);
     param.bed = bedpath ? dlib::parse_bed_hash(bedpath, in.header, padding)
                         : nullptr;
@@ -131,7 +127,7 @@ int filter_main(int argc, char *argv[]) {
         dlib::check_bam_tag_exit(argv[optind], "MF");
     dlib::BamHandle out(argv[optind + 1], in.header, out_mode);
     // Core
-    int ret = -1;
+    int ret(-1);
     if(refused_path.size()) { // refused path is set.
         LOG_DEBUG("Writing passing records to %s, failing to %s.\n", out.fp->fn, refused_path.c_str());
         dlib::BamHandle refused(refused_path.c_str(), in.header, out_mode);

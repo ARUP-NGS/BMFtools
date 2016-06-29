@@ -41,7 +41,10 @@ bmftools collapse| Collapse initial fastq records by barcode|
 bmftools err| Calculate error rates based on cycle, base call, and quality score.|
 bmftools famstats| Calculate family size statistics for a bam alignment file.|
 bmftools filter| Filter or split a bam file by a set of filters.|
+bmftools mark|Add tags including unclipped start positions for rsq or other downstream tools.|
 bmftools stack| A maximally-permissive variant caller using molecular barcode metadata analogous to samtools mpileup.|
+bmftools rsq| Rescue reads with using positional inference to collapse to unique observations in spite of errors in the barcode sequence.|
+bmftools sort|Sort for bam rescue|
 bmftools target| Calculates on-target rate.|
 bmftools vet| Curate variant calls from another variant caller (.bcf) and a bam alignment.|
 
@@ -59,6 +62,11 @@ First, the barcodes are added to the comment fields of the fastqs and split the 
 Then, reads with exactly-matching barcode are collapsed, with a meta-analysis performed on each base call.
 
 bmftools collapse inline collapses templates where both strands were sequenced, whereas collapse secondary lacks strand information.
+
+####bmftools rsq
+bmftools rsq uses positional information to collapse reads sharing alignment signatures with close barcodes
+under the assumption that they came from the same original founding molecule but with errors in reading the
+barcode.
 
 ### Manipulation
 

@@ -21,7 +21,10 @@ def main():
         subprocess.check_call("%s err fm -o err_test.out "
                               "%s NA12878.on_target.bam" % (ex, genome_path),
                               shell=True)
-        assert "f4257518cfaccb82085f4d7708222803" == hashlib.md5(open("err_test.out", "r").read()).hexdigest()
+        if sys.version_info.major >= 3:
+            assert "f4257518cfaccb82085f4d7708222803" == hashlib.md5(open("err_test.out", "r").read().encode()).hexdigest()
+        else:
+            assert "f4257518cfaccb82085f4d7708222803" == hashlib.md5(open("err_test.out", "r").read()).hexdigest()
     return 0
 
 if __name__ == "__main__":

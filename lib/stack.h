@@ -8,10 +8,10 @@
 
 #define DEFAULT_MAX_DEPTH (1 << 18)
 #define bcf_int32_vec(header, vrec, tag, vector) \
-	do {\
-		int i;\
+    do {\
+        int i;\
         if((i = bcf_update_format_int32(header, vrec, tag, (void *)vector.data(), vector.size())))\
-		    LOG_EXIT("Could not update header tag %s. Failure code %i.\n");\
+            LOG_EXIT("Could not update header tag %s. Failure code %i.\n");\
     } while(0)
 
 namespace bmf {
@@ -282,14 +282,14 @@ static inline int expected_count(std::vector<uint32_t> &phred_vector) {
     // Do this instead of
     // ret += 1 - (std::pow(10., i * -.1));
     // That way, we only increment once. Does it really matter? No, but it's elegant.
-    double ret = phred_vector.size();
+    double ret(phred_vector.size());
     for(auto i: phred_vector) ret -= std::pow(10., i * -.1);
     return (int)(ret + 0.5);
 }
 
 static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_vec, std::vector<std::vector<uint32_t>> &susp_vec, int j) {
-    double ret = 0.;
-    for(unsigned i = 0; i != conf_vec.size(); ++i) {
+    double ret(0.);
+    for(unsigned i(0); i != conf_vec.size(); ++i) {
         if(i != (unsigned)j) {
             for(auto k: conf_vec[i])
                 // Probability the base call is incorrect, over 3, as the incorrect base call could have been any of the other 3.
@@ -302,7 +302,7 @@ static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_ve
 }
 
 static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
-    const int ret = confident_phreds[j].size();
+    const int ret(confident_phreds[j].size());
     const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
     const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
     /*
@@ -321,7 +321,7 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
     const int tid(plp.b->core.tid);
     const int wlen(aux->conf.flanksz * 2 + 1);
     const uint8_t *seq(bam_get_seq(plp.b));
-    int start, stop, ret = 0;
+    int start, stop, ret(0);
     if(wlen <= plp.b->core.l_qseq) start=0, stop=plp.b->core.l_qseq;
     else {
         if(plp.qpos + aux->conf.flanksz + 1 > plp.b->core.l_qseq) {
@@ -330,7 +330,8 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
         } else if(plp.qpos < aux->conf.flanksz) {
             start = 0;
             stop = wlen;
-        } else start = plp.qpos - aux->conf.flanksz, stop = plp.qpos + aux->conf.flanksz + 1;
+        } else start = plp.qpos - aux->conf.flanksz,
+               stop = plp.qpos + aux->conf.flanksz + 1;
     }
     for(int i(start); i < stop; ++i)
         ret += (bam_seqi(seq, i) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]

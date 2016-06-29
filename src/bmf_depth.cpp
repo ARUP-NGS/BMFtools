@@ -4,7 +4,9 @@
 #include <zlib.h>
 #include <unordered_set>
 #include <algorithm>
+#include <numeric>
 #include <vector>
+#include <cmath>
 #include "htslib/kseq.h"
 #include "dlib/bam_util.h"
 #include "dlib/cstr_util.h"
@@ -118,8 +120,8 @@ void write_hist(depth_aux_t **aux, FILE *fp, int n_samples, char *bedpath)
 template<typename T>
 double stdev(T *arr, size_t l, double mean)
 {
-    double ret = 0.0, tmp;
-    for(unsigned i = 0; i < l; ++i) {
+    double ret(0.0), tmp;
+    for(unsigned i(0); i < l; ++i) {
         tmp = arr[i] - mean;
         ret += tmp * tmp;
     }
@@ -134,9 +136,9 @@ static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
     if(!n_plp) return 0;
-    uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
+    uint8_t *data(n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr);
     if(!data) return n_plp;
-    int ret = 0;
+    int ret(0);
     std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
         if(bam_itag(plp.b, "FM") == 1) ++ret;
     });
@@ -150,9 +152,9 @@ static inline int plp_singleton_sum(const bam_pileup1_t *stack, int n_plp)
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
     // Check for FM tag.
-    uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr;
+    uint8_t *data(n_plp ? bam_aux_get(stack[0].b, "FM"): nullptr);
     if(!data) return n_plp;
-    int ret = 0;
+    int ret(0);
     std::for_each(stack, stack + n_plp, [&ret](const bam_pileup1_t& plp){
         ret += bam_itag(plp.b, "FM");
     });
@@ -170,13 +172,13 @@ static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
  */
 static int read_bam(void *data, bam1_t *b)
 {
-    depth_aux_t *aux = (depth_aux_t*)data; // data in fact is a pointer to an auxiliary structure
+    depth_aux_t *aux((depth_aux_t*)data); // data in fact is a pointer to an auxiliary structure
     int ret;
     for(;;)
     {
         ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
         if ( ret<0 ) break;
-        uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
+        uint8_t *data(bam_aux_get(b, "FM")), *fpdata(bam_aux_get(b, "FP"));
         if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
             b->core.qual < aux->minmq || (data && bam_aux2i(data) < aux->minFM) ||
             (aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
@@ -193,14 +195,14 @@ int depth_main(int argc, char *argv[])
     kstream_t *ks;
     hts_idx_t **idx;
     depth_aux_t **aux;
-    int *n_plp, dret, i, n, c, minmq = 0;
+    int *n_plp, dret, i, n, c, khr;
     uint64_t *counts;
     const bam_pileup1_t **plp;
-    int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING, khr;
-    int requireFP = 0;
-    char *bedpath = nullptr, *outpath = nullptr;
-    FILE *histfp = nullptr;
-    khiter_t k = 0;
+    int usage(0), max_depth(DEFAULT_MAX_DEPTH), minFM(0), n_quantiles(4),
+        padding(DEFAULT_PADDING), minmq(0), requireFP(0);
+    char *bedpath(nullptr), *outpath(nullptr);
+    FILE *histfp(nullptr);
+    khiter_t k(0);
     if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
         depth_usage(EXIT_SUCCESS);
 
@@ -225,8 +227,8 @@ int depth_main(int argc, char *argv[])
         }
         if (usage) break;
     }
-    FILE *ofp = outpath ? fopen(outpath, "w")
-                        : stdout;
+    FILE *ofp(outpath ? fopen(outpath, "w")
+                      : stdout);
     if (usage || optind > argc) // Require at least one bam
         depth_usage(EXIT_FAILURE);
     n = argc - optind;
@@ -253,9 +255,7 @@ int depth_main(int argc, char *argv[])
             return 2;
         }
     }
-    if(!bedpath) {
-        LOG_EXIT("Bed path required. Abort!\n");
-    }
+    if(!bedpath) LOG_EXIT("Bed path required. Abort!\n");
     counts = (uint64_t *)calloc(n, sizeof(uint64_t));
     std::string region_name;
 
@@ -265,7 +265,7 @@ int depth_main(int argc, char *argv[])
     ks = ks_init(fp);
     n_plp = (int *)calloc(n, sizeof(int));
     plp = (const bam_pileup1_t **)calloc(n, sizeof(bam_pileup1_t*));
-    int lineno = 1;
+    int lineno(1);
     // Write header
     // stderr ONLY for this development phase.
     kstring_t hdr_str{0, 0, nullptr};
@@ -275,14 +275,14 @@ int depth_main(int argc, char *argv[])
     ksprintf(&hdr_str, "##minFM=%i\n", minFM);
     ksprintf(&hdr_str, "##padding=%i\n", padding);
     ksprintf(&hdr_str, "##bmftools version=%s.\n", BMF_VERSION);
-    size_t capture_size = 0;
+    size_t capture_size(0);
     std::vector<uint64_t> collapsed_capture_counts(n);
     std::vector<uint64_t> raw_capture_counts(n);
     std::vector<uint64_t> singleton_capture_counts(n);
     kstring_t cov_str{0, 0, nullptr};
     kstring_t str{0};
 #if !NDEBUG
-    const int n_lines = dlib::count_bed_lines(bedpath);
+    const int n_lines(dlib::count_bed_lines(bedpath));
 #endif
     while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
         char *p, *q;
@@ -301,7 +301,7 @@ int depth_main(int argc, char *argv[])
         *p = 0; start = atoi(q); *p = '\t';
         for (q = p = p + 1; isdigit(*p); ++p);
         if (*p == '\t' || *p == 0) {
-            int c = *p;
+            const int c(*p);
             *p = 0; stop = atoi(q); *p = c;
         } else goto bed_error;
         // Add padding
@@ -320,7 +320,7 @@ int depth_main(int argc, char *argv[])
         if(*p == '\t') {
             q = ++p;
             while(*q != '\t' && *q != '\n') ++q;
-            int c = *q; *q = '\0';
+            const int c(*q); *q = '\0';
             region_name = p;
             *q = c;
         } else region_name = (char *)NO_ID_STR;
@@ -361,7 +361,7 @@ int depth_main(int argc, char *argv[])
 
         for(i = 0; i < n; ++i) {
             kputc('\t', &str);
-            kputs(region_name.c_str(), &str);
+            kputsn(region_name.c_str(), region_name.size(), &str);
             std::sort(aux[i]->raw_counts.begin(), aux[i]->raw_counts.end());
             std::sort(aux[i]->collapsed_counts.begin(), aux[i]->collapsed_counts.end());
             std::sort(aux[i]->singleton_counts.begin(), aux[i]->singleton_counts.end());
@@ -385,7 +385,7 @@ int depth_main(int argc, char *argv[])
             kputc('|', &str);
             ksprintf(&str, "%f%%", singleton_mean / collapsed_mean * 100);
         }
-        kputs(str.s, &cov_str);
+        kputsn(str.s, str.l, &cov_str);
         kputc('\n', &cov_str);
         bam_mplp_destroy(mplp);
         ++lineno;

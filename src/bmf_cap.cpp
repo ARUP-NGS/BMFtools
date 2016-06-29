@@ -32,13 +32,13 @@ struct cap_settings_t {
 
 static inline int cap_bam_dnd(bam1_t *b, cap_settings_t *settings) {
     int i;
-    uint32_t *PV = (uint32_t *)dlib::array_tag(b, "PV");
-    uint32_t *FA = (uint32_t *)dlib::array_tag(b, "FA");
-    const int FM = bam_itag(b, "FM");
+    uint32_t *PV((uint32_t *)dlib::array_tag(b, "PV"));
+    uint32_t *FA((uint32_t *)dlib::array_tag(b, "FA"));
+    const int FM(bam_itag(b, "FM"));
     if(FM < settings->minFM)
         return 1;
-    const int l_qseq = b->core.l_qseq;
-    char *qual = (char *)bam_get_qual(b);
+    const int l_qseq(b->core.l_qseq);
+    char *qual((char *)bam_get_qual(b));
     if(b->core.flag & BAM_FREVERSE) {
         for(i = 0; i < l_qseq; ++i) {
             if(PV[i] >= settings->minPV && static_cast<double>(FA[i]) / FM >= settings->minFrac) {
@@ -57,14 +57,14 @@ static inline int cap_bam_dnd(bam1_t *b, cap_settings_t *settings) {
 static inline int cap_bam_q(bam1_t *b, cap_settings_t *settings) {
     uint32_t *const PV((uint32_t *)dlib::array_tag(b, "PV"));
     uint32_t *const FA((uint32_t *)dlib::array_tag(b, "FA"));
-    const int FM = bam_itag(b, "FM");
+    const int FM(bam_itag(b, "FM"));
     if(FM < (int)settings->minFM)
         return 1;
-    char *qual = (char *)bam_get_qual(b);
-    int i = 0;
+    char *qual((char *)bam_get_qual(b));
+    int i(0);
     // If the thresholds are failed, set the quality to 2 to make them
     if(b->core.flag & BAM_FREVERSE) {
-        int l_qseq = b->core.l_qseq;
+        int l_qseq(b->core.l_qseq);
         for(; l_qseq >= 0; ++i) {
             if(PV[i] >= settings->minPV && static_cast<double>(FA[i]) / FM >= settings->minFrac)
                 qual[--l_qseq] = settings->cap;
@@ -85,12 +85,12 @@ static inline int cap_bam_q(bam1_t *b, cap_settings_t *settings) {
 
 int cap_main(int argc, char *argv[])
 {
-    cap_settings_t settings = {0};
+    cap_settings_t settings{0};
     settings.cap = 93;
     int c;
-    char wmode[4] = "wb";
+    char wmode[4]{"wb"};
 
-    int level;
+    int level(6);
     while ((c = getopt(argc, argv, "t:f:m:l:c:dh?")) >= 0) {
         switch (c) {
         // mod 10 to handle a user error of negative or excessively high compression level.
@@ -115,13 +115,17 @@ int cap_main(int argc, char *argv[])
         return cap_usage();
 
     if(settings.minPV == 0 && settings.minFM == 0 && settings.minFrac == 0.0) {
-        fprintf(stderr, "[E:%s] All caps cannot be set to 0 (default value). [Required parameter] See usage.\n", __func__);
+        fprintf(stderr, "[E:%s] All caps cannot be set to 0 (default values). [Required parameter] See usage.\n", __func__);
         return cap_usage();
     }
-    int ret = dlib::bam_apply_function(argv[optind], argv[optind+1],
-                                       settings.dnd ? (single_aux_fn)&cap_bam_dnd
-                                                    : (single_aux_fn)&cap_bam_q,
-                                       (void *)&settings, wmode);
+    int ret(dlib::bam_apply_function(argv[optind], argv[optind+1],
+                                     settings.dnd ? (single_aux_fn)&cap_bam_dnd
+                                                  : (single_aux_fn)&cap_bam_q,
+                                     (void *)&settings, wmode));
+    if(ret) {
+        fprintf(stderr, "bmftools cap returned non-zero exit status %i.\n", ret);
+        return ret;
+    }
     LOG_INFO("Successfully completed bmftools cap!\n");
     return ret;
 }
