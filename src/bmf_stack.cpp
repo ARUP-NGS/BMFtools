@@ -302,7 +302,7 @@ int stack_main(int argc, char *argv[]) {
     }
     */
     const int is_single((argc - 1 == optind));
-    if(is_single) LOG_INFO("One bam provided. Running in se mode.\n");
+    if(is_single) LOG_INFO("One bam provided. Running in single sample mode.\n");
     if(optind > argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
     if(padding < 0) {
         LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);

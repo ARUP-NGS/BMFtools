@@ -20,6 +20,7 @@ struct rsq_aux_t {
     uint32_t write_supp:1; // Write reads with supplementary alignments
     uint32_t infer:1; // Use inference instead of barcodes.
     uint32_t trust_unmasked:1;
+    uint32_t accept_unbalanced:1;
     bam_hdr_t *hdr; // BAM header
     std::unordered_map<std::string, std::string> realign_pairs;
 };
@@ -113,13 +114,13 @@ void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     write_stack_se(settings);
     bam_destroy1(b);
     // Handle any unpaired reads, though there shouldn't be any in real datasets.
-    LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
     if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
 #if !NDEBUG
         for(auto& pair: settings->realign_pairs)
             puts(pair.second.c_str());
 #endif
+        if(settings->accept_unbalanced == 0)
+            LOG_EXIT("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
     }
 }
 
@@ -348,6 +349,7 @@ void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
                     settings->realign_pairs.erase(qname);
                 }
             } else if(settings->write_supp & (bam_aux_get((a + i), "SA") || bam_aux_get((a + i), "ms"))) {
+                assert(((a + i)->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) == 0);
                 //LOG_DEBUG("Trying to write write supp or stuff.\n");
                 // Has an SA or ms tag, meaning that the read or its mate had a supplementary alignment
                 qname = bam_get_qname((a + i));
@@ -763,7 +765,9 @@ int rsq_usage(int retcode)
                     "-t      Mismatch limit. Default: 2\n"
                     "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
                     "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
-                    "-i      Flag to ignore barcodes and infer solely by positional information. [THIS IS BROKEN]\n"
+                    "-i      Flag to ignore barcodes and infer solely by positional information.\n"
+                    "-u      Ignore unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.\n"
+                    "        Use this flag to still return a non-zero exit status if you know what you're doiing.\n"
                     "This flag adds artificial auxiliary tags to treat unbarcoded reads as if they were singletons.\n"
             );
     return retcode;
@@ -788,6 +792,7 @@ int rsq_main(int argc, char *argv[])
         case 's': settings.write_supp = 1; break;
         case 'S': settings.is_se = 1; break;
         case 'm': settings.trust_unmasked = 1; break;
+        case 'u': settings.accept_unbalanced = 1; break;
         case 't': settings.mmlim = atoi(optarg); break;
         case 'f': fqname = optarg; break;
         case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
