@@ -7,7 +7,7 @@
 CXXSTD=c++11
 CSTD=gnu99
 CC=g++
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
+GIT_VERSION := $(shell git describe --abbrev=4 --always)
 CFLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
 FLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic  # -Weffc++
 LD= -lm -lz -lpthread
