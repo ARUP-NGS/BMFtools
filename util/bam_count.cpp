@@ -2,8 +2,9 @@
 #include <getopt.h>
 
 int usage(char **argv, int retcode=EXIT_FAILURE) {
-    fprintf(stderr, "%s <-l output_compression_level> in.bam out.bam\n"
-                    "Use - for stdin or stdout.\n", argv[0]);
+    fprintf(stderr, "Usage: %s <-l output_compression_level> in.bam <in2.bam> <in3.bam> ...\n"
+                    "Use - for stdin or stdout.\n"
+                    "Calculates number of non-secondary and non-primary alignment in a bam.\n", *argv);
     return retcode;
 }
 

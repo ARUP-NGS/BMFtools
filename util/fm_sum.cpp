@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
         case 'h': case '?': return usage(argv, EXIT_SUCCESS);
         }
     }
+    fputs("Name: count\n", stdout);
     for(int i(1); i < argc; ++i) {
         dlib::BamHandle in(argv[i]);
         bam1_t *b(bam_init1());

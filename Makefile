@@ -28,8 +28,6 @@ PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-built
 DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
 		   dlib/bed_util.c dlib/misc_util.c
 
-UTIL_SRC = util/fqc.c
-
 SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
 		  src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
 		  src/bmf_err.c \
@@ -53,7 +51,7 @@ UTILS=fm_sum bam_count fqc
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib util
 
-all: libhts.a tests $(BINS) util
+all: libhts.a tests $(BINS $(UTILS)
 
 
 util: $(UTILS)
