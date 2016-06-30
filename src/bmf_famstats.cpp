@@ -381,7 +381,9 @@ int famstats_sum_main(int argc, char *argv[]) {
         dlib::BamHandle in(argv[i]);
         bam1_t *b(bam_init1());
         size_t count(0);
-        while(sam_read1(in.fp, in.header, b) >= 0) if((b->core.flag & 2304) == 0) count += bam_itag(b,"FM");
+        while(sam_read1(in.fp, in.header, b) >= 0)
+            if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FREAD2)) == 0) 
+                count += bam_itag(b,"FM");
         fprintf(ofp, "%s: %lu\n", argv[i], count);
         bam_destroy1(b);
     }

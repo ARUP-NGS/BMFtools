@@ -114,7 +114,8 @@ static int read_bam(void *data, bam1_t *b)
 void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux_t *aux, std::vector<int>& pass_values,
         std::vector<int>& n_obs, std::vector<int>& n_duplex, std::vector<int>& n_overlaps, std::vector<int> &n_failed,
         std::vector<int>& quant_est, std::vector<int>& qscore_sums, int& n_all_overlaps, int& n_all_duplex, int& n_all_disagreed) {
-    int khr, s, s2, i;
+    int khr, s, s2;
+    unsigned i;
     n_all_disagreed = n_all_overlaps = 0;
     khiter_t k;
     uint32_t *FA1, *PV1, *FA2, *PV2;
@@ -130,7 +131,7 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
     const int sk(1);
     // Set the r1/r2 flags for the reads to ignore to 0
     // Set the ones where we see it twice to (BAM_FREAD1 | BAM_FREAD2).
-    for(i = 0; i < n_plp; ++i) {
+    for(i = 0; i < (unsigned)n_plp; ++i) {
         if(plp[i].is_del || plp[i].is_refskip) continue;
         // Skip any reads failed for FA < minFA or FR < min_fr
         qname = bam_get_qname(plp[i].b);
