@@ -47,7 +47,7 @@ DLIB_OBJS = $(DLIB_SRC:.c=.o)
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
-UTILS=fm_sum bam_count fqc
+UTILS=bam_count fqc
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib util
 
