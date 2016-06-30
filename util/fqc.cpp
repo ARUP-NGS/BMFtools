@@ -12,7 +12,7 @@ int main(int argc, char **argv)
         LOG_EXIT("Usage: %s <inpath>\n", argv[0]);
     fputs("#Filename\tCount\n", stdout);
     for(int i = 1; i < argc; ++i){
-        gzFile in(gzopen(argv[1], "r"));
+        gzFile in(gzopen(argv[i], "r"));
         if(in == nullptr) LOG_EXIT("Could not open file %s.\n", argv[1]);
         kseq_t *seq(kseq_init(in));
         if(seq == nullptr) LOG_EXIT("Could not open file %s as fastq.\n", argv[2]);

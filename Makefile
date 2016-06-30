@@ -49,10 +49,14 @@ DLIB_OBJS = $(DLIB_SRC:.c=.o)
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
+UTILS=fm_sum bam_count fqc
 
-.PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
+.PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib util
 
-all: libhts.a tests $(BINS)
+all: libhts.a tests $(BINS) util
+
+
+util: $(UTILS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
