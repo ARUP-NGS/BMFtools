@@ -2,8 +2,8 @@
 #include <getopt.h>
 
 int usage(char **argv, int retcode=EXIT_FAILURE) {
-    fprintf(stderr, "%s <-l output_compression_level> in.bam out.bam\n"
-                    "Use - for stdin or stdout.\n", argv[0]);
+    fprintf(stderr, "%s in.bam\n"
+                    "Use - for stdin.\n", argv[0]);
     return retcode;
 }
 
@@ -19,8 +19,6 @@ int main(int argc, char *argv[]) {
         case 'h': case '?': return usage(argv, EXIT_SUCCESS);
         }
     }
-    if(argc - 2 != optind)
-        LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
     dlib::BamHandle in(argv[1]);
     bam1_t *b(bam_init1());
     size_t count(0);
