@@ -234,8 +234,8 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
         //LOG_DEBUG("Allele #%i pass? %s\n", j + 1, pass_values[j] ? "True": "False");
     }
     // Now estimate the fraction likely correct.
-    for(i = 0; i < n_plp; ++i)
-        if((tmptag = bam_aux_get(plp[i].b, "SK")) != nullptr)
+    for(i = 0; i < (unsigned)n_plp; ++i)
+        if((tmptag = bam_aux_get(plp[i].b, "SK")))
             bam_aux_del(plp[i].b, tmptag);
     kh_destroy(names, hash);
     n_all_duplex = std::accumulate(n_duplex.begin(), n_duplex.begin() + vrec->n_allele, 0);
