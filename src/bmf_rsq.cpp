@@ -55,7 +55,6 @@ struct Stack {
     ~Stack() {
         LOG_DEBUG("m: %u.\n", m);
         for(unsigned i(0); i < m; ++i) {
-            LOG_DEBUG("Cleaning up.\n")
             if(a[i].data) {
                 LOG_DEBUG("NONZERO %p\n", (void *)a[i].data);
                 free(a[i].data);
@@ -150,11 +149,12 @@ void Stack<fn>::se_core(rsq_aux_t *settings) {
     // Handle any unpaired reads, though there shouldn't be any in real datasets.
     LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
     if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
 #if !NDEBUG
         for(auto pair: settings->realign_pairs)
             puts(pair.second.c_str());
 #endif
+        if(settings->accept_unbalanced == 0)
+            LOG_EXIT("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
     }
 }
 
@@ -186,11 +186,12 @@ void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
     // Handle any unpaired reads, though there shouldn't be any in real datasets.
     LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
     if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
 #if !NDEBUG
         for(auto pair: settings->realign_pairs)
             puts(pair.second.c_str());
 #endif
+        if(settings->accept_unbalanced == 0)
+            LOG_EXIT("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
     }
 }
 
@@ -226,11 +227,12 @@ void Stack<fn>::pe_core(rsq_aux_t *settings)
     // Handle any unpaired reads, though there shouldn't be any in real datasets.
     LOG_DEBUG("Number of orphan reads: %lu.\n", settings->realign_pairs.size());
     if(settings->realign_pairs.size()) {
-        LOG_WARNING("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
 #if !NDEBUG
         for(auto pair: settings->realign_pairs)
             puts(pair.second.c_str());
 #endif
+        if(settings->accept_unbalanced == 0)
+            LOG_EXIT("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
     }
 }
 
