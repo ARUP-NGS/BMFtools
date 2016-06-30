@@ -21,14 +21,12 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O2 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
+OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma -fno-inline
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
 
 DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
 		   dlib/bed_util.c dlib/misc_util.c
-
-UTIL_SRC = util/fqc.c
 
 SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
 		  src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
