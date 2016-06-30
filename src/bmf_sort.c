@@ -1614,7 +1614,8 @@ static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
     if(is_se) return bmfsort_se_key(a) < bmfsort_se_key(b);
     uint64_t key_a = bmfsort_core_key(a);
     uint64_t key_b = bmfsort_core_key(b);
-    if(key_a != key_b) return key_a < key_b;
+    return (key_a != key_b) ? key_a < key_b
+                            : bmfsort_mate_key(a) < bmfsort_mate_key(b);
     key_a = bmfsort_mate_key(a);
     key_b = bmfsort_mate_key(b);
     return (key_a != key_b) ? key_a < key_b

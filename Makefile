@@ -21,7 +21,7 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
+OPT_FLAGS = -finline-functions -O2 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma -fno-inline
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
 
@@ -49,10 +49,11 @@ DLIB_OBJS = $(DLIB_SRC:.c=.o)
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
+UTILS=fqc bam_count
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
 
-all: libhts.a tests $(BINS)
+all: libhts.a tests $(BINS) $(UTILS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools

@@ -2,8 +2,9 @@
 #include <getopt.h>
 
 int usage(char **argv, int retcode=EXIT_FAILURE) {
-    fprintf(stderr, "%s <-l output_compression_level> in.bam out.bam\n"
-                    "Use - for stdin or stdout.\n", argv[0]);
+    fprintf(stderr, "Usage: %s <-l output_compression_level> in.bam <in2.bam> <in3.bam> ...\n"
+                    "Use - for stdin or stdout.\n"
+                    "Calculates number of non-secondary and non-primary alignment in a bam.\n", *argv);
     return retcode;
 }
 
@@ -19,13 +20,15 @@ int main(int argc, char *argv[]) {
         case 'h': case '?': return usage(argv, EXIT_SUCCESS);
         }
     }
-    if(argc - 2 != optind)
-        LOG_EXIT("Required: precisely two positional arguments (in bam, out bam).\n");
-    dlib::BamHandle in(argv[1]);
-    bam1_t *b(bam_init1());
-    size_t count(0);
-    while(sam_read1(in.fp, in.header, b) >= 0) ++count;
-    bam_destroy1(b);
-    fprintf(stdout, "%s: %lu\n", argv[1], count);
+    fprintf(stdout, "filename: count\n");
+    for(int i(1); i < argc; ++i) {
+        dlib::BamHandle in(argv[1]);
+        bam1_t *b(bam_init1());
+        size_t count(0);
+        while(LIKELY(sam_read1(in.fp, in.header, b) >= 0)) if((b->core.flag & 2304) == 0) ++count;
+
+        bam_destroy1(b);
+        fprintf(stdout, "%s: %lu\n", argv[1], count);
+    }
     return EXIT_SUCCESS;
 }
