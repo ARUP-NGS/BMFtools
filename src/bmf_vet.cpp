@@ -256,7 +256,12 @@ int vet_core_bed(vetter_aux_t *aux) {
     if(!idx) LOG_EXIT("Could not load bam index for %s.\n", aux->fp->fn);
     switch(hts_get_format(aux->vcf_fp)->format) {
     case vcf: return vet_core_nobed(aux);
+#if 0
+        if((vcf_idx = tbx_index_load(aux->vcf_fp->fn)) == nullptr) LOG_EXIT("SSD\n");
+        bcf_idx = vcf_idx->idx;
         // Tabix indexed vcfs don't work currently. Throws a segfault in htslib.
+        break;
+#endif
     case bcf:
         if((bcf_idx = bcf_index_load(aux->vcf_fp->fn)) == nullptr)
             LOG_EXIT("Could not load CSI index: %s\n", aux->vcf_fp->fn);
@@ -292,10 +297,12 @@ int vet_core_bed(vetter_aux_t *aux) {
             //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", j + 1, aux->header->target_name[tid], start, stop);
 
             // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-            vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
-                               : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
-                                          : nullptr;
-            //vcf_iter = vcf_idx ? hts_itr_query(vcf_idx->idx, tid, start, stop, tbx_readrec): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): nullptr;
+            /*vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop)
+                                 : bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                                           : nullptr;
+            */
+            vcf_iter = bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop)
+                               : nullptr;
 
             int n_disagreed(0);
             int n_overlapped (0);
@@ -342,7 +349,7 @@ int vet_core_bed(vetter_aux_t *aux) {
                 memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
                 // Perform tests to provide the results for the tags.
                 bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                             fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
+                              fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
                 // Add tags
                 bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
                 bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -379,24 +386,6 @@ int vet_core_nobed(vetter_aux_t *aux) {
     tbx_t *vcf_idx(nullptr);
     hts_idx_t *bcf_idx(nullptr);
     hts_idx_t *idx(sam_index_load(aux->fp, aux->fp->fn));
-    switch(hts_get_format(aux->vcf_fp)->format) {
-    case vcf:
-        //LOG_WARNING("Somehow, tabix reading doesn't seem to work. I'm deleting this index and iterating through the whole vcf.\n");
-        vcf_idx = nullptr;
-        /*
-        if(vcf_idx) {
-            tbx_destroy(vcf_idx);
-            vcf_idx = nullptr;
-        }
-        */
-        break;
-    case bcf:
-        bcf_idx = nullptr;
-        break;
-    default:
-        LOG_EXIT("Unrecognized variant file type! (%i).\n", hts_get_format(aux->vcf_fp)->format);
-        break; // This never happens -- LOG_EXIT exits.
-    }
     bcf1_t *vrec(bcf_init());
     // Unpack all shared data -- up through INFO, but not including FORMAT
     vrec->max_unpack = BCF_UN_FMT;
@@ -413,31 +402,25 @@ int vet_core_nobed(vetter_aux_t *aux) {
     bam_plp_t pileup(nullptr);
 
     for(int i(0); i < aux->header->n_targets; ++i) {
-
         int pos(-1);
         int tid(i);
-        const int start(0);
-        const int stop(aux->header->target_len[tid]);
-
-        // Handle coordinates
-        // rid is set to -1 before use. This won't be triggered.
-        //LOG_DEBUG("Beginning to work through region #%i on contig %s:%i-%i.\n", tid + 1, aux->header->target_name[tid], start, stop);
-
-        // Fill vcf_iter from tbi or csi index. If both are null, go through the full file.
-
         int n_disagreed(0);
         int n_overlapped(0);
         int n_duplex(0);
+        const int start(0);
+        const int stop(aux->header->target_len[tid]);
         while(read_bcf(aux, vcf_iter, vrec) >= 0) {
-            if(!vcf_iter && vrec->rid != tid) {
+            if(!vcf_iter && vrec->rid != tid)
                 i = tid = vrec->rid; // Finished the last contig, on the next one.
-            }
             if(!bcf_is_snp(vrec)) {
                 LOG_DEBUG("Variant isn't a snp. Skip!\n");
                 bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
                 continue; // Only handle simple SNVs
             }
-            bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
+            if(aux->bed && !dlib::vcf_bed_test(vrec, aux->bed)) {
+                LOG_DEBUG("Outside of bed region. Continuing.\n");
+                continue;
+            }
             LOG_DEBUG("Querying for tid and pos %i, %i.\n", vrec->rid, vrec->pos);
             aux->iter = sam_itr_queryi(idx, vrec->rid, vrec->pos - 500, vrec->pos);
             //LOG_DEBUG("Before plp_auto tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
@@ -471,8 +454,10 @@ int vet_core_nobed(vetter_aux_t *aux) {
                 if(n_plp == -1) {
                     LOG_WARNING("Could not make pileup for region %s:%i-%i. n_plp: %i, pos%i, tid%i.\n",
                                 aux->header->target_name[tid], start, stop, n_plp, pos, tid);
-                }
-                else if(n_plp == 0) {
+#if !NDEBUG
+                    ++n_skipped;
+#endif
+                } else if(n_plp == 0) {
                     //LOG_DEBUG("Vrec rid: %i. Vrec pos: %i. tid: %i. pos: %i.\n", vrec->rid, vrec->pos, tid, pos);
                     LOG_WARNING("No reads at position. Skip this variant.\n");
 #if !NDEBUG
@@ -495,7 +480,7 @@ int vet_core_nobed(vetter_aux_t *aux) {
             memset(overlap_values.data(), 0, sizeof(int32_t) * overlap_values.size());
             // Perform tests to provide the results for the tags.
             bmf_var_tests(vrec, plp, n_plp, aux, pass_values, uniobs_values, duplex_values, overlap_values,
-                         fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
+                          fail_values, quant_est, qscore_sums, n_overlapped, n_duplex, n_disagreed);
             // Add tags
             bcf_update_info_int32(aux->vcf_header, vrec, "DISC_OVERLAP", (void *)&n_disagreed, 1);
             bcf_update_info_int32(aux->vcf_header, vrec, "OVERLAP", (void *)&n_overlapped, 1);
@@ -528,7 +513,7 @@ int vet_core(vetter_aux_t *aux) {
 int vet_main(int argc, char *argv[])
 {
     if(argc < 3) vetter_usage(EXIT_FAILURE);
-    const struct option lopts[] {
+    static const struct option lopts[] {
             {"min-family-agreed",         required_argument, nullptr, 'a'},
             {"min-family-size",          required_argument, nullptr, 's'},
             {"min-fraction-agreed",         required_argument, nullptr, 'f'},
@@ -584,8 +569,8 @@ int vet_main(int argc, char *argv[])
         case 'd': aux.max_depth = atoi(optarg); break;
         case 'f': aux.min_fr = (float)atof(optarg); break;
         case 'F': aux.skip_flag |= (BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP); break;
-        case 'b': bed = strdup(optarg); break;
-        case 'o': outvcf = strdup(optarg); break;
+        case 'b': bed = optarg; break;
+        case 'o': outvcf = optarg; break;
         case 'O': aux.min_overlap = atoi(optarg); break;
         case 'V': aux.vet_all = 1; break;
         case 'h': case '?': vetter_usage(EXIT_SUCCESS);
@@ -600,7 +585,7 @@ int vet_main(int argc, char *argv[])
 
 
     strcpy(vcf_wmode, output_bcf ? "wb": "w");
-    if(!outvcf) outvcf = strdup("-");
+    if(!outvcf) outvcf = (char *)"-";
     if(strcmp(outvcf, "-") == 0) LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
     // Open bam
     aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
@@ -651,8 +636,6 @@ int vet_main(int argc, char *argv[])
     vcf_close(aux.vcf_ofp);
     bcf_hdr_destroy(aux.vcf_header);
     if(aux.bed) dlib::bed_destroy_hash(aux.bed);
-    cond_free(outvcf);
-    cond_free(bed);
     if(ret) LOG_EXIT("vet_core returned non-zero exit status '%i'. Abort!\n");
     LOG_INFO("Successfully completed bmftools vet!\n");
     return 0;
