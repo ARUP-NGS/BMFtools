@@ -152,7 +152,7 @@ bmftools <subcommand> <-h>
 
 ####<b>collapse</b>
   Description:
-  > Collapsed barcoded fastq data by exact barcode matching.
+  > Collapses barcoded fastq data by exact barcode matching.
   > To achieve linear performance with arbitrarily large datasets, an initial marking step subsets the reads by the first
   > few nucleotides in the barcode. The more of these are used, the lower the RAM requirements but the more temporary files are written.
   > This is controlled by the -n option.
