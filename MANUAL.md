@@ -226,6 +226,7 @@ bmftools <subcommand> <-h>
   Options:
 
 Flags:
+
     > -f:     Path for the fastq for reads that need to be realigned. REQUIRED.
     > -s:     Flag to write reads with supplementary alignments . Default: False.
     > -S:     Flag to indicate that this rescue is for single-end data.
