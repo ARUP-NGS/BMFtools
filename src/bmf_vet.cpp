@@ -216,12 +216,9 @@ void bmf_var_tests(bcf1_t *vrec, const bam_pileup1_t *plp, int n_plp, vetter_aux
                     confident_phreds[j].push_back(PV1[arr_qpos1]);
                     qscore_sums[j] += PV1[arr_qpos1];
                     ++n_obs[j];
-                    if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr) {
-                        if(bam_aux2i(tmptag)) {
-                            ++n_duplex[j]; // Has DR tag and its value is nonzero.
+                    if((tmptag = bam_aux_get(plp[i].b, "DR")) != nullptr)
+                        if(bam_aux2i(tmptag)) ++n_duplex[j]; // Has DR tag and its value is nonzero.
                             //LOG_DEBUG("Found a duplex read!\n");
-                        }
-                    }
                     if((tmptag = bam_aux_get(plp[i].b, "KR")) != nullptr) {
                         ++n_overlaps[j];
                         bam_aux_del(plp[i].b, tmptag);
@@ -514,25 +511,25 @@ int vet_main(int argc, char *argv[])
 {
     if(argc < 3) vetter_usage(EXIT_FAILURE);
     static const struct option lopts[] {
-            {"min-family-agreed",         required_argument, nullptr, 'a'},
-            {"min-family-size",          required_argument, nullptr, 's'},
-            {"min-fraction-agreed",         required_argument, nullptr, 'f'},
-            {"min-mapping-quality",         required_argument, nullptr, 'm'},
-            {"min-phred-quality",         required_argument, nullptr, 'v'},
-            {"min-count",         required_argument, nullptr, 'c'},
-            {"min-duplex",         required_argument, nullptr, 'D'},
+            {"min-family-agreed",   required_argument, nullptr, 'a'},
+            {"min-family-size",     required_argument, nullptr, 's'},
+            {"min-fraction-agreed", required_argument, nullptr, 'f'},
+            {"min-mapping-quality", required_argument, nullptr, 'm'},
+            {"min-phred-quality",   required_argument, nullptr, 'v'},
+            {"min-count",           required_argument, nullptr, 'c'},
+            {"min-duplex",          required_argument, nullptr, 'D'},
             {"min-overlap",         required_argument, nullptr, 'O'},
-            {"out-vcf",         required_argument, nullptr, 'o'},
-            {"bedpath",         required_argument, nullptr, 'b'},
-            {"ref",         required_argument, nullptr, 'r'},
-            {"padding",         required_argument, nullptr, 'p'},
-            {"skip-secondary", no_argument, nullptr, '2'},
-            {"skip-supplementary", no_argument, nullptr, 'S'},
-            {"skip-qcfail", no_argument, nullptr, 'q'},
-            {"skip-improper", no_argument, nullptr, 'P'},
-            {"skip-recommended", no_argument, nullptr, 'F'},
-            {"max-depth", required_argument, nullptr, 'd'},
-            {"emit-bcf", no_argument, nullptr, 'B'},
+            {"out-vcf",             required_argument, nullptr, 'o'},
+            {"bedpath",             required_argument, nullptr, 'b'},
+            {"ref",                 required_argument, nullptr, 'r'},
+            {"padding",             required_argument, nullptr, 'p'},
+            {"skip-secondary",      no_argument,       nullptr, '2'},
+            {"skip-supplementary",  no_argument,       nullptr, 'S'},
+            {"skip-qcfail",         no_argument,       nullptr, 'q'},
+            {"skip-improper",       no_argument,       nullptr, 'P'},
+            {"skip-recommended",    no_argument,       nullptr, 'F'},
+            {"max-depth",           required_argument, nullptr, 'd'},
+            {"emit-bcf",            no_argument,       nullptr, 'B'},
             {0, 0, 0, 0}
     };
     char vcf_wmode[4]{"w"};
@@ -556,8 +553,8 @@ int vet_main(int argc, char *argv[])
         case 'D': aux.min_duplex = atoi(optarg); break;
         case 's': aux.minFM = atoi(optarg); break;
         case 'm':
-            aux.minmq = atoi(optarg);
-            if(aux.minmq < atoi(optarg)) LOG_EXIT("minmq must be <255. Provided: %i.\n", atoi(optarg));
+            if((aux.minmq = atoi(optarg)) < atoi(optarg))
+                LOG_EXIT("minmq must be <255. Provided: %i.\n", atoi(optarg));
         break;
         case 'v': aux.minPV = atoi(optarg); break;
         case '2': aux.skip_flag |= BAM_FSECONDARY; break;

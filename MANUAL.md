@@ -421,8 +421,8 @@ Flags:
 ####bmftools famstats
   Description:
   > Calculates summary statistics related to family size and demultiplexing.
-  > famstats consists of two subcommands: fm and frac
-  > famstats fm has 2 subcommands:
+
+  > famstats consists of two subcommands: fm and frac.
   1. fm
     2. famstats fm produces summary statistics and count distributions for family size, duplex/reverse reads, and read rescue statistics.
   2. frac

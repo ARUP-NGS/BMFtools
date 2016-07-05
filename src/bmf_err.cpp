@@ -334,23 +334,17 @@ void err_fm_report(FILE *fp, fmerr_t *f)
         fm = tmp[i];
         fprintf(fp, "%i\t", fm);
 
-        if((k1 = kh_get(obs, f->hash1, fm)) == kh_end(f->hash1))
-            fprintf(fp, "-nan\t");
-        else
-            fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
+        if((k1 = kh_get(obs, f->hash1, fm)) == kh_end(f->hash1)) fprintf(fp, "-nan\t");
+        else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
 
-        if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2))
-            fprintf(fp, "-nan\t");
-        else
-            fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+        if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2)) fprintf(fp, "-nan\t");
+        else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
         if(k1 != kh_end(f->hash1))
-            fprintf(fp, "%lu\t%lu\t",
-                kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+            fprintf(fp, "%lu\t%lu\t", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
         else fputs("0\t0\t", fp);
         if(k2 != kh_end(f->hash2))
-            fprintf(fp, "%lu\t%lu\n",
-                kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+            fprintf(fp, "%lu\t%lu\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
         else fputs("0\t0\n", fp);
     }
     free(tmp);
@@ -1277,8 +1271,8 @@ int err_region_main(int argc, char *argv[])
         case 'q': requireFP = 1; break;
         case 'a': minmq = atoi(optarg); break;
         case 'f': minFM = atoi(optarg); break;
-        case 'o': outpath = strdup(optarg); break;
-        case 'b': bedpath = strdup(optarg); break;
+        case 'o': outpath = optarg; break;
+        case 'b': bedpath = optarg; break;
         case 'p': padding = atoi(optarg); break;
         case '?': case 'h': return err_region_usage(EXIT_SUCCESS);
         }
@@ -1288,7 +1282,7 @@ int err_region_main(int argc, char *argv[])
         LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 
     if(!outpath) {
-        outpath = strdup("-");
+        outpath = (char *)"-";
         LOG_WARNING("Output path not set. Defaulting to stdout.\n");
     }
     if(!bedpath)
@@ -1305,8 +1299,6 @@ int err_region_main(int argc, char *argv[])
     err_region_core(&Holloway);
     write_region_rates(ofp, Holloway), fclose(ofp);
     fai_destroy(fai);
-    cond_free(bedpath);
-    cond_free(outpath);
     LOG_INFO("Successfully completed bmftools err region!\n");
     return EXIT_SUCCESS;
 }
