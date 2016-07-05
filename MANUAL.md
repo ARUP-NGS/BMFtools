@@ -12,8 +12,6 @@ Accessory tools provide postprocessing, filtering, quality control, and summary 
 
 [Usage](#usage)
 
-See also [Vignettes](https://github.com/ARUP-NGS/BMFtools/blob/dev/Vignettes.md) in a separate document for use cases.
-
 ###Workflow
 
 Reads are originally collapsed into single observations per barcode using exact matching. Following this step, to correct for errors in barcode reading, positional information can be used to rescue reads into unique single observations.
@@ -228,6 +226,7 @@ bmftools <subcommand> <-h>
   Options:
 
 Flags:
+
     > -f:     Path for the fastq for reads that need to be realigned. REQUIRED.
     > -s:     Flag to write reads with supplementary alignments . Default: False.
     > -S:     Flag to indicate that this rescue is for single-end data.
@@ -422,8 +421,8 @@ Flags:
 ####bmftools famstats
   Description:
   > Calculates summary statistics related to family size and demultiplexing.
-  > famstats consists of two subcommands: fm and frac
-  > famstats fm has 2 subcommands:
+
+  > famstats consists of two subcommands: fm and frac.
   1. fm
     2. famstats fm produces summary statistics and count distributions for family size, duplex/reverse reads, and read rescue statistics.
   2. frac
