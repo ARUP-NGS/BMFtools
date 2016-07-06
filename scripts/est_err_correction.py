@@ -42,12 +42,13 @@ if __name__ == "__main__":
         sys.stderr.write("Usage: %s errfm.txt famstats.txt <minFM>\n (minFM optional)\n" % sys.argv[0])
         sys.exit(1)
     maxFM = int(sys.argv[3]) if len(sys.argv) >= 4 else 0
+    step = int(sys.argv[4]) if len(sys.argv) >= 5 else 1
     fm = make_famstats_dict(sys.argv[2])
     err = make_err_dict(sys.argv[1])
     sys.stdout.write("##%s Error rates.\n#minFM\tRead1\tRead2\n" % sys.argv[1])
-    for m in range(maxFM):
-        if m not in err: continue
+    for m in range(1, maxFM + 2, step):
+        if m not in err:
+            continue
         mean_err = get_mean_err_correction(fm, err, minFM=m)
-        sys.stdout.write("%i\t%f\t%f\n" % tuple([m] + list(mean_err)))
-    # Main goes here.
+        sys.stdout.write("%i\t%f\t%f\n" % (m, mean_err[0], mean_err[1]))
     sys.exit(0)
