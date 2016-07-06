@@ -805,8 +805,9 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
                 else
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
-                fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
-                fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
+                if(i) fputc(':', cp), fputc(':', ep);
+                fprintf(cp, "%lu", f->r1->obs[i][j][l]);
+                fprintf(ep, "%lu", f->r1->err[i][j][l]);
             }
             if(j != NQSCORES - 1) {
                 fputc(',', ep); fputc(',', cp);
@@ -819,11 +820,10 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
                 fprintf(cp, "%lu", f->r2->obs[i][j][l]);
                 fprintf(ep, "%lu", f->r2->err[i][j][l]);
             }
-            if(j != NQSCORES - 1) {
-                fputc(',', ep); fputc(',', cp);
-            }
+            if(j != NQSCORES - 1)
+                fputc(',', ep), fputc(',', cp);
         }
-        fputc('\n', ep); fputc('\n', cp);
+        fputc('\n', ep), fputc('\n', cp);
     }
     fclose(dictwrite);
 }

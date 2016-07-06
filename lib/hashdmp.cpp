@@ -192,8 +192,8 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
     }
     if(!in_handle2) {
          if(dlib::isfile(in2)) {
-            LOG_DEBUG("%s a file, but it's empty....\n", in2);
-            gzclose(out_handle2);
+             LOG_DEBUG("%s a file, but it's empty....\n", in2);
+             gzclose(out_handle2);
              return;
          }
          LOG_EXIT("Could not open %s for reading. Abort mission!\n", in2);
@@ -439,13 +439,14 @@ void hash_dmp_core(char *infname, char *outfname, int level)
                     strcmp("-", infname) == 0 ? "stdin": infname,count);
         cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
         HASH_FIND_STR(hash, tmp->key, tmp_hk);
-        if(!tmp_hk) {
+        if(tmp_hk) pushback_kseq(tmp_hk->value, seq, blen);
+        else {
             tmp_hk = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
             tmp_hk->value = init_kfp(tmp->readlen);
             cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hk->id);
             pushback_kseq(tmp_hk->value, seq, blen);
             HASH_ADD_STR(hash, id, tmp_hk);
-        } else pushback_kseq(tmp_hk->value, seq, blen);
+        }
     }
     LOG_DEBUG("Loaded all records into memory. Writing out to %s!\n", ifn_stream(outfname));
     count = 0;
@@ -620,7 +621,6 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
         HASH_DEL(hrev, crev);
         free(crev);
     }
-    LOG_DEBUG("Cleaning up.\n");
     LOG_DEBUG("Number of duplex observations: %lu.\t"
               "Number of non-duplex observations: %lu.\t"
               "Non-duplex families: %lu\n",
