@@ -307,7 +307,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
     int khr, fm;
     khiter_t k, k1, k2;
     // Make a set of all FMs to print out.
-    khash_t(obs_union) *key_union = kh_init(obs_union);
+    khash_t(obs_union) *key_union(kh_init(obs_union));
     for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
         if(kh_exist(f->hash1, k1))
             if((k = kh_get(obs_union, key_union, kh_key(f->hash1, k1))) == kh_end(key_union))
@@ -552,7 +552,6 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
     }
     uint8_t *fdata, *rdata, *pdata, *seq, *qual;
     uint32_t *cigar, *pv_array, length, cycle;
-    readerr_t *r;
     while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
         fdata = bam_aux_get(b, "FM");
         rdata = bam_aux_get(b, "RV");
@@ -583,7 +582,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
             ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
             if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
         }
-        r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
+        const readerr_t *const r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
         pos = b->core.pos;
         for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
             length = bam_cigar_oplen(cigar[i]);
@@ -604,9 +603,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                         assert(bamseq2i[s] >= 0);
                         if(pv_array && pv_array[cycle] < f->minPV) continue;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                             ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                        }
                     }
                 } else {
                     for(ind = 0; ind < length; ++ind) {
@@ -616,9 +614,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                         assert(bamseq2i[s] >= 0);
                         if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                         ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                             ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
-                        }
                     }
                 }
                 rc += length; fc += length;
@@ -748,12 +745,10 @@ void impute_scores(fullerr_t *f)
 /* If this meets the minimum observations, estimate measured error rate against expected error rate.
  * Set the qdiff to be either 0 (use ILMN estimated quality score) or measured.
 */
-#define __est_pv2ph_r1(f, i, l) ((f->r1->qobs[i][l] >= f->min_obs) ?\
-                                  (pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])) :\
-                                  0)
-#define __est_pv2ph_r2(f, i, l) ((f->r2->qobs[i][l] >= f->min_obs) ?\
-                                  (pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])) :\
-                                  0)
+#define __est_pv2ph(f, r, i, l)  \
+    ((r->qobs[i][l] >= f->min_obs) ? \
+         (pv2ph((double)r->qerr[i][l] / r->qobs[i][l]) - pv2ph(r->qpvsum[i][l])) \
+          : 0)
 
 void fill_qvals(fullerr_t *f)
 {
@@ -775,27 +770,23 @@ void fill_qvals(fullerr_t *f)
         for(l = 0; l < f->l; ++l) {
             f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
             f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-            f->r1->qdiffs[i][l] = __est_pv2ph_r1(f, i, l);
-            f->r2->qdiffs[i][l] = __est_pv2ph_r2(f, i, l);
+            f->r1->qdiffs[i][l] = __est_pv2ph(f, f->r1, i, l);
+            f->r2->qdiffs[i][l] = __est_pv2ph(f, f->r2, i, l);
         }
     }
 }
-#undef __est_pv2ph_r1
-#undef __est_pv2ph_r2
+#undef __est_pv2ph
 
 
 void fill_sufficient_obs(fullerr_t *f)
 {
-    for(int i(0); i < 4; ++i) {
-        for(unsigned j(0); j < NQSCORES; ++j) {
-            for(uint64_t l(0); l < f->l; ++l) {
-                if(f->r1->obs[i][j][l] >= f->min_obs)
-                    f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-                if(f->r2->obs[i][j][l] >= f->min_obs)
-                    f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
-            }
-        }
-    }
+    for(int i(0); i < 4; ++i)
+        for(unsigned j(0); j < NQSCORES; ++j)
+            for(uint64_t l(0); l < f->l; ++l)
+                (f->r1->obs[i][j][l] >= f->min_obs) ? f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l])
+                                                    : 0,
+                (f->r2->obs[i][j][l] >= f->min_obs) ? f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l])
+                                                    : 0;
 }
 
 
@@ -814,8 +805,9 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
                 else
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
-                fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
-                fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
+                if(i) fputc(':', cp), fputc(':', ep);
+                fprintf(cp, "%lu", f->r1->obs[i][j][l]);
+                fprintf(ep, "%lu", f->r1->err[i][j][l]);
             }
             if(j != NQSCORES - 1) {
                 fputc(',', ep); fputc(',', cp);
@@ -824,14 +816,14 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
         fputc('|', ep); fputc('|', cp);
         for(j = 0; j < NQSCORES; ++j) {
             for(i = 0; i < 4; ++i) {
-                fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
-                fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
+                if(i) fputc(':', cp), fputc(':', ep);
+                fprintf(cp, "%lu", f->r2->obs[i][j][l]);
+                fprintf(ep, "%lu", f->r2->err[i][j][l]);
             }
-            if(j != NQSCORES - 1) {
-                fputc(',', ep); fputc(',', cp);
-            }
+            if(j != NQSCORES - 1)
+                fputc(',', ep), fputc(',', cp);
         }
-        fputc('\n', ep); fputc('\n', cp);
+        fputc('\n', ep), fputc('\n', cp);
     }
     fclose(dictwrite);
 }

@@ -54,12 +54,9 @@ struct Stack {
     }
     ~Stack() {
         LOG_DEBUG("m: %u.\n", m);
-        for(unsigned i(0); i < m; ++i) {
-            if(a[i].data) {
-                LOG_DEBUG("NONZERO %p\n", (void *)a[i].data);
+        for(unsigned i(0); i < m; ++i)
+            if(a[i].data)
                 free(a[i].data);
-            }
-        }
         free(stack);
         free(a);
     }
@@ -116,7 +113,7 @@ void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     if(settings->realign_pairs.size()) {
 #if !NDEBUG
         for(auto& pair: settings->realign_pairs)
-            puts(pair.second.c_str());
+            fputs(pair.second.c_str(), stdout);
 #endif
         if(settings->accept_unbalanced == 0)
             LOG_EXIT("There shouldn't be orphan reads in real datasets. Number found: %lu\n", settings->realign_pairs.size());
