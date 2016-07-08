@@ -8,6 +8,7 @@ namespace bmf {
 namespace {
 struct mark_settings_t {
     // I might add more options later, hence the use of the bitfield.
+    uint32_t add_unclipped_start:1;
     uint32_t remove_qcfail:1;
     uint32_t min_insert_length:8;
     double min_frac_unambiguous;
@@ -44,14 +45,14 @@ static int add_pe_tags(bam1_t *b1, bam1_t *b2, void *data)
     if(UNLIKELY(strcmp(bam_get_qname(b1), bam_get_qname(b2))))
         LOG_EXIT("Is this bam namesorted? These reads have different names.\n");
     int ret(0);
-    //dlib::add_unclipped_mate_starts(b1, b2);
     dlib::add_mate_SA_tag(b1, b2);
     dlib::add_qseq_len(b1, b2);
-    //dlib::add_fraction_aligned(b1, b2);
+    if(((mark_settings_t *)data)->add_unclipped_start) dlib::add_fraction_aligned(b1, b2);
     // Fails the reads if remove_qcfail is set and bitseq_qcfail returns 1
     ret |= (dlib::bitset_qcfail(b1, b2) & ((mark_settings_t *)data)->remove_qcfail);
     if(((mark_settings_t *)data)->min_insert_length)
         ret |= std::abs(b1->core.isize) < ((mark_settings_t *)data)->min_insert_length;
+    dlib::add_unclipped_mate_starts(b1, b2);
     ret |= dlib::filter_n_frac(b1, b2, ((mark_settings_t *)data)->min_frac_unambiguous);
 #if !NDEBUG
     if(((mark_settings_t *)data)->remove_qcfail) {
@@ -78,6 +79,7 @@ static void mark_usage() {
                     "-d    Set bam compression level to default (6).\n"
                     "-i    Skip read pairs whose insert size is less than <INT>.\n"
                     "-u    Skip read pairs where both reads have a fraction of unambiguous base calls >= <FLOAT>\n"
+                    "-U    Add unclipped start tags.\n"
                     "-S    Use this for single-end marking. Only sets the QC fail bit for reads failing barcode QC.\n"
                     "Set input.namesrt.bam to \'-\' or \'stdin\' to read from stdin.\n"
                     "Set output.bam to \'-\' or \'stdout\' or omit to stdout.\n"
@@ -90,7 +92,7 @@ int mark_main(int argc, char *argv[])
     char wmode[4]{"wb0"};
     int c, is_se(0), ret(-1);
     mark_settings_t settings;
-    while ((c = getopt(argc, argv, "l:i:u:Sdq?h")) >= 0) {
+    while ((c = getopt(argc, argv, "l:i:u:USdq?h")) >= 0) {
         switch (c) {
         case 'u':
             settings.min_frac_unambiguous = atof(optarg); break;
@@ -107,6 +109,8 @@ int mark_main(int argc, char *argv[])
             break;
         case 'S':
             is_se = 1; break;
+        case 'U':
+            settings.add_unclipped_start = 1; break;
         case '?': case 'h': mark_usage(); // Exits. No need for a break.
         }
     }

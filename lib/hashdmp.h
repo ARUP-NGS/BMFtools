@@ -29,22 +29,22 @@ struct kingfisher_hash_t {
 CONST static inline int infer_barcode_length(char *bs_ptr)
 {
     char *const current(bs_ptr);
-    for (;;) {
-        switch(*bs_ptr++) {
+    loop_start:
+    switch(*bs_ptr++) {
         case '|': case '\0': return bs_ptr - current - 1;
-        }
     }
+    goto loop_start;
     return -1; // This never happens.
 }
 
 static inline void cp_view2buf(char *view, char *buf)
 {
-    for(;;) {
-        switch(*view) {
-            case '\0': case '|': *buf++ = '\0'; return;
-            default: *buf++ = *view++;
-        }
+    loop_start:
+    switch(*view) {
+        case '\0': case '|': *buf++ = '\0'; return;
     }
+    *buf++ = *view++;
+    goto loop_start;
 }
 
 static inline kingfisher_t *init_kfp(size_t readlen)

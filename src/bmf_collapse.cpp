@@ -21,7 +21,7 @@ void idmp_usage()
 {
         fprintf(stderr,
                         "Collapses inline barcoded fastq data.\n"
-                        "Usage: bmftools collapse dmp <options> <r1.fq> <r2.fq>"
+                        "Usage: bmftools collapse inline <options> <r1.fq> <r2.fq>"
                         "\nFlags:\n"
                         "-S: Run in single-end mode. (Ignores read 2)\n"
                         "-=: Emit interleaved final output to stdout.\n"

@@ -307,7 +307,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
     int khr, fm;
     khiter_t k, k1, k2;
     // Make a set of all FMs to print out.
-    khash_t(obs_union) *key_union = kh_init(obs_union);
+    khash_t(obs_union) *key_union(kh_init(obs_union));
     for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
         if(kh_exist(f->hash1, k1))
             if((k = kh_get(obs_union, key_union, kh_key(f->hash1, k1))) == kh_end(key_union))
@@ -334,23 +334,17 @@ void err_fm_report(FILE *fp, fmerr_t *f)
         fm = tmp[i];
         fprintf(fp, "%i\t", fm);
 
-        if((k1 = kh_get(obs, f->hash1, fm)) == kh_end(f->hash1))
-            fprintf(fp, "-nan\t");
-        else
-            fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
+        if((k1 = kh_get(obs, f->hash1, fm)) == kh_end(f->hash1)) fprintf(fp, "-nan\t");
+        else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
 
-        if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2))
-            fprintf(fp, "-nan\t");
-        else
-            fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+        if((k2 = kh_get(obs, f->hash2, fm)) == kh_end(f->hash2)) fprintf(fp, "-nan\t");
+        else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
         if(k1 != kh_end(f->hash1))
-            fprintf(fp, "%lu\t%lu\t",
-                kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+            fprintf(fp, "%lu\t%lu\t", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
         else fputs("0\t0\t", fp);
         if(k2 != kh_end(f->hash2))
-            fprintf(fp, "%lu\t%lu\n",
-                kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+            fprintf(fp, "%lu\t%lu\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
         else fputs("0\t0\n", fp);
     }
     free(tmp);
@@ -558,7 +552,6 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
     }
     uint8_t *fdata, *rdata, *pdata, *seq, *qual;
     uint32_t *cigar, *pv_array, length, cycle;
-    readerr_t *r;
     while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
         fdata = bam_aux_get(b, "FM");
         rdata = bam_aux_get(b, "RV");
@@ -589,7 +582,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
             ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
             if(ref == nullptr) LOG_EXIT("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
         }
-        r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
+        const readerr_t *const r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
         pos = b->core.pos;
         for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
             length = bam_cigar_oplen(cigar[i]);
@@ -610,9 +603,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                         assert(bamseq2i[s] >= 0);
                         if(pv_array && pv_array[cycle] < f->minPV) continue;
                         ++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                             ++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-                        }
                     }
                 } else {
                     for(ind = 0; ind < length; ++ind) {
@@ -622,9 +614,8 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                         assert(bamseq2i[s] >= 0);
                         if(s == dlib::htseq::HTS_N || ref[pos + fc + ind] == 'N') continue;
                         ++r->obs[bamseq2i[s]][qual[cycle] - 2][cycle];
-                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+                        if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
                             ++r->err[bamseq2i[s]][qual[cycle] - 2][cycle];
-                        }
                     }
                 }
                 rc += length; fc += length;
@@ -667,8 +658,8 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 
 void write_base_rates(FILE *fp, fullerr_t *f)
 {
-    fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     int i;
+    fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     for(uint64_t l(0); l < f->l; ++l) {
         fprintf(fp, "%lu\t", l + 1);
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
@@ -751,6 +742,13 @@ void impute_scores(fullerr_t *f)
     }
 }
 
+/* If this meets the minimum observations, estimate measured error rate against expected error rate.
+ * Set the qdiff to be either 0 (use ILMN estimated quality score) or measured.
+*/
+#define __est_pv2ph(f, r, i, l)  \
+    ((r->qobs[i][l] >= f->min_obs) ? \
+         (pv2ph((double)r->qerr[i][l] / r->qobs[i][l]) - pv2ph(r->qpvsum[i][l])) \
+          : 0)
 
 void fill_qvals(fullerr_t *f)
 {
@@ -772,27 +770,23 @@ void fill_qvals(fullerr_t *f)
         for(l = 0; l < f->l; ++l) {
             f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
             f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
-            f->r1->qdiffs[i][l] = (f->r1->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l])
-                                                                    : 0;
-            f->r2->qdiffs[i][l] = (f->r2->qobs[i][l] >= f->min_obs) ? pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l])
-                                                                    : 0;
+            f->r1->qdiffs[i][l] = __est_pv2ph(f, f->r1, i, l);
+            f->r2->qdiffs[i][l] = __est_pv2ph(f, f->r2, i, l);
         }
     }
 }
+#undef __est_pv2ph
 
 
 void fill_sufficient_obs(fullerr_t *f)
 {
-    for(int i(0); i < 4; ++i) {
-        for(unsigned j(0); j < NQSCORES; ++j) {
-            for(uint64_t l(0); l < f->l; ++l) {
-                if(f->r1->obs[i][j][l] >= f->min_obs)
-                    f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-                if(f->r2->obs[i][j][l] >= f->min_obs)
-                    f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
-            }
-        }
-    }
+    for(int i(0); i < 4; ++i)
+        for(unsigned j(0); j < NQSCORES; ++j)
+            for(uint64_t l(0); l < f->l; ++l)
+                (f->r1->obs[i][j][l] >= f->min_obs) ? f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l])
+                                                    : 0,
+                (f->r2->obs[i][j][l] >= f->min_obs) ? f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l])
+                                                    : 0;
 }
 
 
@@ -811,8 +805,9 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
                 else
                     fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
-                fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
-                fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
+                if(i) fputc(':', cp), fputc(':', ep);
+                fprintf(cp, "%lu", f->r1->obs[i][j][l]);
+                fprintf(ep, "%lu", f->r1->err[i][j][l]);
             }
             if(j != NQSCORES - 1) {
                 fputc(',', ep); fputc(',', cp);
@@ -821,14 +816,14 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
         fputc('|', ep); fputc('|', cp);
         for(j = 0; j < NQSCORES; ++j) {
             for(i = 0; i < 4; ++i) {
-                fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
-                fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
+                if(i) fputc(':', cp), fputc(':', ep);
+                fprintf(cp, "%lu", f->r2->obs[i][j][l]);
+                fprintf(ep, "%lu", f->r2->err[i][j][l]);
             }
-            if(j != NQSCORES - 1) {
-                fputc(',', ep); fputc(',', cp);
-            }
+            if(j != NQSCORES - 1)
+                fputc(',', ep), fputc(',', cp);
         }
-        fputc('\n', ep); fputc('\n', cp);
+        fputc('\n', ep), fputc('\n', cp);
     }
     fclose(dictwrite);
 }
@@ -849,7 +844,8 @@ void write_3d_offsets(FILE *fp, fullerr_t *f)
 }
 
 namespace {
-    size_t VLEN_BUFFER = 10uL;
+    size_t VLEN_BUFFER(10uL);
+
 }
 
 
@@ -868,9 +864,25 @@ readerr_t *readerr_init(size_t l) {
 }
 
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-                        int padding, int minFM, int maxFM, int flag,
-                        int minmq, uint32_t minPV, uint64_t min_obs) {
+fullerr_t fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
+                       int padding, int minFM, int maxFM, int flag,
+                       int minmq, uint32_t minPV, uint64_t min_obs) {
+    return {
+        0, // Number of records read
+        0, // Number of records read
+        readerr_init(l),
+        readerr_init(l),
+        l,
+        nullptr,
+        (bedpath) ? dlib::parse_bed_hash(bedpath, hdr, padding): nullptr, // parsed-in bed file hashmap.
+        minFM,
+        maxFM,
+        minmq,
+        minPV,
+        flag, // Filter flags. First use will simply be
+        min_obs
+    };
+    /*
     fullerr_t *ret((fullerr_t *)calloc(1, sizeof(fullerr_t)));
     ret->l = l;
     ret->r1 = readerr_init(l);
@@ -883,6 +895,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
     ret->minPV = minPV;
     ret->min_obs = min_obs;
     return ret;
+    */
 }
 
 
@@ -891,7 +904,6 @@ void fullerr_destroy(fullerr_t *e) {
     if(e->r2) readerr_destroy(e->r2), e->r2 = nullptr;
     cond_free(e->refcontig);
     if(e->bed) kh_destroy(bed, e->bed);
-    free(e);
 }
 
 
@@ -1023,47 +1035,47 @@ int err_main_main(int argc, char *argv[])
     // Get read length from the first read
     bam1_t *b(bam_init1());
     c = sam_read1(fp, header, b);
-    fullerr_t *f(fullerr_init(b->core.l_qseq, bedpath, header,
-                              padding, minFM, maxFM, flag, minmq, minPV, min_obs));
+    fullerr_t f(fullerr_init(b->core.l_qseq, bedpath, header,
+                             padding, minFM, maxFM, flag, minmq, minPV, min_obs));
     sam_close(fp);
     fp = nullptr;
     bam_destroy1(b);
-    if(*refcontig) f->refcontig = strdup(refcontig);
+    if(*refcontig) f.refcontig = strdup(refcontig);
     bam_hdr_destroy(header), header = nullptr;
-    err_main_core(argv[optind + 1], fai, f, &open_fmt);
+    err_main_core(argv[optind + 1], fai, &f, &open_fmt);
     fai_destroy(fai);
-    set_max_readlen(f);
-    fill_qvals(f);
-    impute_scores(f);
+    set_max_readlen(&f);
+    fill_qvals(&f);
+    impute_scores(&f);
     //fill_sufficient_obs(f); Try avoiding the fill sufficients and only use observations.
     if(outpath.size()) {
         ofp = fopen(outpath.c_str(), "w");
-        write_final(ofp, f);
+        write_final(ofp, &f);
         fclose(ofp);
     }
 
     if(d3) {
-        write_3d_offsets(d3, f);
+        write_3d_offsets(d3, &f);
         fclose(d3), d3 = nullptr;
     }
     if(df) {
-        write_full_rates(df, f);
+        write_full_rates(df, &f);
         fclose(df), df = nullptr;
     }
     if(dbc) {
-        write_base_rates(dbc, f);
+        write_base_rates(dbc, &f);
         fclose(dbc), dbc = nullptr;
     }
     if(dc) {
-        write_cycle_rates(dc, f);
+        write_cycle_rates(dc, &f);
         fclose(dc), dc = nullptr;
     }
     if(!global_fp) {
         LOG_INFO("No global rate outfile provided. Defaulting to stderr.\n");
         global_fp = stderr;
     }
-    write_global_rates(global_fp, f); fclose(global_fp);
-    fullerr_destroy(f);
+    write_global_rates(global_fp, &f); fclose(global_fp);
+    fullerr_destroy(&f);
     LOG_INFO("Successfully completed bmftools err main!\n");
     return EXIT_SUCCESS;
 }
@@ -1176,8 +1188,14 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
     uint8_t *seq(bam_get_seq(b));
     for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
         length = bam_cigar_oplen(cigar[i]);
-        switch(bam_cigar_op(cigar[i])) {
-        case BAM_CMATCH: case BAM_CEQUAL: case BAM_CDIFF:
+        switch(bam_cigar_type(cigar[i])) {
+        case 1:
+            rc += length;
+            break;
+        case 2:
+            fc += length;
+            break;
+        case 3:
             for(ind = 0; ind < length; ++ind) {
                 s = bam_seqi(seq, ind + rc);
                 if(s == dlib::htseq::HTS_N || ref[b->core.pos + fc + ind] == 'N') continue;
@@ -1185,12 +1203,6 @@ inline void region_loop(RegionErr& counter, char *ref, bam1_t *b)
                 if(seq_nt16_table[(int8_t)ref[b->core.pos + fc + ind]] != s) counter.inc_err();
             }
             rc += length; fc += length;
-            break;
-        case BAM_CSOFT_CLIP: case BAM_CHARD_CLIP: case BAM_CINS:
-            rc += length;
-            break;
-        case BAM_CREF_SKIP: case BAM_CDEL:
-            fc += length;
             break;
         }
     }
@@ -1201,7 +1213,7 @@ void err_region_core(RegionExpedition *Holloway)
 {
     // Make region_counts classes. These can now be filled from the bam.
     char *ref(nullptr);
-    int len;
+    int len, start, stop;
     bam1_t *b(bam_init1());
     std::vector<khiter_t> sorted_keys(dlib::make_sorted_keys(Holloway->bed));
     Holloway->region_counts.reserve(sorted_keys.size());
@@ -1211,8 +1223,8 @@ void err_region_core(RegionExpedition *Holloway)
         LOG_DEBUG("Fetching ref sequence for contig id %i.\n", kh_key(Holloway->bed, k));
         ref = fai_fetch(Holloway->fai, Holloway->hdr->target_name[kh_key(Holloway->bed, k)], &len);
         for(unsigned i(0); i < kh_val(Holloway->bed, k).n; ++i) {
-            const int start(get_start(kh_val(Holloway->bed, k).intervals[i]));
-            const int stop(get_stop(kh_val(Holloway->bed, k).intervals[i]));
+            start = get_start(kh_val(Holloway->bed, k).intervals[i]);
+            stop = get_stop(kh_val(Holloway->bed, k).intervals[i]);
             Holloway->iter = sam_itr_queryi(Holloway->bam_index, kh_key(Holloway->bed, k),
                                             start, stop);
             Holloway->region_counts.emplace_back(kh_val(Holloway->bed, k), i);
@@ -1251,8 +1263,8 @@ int err_region_main(int argc, char *argv[])
         case 'q': requireFP = 1; break;
         case 'a': minmq = atoi(optarg); break;
         case 'f': minFM = atoi(optarg); break;
-        case 'o': outpath = strdup(optarg); break;
-        case 'b': bedpath = strdup(optarg); break;
+        case 'o': outpath = optarg; break;
+        case 'b': bedpath = optarg; break;
         case 'p': padding = atoi(optarg); break;
         case '?': case 'h': return err_region_usage(EXIT_SUCCESS);
         }
@@ -1262,7 +1274,7 @@ int err_region_main(int argc, char *argv[])
         LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 
     if(!outpath) {
-        outpath = strdup("-");
+        outpath = (char *)"-";
         LOG_WARNING("Output path not set. Defaulting to stdout.\n");
     }
     if(!bedpath)
@@ -1279,8 +1291,6 @@ int err_region_main(int argc, char *argv[])
     err_region_core(&Holloway);
     write_region_rates(ofp, Holloway), fclose(ofp);
     fai_destroy(fai);
-    cond_free(bedpath);
-    cond_free(outpath);
     LOG_INFO("Successfully completed bmftools err region!\n");
     return EXIT_SUCCESS;
 }

@@ -1614,7 +1614,8 @@ static inline int bam1_lt_bmf(const bam1_p a, const bam1_p b)
     if(is_se) return bmfsort_se_key(a) < bmfsort_se_key(b);
     uint64_t key_a = bmfsort_core_key(a);
     uint64_t key_b = bmfsort_core_key(b);
-    if(key_a != key_b) return key_a < key_b;
+    return (key_a != key_b) ? key_a < key_b
+                            : bmfsort_mate_key(a) < bmfsort_mate_key(b);
     key_a = bmfsort_mate_key(a);
     key_b = bmfsort_mate_key(b);
     return (key_a != key_b) ? key_a < key_b
@@ -1861,7 +1862,7 @@ int bam_sort_core(int l_cmpkey, const char *fn, const char *prefix, size_t max_m
 static void sort_usage(FILE *fp)
 {
     fprintf(fp,
-"Usage: samtools sort [options...] [in.bam]\n"
+"Usage: bmftools sort [options...] [in.bam]\n"
 "Options:\n"
 "  -l INT     Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "  -m INT     Set maximum memory per thread; suffix K/M/G recognized [768M]\n"

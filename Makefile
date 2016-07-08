@@ -7,7 +7,7 @@
 CXXSTD=c++11
 CSTD=gnu99
 CC=g++
-GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
+GIT_VERSION := $(shell git describe --abbrev=4 --always)
 CFLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
 FLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic  # -Weffc++
 LD= -lm -lz -lpthread
@@ -21,14 +21,12 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma -fno-inline
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
+OPT_FLAGS = -Wno-unused-result -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-strict-aliasing -fno-builtin-gamma
+DB_FLAGS = -Wno-unused-result -Wno-unused-function -Wno-strict-aliasing -pedantic -fno-builtin-gamma -fno-inline
+PG_FLAGS = -Wno-unused-result -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing -fno-builtin-gamma -fno-inline
 
 DLIB_SRC = dlib/cstr_util.c dlib/math_util.c dlib/vcf_util.c dlib/io_util.c dlib/bam_util.c dlib/nix_util.c \
 		   dlib/bed_util.c dlib/misc_util.c
-
-UTIL_SRC = util/fqc.c
 
 SOURCES = include/sam_opts.c src/bmf_collapse.c include/igamc_cephes.c lib/hashdmp.c \
 		  src/bmf_rsq.c src/bmf_famstats.c include/bedidx.c \
@@ -49,10 +47,14 @@ DLIB_OBJS = $(DLIB_SRC:.c=.o)
 
 ALL_TESTS=test/ucs/ucs_test marksplit_test hashdmp_test target_test err_test rsq_test
 BINS=bmftools bmftools_db bmftools_p
+UTILS=bam_count fqc
 
-.PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib
+.PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib util
 
-all: libhts.a tests $(BINS)
+all: libhts.a tests $(BINS $(UTILS)
+
+
+util: $(UTILS)
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -106,6 +108,10 @@ err_test: $(BINS)
 rsq_test: $(BINS)
 	cd test/rsq && python rsq_test.py  && cd ../..
 
+%: util/%.o libhts.a
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) util/$@.o libhts.a -o $@
+
+
 tests: $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
 	@echo "Passed all tests!"
 
@@ -117,7 +123,7 @@ clean: mostlyclean
 		cd htslib && make clean && cd ..
 
 update_dlib:
-	cd dlib && git checkout v0.2 && git pull origin master && cd ..
+	cd dlib && git checkout v0.3 && cd ..
 
 mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \

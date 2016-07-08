@@ -236,6 +236,7 @@ static int famstats_usage_exit(int exit_status)
                     "Usage: bmftools famstats <subcommand> <subcommand opts>\n"
                     "Subcommands: \nfm\tFamily Size stats\n"
                     "frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
+                    "sum\tSum of family sizes per template molecule.\n"
             );
     exit(exit_status);
     return exit_status;
@@ -348,6 +349,48 @@ int famstats_frac_main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
+int sum_usage(char **argv, int retcode=EXIT_FAILURE)
+{
+    fprintf(stderr,
+                    "bmftools famstats sum\nUsage: bmftools famstats sum bam <bam2> <bam3> ...\n"
+                    "Calculates the summed FM for an experiment. Counts single for single-end"
+                    " and pairs for paired-end.\n"
+                    "-o: Write to file. Default: stdout.\n"
+                    "-h, -?: Return usage.\n"
+            );
+    return retcode;
+}
+
+int famstats_sum_main(int argc, char *argv[]) {
+    if(argc < 2)
+        return sum_usage(argv);
+    if(strcmp(argv[1], "--help") == 0) {
+        return sum_usage(argv, EXIT_SUCCESS);
+    }
+    int c;
+    FILE *ofp(stdout);
+    while((c = getopt(argc, argv, "o:h?")) > -1) {
+        switch(c) {
+        case 'o': ofp = fopen(optarg, "w"); break;
+        case 'h': case '?': return sum_usage(argv, EXIT_SUCCESS);
+        }
+    }
+    fputs("Filename: count\n", ofp);
+    for(int i(1); i < argc; ++i) {
+        dlib::check_bam_tag_exit(argv[i], "FM");
+        dlib::BamHandle in(argv[i]);
+        bam1_t *b(bam_init1());
+        size_t count(0);
+        while(sam_read1(in.fp, in.header, b) >= 0)
+            if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FREAD2)) == 0) 
+                count += bam_itag(b,"FM");
+        fprintf(ofp, "%s: %lu\n", argv[i], count);
+        bam_destroy1(b);
+    }
+    fclose(ofp);
+    return EXIT_SUCCESS;
+}
+
 
 int famstats_main(int argc, char *argv[])
 {
@@ -359,6 +402,8 @@ int famstats_main(int argc, char *argv[])
         return famstats_fm_main(argc - 1, argv + 1);
     if(strcmp(argv[1], "frac") == 0)
         return famstats_frac_main(argc - 1, argv + 1);
+    if(strcmp(argv[1], "sum") == 0)
+        return famstats_sum_main(argc - 1, argv + 1);
     fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
     return famstats_usage_exit(EXIT_FAILURE);
 }

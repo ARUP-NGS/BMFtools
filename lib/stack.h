@@ -303,8 +303,8 @@ static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_ve
 
 static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confident_phreds, std::vector<std::vector<uint32_t>> &suspect_phreds, int j) {
     const int ret(confident_phreds[j].size());
-    const int putative_suspects = expected_count(suspect_phreds[j]); // Trust all of the confident base calls as real.
-    const int expected_false_positives = expected_incorrect(confident_phreds, suspect_phreds, j);
+    const int putative_suspects(expected_count(suspect_phreds[j])); // Trust all of the confident base calls as real.
+    const int expected_false_positives(expected_incorrect(confident_phreds, suspect_phreds, j));
     /*
     LOG_DEBUG("For variant at position with total %lu observations, %lu conf, %lu suspect,"
               " return value of %lu.\n", ret + suspect_phreds[j].size(),
@@ -322,20 +322,21 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
     const int wlen(aux->conf.flanksz * 2 + 1);
     const uint8_t *seq(bam_get_seq(plp.b));
     int start, stop, ret(0);
+    uint8_t t;
     if(wlen <= plp.b->core.l_qseq) start=0, stop=plp.b->core.l_qseq;
-    else {
-        if(plp.qpos + aux->conf.flanksz + 1 > plp.b->core.l_qseq) {
-            start = plp.b->core.l_qseq - wlen;
-            stop = plp.b->core.l_qseq;
-        } else if(plp.qpos < aux->conf.flanksz) {
-            start = 0;
-            stop = wlen;
-        } else start = plp.qpos - aux->conf.flanksz,
-               stop = plp.qpos + aux->conf.flanksz + 1;
+    else if(plp.qpos + aux->conf.flanksz + 1 > plp.b->core.l_qseq) {
+        start = plp.b->core.l_qseq - wlen;
+        stop = plp.b->core.l_qseq;
+    } else if(plp.qpos < aux->conf.flanksz) {
+        start = 0;
+        stop = wlen;
+    } else {
+        start = plp.qpos - aux->conf.flanksz;
+        stop = plp.qpos + aux->conf.flanksz + 1;
     }
     for(int i(start); i < stop; ++i)
-        ret += (bam_seqi(seq, i) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]
-                && bam_seqi(seq, i) != dlib::htseq::HTS_N);
+        ret += ((t = bam_seqi(seq, i)) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]
+                && t != dlib::htseq::HTS_N);
     return ret;
 }
 

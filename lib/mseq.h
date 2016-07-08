@@ -43,14 +43,13 @@ struct tmp_mseq_t {
 CONST static inline char *mem_view(char *comment)
 {
     int hits(0);
-    for(;;) {
-        switch(*comment++) {
-            case '|': case '\0':
-                if(hits) return (char *)comment + 3;
-                else ++hits; // + 3 for |BS= minus 1, since we already incremented for the switch.
-        }
+    loop_start:
+    switch(*comment++) {
+        case '|': case '\0':
+            if(hits) return (char *)comment + 3;
+            else ++hits; // + 3 for |BS= minus 1, since we already incremented for the switch.
     }
-    return nullptr; // This shouldn't ever happen.
+    goto loop_start;
 }
 
 
@@ -79,13 +78,13 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, uint32_
     if(switch_test(seq1, seq2, offset)) { // seq1's barcode is lower. No switching.
         memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + offset,
-                blen1_2 * sizeof(char));
+               blen1_2 * sizeof(char));
         barcode[blen1_2 * 2] = '\0';
         return 0;
     } else {
         memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
         memcpy(barcode + blen1_2, seq1->seq.s + offset,
-                blen1_2 * sizeof(char));
+               blen1_2 * sizeof(char));
         barcode[blen1_2 * 2] = '\0';
         return 1;
     }

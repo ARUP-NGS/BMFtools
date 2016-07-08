@@ -281,7 +281,7 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
     nconfident_phreds.emplace_back();
     if(match != tumor.templates.end()) {
         counts[0] = match->second.size();
-        for(auto&& uni: tumor.templates[refbase]) {
+        for(auto&& uni: match->second) {
             if(uni->get_size() < (unsigned)aux->conf.minFM) {
                 uni->pass = 0;
                 ++fm_failed[0];
@@ -320,7 +320,7 @@ void PairVCFPos::to_bcf(bcf1_t *vrec, stack_aux_t *aux, int ttid, int tpos) {
     }
     if((match = normal.templates.find(refbase)) != normal.templates.end()) {
         counts[n_base_calls] = match->second.size();
-        for(auto&& uni: normal.templates[refbase]) {
+        for(auto&& uni: match->second) {
             if(uni->get_quality() < aux->conf.minPV) {
                 uni->pass = 0;
                 ++pv_failed[n_base_calls];
