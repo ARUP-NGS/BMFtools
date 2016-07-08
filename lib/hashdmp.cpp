@@ -216,9 +216,8 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
         blen1 = get_blen(seq1->seq.s, homing, homing_len, blen, max_blen, mask);
         blen2 = get_blen(seq2->seq.s, homing, homing_len, blen, max_blen, mask);
         if(switch_test(seq1, seq2, mask)) {
-            if(blen2 != (unsigned)-1) {
-                memcpy(barcode.s, seq2->seq.s + mask, blen2);
-            } else {
+            if(blen2 != (unsigned)-1) memcpy(barcode.s, seq2->seq.s + mask, blen2);
+            else {
                 pass = 0;
                 blen2 = blen - mask;
                 memset(barcode.s, 'N', blen2);
@@ -245,7 +244,10 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
             assert(!tmp_hk1 == !tmp_hk2); // Make sure that both have the same keyset.
             offset1 = blen1 + homing_len + mask;
             offset2 = blen2 + homing_len + mask;
-            if(!tmp_hk1) {
+            if(tmp_hk1) {
+                pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
+                pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
+            } else {
                 if(UNLIKELY(++barcode_count % 1000000 == 0))
                     LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                 tmp_hk1 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
@@ -266,9 +268,6 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                 pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
                 HASH_ADD_STR(hash1r, id, tmp_hk1);
                 HASH_ADD_STR(hash2r, id, tmp_hk2);
-            } else {
-                pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
-                pushback_inmem(tmp_hk1->value, seq2, offset2, pass);
             }
         } else {
             if(blen1 != (unsigned)-1) memcpy(barcode.s, seq1->seq.s + mask, blen1);
@@ -296,7 +295,11 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
             offset1 = blen1 + homing_len + mask;
             offset2 = blen2 + homing_len + mask;
             HASH_FIND_STR(hash1f, barcode.s, tmp_hk1);
-            if(!tmp_hk1) {
+            if(tmp_hk1) {
+                HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
+                pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
+                pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
+            } else {
                 if(UNLIKELY(++barcode_count % 1000000 == 0))
                     LOG_INFO("Number of unique barcodes loaded: %lu\n", barcode_count);
                 // Create
@@ -316,11 +319,6 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                 tmp_hk2->value->barcode[0] = '@';
                 HASH_ADD_STR(hash1f, id, tmp_hk1);
                 HASH_ADD_STR(hash2f, id, tmp_hk2);
-                pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
-                pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
-            } else {
-                HASH_FIND_STR(hash2f, barcode.s, tmp_hk2);
-                assert(!!tmp_hk2);
                 pushback_inmem(tmp_hk1->value, seq1, offset1, pass);
                 pushback_inmem(tmp_hk2->value, seq2, offset2, pass);
             }
