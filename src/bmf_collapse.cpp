@@ -52,8 +52,8 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret{0, 0, nullptr};
-    ksprintf(&ret, infname);
+    kstring_t ret{0};
+    kputs(infname, &ret);
     char *tmp;
     /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
      *
