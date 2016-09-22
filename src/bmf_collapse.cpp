@@ -216,14 +216,12 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     dlib::check_call(ks1.s); ks1.l = 0;
     kputsnl("/bin/cat ", &ks1);
     kstring_t ks2{0};
-    ksprintf(&ks2, ks1.s);
+    kputsn(ks1.s, ks1.l, &ks2);
     for(int i(0); i < settings->n_handles; ++i) {
-        if(!dlib::isfile(params->outfnames_r1[i])) {
+        if(!dlib::isfile(params->outfnames_r1[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
-        }
-        if(!dlib::isfile(params->outfnames_r2[i])) {
+        if(!dlib::isfile(params->outfnames_r2[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
-        }
         ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
         ksprintf(&ks2, "%s ", params->outfnames_r2[i]);
     }
@@ -235,8 +233,9 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     }
     FILE *c1_popen(popen(ks1.s, "w"));
     FILE *c2_popen(popen(ks2.s, "w"));
-    if(pclose(c2_popen) || pclose(c1_popen)) {
-        LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
+    int ret;
+    if((ret = ((pclose(c2_popen) << 8) | pclose(c1_popen)))) {
+        LOG_EXIT("Background cat command(s) failed. (Code: %i, '%s' or %i, '%s').\n", ret >> 8, ks1.s, ret & 0xff, ks2.s);
     }
     free(ks1.s), free(ks2.s);
 }
