@@ -57,7 +57,7 @@ public:
     RegionErr(region_set_t set, int i);
     inline void write_report(FILE *fp) {
         if(counts.obs)
-            fprintf(fp, "%s\t%f\t%lu\t%lu\n", name.c_str(), ((double)counts.err * 100.) / counts.obs,
+            fprintf(fp, "%s\t%f\t%llu\t%llu\n", name.c_str(), ((double)counts.err * 100.) / counts.obs,
                     counts.err, counts.obs);
         else fprintf(fp, "%s\t-nan\t0\t0\n", name.c_str());
     }
@@ -181,7 +181,7 @@ RegionErr::RegionErr(region_set_t set, int i):
     {
     LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
     kstring_t tmp{0, 0, nullptr};
-    LOG_DEBUG("Contig name: %s. Strlen: %lu.\n", set.contig_name, strlen(set.contig_name));
+    LOG_DEBUG("Contig name: %s. Strlen: %llu.\n", set.contig_name, strlen(set.contig_name));
     ksprintf(&tmp, "%s:%i:%i", set.contig_name, get_start(set.intervals[i]), get_stop(set.intervals[i]));
     name = std::string(tmp.s);
     free(tmp.s);
@@ -234,7 +234,7 @@ int err_main_usage(int exit_status)
                     "-D:\t\tFlag to only calculate error rates for non-duplex reads.\n"
                     "-p:\t\tSet padding for bed region. Default: %i.\n"
                     "-P:\t\tOnly include proper pairs.\n"
-                    "-O:\t\tSet minimum number of observations for imputing quality Default: %lu.\n"
+                    "-O:\t\tSet minimum number of observations for imputing quality Default: %llu.\n"
             , INT_MAX, DEFAULT_PADDING, default_min_obs);
     exit(exit_status);
     return exit_status;
@@ -323,7 +323,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
             f->bedpath? f->bedpath: "N/A", f->minmq,
             f->flag & REQUIRE_DUPLEX ? "True": "False",
             f->flag & REFUSE_DUPLEX ? "True": "False");
-    fprintf(fp, "##STATS\n##nread:%lu\n##nskipped:%lu\n", f->nread, f->nskipped);
+    fprintf(fp, "##STATS\n##nread:%llu\n##nskipped:%llu\n", f->nread, f->nskipped);
     fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Errors\tRead 1 Counts\tRead 2 Errors\tRead 2 Counts\n");
     int *tmp((int *)malloc(key_union->n_occupied * sizeof(int)));
     for(k = kh_begin(key_union), khr = 0; k != kh_end(key_union); ++k)
@@ -341,10 +341,10 @@ void err_fm_report(FILE *fp, fmerr_t *f)
         else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
         if(k1 != kh_end(f->hash1))
-            fprintf(fp, "%lu\t%lu\t", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+            fprintf(fp, "%llu\t%llu\t", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
         else fputs("0\t0\t", fp);
         if(k2 != kh_end(f->hash2))
-            fprintf(fp, "%lu\t%lu\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+            fprintf(fp, "%llu\t%llu\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
         else fputs("0\t0\n", fp);
     }
     free(tmp);
@@ -355,7 +355,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 void err_report(FILE *fp, fullerr_t *f)
 {
     LOG_DEBUG("Beginning error main report.\n");
-    fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", f->nread, f->nskipped);
+    fprintf(fp, "{\n{\"total_read\": %llu},\n{\"total_skipped\": %llu},\n", f->nread, f->nskipped);
     uint64_t n1_obs(0), n1_err(0), n1_ins(0);
     uint64_t n2_obs(0), n2_err(0), n2_ins(0);
     // n_ins is number with insufficient observations to report.
@@ -370,11 +370,11 @@ void err_report(FILE *fp, fullerr_t *f)
         }
     }
     const uint64_t n_cases(NQSCORES * 4 * f->l);
-    fprintf(stderr, "{\"read1\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
-            ",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
+    fprintf(stderr, "{\"read1\": {\"total_error\": %f},\n{\"total_obs\": %llu},\n{\"total_err\": %llu}"
+            ",\n{\"number_insufficient\": %llu},\n{\"n_cases\": %llu}},",
             (double)n1_err / n1_obs, n1_obs, n1_err, n1_ins, n_cases);
-    fprintf(stderr, "{\"read2\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
-            ",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
+    fprintf(stderr, "{\"read2\": {\"total_error\": %f},\n{\"total_obs\": %llu},\n{\"total_err\": %llu}"
+            ",\n{\"number_insufficient\": %llu},\n{\"n_cases\": %llu}},",
             (double)n2_err / n2_obs, n2_obs, n2_err, n2_ins, n_cases);
     fprintf(fp, "}");
 }
@@ -430,7 +430,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
             LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
     }
     while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-        if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
+        if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %llu.\n", f->nread);
         pv_array = (uint32_t *)dlib::array_tag(b, "PV");
         fa_array = (uint32_t *)dlib::array_tag(b, "FA");
         FM = (seq = bam_aux_get(b, "FM")) ? bam_aux2i(seq): 1;
@@ -523,7 +523,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
             }
         }
     }
-    LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", f->nread, f->nskipped);
+    LOG_INFO("Total records read: %llu. Total records skipped: %llu.\n", f->nread, f->nskipped);
     cond_free(ref);
     bam_destroy1(b);
     bam_hdr_destroy(hdr), sam_close(fp);
@@ -574,7 +574,7 @@ void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
         qual = (uint8_t *)bam_get_qual(b);
         cigar = bam_get_cigar(b);
 
-        if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %lu.\n", f->nread);
+        if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %llu.\n", f->nread);
         if(b->core.tid != last_tid) {
             last_tid = b->core.tid;
             cond_free(ref);
@@ -661,7 +661,7 @@ void write_base_rates(FILE *fp, fullerr_t *f)
     int i;
     fputs("#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n", fp);
     for(uint64_t l(0); l < f->l; ++l) {
-        fprintf(fp, "%lu\t", l + 1);
+        fprintf(fp, "%llu\t", l + 1);
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
         fputc('|', fp);
         for(i = 0; i < 4; ++i)
@@ -687,7 +687,7 @@ void write_global_rates(FILE *fp, fullerr_t *f)
         }
     }
     fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum1 / counts1, (double)sum2 / counts2);
-    fprintf(fp, "#Global Sum/Count\t%lu/%lu\t%lu/%lu\n", sum1, counts1, sum2, counts2);
+    fprintf(fp, "#Global Sum/Count\t%llu/%llu\t%llu/%llu\n", sum1, counts1, sum2, counts2);
 }
 
 
@@ -709,7 +709,7 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
     fputs("#Cycle\tRead 1 Error Rate\tRead 2 Error Rate\tRead 1 Error Count\t"
             "Read 1 Obs Count\tRead 2 Error Count\tRead 2 Obs Count\n", fp);
     for(uint64_t l(0); l < f->l; ++l) {
-        fprintf(fp, "%lu\t", l + 1);
+        fprintf(fp, "%llu\t", l + 1);
         uint64_t sum1(0), sum2(0), counts1(0), counts2(0);
         for(int i(0); i < 4; ++i) {
             sum1 += f->r1->qerr[i][l];
@@ -717,7 +717,7 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
             sum2 += f->r2->qerr[i][l];
             counts2 += f->r2->qobs[i][l];
         }
-        fprintf(fp, "%0.12f\t%0.12f\t%lu\t%lu\t%lu\t%lu\n", (double)sum1 / counts1, (double)sum2 / counts2,
+        fprintf(fp, "%0.12f\t%0.12f\t%llu\t%llu\t%llu\t%llu\n", (double)sum1 / counts1, (double)sum2 / counts2,
                 sum1, counts1, sum2, counts2);
     }
 }
@@ -798,16 +798,16 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
     for(l = 0; l < f->l; ++l) {
         for(j = 0; j < NQSCORES; ++j) {
             for(i = 0; i < 4u; ++i) {
-                fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->obs[i][j][l]);
-                fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->obs[i][j][l]);
-                fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->err[i][j][l]);
+                fprintf(dictwrite, "'r1,%c,%i,%u,obs': %llu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->obs[i][j][l]);
+                fprintf(dictwrite, "'r2,%c,%i,%u,obs': %llu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->obs[i][j][l]);
+                fprintf(dictwrite, "'r1,%c,%i,%u,err': %llu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->err[i][j][l]);
                 if(i == 3 && j == NQSCORES - 1 && l == f->l - 1)
-                    fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
+                    fprintf(dictwrite, "'r2,%c,%i,%u,err': %llu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
                 else
-                    fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
+                    fprintf(dictwrite, "'r2,%c,%i,%u,err': %llu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
                 if(i) fputc(':', cp), fputc(':', ep);
-                fprintf(cp, "%lu", f->r1->obs[i][j][l]);
-                fprintf(ep, "%lu", f->r1->err[i][j][l]);
+                fprintf(cp, "%llu", f->r1->obs[i][j][l]);
+                fprintf(ep, "%llu", f->r1->err[i][j][l]);
             }
             if(j != NQSCORES - 1) {
                 fputc(',', ep); fputc(',', cp);
@@ -817,8 +817,8 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
         for(j = 0; j < NQSCORES; ++j) {
             for(i = 0; i < 4; ++i) {
                 if(i) fputc(':', cp), fputc(':', ep);
-                fprintf(cp, "%lu", f->r2->obs[i][j][l]);
-                fprintf(ep, "%lu", f->r2->err[i][j][l]);
+                fprintf(cp, "%llu", f->r2->obs[i][j][l]);
+                fprintf(ep, "%llu", f->r2->err[i][j][l]);
             }
             if(j != NQSCORES - 1)
                 fputc(',', ep), fputc(',', cp);
@@ -833,7 +833,7 @@ void write_3d_offsets(FILE *fp, fullerr_t *f)
 {
     fprintf(fp, "#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n");
     for(uint64_t l(0); l < f->l; ++l) {
-        fprintf(fp, "%lu\t", l + 1);
+        fprintf(fp, "%llu\t", l + 1);
         int i;
         for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%i": "%i", f->r1->qdiffs[i][l]);
         fputc('|', fp);

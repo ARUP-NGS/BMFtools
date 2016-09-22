@@ -46,7 +46,7 @@ target_counts_t target_core(char *bedpath, char *bampath, uint32_t padding, uint
         const int FM(((data = bam_aux_get(handle.rec, "FM")) != nullptr) ? bam_aux2i(data): 1);
         test = dlib::bed_test(handle.rec, bed);
         if(UNLIKELY(++counts.count % notification_interval == 0))
-            LOG_INFO("Number of records processed: %lu.\n", counts.count);
+            LOG_INFO("Number of records processed: %llu.\n", counts.count);
         counts.target += test;
         counts.raw_count += FM;
         counts.raw_target += FM * test;
@@ -100,11 +100,11 @@ int target_main(int argc, char *argv[])
 
     target_counts_t counts(target_core(bedpath, argv[optind], padding, minmq, notification_interval));;
 
-    fprintf(ofp, "Number of reads skipped: %lu\n", counts.n_skipped);
-    fprintf(ofp, "Number of real FM reads total: %lu\n", counts.rfm_count);
-    fprintf(ofp, "Number of real FM reads on target: %lu\n", counts.rfm_target);
-    fprintf(ofp, "Number of reads total: %lu\n", counts.count);
-    fprintf(ofp, "Number of reads on target: %lu\n", counts.target);
+    fprintf(ofp, "Number of reads skipped: %llu\n", counts.n_skipped);
+    fprintf(ofp, "Number of real FM reads total: %llu\n", counts.rfm_count);
+    fprintf(ofp, "Number of real FM reads on target: %llu\n", counts.rfm_target);
+    fprintf(ofp, "Number of reads total: %llu\n", counts.count);
+    fprintf(ofp, "Number of reads on target: %llu\n", counts.target);
     fprintf(ofp, "Fraction of dmp reads on target with padding of %u bases and %i minmq: %0.12f\n",
             padding, minmq, (double)counts.target / counts.count);
     fprintf(ofp, "Fraction of raw reads on target with padding of %u bases and %i minmq: %0.12f\n",
