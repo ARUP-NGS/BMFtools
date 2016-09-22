@@ -71,11 +71,11 @@ struct vetter_aux_t {
 
 
 int vet_core_nobed(vetter_aux_t *aux);
-void vetter_error(const char *message, int retcode)
-{
-    fprintf(stderr, message);
-    exit(retcode);
-}
+#define vetter_error(message, retcode) \
+do {\
+    fprintf(stderr, message);\
+    exit(retcode);\
+} while(0)
 
 
 static int read_bam(void *data, bam1_t *b)
