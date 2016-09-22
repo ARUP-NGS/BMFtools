@@ -1,8 +1,7 @@
 ######################################
 # Makefile written by Daniel Baker   #
-#	 d.nephi.baker@gmail.com	     #
+#     d.nephi.baker@gmail.com        #
 ######################################
-
 
 CXXSTD=c++11
 CSTD=gnu99
