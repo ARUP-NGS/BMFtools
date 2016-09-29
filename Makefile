@@ -5,10 +5,10 @@
 
 CXXSTD=c++11
 CSTD=gnu99
-CC=gcc-mp-6
-CXX=g++-mp-6
-#CC=gcc
-#CXX=g++
+CC=gcc
+CXX=g++
+#CC=gcc-mp-6
+#CXX=g++-mp-6
 GIT_VERSION := $(shell git describe --abbrev=4 --always)
 CFLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CSTD) -fno-builtin-gamma -pedantic
 FLAGS= -Wuninitialized -Wunreachable-code -Wall -fopenmp -DBMF_VERSION=\"$(GIT_VERSION)\" -std=$(CXXSTD) -fno-builtin-gamma -pedantic  # -Weffc++
