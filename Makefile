@@ -86,19 +86,19 @@ src/%.o: src/%.cpp cstr_util.o
 libhts.a:
 	+cd htslib && echo "/* Empty config.h */" >> config.h && make -j $(THREADS) && cp libhts.a ../
 bmftools_db: $(D_OBJS) libhts.a update_dlib
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(DB_FLAGS) $(D_OBJS) libhts.a $(LD) -o bmftools_db
 bmftools_p: $(P_OBJS) libhts.a update_dlib
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(PG_FLAGS) $(P_OBJS) libhts.a $(LD) -o bmftools_p
 bmftools: $(OBJS) libhts.a update_dlib
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(OPT_FLAGS) $(OBJS) libhts.a $(LD) -o bmftools
 
 test/ucs/ucs_test: libhts.a $(TEST_OBJS)
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a -o test/ucs/ucs_test
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(DB_FLAGS) test/ucs/ucs_test.dbo libhts.a $(LD) -o test/ucs/ucs_test
 	cd test/ucs && ./ucs_test && cd ./..
 tag_test: $(OBJS) $(TEST_OBJS) libhts.a
-	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) test/tag/array_tag_test.dbo libhts.a -o ./tag_test && ./tag_test
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) test/tag/array_tag_test.dbo libhts.a $(LD) -o ./tag_test && ./tag_test
 target_test: $(D_OBJS) $(TEST_OBJS) libhts.a
-	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.dbo src/bmf_target.dbo test/target_test.dbo libhts.a -o ./target_test && ./target_test
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) dlib/bed_util.dbo src/bmf_target.dbo test/target_test.dbo libhts.a $(LD) -o ./target_test && ./target_test
 hashdmp_test: $(BINS)
 	cd test/collapse && python hashdmp_test.py && cd ../..
 marksplit_test: $(BINS)
@@ -109,7 +109,7 @@ rsq_test: $(BINS)
 	cd test/rsq && python rsq_test.py  && cd ../..
 
 %: util/%.o libhts.a
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) util/$@.o libhts.a -o $@
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(OPT_FLAGS) util/$@.o libhts.a $(LD) -o $@
 
 
 tests: $(BINS) $(ALL_TESTS) test/tag/array_tag_test.dbo
