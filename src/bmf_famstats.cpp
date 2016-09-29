@@ -80,7 +80,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
         return a.fm < b.fm;
     });
     for(i = 0; i < stats->fm->n_occupied; ++i)
-        fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        fprintf(fp, "%llu\t%llu\n", fms[i].fm, fms[i].n);
 
     fms.resize(stats->rc->n_occupied);
     for(i = 0, ki = kh_begin(stats->rc); ki != kh_end(stats->rc); ++ki)
@@ -92,7 +92,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
     if(fms[0].fm != (uint64_t)-1) {
         fprintf(fp, "#RV'd in family\tNumber of families\n");
         for(i = 0; i < stats->rc->n_occupied; ++i)
-            fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+            fprintf(fp, "%llu\t%llu\n", fms[i].fm, fms[i].n);
     }
     // Handle stats->np
     fms.resize(stats->np->n_occupied);
@@ -109,7 +109,7 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
     fprintf(fp, "#Number of families that were rescued: %lu\n", n_rsq_fams);
     fputs("#Number of pre-rescue reads in rescued\tNumber of families\n", fp);
     for(i = 0; i < stats->np->n_occupied; ++i)
-        fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+        fprintf(fp, "%llu\t%llu\n", fms[i].fm, fms[i].n);
 }
 
 
@@ -119,19 +119,19 @@ static void print_stats(famstats_t *stats, FILE *fp, famstats_fm_settings_t *set
                                 stats->n_flag_fail +
                                 stats->n_mq_fail +
                                 (settings->skip_fp_fail ? stats->n_fp_fail: 0));
-    fprintf(fp, "#Number passing filters: %lu\n", stats->n_pass);
-    fprintf(fp, "#Number failing filters: %lu\n", total_failed);
+    fprintf(fp, "#Number passing filters: %llu\n", stats->n_pass);
+    fprintf(fp, "#Number failing filters: %llu\n", total_failed);
     if(settings->skip_fp_fail)
-        fprintf(fp, "#Number failing FP filters: %lu\n", stats->n_fp_fail);
+        fprintf(fp, "#Number failing FP filters: %llu\n", stats->n_fp_fail);
     else
-        fprintf(fp, "#Count for FP failed reads, still included in total counts: %lu\n", stats->n_fp_fail);
-    fprintf(fp, "#Number failing FM filters: %lu\n", stats->n_fm_fail);
-    fprintf(fp, "#Number failing MQ filters: %lu\n", stats->n_mq_fail);
-    fprintf(fp, "#Number failing flag filters (secondary, supplementary): %lu\n", stats->n_flag_fail);
-    fprintf(fp, "#Summed FM (total founding reads): %lu\n", stats->allfm_sum);
-    fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %lu\n", stats->realfm_sum);
-    fprintf(fp, "#Summed RV (total reverse-complemented reads): %lu\n", stats->allrc_sum);
-    fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %lu\n", stats->realrc_sum);
+        fprintf(fp, "#Count for FP failed reads, still included in total counts: %llu\n", stats->n_fp_fail);
+    fprintf(fp, "#Number failing FM filters: %llu\n", stats->n_fm_fail);
+    fprintf(fp, "#Number failing MQ filters: %llu\n", stats->n_mq_fail);
+    fprintf(fp, "#Number failing flag filters (secondary, supplementary): %llu\n", stats->n_flag_fail);
+    fprintf(fp, "#Summed FM (total founding reads): %llu\n", stats->allfm_sum);
+    fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %llu\n", stats->realfm_sum);
+    fprintf(fp, "#Summed RV (total reverse-complemented reads): %llu\n", stats->allrc_sum);
+    fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %llu\n", stats->realrc_sum);
     fprintf(fp, "#RV fraction for all read families: %f\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
     fprintf(fp, "#RV fraction for real read families: %f\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
     fprintf(fp, "#Mean Family Size (all)\t%f\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
@@ -222,7 +222,7 @@ famstats_t *famstats_fm_core(dlib::BamHandle& handle, famstats_fm_settings_t *se
     while (LIKELY((ret = handle.next()) >= 0)) {
         famstats_fm_loop(s, handle.rec, settings);
         if(UNLIKELY(++count % settings->notification_interval == 0))
-            LOG_INFO("Number of records processed: %lu.\n", count);
+            LOG_INFO("Number of records processed: %llu.\n", count);
     }
     if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
     return s;
@@ -340,7 +340,7 @@ int famstats_frac_main(int argc, char *argv[])
         total_fm += FM;
         if((unsigned)FM >= minFM) fm_above += FM;
         if(UNLIKELY(!(++count % notification_interval)))
-            LOG_INFO("Number of records processed: %lu.\n", count);
+            LOG_INFO("Number of records processed: %llu.\n", count);
     }
     if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
     fprintf(stdout, "#Fraction of raw reads with >= minFM %u:\t%f\n",

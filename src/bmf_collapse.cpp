@@ -52,8 +52,8 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret{0, 0, nullptr};
-    ksprintf(&ret, infname);
+    kstring_t ret{0};
+    kputs(infname, &ret);
     char *tmp;
     /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
      *
@@ -216,14 +216,12 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     dlib::check_call(ks1.s); ks1.l = 0;
     kputsnl("/bin/cat ", &ks1);
     kstring_t ks2{0};
-    ksprintf(&ks2, ks1.s);
+    kputsn(ks1.s, ks1.l, &ks2);
     for(int i(0); i < settings->n_handles; ++i) {
-        if(!dlib::isfile(params->outfnames_r1[i])) {
+        if(!dlib::isfile(params->outfnames_r1[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
-        }
-        if(!dlib::isfile(params->outfnames_r2[i])) {
+        if(!dlib::isfile(params->outfnames_r2[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
-        }
         ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
         ksprintf(&ks2, "%s ", params->outfnames_r2[i]);
     }
@@ -235,8 +233,9 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     }
     FILE *c1_popen(popen(ks1.s, "w"));
     FILE *c2_popen(popen(ks2.s, "w"));
-    if(pclose(c2_popen) || pclose(c1_popen)) {
-        LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
+    int ret;
+    if((ret = ((pclose(c2_popen) << 8) | pclose(c1_popen)))) {
+        LOG_EXIT("Background cat command(s) failed. (Code: %i, '%s' or %i, '%s').\n", ret >> 8, ks1.s, ret & 0xff, ks2.s);
     }
     free(ks1.s), free(ks2.s);
 }
@@ -722,7 +721,7 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     uint64_t count(1uL);
     while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
-            fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+            fprintf(stderr, "[%s] Number of records processed: %llu.\n", __func__, count);
         memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
