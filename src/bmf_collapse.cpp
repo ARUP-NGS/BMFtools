@@ -6,6 +6,8 @@
 #include "dlib/nix_util.h"
 #include "lib/binner.h"
 #include "lib/mseq.h"
+#define __STDC_FORMAT_MACROS
+#include <cinttypes>
 
 namespace bmf {
 
@@ -721,7 +723,7 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     uint64_t count(1uL);
     while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
-            fprintf(stderr, "[%s] Number of records processed: %llu.\n", __func__, count);
+            fprintf(stderr, "[%s] Number of records processed: %" PRIu64 ".\n", __func__, count);
         memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);

@@ -1,6 +1,6 @@
 #ifndef BMF_HASHDMP_H
 #define BMF_HASHDMP_H
-//#include "lib/mseq.h"
+#include "dlib/compiler_util.h"
 #include "lib/kingfisher.h"
 extern "C" {
     #include "include/uthash.h"

@@ -1,5 +1,6 @@
 #include "bmf_depth.h"
-
+#define __STDC_FORMAT_MACROS
+#include <cinttypes>
 #include <ctype.h>
 #include <zlib.h>
 #include <unordered_set>
@@ -82,7 +83,7 @@ void write_hist(depth_aux_t **aux, FILE *fp, int n_samples, char *bedpath)
     khiter_t k;
     std::unordered_set<int> keyset;
     fprintf(fp, "##bedpath=%s\n", bedpath);
-    fprintf(fp, "##total bed region area: %llu.\n", aux[0]->n_analyzed);
+    fprintf(fp, "##total bed region area: %" PRIu64 ".\n", aux[0]->n_analyzed);
     fputs("##Two columns per sample: # bases with coverage >= col1, %% bases with coverage >= col1.\n", fp);
     fputs("#Depth", fp);
     for(i = 0; i < n_samples; ++i)
@@ -110,7 +111,7 @@ void write_hist(depth_aux_t **aux, FILE *fp, int n_samples, char *bedpath)
     for(j = 0; j < keys.size(); ++j) {
         fprintf(fp, "%i", keys[j]);
         for(i = 0; i < n_samples; ++i)
-            fprintf(fp, "\t%llu\t%0.2f%%",
+            fprintf(fp, "\t%" PRIu64 "\t%0.2f%%",
                     csums[i][j], (double)csums[i][j] * 100. / aux[i]->n_analyzed);
         fputc('\n', fp);
     }
