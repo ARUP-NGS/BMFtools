@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "dlib/io_util.h"
 
-#define NQSCORES 39uL // Number of q scores in sequencing.
+#define NQSCORES 45uL // Number of q scores in sequencing.
 
 namespace bmf {
 
