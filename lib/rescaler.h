@@ -5,7 +5,30 @@
 
 #define NQSCORES 45uL // Number of q scores in sequencing.
 
+#ifdef __GNUC__
+#define INLINE __attribute__((always_inline)) inline
+#else
+#define INLINE inline
+#endif
+
 namespace bmf {
+
+#if !NDEBUG
+// The rescale_qscore is a little obfuscated. A human-readable equivalent is included before it.
+// In debug mode, it asserts that both versions return the same value.
+CONST static INLINE char rescale_qscore_check(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler)
+{
+    if(base == 'N') return '#';
+    int index(readnum);
+    int mult(2);
+    index += cycle * mult;
+    mult *= readlen;
+    index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
+    mult *= NQSCORES;
+    index += mult * nuc2num_acgt(base);
+    return rescaler[index] + 33;
+}
+#endif // !NDEBUG for rescale_qscore_check.
 
 /*
  * @func rescale_qscore
@@ -19,25 +42,14 @@ namespace bmf {
  * by 33 each time a qscore is returned. Thoughts?
  *
  */
-CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler)
-{
-    if(base == 'N') return '#';
-    int index(readnum);
-    int mult(2);
-    index += cycle * mult;
-    mult *= readlen;
-    index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
-    mult *= NQSCORES;
-    index += mult * nuc2num_acgt(base);
-    return rescaler[index] + 33;
+CONST static INLINE char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler) {
+    return (base == 'N') ? '#'
+                         : rescaler[readnum + (cycle << 1) + (readlen << 1) * (qscore - 35) + (NQSCORES * (readlen << 1)) * nuc2num_acgt(base)] + 33;
 }
 
-static void period_to_null(char *instr)
+static void period_to_null(char *c)
 {
-    while(*instr) {
-        if(*(instr) == '.') *(instr) = '\0';
-        ++instr;
-    }
+    for(;*c;++c) if(*c == '.') *c = 0;
 }
 
 
