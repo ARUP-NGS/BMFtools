@@ -34,6 +34,7 @@ void idmp_usage()
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
+                        "-I: Ignore homing sequence. Not recommended, but possible under certain experimental conditions.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
                         "-p: Number of threads to use if running uthash_dmp. Default: %i.\n"
@@ -356,7 +357,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     tmp_mseq_t *tmp(init_tm_ptr(seq1->seq.l, settings->blen));
     int switch_reads(switch_test(seq1, seq2, settings->offset));
     const int default_nlen(settings->blen1_2 + settings->offset + settings->homing_sequence_length);
-    int n_len(nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
+    int n_len(settings->ignore_homing ? settings->blen1_2 + settings->offset + settings->homing_sequence_length
+                                      : nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
     mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
     mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1));
     if(switch_reads) {
@@ -384,7 +386,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
         // Sets pass_fail
-        n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+        n_len = settings->ignore_homing ? settings->blen1_2 + settings->offset
+                                        : nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
         // Update mseqs
         update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
         update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
@@ -540,9 +543,9 @@ int idmp_main(int argc, char *argv[])
     omp_set_num_threads(settings.threads);
 
     // Handle homing sequence
-    if(!settings.homing_sequence)
+    if(!settings.homing_sequence && !settings.ignore_homing)
         LOG_EXIT("Homing sequence not provided. Required.\n");
-    clean_homing_sequence(settings.homing_sequence);
+    if(settings.homing_sequence) clean_homing_sequence(settings.homing_sequence);
 
     // Handle barcode length
     if(!settings.blen)
@@ -766,12 +769,13 @@ int sdmp_main(int argc, char *argv[])
 #endif
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdDczw?S=")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:IhdDczw?S=")) > -1) {
         switch(c) {
             case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
             case 'D': settings.run_hash_dmp = 0; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'i': settings.index_fq_path = strdup(optarg); break;
+            case 'I': settings.ignore_homing = 1; break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 'o': settings.tmp_basename = strdup(optarg);break;

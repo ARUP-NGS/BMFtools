@@ -161,9 +161,8 @@ static inline int pv2ph(double pv)
 #define arr2d_init(var, l, type) \
     do {\
     var = (type **)calloc(4, sizeof(type *));\
-    for(int i_(0); i_ < 4; ++i_) {\
-        var[i_] = (type *)calloc(l, sizeof(type));\
-    }} while(0)
+    for(int i_(0); i_ < 4; ++i_) var[i_] = (type *)calloc(l, sizeof(type));\
+    } while(0)
 
 
 
@@ -179,8 +178,7 @@ int err_region_main(int argc, char *argv[]);
 
 RegionErr::RegionErr(region_set_t set, int i):
         counts({0}),
-        name("")
-    {
+        name("") {
     LOG_DEBUG("Starting to make RegionErr for region_set_t with contig name at pos %p.\n", (void *)set.contig_name);
     kstring_t tmp{0, 0, nullptr};
     LOG_DEBUG("Contig name: %s. Strlen: %" PRIu64 ".\n", set.contig_name, strlen(set.contig_name));
@@ -428,8 +426,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
                 tid_to_study = i; break;
             }
         }
-        if(tid_to_study < 0)
-            LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+        if(tid_to_study < 0) LOG_EXIT("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
     }
     while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
         if(++f->nread % 1000000 == 0) LOG_INFO("Records read: %" PRIu64 ".\n", f->nread);
