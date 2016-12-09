@@ -7,8 +7,10 @@
 #include "dlib/cstr_util.h"
 #include "lib/rescaler.h"
 
-
-#define MAX_BARCODE_LENGTH 30 // Maximum expected inline barcode
+#ifdef MAX_BARCODE_LENGTH
+#undef MAX_BARCODE_LENGTH
+#define MAX_BARCODE_LENGTH 128 // Maximum expected inline barcode
+#endif
 
 #ifndef KSEQ_DEC_GZ
 #define KSEQ_DEC_GZ
