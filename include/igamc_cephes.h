@@ -1,7 +1,6 @@
 #ifndef IGAMC_CEPHES_H
 #define IGAMC_CEPHES_H
 
-#include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <tgmath.h>

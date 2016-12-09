@@ -27,6 +27,7 @@ struct marksplit_settings_t {
     uint32_t gzip_output:1;
     uint32_t gzip_compression:4;
     uint32_t hp_threshold:5;
+    uint32_t ignore_homing:1;
     char *tmp_basename;
     char *rescaler; // Four-dimensional rescaler array. Size: [readlen, NQSCORES, 4] (length of reads, number of original quality scores, number of bases)
     char *rescaler_path; // Path to rescaler for

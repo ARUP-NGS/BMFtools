@@ -48,7 +48,7 @@ def main():
         assert tags["DR"] == 0
 
 
-    return 
+    return
 
 if __name__ == "__main__":
     sys.exit(main())

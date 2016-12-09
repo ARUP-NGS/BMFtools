@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cinttypes>
 #include "src/bmf_collapse.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
@@ -433,7 +434,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
     // Add barcodes to the hash table
     while(LIKELY((l = kseq_read(seq)) >= 0)) {
         if(UNLIKELY(++count % 1000000 == 0))
-            fprintf(stderr, "[%s::%s] Number of records read: %lu.\n", __func__,
+            fprintf(stderr, "[%s::%s] Number of records read: %" PRIu64 ".\n", __func__,
                     strcmp("-", infname) == 0 ? "stdin": infname,count);
         cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
         HASH_FIND_STR(hash, tmp->key, tmp_hk);
@@ -460,7 +461,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
     }
     // Demultiplex and write out.
 #if !NDEBUG
-    fprintf(stderr, "[D:%s::%s] Total number of collapsed observations: %lu.\n", __func__, ifn_stream(infname), count);
+    fprintf(stderr, "[D:%s::%s] Total number of collapsed observations: %" PRIu64 ".\n", __func__, ifn_stream(infname), count);
 #endif
     free(ks.s);
     gzclose(fp);
@@ -530,7 +531,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     while(LIKELY((l = kseq_read(seq)) >= 0)) {
 #if !NDEBUG
         if(UNLIKELY(++count % 1000000 == 0))
-            fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
+            fprintf(stderr, "[%s::%s] Number of records processed: %" PRIu64 ".\n", __func__,
                     *infname == '-' ? "stdin" : infname, count);
 #else
         ++count;
@@ -605,7 +606,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     fprintf(stderr, "#HD\tCount\n");
     for(khiter_t ki(kh_begin(hds)); ki != kh_end(hds); ++ki)
         if(kh_exist(hds, ki))
-            fprintf(stderr, "%i\t%lu\n", kh_key(hds, ki), kh_val(hds, ki));
+            fprintf(stderr, "%i\t%" PRIu64 "\n", kh_key(hds, ki), kh_val(hds, ki));
     kh_destroy(hd, hds);
 #endif
     LOG_DEBUG("Before handling reverse only counts for non_duplex: %lu.\n", non_duplex);

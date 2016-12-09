@@ -17,13 +17,13 @@ enum cmpkey {
 CONST static inline int same_stack_pos_se(bam1_t *b, bam1_t *p)
 {
     return (bmfsort_se_key(b) == bmfsort_se_key(p) &&
-            b->core.l_qseq == b->core.l_qseq);
+            b->core.l_qseq == p->core.l_qseq);
 }
 
 CONST static inline int same_stack_ucs_se(bam1_t *b, bam1_t *p)
 {
     return (ucs_se_sort_key(b) == ucs_se_sort_key(p)  &&
-             b->core.l_qseq == b->core.l_qseq);
+             b->core.l_qseq == p->core.l_qseq);
 }
 
 CONST static inline int same_stack_pos(bam1_t *b, bam1_t *p)

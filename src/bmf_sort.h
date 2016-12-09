@@ -2,7 +2,6 @@
 #define BMF_SORT_H
 #include <assert.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <stdbool.h>
 #include "htslib/khash.h"
 #include "htslib/klist.h"
