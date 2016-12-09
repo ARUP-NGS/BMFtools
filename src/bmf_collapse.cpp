@@ -55,18 +55,17 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret{0};
     if(strchr(infname, '/')) infname = strrchr(infname, '/') + 1;
-    kputs(infname, &ret);
-    char *tmp;
-    /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
-     *
-     */
-    if((tmp = strrchr(ret.s, '.')) != nullptr) *tmp = '\0';
-    ret.l = strlen(ret.s);
-    ks_resize(&ret, ret.l + n_rand + 1);
-    kputc('.', &ret);
-    dlib::rand_string(ret.s + ret.l, n_rand);
+    std::string tmp(infname);
+    while(strchr(tmp.c_str(), '.')) {
+        int n(tmp.c_str() + tmp.size() - strchr(tmp.c_str(), '.') + 1);
+        while(n--) tmp.pop_back();
+    }
+    size_t flen(tmp.size() + n_rand);
+    const char cstr[] {"ABCDEFGHIJKLMNOPQRTSUVWXYZ1234567890"};
+    while(tmp.size() < flen) tmp.push_back(cstr[rand() % (sizeof(cstr) - 1)]);
+    kstring_t ret{0};
+    kputs(tmp.data(), &ret);
     return ret;
 }
 /*
