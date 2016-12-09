@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     if(argc < 6) return usage(argv, EXIT_FAILURE);
     int blen(-1), use_read1(1);
     int c;
-    while((c = getopt(argc, argv, "l:h?")) > 0) {
+    while((c = getopt(argc, argv, "l:2h?")) > 0) {
         switch(c) {
         case '2': use_read1 = 0;
         case 'l': blen  = atoi(optarg); break;
