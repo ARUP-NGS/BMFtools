@@ -56,6 +56,7 @@ void idmp_usage()
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
     kstring_t ret{0};
+    if(strchr(infname, '/')) infname = strrchr(infname, '/') + 1;
     kputs(infname, &ret);
     char *tmp;
     /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
@@ -838,8 +839,6 @@ int sdmp_main(int argc, char *argv[])
     }
     if(!settings.tmp_basename) {
         settings.tmp_basename = make_salted_fname(settings.input_r1_path);
-        settings.tmp_basename = (char *)malloc(21);
-        dlib::rand_string(settings.tmp_basename, 20);
         fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",
                 __func__, settings.tmp_basename);
     }
