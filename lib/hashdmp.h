@@ -10,6 +10,10 @@ extern "C" {
 #ifndef ifn_stream
 #define ifn_stream(fname) ((fname) ? (fname): "stream")
 #endif
+#ifdef MAX_BARCODE_LENGTH
+#undef MAX_BARCODE_LENGTH
+#define MAX_BARCODE_LENGTH 128 // Maximum expected inline barcode
+#endif
 
 namespace bmf {
 
