@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     if(argc < 6) return usage(argv, EXIT_FAILURE);
     int blen(-1), use_read1(1);
     int c;
-    while((c = getopt(argc, argv, "l:h?")) > 0) {
+    while((c = getopt(argc, argv, "l:2h?")) > 0) {
         switch(c) {
         case '2': use_read1 = 0;
         case 'l': blen  = atoi(optarg); break;
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     kseq_t *bks(use_read1 ? ks1: ks2);
     while(kseq_read(ks1) >= 0 && kseq_read(ks2) >= 0) {
         memcpy(bpos, bks->seq.s, blen);
-        fprintf(outindex, "%s barcode\n%s\n+\n", ks1->name.s, bpos);
+        fprintf(outindex, "@%s barcode\n%s\n+\n", ks1->name.s, bpos);
         fwrite(bks->qual.s, 20, 1, outindex);
         fputc('\n', outindex);
         memset(bks->seq.s, 'N', blen);
