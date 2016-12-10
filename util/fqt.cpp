@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     obs[blen * 2] = obq[blen * 2] = 0;
     while(kseq_read(ks1) >= 0 && kseq_read(ks2) >= 0) {
         fqw(ks1, blen, out1);
-        fqw(ks1, blen, out2);
+        fqw(ks2, blen, out2);
         memcpy(obs, ks1->seq.s, blen);
         memcpy(obs + blen, ks2->seq.s, blen);
         memcpy(obq, ks1->qual.s, blen);
