@@ -9,7 +9,8 @@ KSEQ_INIT(gzFile, gzread)
 
 
 int usage(char **argv, int rc) {
-    fprintf(stderr, "Usage: %s -l<blen> infq1 infq2 outfq1 outfq2 outfq3\n For converting non-duplex inline barcodes for compatibility with collapse secondary\n"
+    fprintf(stderr, "Purpose: Convert single-sided inline to secondary index format.
+                     Usage: %s -l<blen> infq1 infq2 outfq1 outfq2 outfq3\n For converting non-duplex inline barcodes for compatibility with collapse secondary\n"
                     "-2: Get single-sided barcode from read2.\n", *argv);
     return rc;
 }
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
         memset(bks->seq.s, 'N', blen);
         memset(bks->qual.s, '#', blen);
         fqw(ks1, 0, out1);
-        fqw(ks1, 0, out2);
+        fqw(ks2, 0, out2);
     }
     kseq_destroy(ks1); kseq_destroy(ks2);
     gzclose(in1); gzclose(in2);
