@@ -754,7 +754,7 @@ int rsq_usage(int retcode)
     fprintf(stderr,
                     "Positional rescue. \n"
                     "Reads with the same start position are compared.\n"
-                    "If their barcodes are sufficiently similar, they are treated as having originated"
+                    "If their barcodes are sufficiently similar, they are treated as having originated "
                     "from the same original template molecule.\n"
                     "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n"
                     "Flags:\n"
