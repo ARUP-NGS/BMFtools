@@ -754,7 +754,7 @@ int rsq_usage(int retcode)
     fprintf(stderr,
                     "Positional rescue. \n"
                     "Reads with the same start position are compared.\n"
-                    "If their barcodes are sufficiently similar, they are treated as having originated"
+                    "If their barcodes are sufficiently similar, they are treated as having originated "
                     "from the same original template molecule.\n"
                     "Usage:  bmftools rsq <input.srt.bam> <output.bam>\n\n"
                     "Flags:\n"
@@ -762,7 +762,7 @@ int rsq_usage(int retcode)
                     "-s      Flag to write reads with supplementary alignments . Default: False.\n"
                     "-S      Flag to indicate that this rescue is for single-end data.\n"
                     "-t      Mismatch limit. Default: 2\n"
-                    "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n"
+                    "-l      Set bam compression level. Valid: 0-9. (0 == uncompressed)\n"
                     "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
                     "-i      Flag to ignore barcodes and infer solely by positional information.\n"
                     "-u      Ignore unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.\n"

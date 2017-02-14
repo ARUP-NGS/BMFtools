@@ -231,7 +231,7 @@ Flags:
     > -s:     Flag to write reads with supplementary alignments . Default: False.
     > -S:     Flag to indicate that this rescue is for single-end data.
     > -t:     Mismatch limit. Default: 2
-    > -l:     Set bam compression level. Valid: 0-9. (0 == uncompresed)
+    > -l:     Set bam compression level. Valid: 0-9. (0 == uncompressed)
     > -m:     Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.
     > -i:     Flag to work on unbarcoded data and infer solely by positional information. Treats all reads as singletons.
     > -u:     Ignored unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.
