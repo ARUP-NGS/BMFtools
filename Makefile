@@ -53,7 +53,7 @@ UTILS=bam_count fqc
 
 .PHONY: all clean install tests python mostlyclean hashdmp_test err_test update_dlib util
 
-all: libhts.a tests $(BINS $(UTILS)
+all: libhts.a $(BINS)
 
 
 util: $(UTILS)
