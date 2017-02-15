@@ -635,7 +635,7 @@ int vet_main(int argc, char *argv[])
     vcf_close(aux.vcf_ofp);
     bcf_hdr_destroy(aux.vcf_header);
     if(aux.bed) dlib::bed_destroy_hash(aux.bed);
-    if(ret) LOG_EXIT("vet_core returned non-zero exit status '%i'. Abort!\n");
+    if(ret) LOG_EXIT("vet_core returned non-zero exit status '%i'. Abort!\n", ret);
     LOG_INFO("Successfully completed bmftools vet!\n");
     return 0;
 }
