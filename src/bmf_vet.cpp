@@ -321,7 +321,7 @@ int vet_core_bed(vetter_aux_t *aux) {
                 }
                 if(pos > vrec->pos) LOG_EXIT("pos is after variant. WTF?");
                 while(pos < vrec->pos && tid <= vrec->rid &&
-                      (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0);
+                      (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != nullptr);
                 // Zoom ahead until you're at the correct position */
                 if(!plp) {
                     if(n_plp == -1) {
@@ -429,7 +429,7 @@ int vet_core_nobed(vetter_aux_t *aux) {
             //LOG_DEBUG("Hey, I'm evaluating a variant record now with tid %i and pos %i for a variant at %i, %i\n", tid, pos, vrec->rid, vrec->pos);
             assert(tid == vrec->rid);
             while (pos < vrec->pos &&
-                   ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
+                   ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != nullptr)) {
                 assert(tid == vrec->rid);
                 //LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                 /* Zoom ahead until you're at the correct position */
@@ -439,7 +439,7 @@ int vet_core_nobed(vetter_aux_t *aux) {
                 LOG_DEBUG("Try again\n");
                 bam_plp_reset(pileup);
                 while (pos < vrec->pos &&
-                       ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) > 0)) {
+                       ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != nullptr)) {
                     assert(tid == vrec->rid);
                     LOG_DEBUG("Now at position %i on contig %s with %i pileups.\n", pos, aux->header->target_name[tid], n_plp);
                     /* Zoom ahead until you're at the correct position */
@@ -583,7 +583,9 @@ int vet_main(int argc, char *argv[])
 
     strcpy(vcf_wmode, output_bcf ? "wb": "w");
     if(!outvcf) outvcf = (char *)"-";
+#if !NDEBUG
     if(strcmp(outvcf, "-") == 0) LOG_DEBUG("Emitting to stdout in %s format.\n", output_bcf ? "bcf": "vcf");
+#endif
     // Open bam
     aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
     if(!aux.fp) LOG_EXIT("Could not open input bam %s. Abort!\n", argv[optind + 1]);
