@@ -1,6 +1,6 @@
 #ifndef BMF_HASHDMP_H
 #define BMF_HASHDMP_H
-//#include "lib/mseq.h"
+#include "dlib/compiler_util.h"
 #include "lib/kingfisher.h"
 extern "C" {
     #include "include/uthash.h"
@@ -10,6 +10,10 @@ extern "C" {
 #ifndef ifn_stream
 #define ifn_stream(fname) ((fname) ? (fname): "stream")
 #endif
+#ifdef MAX_BARCODE_LENGTH
+#undef MAX_BARCODE_LENGTH
+#endif
+#define MAX_BARCODE_LENGTH 128 // Maximum expected inline barcode
 
 namespace bmf {
 

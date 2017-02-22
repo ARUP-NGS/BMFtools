@@ -6,6 +6,8 @@
 #include "dlib/nix_util.h"
 #include "lib/binner.h"
 #include "lib/mseq.h"
+#define __STDC_FORMAT_MACROS
+#include <cinttypes>
 
 namespace bmf {
 
@@ -32,6 +34,7 @@ void idmp_usage()
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
+                        "-I: Ignore homing sequence. Not recommended, but possible under certain experimental conditions.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
                         "-p: Number of threads to use if running uthash_dmp. Default: %i.\n"
@@ -52,17 +55,17 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    kstring_t ret{0, 0, nullptr};
-    ksprintf(&ret, infname);
-    char *tmp;
-    /* Try to find the last of the string so that we salt the returned string with the input filename if there's a period.
-     *
-     */
-    if((tmp = strrchr(ret.s, '.')) != nullptr) *tmp = '\0';
-    ret.l = strlen(ret.s);
-    ks_resize(&ret, ret.l + n_rand + 1);
-    kputc('.', &ret);
-    dlib::rand_string(ret.s + ret.l, n_rand);
+    if(strchr(infname, '/')) infname = strrchr(infname, '/') + 1;
+    std::string tmp(infname);
+    while(strchr(tmp.c_str(), '.')) {
+        int n(tmp.c_str() + tmp.size() - strchr(tmp.c_str(), '.') + 1);
+        while(n--) tmp.pop_back();
+    }
+    size_t flen(tmp.size() + n_rand);
+    const char cstr[] {"ABCDEFGHIJKLMNOPQRTSUVWXYZ1234567890"};
+    while(tmp.size() < flen) tmp.push_back(cstr[rand() % (sizeof(cstr) - 1)]);
+    kstring_t ret{0};
+    kputs(tmp.data(), &ret);
     return ret;
 }
 /*
@@ -216,14 +219,12 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     dlib::check_call(ks1.s); ks1.l = 0;
     kputsnl("/bin/cat ", &ks1);
     kstring_t ks2{0};
-    ksprintf(&ks2, ks1.s);
+    kputsn(ks1.s, ks1.l, &ks2);
     for(int i(0); i < settings->n_handles; ++i) {
-        if(!dlib::isfile(params->outfnames_r1[i])) {
+        if(!dlib::isfile(params->outfnames_r1[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
-        }
-        if(!dlib::isfile(params->outfnames_r2[i])) {
+        if(!dlib::isfile(params->outfnames_r2[i]))
             LOG_EXIT("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
-        }
         ksprintf(&ks1, "%s ", params->outfnames_r1[i]);
         ksprintf(&ks2, "%s ", params->outfnames_r2[i]);
     }
@@ -235,8 +236,9 @@ void cat_fastqs_pe(marksplit_settings_t *settings, splitterhash_params_t *params
     }
     FILE *c1_popen(popen(ks1.s, "w"));
     FILE *c2_popen(popen(ks2.s, "w"));
-    if(pclose(c2_popen) || pclose(c1_popen)) {
-        LOG_EXIT("Background cat command failed. ('%s' or '%s').\n", ks1.s, ks2.s);
+    int ret;
+    if((ret = ((pclose(c2_popen) << 8) | pclose(c1_popen)))) {
+        LOG_EXIT("Background cat command(s) failed. (Code: %i, '%s' or %i, '%s').\n", ret >> 8, ks1.s, ret & 0xff, ks2.s);
     }
     free(ks1.s), free(ks2.s);
 }
@@ -355,7 +357,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     tmp_mseq_t *tmp(init_tm_ptr(seq1->seq.l, settings->blen));
     int switch_reads(switch_test(seq1, seq2, settings->offset));
     const int default_nlen(settings->blen1_2 + settings->offset + settings->homing_sequence_length);
-    int n_len(nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
+    int n_len(settings->ignore_homing ? settings->blen1_2 + settings->offset + settings->homing_sequence_length
+                                      : nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
     mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
     mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1));
     if(switch_reads) {
@@ -383,7 +386,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
         // Sets pass_fail
-        n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+        n_len = settings->ignore_homing ? settings->blen1_2 + settings->offset
+                                        : nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
         // Update mseqs
         update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
         update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1);
@@ -539,9 +543,9 @@ int idmp_main(int argc, char *argv[])
     omp_set_num_threads(settings.threads);
 
     // Handle homing sequence
-    if(!settings.homing_sequence)
+    if(!settings.homing_sequence && !settings.ignore_homing)
         LOG_EXIT("Homing sequence not provided. Required.\n");
-    clean_homing_sequence(settings.homing_sequence);
+    if(settings.homing_sequence) clean_homing_sequence(settings.homing_sequence);
 
     // Handle barcode length
     if(!settings.blen)
@@ -722,7 +726,7 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     uint64_t count(1uL);
     while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
-            fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+            fprintf(stderr, "[%s] Number of records processed: %" PRIu64 ".\n", __func__, count);
         memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
         memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
@@ -765,12 +769,13 @@ int sdmp_main(int argc, char *argv[])
 #endif
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:hdDczw?S=")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:IhdDczw?S=")) > -1) {
         switch(c) {
             case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
             case 'D': settings.run_hash_dmp = 0; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'i': settings.index_fq_path = strdup(optarg); break;
+            case 'I': settings.ignore_homing = 1; break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 'o': settings.tmp_basename = strdup(optarg);break;
@@ -833,8 +838,6 @@ int sdmp_main(int argc, char *argv[])
     }
     if(!settings.tmp_basename) {
         settings.tmp_basename = make_salted_fname(settings.input_r1_path);
-        settings.tmp_basename = (char *)malloc(21);
-        dlib::rand_string(settings.tmp_basename, 20);
         fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",
                 __func__, settings.tmp_basename);
     }

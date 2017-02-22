@@ -228,7 +228,7 @@ struct stack_aux_t {
         if(!conf.max_depth) conf.max_depth = DEFAULT_MAX_DEPTH;
         LOG_DEBUG("Max depth: %i.\n", conf.max_depth);
     }
-    const char get_ref_base(int tid, int pos) {
+    char get_ref_base(int tid, int pos) {
         //LOG_DEBUG("fai ptr %p.\n", (void *)fai);
         int len;
         if(tid != last_tid) {
@@ -237,7 +237,6 @@ struct stack_aux_t {
             ref_seq = fai_fetch(fai, tumor.header->target_name[tid], &len);
             last_tid = tid;
         }
-        //LOG_DEBUG("Returning ref base\n");
         return ref_seq[pos];
     }
     ~stack_aux_t() {

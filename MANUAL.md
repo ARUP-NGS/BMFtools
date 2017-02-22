@@ -60,7 +60,7 @@ all of the secondary and supplementary alignments.
 In the collapsing `bmftools rsq` step, supplementary and secondary reads are stripped to preserve balanced pairs.
 If secondary and supplementary alignments are needed for other reads,these should be written to the temporary fastq for realignment using the -s option.
 
-`bmftools mark -l0 final_output.bam | sort -k <ucs/bmf> -o <final_output_prefix.bmfsort.bam> -`
+`bmftools mark -l0 final_output.bam | bmftools sort -o <final_output_prefix.bmfsort.bam> -`
 
 `bmftools rsq -f<tmp.fq> <final_output_prefix.bmfsort.bam> <final_output_prefix.tmprsq.bam>`
 
@@ -133,7 +133,7 @@ bmftools <subcommand> <-h>
 `bmftools rsq -f tmp.fastq input.bam tmp.out.bam`
 
 
-`bmftools sort -T tmp_prefix -k ucs input.bam output.bam`
+`bmftools sort -T tmp_prefix input.bam output.bam`
 
 
 `bmftools stack --ref reference.fasta -o output.vcf -b capture.bed --min-family-size 3 tumor.bam normal.bam`
@@ -231,7 +231,7 @@ Flags:
     > -s:     Flag to write reads with supplementary alignments . Default: False.
     > -S:     Flag to indicate that this rescue is for single-end data.
     > -t:     Mismatch limit. Default: 2
-    > -l:     Set bam compression level. Valid: 0-9. (0 == uncompresed)
+    > -l:     Set bam compression level. Valid: 0-9. (0 == uncompressed)
     > -m:     Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.
     > -i:     Flag to work on unbarcoded data and infer solely by positional information. Treats all reads as singletons.
     > -u:     Ignored unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.

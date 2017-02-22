@@ -235,7 +235,7 @@ int stack_core(bmf::stack_aux_t *aux)
 
 int stack_main(int argc, char *argv[]) {
     int c;
-    unsigned padding((unsigned)-1);
+    unsigned padding(UINT32_C(-1));
     if(argc < 2) stack_usage(EXIT_FAILURE);
     char *outvcf((char *)"-"), *refpath(nullptr);
     char *bedpath(nullptr);
@@ -304,7 +304,7 @@ int stack_main(int argc, char *argv[]) {
     const int is_single((argc - 1 == optind));
     if(is_single) LOG_INFO("One bam provided. Running in single sample mode.\n");
     if(optind > argc - 1) LOG_EXIT("Insufficient arguments. Input bam required!\n");
-    if(padding < 0) {
+    if(padding == UINT32_C(-1)) {
         LOG_WARNING("Padding not set. Using default %i.\n", DEFAULT_PADDING);
         padding = DEFAULT_PADDING;
     }

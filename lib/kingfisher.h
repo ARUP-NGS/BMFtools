@@ -10,6 +10,10 @@
 #include "include/igamc_cephes.h"
 #include "lib/splitter.h"
 
+#ifdef MAX_BARCODE_LENGTH
+#undef MAX_BARCODE_LENGTH
+#endif
+#define MAX_BARCODE_LENGTH 128 // Maximum expected inline barcode
 #ifndef MAX_PV
 #    define MAX_PV 3117 // Maximum seen with doubles
 #endif
