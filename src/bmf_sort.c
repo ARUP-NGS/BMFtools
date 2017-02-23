@@ -296,7 +296,7 @@ static inline int match_to_ks(const char *src, const hdr_match_t *match,
 
 // Append a kstring to a kstring
 static inline int ks_to_ks(kstring_t *src, kstring_t *dest) {
-    return kputsn(ks_str(src), ks_len(src), dest) != ks_len(src);
+    return (unsigned)kputsn(ks_str(src), ks_len(src), dest) != ks_len(src);
 }
 
 /*
@@ -450,7 +450,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
         }
     }
 
-    if (merged_hdr->n_targets == old_n_targets)
+    if (merged_hdr->n_targets == (unsigned)old_n_targets)
         return 0;  // Everything done if no new targets.
 
     // Otherwise, find @SQ lines in translate->text for all newly added targets.
@@ -459,7 +459,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
                             * sizeof(*new_sq_matches));
     if (new_sq_matches == NULL) goto memfail;
 
-    for (i = 0; i < merged_hdr->n_targets - old_n_targets; i++) {
+    for (i = 0; i < (int)merged_hdr->n_targets - old_n_targets; i++) {
         new_sq_matches[i].rm_so = new_sq_matches[i].rm_eo = -1;
     }
 
@@ -501,7 +501,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
     }
 
     // Copy the @SQ headers found and recreate any missing from binary header.
-    for (i = 0; i < merged_hdr->n_targets - old_n_targets; i++) {
+    for (i = 0; (unsigned)i < merged_hdr->n_targets - old_n_targets; i++) {
         if (new_sq_matches[i].rm_so >= 0) {
             if (match_to_ks(translate->text, &new_sq_matches[i], out_text))
                 goto memfail;
@@ -1686,7 +1686,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
     int n_failed = 0;
 
     if (n_threads < 1) n_threads = 1;
-    if (k < n_threads * 64) n_threads = 1; // use a single thread if we only sort a small batch of records
+    if (k < (unsigned)(n_threads << 6)) n_threads = 1; // use a single thread if we only sort a small batch of records
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     w = (worker_t*)calloc(n_threads, sizeof(worker_t));
