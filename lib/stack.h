@@ -290,10 +290,10 @@ static inline int expected_incorrect(std::vector<std::vector<uint32_t>> &conf_ve
     double ret(0.);
     for(unsigned i(0); i != conf_vec.size(); ++i) {
         if(i != (unsigned)j) {
-            for(auto k: conf_vec[i])
+            for(const auto k: conf_vec[i])
                 // Probability the base call is incorrect, over 3, as the incorrect base call could have been any of the other 3.
                 ret += std::pow(10., k * -.1) / 3;
-            for(auto k: susp_vec[i])
+            for(const auto k: susp_vec[i])
                 ret += std::pow(10., k * -.1) / 3;
         }
     }
@@ -311,8 +311,12 @@ static inline int estimate_quantity(std::vector<std::vector<uint32_t>> &confiden
     */
     // Return 0 if no confident base calls observed.
     //
+    return ret + (expected_false_positives < putative_suspects) * (putative_suspects - expected_false_positives);
+#if 0
+    // Equivalent to above, but branch removed.
     return (expected_false_positives >= putative_suspects) ? ret
                                                            : ret + putative_suspects - expected_false_positives;
+#endif
 }
 void add_stack_lines(bcf_hdr_t *hdr);
 
@@ -321,7 +325,7 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
     const int wlen(aux->conf.flanksz * 2 + 1);
     const uint8_t *seq(bam_get_seq(plp.b));
     int start, stop, ret(0);
-    uint8_t t;
+    uint8_t t1, t2;
     if(wlen <= plp.b->core.l_qseq) start=0, stop=plp.b->core.l_qseq;
     else if(plp.qpos + aux->conf.flanksz + 1 > plp.b->core.l_qseq) {
         start = plp.b->core.l_qseq - wlen;
@@ -333,9 +337,11 @@ static inline int get_mismatch_density(const bam_pileup1_t &plp, stack_aux_t *au
         start = plp.qpos - aux->conf.flanksz;
         stop = plp.qpos + aux->conf.flanksz + 1;
     }
-    for(int i(start); i < stop; ++i)
-        ret += ((t = bam_seqi(seq, i)) != seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)]
-                && t != dlib::htseq::HTS_N);
+    for(int i(start); i < stop; ++i) {
+        t1 = bam_seqi(seq, i);
+        t2 = seq_nt16_table[(uint8_t)aux->get_ref_base(tid, i + plp.b->core.pos)];
+        ret += (t1 != t2 && t1 != dlib::htseq::HTS_N && t2 != dlib::htseq::HTS_N);
+    }
     return ret;
 }
 
