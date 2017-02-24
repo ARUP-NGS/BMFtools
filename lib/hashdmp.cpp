@@ -86,7 +86,7 @@ int hashcollapse_main(int argc, char *argv[])
     else LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
     stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level)
                       : hash_dmp_core(infname, outfname, level);
-    LOG_INFO("Successfully complete bmftools hashdmp!\n");
+    LOG_INFO("Successfully completed bmftools hashdmp!\n");
     return EXIT_SUCCESS;
 }
 
@@ -133,7 +133,7 @@ int hashdmp_inmem_main(int argc, char *argv[])
     hash_inmem_inline_core(argv[optind], argv[optind + 1], outfname1, outfname2,
                            homing, blen, threshold, level, mask,
                            max_blen);
-    LOG_INFO("Successfully complete bmftools hashdmp!\n");
+    LOG_INFO("Successfully completed bmftools hashdmp!\n");
     return EXIT_SUCCESS;
 }
 

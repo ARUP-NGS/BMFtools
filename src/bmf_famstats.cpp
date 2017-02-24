@@ -289,7 +289,7 @@ int famstats_fm_main(int argc, char *argv[])
     kh_destroy(fm, s->np);
     kh_destroy(fm, s->rc);
     free(s);
-    LOG_INFO("Successfully complete bmftools famstats fm.\n");
+    LOG_INFO("Successfully completed bmftools famstats fm.\n");
     return EXIT_SUCCESS;
 }
 
@@ -338,7 +338,7 @@ int famstats_frac_main(int argc, char *argv[])
     if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
     fprintf(stdout, "#Fraction of raw reads with >= minFM %u:\t%f\n",
             minFM, (double)fm_above / total_fm);
-    LOG_INFO("Successfully complete bmftools famstats frac.\n");
+    LOG_INFO("Successfully completed bmftools famstats frac.\n");
     return EXIT_SUCCESS;
 }
 
