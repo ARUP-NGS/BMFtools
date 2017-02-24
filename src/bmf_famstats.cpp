@@ -1,12 +1,14 @@
 #include <getopt.h>
 #include <algorithm>
 #include "dlib/bam_util.h"
-#define __STDC_FORMAT_MACROS
+#ifndef __STDC_FORMAT_MACROS
+#  define __STDC_FORMAT_MACROS
+#endif
 #include <cinttypes>
 
 namespace bmf {
 
-const char *tags_to_check[]{"FP", "FM", "FA"};
+static const char *tags_to_check[]{"FP", "FM", "FA"};
 
 
 int famstats_frac_usage(int exit_status)
@@ -60,7 +62,7 @@ struct fm_t {
 
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
-    std::vector<fm_t> fms(stats->fm->n_occupied);
+    std::vector<fm_t> fms(kh_size(stats->fm));
     unsigned i;
     khiter_t ki;
     fprintf(fp, "#Family size\tNumber of families\n");
