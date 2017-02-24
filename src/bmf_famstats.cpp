@@ -58,17 +58,6 @@ struct fm_t {
     uint64_t fm; // Number of times observed
 };
 
-
-int get_nbins(khash_t(fm) *table)
-{
-    int ret(0);
-    for(khiter_t k = kh_begin(table); k != kh_end(table); ++k)
-        if(kh_exist(table, k))
-            ++ret;
-    return ret;
-}
-
-
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
     std::vector<fm_t> fms(stats->fm->n_occupied);
