@@ -73,13 +73,7 @@ kstring_t salted_rand_string(char *infname, size_t n_rand) {
  */
 char *make_salted_fname(char *base)
 {
-    int has_period(0);
-    for(int i(0); base[i]; ++i) {
-        if(base[i] == '.') {
-            has_period = 1; break;
-        }
-    }
-    if(has_period) {
+    if(strchr(base, '\0')) {
         kstring_t rs(salted_rand_string(base, RANDSTR_SIZE));
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", base);
         return rs.s;
@@ -316,8 +310,7 @@ mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
     }
     LOG_INFO("Collapsing %lu initial reads....\n", count);
     LOG_DEBUG("Cleaning up.\n");
-    for(int i(0); i < splitter.n_handles; ++i)
-        gzclose(splitter.tmp_out_handles_r1[i]);
+    for(int i(0); i < splitter.n_handles; ++i) gzclose(splitter.tmp_out_handles_r1[i]);
     tm_destroy(tmp);
     mseq_destroy(rseq);
     kseq_destroy(seq);
