@@ -11,11 +11,9 @@ namespace bmf {
         bufs->agrees[i] = kfp->nuc_counts[index];\
         diffcount -= bufs->agrees[i];\
         if(argmaxret != 4) diffcount -= kfp->nuc_counts[i * 5 + 4]; /*(Skip Ns in counting diffs) */\
-        if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) {\
+        if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED)\
             bufs->cons_seq_buffer[i] = num2nuc(argmaxret);\
-        } else {\
-            bufs->cons_quals[i] = 2;\
-            bufs->cons_seq_buffer[i] = 'N';\
+        else bufs->cons_quals[i] = 2, bufs->cons_seq_buffer[i] = 'N';\
         }\
     } while(0)
 
@@ -27,7 +25,7 @@ void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int
         const int index(argmaxret + i * 5);
         dmp_pos(kfp, bufs, argmaxret, i, index, diffs);
     }
-    ksprintf(ks, "@%s ", kfp->barcode + 1);
+    kputc('@', ks); kputs(kfp->barcode + 1, ks); kputc(' ', ks); 
     kfill_both(kfp->readlen, bufs->agrees, bufs->cons_quals, ks);
     bufs->cons_seq_buffer[kfp->readlen] = '\0';
     kputsnl("\tFP:i:", ks);
