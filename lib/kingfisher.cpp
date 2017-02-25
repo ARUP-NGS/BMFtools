@@ -14,7 +14,6 @@ namespace bmf {
         if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED)\
             bufs->cons_seq_buffer[i] = num2nuc(argmaxret);\
         else bufs->cons_quals[i] = 2, bufs->cons_seq_buffer[i] = 'N';\
-        }\
     } while(0)
 
 void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
