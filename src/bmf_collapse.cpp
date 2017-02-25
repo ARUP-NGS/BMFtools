@@ -611,7 +611,7 @@ void sdmp_usage(char *argv[])
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-z: Flag to write gzip compressed output. Default: False.\n"
                         "-T: If unset, write uncompressed plain text temporary files. If not, use that compression level for temporary files.\n"
-                        "-g: Gzip compression ratio if writing ocmpressed. Default (if writing compressed): 1 (mostly to reduce I/O).\n"
+                        "-g: Gzip compression ratio if writing compressed. Default: 1 (mostly to reduce I/O).\n"
                         "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
                         "-m: Number of bases in the start of reads to skip when salting. Default: 0.\n"
                         "-D: Use this flag to only mark/split and avoid final demultiplexing/consolidation.\n"
@@ -629,10 +629,10 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
 {
     LOG_DEBUG("Path to index fq: %s.\n", settings->index_fq_path);
     gzFile fp_read1, fp_read2, fp_index;
-    kseq_t *seq1(nullptr), *seq2(nullptr), *seq_index(nullptr);
+    kseq_t *seq1, *seq2, *seq_index;
     int l1, l2, l_index;
     mark_splitter_t splitter(init_splitter(settings));
-    for(auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
+    for(const auto path: {settings->input_r1_path, settings->input_r2_path, settings->index_fq_path})
         if(!dlib::isfile(path))
             LOG_EXIT("%s is not a file. Abort!\n", path);
     // Open fastqs
