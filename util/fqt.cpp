@@ -48,10 +48,10 @@ int main(int argc, char **argv)
     while(kseq_read(ks1) >= 0 && kseq_read(ks2) >= 0) {
         fqw(ks1, blen, out1);
         fqw(ks2, blen, out2);
-        memcpy(obs, ks1->seq.s, blen);
-        memcpy(obs + blen, ks2->seq.s, blen);
-        memcpy(obq, ks1->qual.s, blen);
-        memcpy(obq + blen, ks2->qual.s, blen);
+        std::memcpy(obs, ks1->seq.s, blen);
+        std::memcpy(obs + blen, ks2->seq.s, blen);
+        std::memcpy(obq, ks1->qual.s, blen);
+        std::memcpy(obq + blen, ks2->qual.s, blen);
         bcw(ks1, obs, obq, outindex);
     }
     kseq_destroy(ks1); kseq_destroy(ks2);

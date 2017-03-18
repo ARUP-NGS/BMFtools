@@ -2,6 +2,7 @@
 #define KINGFISHER_H
 #include <assert.h>
 #include <cmath>
+#include <cstring>
 #include <zlib.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
@@ -103,7 +104,7 @@ static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen)
 {
     if(!kfp->length++) { // Increment while checking
         kfp->pass_fail = seq->comment.s[FP_OFFSET];
-        memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
+        std::memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
         kfp->barcode[blen] = '\0';
     }
     for(int i(0); i < kfp->readlen; ++i) pb_pos(kfp, seq, i);

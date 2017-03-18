@@ -284,7 +284,7 @@ mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
     int n_len(nlen_homing_se(seq, settings, default_nlen, &pass_fail));
     mseq_t *rseq(mseq_rescale_init(seq, settings->rescaler, tmp, 0));
     rseq->barcode[settings->blen] = '\0';
-    memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+    std::memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
     pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
     // Get first barcode.
     update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
@@ -299,7 +299,7 @@ mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
         // Update mseq
         update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
         // Update barcode
-        memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+        std::memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
         // Update QC Fail
         pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
         // Get bin
@@ -355,11 +355,11 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
     mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1));
     if(switch_reads) {
-        memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
-        memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
+        std::memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
+        std::memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
     } else {
-        memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
-        memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
+        std::memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
+        std::memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
     }
     pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
     // Get first barcode.
@@ -387,8 +387,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
 
         if(switch_test(seq1, seq2, settings->offset)) {
             // Copy barcode over
-            memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
-            memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
+            std::memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
+            std::memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
             // Test for homopolymer failure
             pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
             bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
@@ -397,8 +397,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
             mseq2fq_stranded(splitter.tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
             mseq2fq_stranded(splitter.tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
         } else {
-            memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
-            memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
+            std::memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
+            std::memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
             pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
             bin = bmf::get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
             assert(bin < (uint64_t)settings->n_handles);
@@ -654,9 +654,9 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
     check_rescaler(settings, NQSCORES * 2 * 4 * seq1->seq.l);
     mseq_t *rseq1(mseq_init(seq1, settings->rescaler, 0)); // rseq1 is initialized
     mseq_t *rseq2(mseq_init(seq2, settings->rescaler, 1)); // rseq2 is initialized
-    memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
-    memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
-    memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
+    std::memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+    std::memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+    std::memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
     rseq1->barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
     update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
     update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
@@ -669,9 +669,9 @@ static mark_splitter_t splitmark_core_rescale(marksplit_settings_t *settings)
             && (l_index = kseq_read(seq_index)) >= 0) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
             LOG_INFO("Number of records processed: %lu.\n", count);
-        memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
-        memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
-        memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
+        std::memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+        std::memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+        std::memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
         update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
         update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
         pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
@@ -710,8 +710,8 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     if(l < 0 || l_index < 0)
         LOG_EXIT("Could not read input fastqs. Abort mission!\n");
     mseq_t *rseq(mseq_init(seq, settings->rescaler, 0));
-    memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
-    memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+    std::memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+    std::memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
     rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
     update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
     mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
@@ -720,8 +720,8 @@ static mark_splitter_t splitmark_core_rescale_se(marksplit_settings_t *settings)
     while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
         if(UNLIKELY(++count % settings->notification_interval == 0))
             fprintf(stderr, "[%s] Number of records processed: %" PRIu64 ".\n", __func__, count);
-        memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
-        memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+        std::memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+        std::memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
         mseq2fq(splitter.tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
                 rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
