@@ -70,20 +70,6 @@ std::vector<std::vector<double>> get_igamc_thresholds(size_t max_family_size, in
     return ret;
 }
 
-int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2) {
-    int ret(0);
-    int argmaxret1, argmaxret2;
-    for(int i(0); i < kf1->readlen; ++i) {
-        argmaxret1 = kfp_argmax(kf1, i);
-        argmaxret2 = kfp_argmax(kf2, i);
-        if(argmaxret1 != argmaxret2)
-            if(argmaxret1 != 4)
-                if(argmaxret2 != 4)
-                    ++ret;
-    }
-    return ret;
-}
-
 // kfp forward, kfp reverse
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
 void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs)
