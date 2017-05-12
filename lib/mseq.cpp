@@ -30,7 +30,7 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
     }
     mseq_t *ret((mseq_t *)calloc(1, sizeof(mseq_t)));
     strcpy(ret->name, seq->name.s);
-    strcpy(ret->comment, seq->comment.s);
+    strcpy(ret->comment, seq->comment.s ? seq->comment.s: "");
     strcpy(ret->seq, seq->seq.s);
     strcpy(ret->qual, seq->qual.s);
 
