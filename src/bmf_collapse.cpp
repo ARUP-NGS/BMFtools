@@ -55,13 +55,14 @@ void idmp_usage()
 }
 
 kstring_t salted_rand_string(char *infname, size_t n_rand) {
-    if(strchr(infname, '/')) infname = strrchr(infname, '/') + 1;
+    if(std::strchr(infname, '/')) infname = strrchr(infname, '/') + 1;
     std::string tmp(infname);
-    while(strchr(tmp.c_str(), '.')) {
-        int n(tmp.c_str() + tmp.size() - strchr(tmp.c_str(), '.') + 1);
-        while(n--) tmp.pop_back();
+    while(std::strchr(tmp.c_str(), '.')) {
+        int n(tmp.c_str() + tmp.size() - std::strchr(tmp.c_str(), '.') + 1);
+        while(--n) tmp.pop_back();
     }
-    size_t flen(tmp.size() + n_rand);
+    tmp.push_back('.');
+    size_t flen(tmp.size() + n_rand + 1);
     const char cstr[] {"ABCDEFGHIJKLMNOPQRTSUVWXYZ1234567890"};
     while(tmp.size() < flen) tmp.push_back(cstr[rand() % (sizeof(cstr) - 1)]);
     kstring_t ret{0};
@@ -73,7 +74,7 @@ kstring_t salted_rand_string(char *infname, size_t n_rand) {
  */
 char *make_salted_fname(char *base)
 {
-    if(strchr(base, '\0')) {
+    if(std::strchr(base, '.')) {
         kstring_t rs(salted_rand_string(base, RANDSTR_SIZE));
         LOG_INFO("No output final prefix set. Defaulting to variation on input ('%s').\n", base);
         return rs.s;

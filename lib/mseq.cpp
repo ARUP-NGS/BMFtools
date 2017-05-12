@@ -29,10 +29,10 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
         exit(EXIT_FAILURE);
     }
     mseq_t *ret((mseq_t *)calloc(1, sizeof(mseq_t)));
-    strcpy(ret->name, seq->name.s);
-    strcpy(ret->comment, seq->comment.s ? seq->comment.s: "");
-    strcpy(ret->seq, seq->seq.s);
-    strcpy(ret->qual, seq->qual.s);
+    std::strcpy(ret->name, seq->name.s);
+    std::strcpy(ret->comment, seq->comment.s ? seq->comment.s: "");
+    std::strcpy(ret->seq, seq->seq.s);
+    std::strcpy(ret->qual, seq->qual.s);
 
     ret->l = seq->seq.l;
     if(rescaler)

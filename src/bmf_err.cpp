@@ -1003,8 +1003,8 @@ int err_main_main(int argc, char *argv[])
         case '3': d3 = dlib::open_ofp(optarg); break;
         case 'c': dc = dlib::open_ofp(optarg); break;
         case 'n': dbc = dlib::open_ofp(optarg); break;
-        case 'r': strcpy(refcontig, optarg); break;
-        case 'b': bedpath = strdup(optarg); break;
+        case 'r': std::strcpy(refcontig, optarg); break;
+        case 'b': bedpath = optarg; break;
         case 'p': padding = atoi(optarg); break;
         case 'g': global_fp = dlib::open_ofp(optarg); break;
         case 'S': minPV = strtoul(optarg, nullptr, 0); break;
@@ -1012,7 +1012,7 @@ int err_main_main(int argc, char *argv[])
         }
     }
 
-    if(padding < 0 && bedpath && *bedpath)
+    if(padding < 0 && bedpath)
         LOG_INFO((char *)"Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 
     if (argc != optind+2)
