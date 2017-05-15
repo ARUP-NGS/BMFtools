@@ -11,12 +11,9 @@ namespace bmf {
         bufs->agrees[i] = kfp->nuc_counts[index];\
         diffcount -= bufs->agrees[i];\
         if(argmaxret != 4) diffcount -= kfp->nuc_counts[i * 5 + 4]; /*(Skip Ns in counting diffs) */\
-        if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) {\
+        if(bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED)\
             bufs->cons_seq_buffer[i] = num2nuc(argmaxret);\
-        } else {\
-            bufs->cons_quals[i] = 2;\
-            bufs->cons_seq_buffer[i] = 'N';\
-        }\
+        else bufs->cons_quals[i] = 2, bufs->cons_seq_buffer[i] = 'N';\
     } while(0)
 
 void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev)
@@ -27,7 +24,7 @@ void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int
         const int index(argmaxret + i * 5);
         dmp_pos(kfp, bufs, argmaxret, i, index, diffs);
     }
-    ksprintf(ks, "@%s ", kfp->barcode + 1);
+    kputc('@', ks); kputs(kfp->barcode + 1, ks); kputc(' ', ks); 
     kfill_both(kfp->readlen, bufs->agrees, bufs->cons_quals, ks);
     bufs->cons_seq_buffer[kfp->readlen] = '\0';
     kputsnl("\tFP:i:", ks);
@@ -70,20 +67,6 @@ std::vector<std::vector<double>> get_igamc_thresholds(size_t max_family_size, in
     std::vector<std::vector<double>> ret;
     while(ret.size() < max_family_size)
         ret.emplace_back(get_igamc_threshold(ret.size() + 1, max_phred, delta));
-    return ret;
-}
-
-int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2) {
-    int ret(0);
-    int argmaxret1, argmaxret2;
-    for(int i(0); i < kf1->readlen; ++i) {
-        argmaxret1 = kfp_argmax(kf1, i);
-        argmaxret2 = kfp_argmax(kf2, i);
-        if(argmaxret1 != argmaxret2)
-            if(argmaxret1 != 4)
-                if(argmaxret2 != 4)
-                    ++ret;
-    }
     return ret;
 }
 

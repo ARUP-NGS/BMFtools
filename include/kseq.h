@@ -127,7 +127,7 @@ typedef struct __kstring_t {
             } \
             seek_pos += i - ks->begin; if ( i < ks->end ) seek_pos++; \
             gotany = 1; \
-            memcpy(str->s + str->l, ks->buf + ks->begin, i - ks->begin);  \
+            std::memcpy(str->s + str->l, ks->buf + ks->begin, i - ks->begin);  \
             str->l = str->l + (i - ks->begin); \
             ks->begin = i + 1; \
             if (i < ks->end) { \

@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cinttypes>
+#include <cstring>
 #include "src/bmf_collapse.h"
 #include "dlib/io_util.h"
 #include "lib/mseq.h"
@@ -86,7 +87,7 @@ int hashcollapse_main(int argc, char *argv[])
     else LOG_WARNING("Note: no input filename provided. Defaulting to stdin.\n");
     stranded_analysis ? stranded_hash_dmp_core(infname, outfname, level)
                       : hash_dmp_core(infname, outfname, level);
-    LOG_INFO("Successfully complete bmftools hashdmp!\n");
+    LOG_INFO("Successfully completed bmftools hashdmp!\n");
     return EXIT_SUCCESS;
 }
 
@@ -133,7 +134,7 @@ int hashdmp_inmem_main(int argc, char *argv[])
     hash_inmem_inline_core(argv[optind], argv[optind + 1], outfname1, outfname2,
                            homing, blen, threshold, level, mask,
                            max_blen);
-    LOG_INFO("Successfully complete bmftools hashdmp!\n");
+    LOG_INFO("Successfully completed bmftools hashdmp!\n");
     return EXIT_SUCCESS;
 }
 
@@ -217,7 +218,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
         blen1 = get_blen(seq1->seq.s, homing, homing_len, blen, max_blen, mask);
         blen2 = get_blen(seq2->seq.s, homing, homing_len, blen, max_blen, mask);
         if(switch_test(seq1, seq2, mask)) {
-            if(blen2 != (unsigned)-1) memcpy(barcode.s, seq2->seq.s + mask, blen2);
+            if(blen2 != (unsigned)-1) std::memcpy(barcode.s, seq2->seq.s + mask, blen2);
             else {
                 pass = 0;
                 blen2 = blen - mask;
@@ -230,7 +231,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                     kroundup32(barcode.m);
                     barcode.s = (char *)realloc(barcode.s, barcode.m);
                 }
-                memcpy(barcode.s + barcode.l, seq1->seq.s + mask, blen2);
+                std::memcpy(barcode.s + barcode.l, seq1->seq.s + mask, blen2);
             } else {
                 pass = 0;
                 blen1 = blen - mask;
@@ -255,14 +256,14 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                 tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                 tmp_hk1->value = init_kfp(seq2->seq.l - offset2);
                 tmp_hk2->value = init_kfp(seq1->seq.l - offset1);
-                memcpy(tmp_hk1->id, barcode.s, barcode.l);
-                memcpy(tmp_hk2->id, barcode.s, barcode.l);
+                std::memcpy(tmp_hk1->id, barcode.s, barcode.l);
+                std::memcpy(tmp_hk2->id, barcode.s, barcode.l);
                 tmp_hk1->id[barcode.l] = '\0';
                 tmp_hk2->id[barcode.l] = '\0';
-                memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
+                std::memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
                 tmp_hk1->value->barcode[0] = '@';
                 tmp_hk1->value->barcode[barcode.l + 1] = '\0';
-                memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
+                std::memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
                 tmp_hk2->value->barcode[0] = '@';
                 tmp_hk2->value->barcode[barcode.l + 1] = '\0';
                 pushback_inmem(tmp_hk2->value, seq1, offset1, pass);
@@ -271,7 +272,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                 HASH_ADD_STR(hash2r, id, tmp_hk2);
             }
         } else {
-            if(blen1 != (unsigned)-1) memcpy(barcode.s, seq1->seq.s + mask, blen1);
+            if(blen1 != (unsigned)-1) std::memcpy(barcode.s, seq1->seq.s + mask, blen1);
             else { // Fail!
                 pass = 0;
                 blen1 = blen - mask;
@@ -284,7 +285,7 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                     kroundup32(barcode.m);
                     barcode.s = (char *)realloc(barcode.s, barcode.m);
                 }
-                memcpy(barcode.s + barcode.l, seq2->seq.s + mask, blen2);
+                std::memcpy(barcode.s + barcode.l, seq2->seq.s + mask, blen2);
             } else {
                 pass = 0;
                 blen2 = blen - mask;
@@ -308,14 +309,14 @@ sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
                 tmp_hk2 = (kingfisher_hash_t *)malloc(sizeof(kingfisher_hash_t));
                 tmp_hk1->value = init_kfp(seq1->seq.l - offset1);
                 tmp_hk2->value = init_kfp(seq2->seq.l - offset2);
-                memcpy(tmp_hk1->id, barcode.s, barcode.l);
-                memcpy(tmp_hk2->id, barcode.s, barcode.l);
+                std::memcpy(tmp_hk1->id, barcode.s, barcode.l);
+                std::memcpy(tmp_hk2->id, barcode.s, barcode.l);
                 tmp_hk1->id[barcode.l] = '\0';
                 tmp_hk2->id[barcode.l] = '\0';
-                memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
+                std::memcpy(tmp_hk1->value->barcode + 1, barcode.s, barcode.l);
                 tmp_hk1->value->barcode[barcode.l + 1] = '\0';
                 tmp_hk1->value->barcode[0] = '@';
-                memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
+                std::memcpy(tmp_hk2->value->barcode + 1, barcode.s, barcode.l);
                 tmp_hk2->value->barcode[barcode.l + 1] = '\0';
                 tmp_hk2->value->barcode[0] = '@';
                 HASH_ADD_STR(hash1f, id, tmp_hk1);
@@ -419,7 +420,7 @@ void hash_dmp_core(char *infname, char *outfname, int level)
     const int blen(infer_barcode_length(bs_ptr));
     LOG_DEBUG("Barcode length (inferred): %i.\n", blen);
     tmpvars_t *tmp(init_tmpvars_p(bs_ptr, blen, seq->seq.l));
-    memcpy(tmp->key, bs_ptr, blen);
+    std::memcpy(tmp->key, bs_ptr, blen);
     tmp->key[blen] = '\0';
     // Start hash table
     kingfisher_hash_t *hash(nullptr);
@@ -502,7 +503,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname, int level)
     int blen = infer_barcode_length(bs_ptr);
     LOG_DEBUG("Barcode length (inferred): %i. First barcode: %s.\n", blen, bs_ptr);
     tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
-    memcpy(tmp->key, bs_ptr, blen);
+    std::memcpy(tmp->key, bs_ptr, blen);
     tmp->key[blen] = '\0';
     // Start hash table
     kingfisher_hash_t *hfor(nullptr), *hrev(nullptr); // Hash forward, hash reverse

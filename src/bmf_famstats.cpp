@@ -1,12 +1,14 @@
 #include <getopt.h>
 #include <algorithm>
 #include "dlib/bam_util.h"
-#define __STDC_FORMAT_MACROS
+#ifndef __STDC_FORMAT_MACROS
+#  define __STDC_FORMAT_MACROS
+#endif
 #include <cinttypes>
 
 namespace bmf {
 
-const char *tags_to_check[]{"FP", "FM", "FA"};
+static const char *tags_to_check[]{"FP", "FM", "FA"};
 
 
 int famstats_frac_usage(int exit_status)
@@ -58,20 +60,9 @@ struct fm_t {
     uint64_t fm; // Number of times observed
 };
 
-
-int get_nbins(khash_t(fm) *table)
-{
-    int ret(0);
-    for(khiter_t k = kh_begin(table); k != kh_end(table); ++k)
-        if(kh_exist(table, k))
-            ++ret;
-    return ret;
-}
-
-
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
-    std::vector<fm_t> fms(stats->fm->n_occupied);
+    std::vector<fm_t> fms(kh_size(stats->fm));
     unsigned i;
     khiter_t ki;
     fprintf(fp, "#Family size\tNumber of families\n");
@@ -298,7 +289,7 @@ int famstats_fm_main(int argc, char *argv[])
     kh_destroy(fm, s->np);
     kh_destroy(fm, s->rc);
     free(s);
-    LOG_INFO("Successfully complete bmftools famstats fm.\n");
+    LOG_INFO("Successfully completed bmftools famstats fm.\n");
     return EXIT_SUCCESS;
 }
 
@@ -347,7 +338,7 @@ int famstats_frac_main(int argc, char *argv[])
     if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
     fprintf(stdout, "#Fraction of raw reads with >= minFM %u:\t%f\n",
             minFM, (double)fm_above / total_fm);
-    LOG_INFO("Successfully complete bmftools famstats frac.\n");
+    LOG_INFO("Successfully completed bmftools famstats frac.\n");
     return EXIT_SUCCESS;
 }
 

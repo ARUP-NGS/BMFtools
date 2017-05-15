@@ -140,7 +140,7 @@ static inline int kputsn(const char *p, int l, kstring_t *s)
         else
             return EOF;
     }
-    memcpy(s->s + s->l, p, l);
+    std::memcpy(s->s + s->l, p, l);
     s->l += l;
     s->s[s->l] = 0;
     return l;
@@ -193,7 +193,7 @@ static inline int kputsn_(const void *p, int l, kstring_t *s)
         else
             return EOF;
     }
-    memcpy(s->s + s->l, p, l);
+    std::memcpy(s->s + s->l, p, l);
     s->l += l;
     return l;
 }

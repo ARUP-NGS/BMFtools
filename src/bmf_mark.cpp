@@ -134,7 +134,7 @@ int mark_main(int argc, char *argv[])
                                            &add_pe_tags, &settings);
 
     if(ret == EXIT_SUCCESS)
-        LOG_INFO("Successfully complete bmftools mark.\n");
+        LOG_INFO("Successfully completed bmftools mark.\n");
     return ret;
 }
 

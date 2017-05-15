@@ -607,14 +607,15 @@ int vet_main(int argc, char *argv[])
         if(bcf_hdr_append(aux.vcf_header, line))
             LOG_EXIT("Could not add header line '%s'. Abort!\n", line);
     bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed ? bed: "FullGenomeAnalysis");
-    kstring_t tmpstr{0};
-    ksprintf(&tmpstr, "##cmdline=");
-    kputs("bmftools", &tmpstr);
-    for(int i(0); i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
-    bcf_hdr_append(aux.vcf_header, tmpstr.s);
-    tmpstr.l = 0;
-    // Add in settings
-    free(tmpstr.s);
+    {
+        kstring_t tmpstr{0};
+        ksprintf(&tmpstr, "##cmdline=");
+        kputs("bmftools", &tmpstr);
+        for(int i(0); i < argc; ++i) ksprintf(&tmpstr, " %s", argv[i]);
+        bcf_hdr_append(aux.vcf_header, tmpstr.s);
+        // Add in settings
+        free(tmpstr.s);
+    }
     bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", BMF_VERSION);
     std::string timestring("", 16uL);
     dlib::string_fmt_time(timestring);

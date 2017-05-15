@@ -2,6 +2,7 @@
 #define MSEQ_H
 #include <zlib.h>
 #include <cstdint>
+#include <cstring>
 #include "htslib/kseq.h"
 #include "dlib/compiler_util.h"
 #include "dlib/cstr_util.h"
@@ -46,11 +47,10 @@ CONST static inline char *mem_view(char *comment)
 {
     int hits(0);
     loop_start:
-    switch(*comment++) {
+    switch(*comment++)
         case '|': case '\0':
-            if(hits) return (char *)comment + 3;
-            else ++hits; // + 3 for |BS= minus 1, since we already incremented for the switch.
-    }
+            if(hits) return (char *)comment + 3;else ++hits;
+            // + 3 for |BS= minus 1, since we already incremented for the switch.
     goto loop_start;
 }
 
@@ -78,14 +78,14 @@ CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, uint32_t offset, uint32_t blen1_2)
 {
     if(switch_test(seq1, seq2, offset)) { // seq1's barcode is lower. No switching.
-        memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
-        memcpy(barcode + blen1_2, seq2->seq.s + offset,
+        std::memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+        std::memcpy(barcode + blen1_2, seq2->seq.s + offset,
                blen1_2 * sizeof(char));
         barcode[blen1_2 * 2] = '\0';
         return 0;
     } else {
-        memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
-        memcpy(barcode + blen1_2, seq1->seq.s + offset,
+        std::memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+        std::memcpy(barcode + blen1_2, seq1->seq.s + offset,
                blen1_2 * sizeof(char));
         barcode[blen1_2 * 2] = '\0';
         return 1;
@@ -148,16 +148,16 @@ static inline void mseq2fq(gzFile handle, mseq_t *mvar, int pass_fail, char *bar
  */
 static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-    memcpy(mvar->name, seq->name.s, seq->name.l);
+    std::memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
-    memcpy(mvar->seq, seq->seq.s + n_len, seq->seq.l - n_len);
+    std::memcpy(mvar->seq, seq->seq.s + n_len, seq->seq.l - n_len);
     mvar->seq[seq->seq.l - n_len] = '\0';
     mvar->qual[seq->qual.l - n_len] = '\0';
     if(rescaler)
         for(unsigned i(n_len); i < seq->seq.l; ++i)
             mvar->qual[i - n_len] = rescale_qscore(is_read2, seq->qual.s[i], i,
                                                    seq->seq.s[i], seq->seq.l, rescaler);
-    else memcpy(mvar->qual, seq->qual.s + n_len, seq->qual.l - n_len);
+    else std::memcpy(mvar->qual, seq->qual.s + n_len, seq->qual.l - n_len);
 }
 
 // TMP_MSEQ Utilities

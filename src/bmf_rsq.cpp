@@ -451,7 +451,7 @@ void update_bam1_unmasked(bam1_t *p, bam1_t *b)
     int pFM(bam_aux2i(pdata));
     int pTMP(0);
     if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
-        memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+        std::memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
         assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
     }
     pFM += bFM;
@@ -616,7 +616,7 @@ void update_bam1(bam1_t *p, bam1_t *b)
     int pFM(bam_aux2i(pdata));
     int pTMP(0);
     if(switch_names(bam_get_qname(p), bam_get_qname(b))) {
-        memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
+        std::memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
         assert(strlen(bam_get_qname(p)) == strlen(bam_get_qname(b)));
     }
     pFM += bFM;

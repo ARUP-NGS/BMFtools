@@ -2,6 +2,7 @@
 #define KINGFISHER_H
 #include <assert.h>
 #include <cmath>
+#include <cstring>
 #include <zlib.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
@@ -61,7 +62,15 @@ struct kingfisher_t {
 
 void zstranded_process_write(kingfisher_t *kfpf, kingfisher_t *kfpr, kstring_t *ks, tmpbuffers_t *bufs);
 void dmp_process_write(kingfisher_t *kfp, kstring_t *ks, tmpbuffers_t *bufs, int is_rev);
-int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2);
+CONST static inline int kfp_argmax(kingfisher_t *kfp, int index);
+static inline int kf_hamming(kingfisher_t *kf1, kingfisher_t *kf2) {
+    int ret(0);
+    for(int i(0), argmaxret1, argmaxret2; i < kf1->readlen; ++i)
+        if((argmaxret1 = kfp_argmax(kf1, i)) != (argmaxret2 = kfp_argmax(kf2, i)))
+            ret += (argmaxret1 != 4) && (argmaxret2 != 4);
+    return ret;
+}
+
 
 static inline void kfill_both(int readlen, uint16_t *agrees, uint32_t *quals, kstring_t *ks)
 {
@@ -103,7 +112,7 @@ static inline void pushback_kseq(kingfisher_t *kfp, kseq_t *seq, int blen)
 {
     if(!kfp->length++) { // Increment while checking
         kfp->pass_fail = seq->comment.s[FP_OFFSET];
-        memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
+        std::memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
         kfp->barcode[blen] = '\0';
     }
     for(int i(0); i < kfp->readlen; ++i) pb_pos(kfp, seq, i);

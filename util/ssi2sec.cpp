@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     bpos[blen] = '\0';
     kseq_t *bks(use_read1 ? ks1: ks2);
     while(kseq_read(ks1) >= 0 && kseq_read(ks2) >= 0) {
-        memcpy(bpos, bks->seq.s, blen);
+        std::memcpy(bpos, bks->seq.s, blen);
         fprintf(outindex, "@%s barcode\n%s\n+\n", ks1->name.s, bpos);
         fwrite(bks->qual.s, 20, 1, outindex);
         fputc('\n', outindex);

@@ -11,16 +11,6 @@ namespace bmf {
 
 void splitterhash_destroy(splitterhash_params_t *params)
 {
-    /*
-     * Is this freed by splitterhash_params?
-    for(int i = 0; i < params->n; ++i) {
-        LOG_DEBUG("i: %i.\n", i);
-        cond_free(params->outfnames_r1[i]);
-        cond_free(params->outfnames_r2[i]);
-        cond_free(params->infnames_r1[i]);
-        cond_free(params->infnames_r2[i]);
-    }
-    */
     cond_free(params->outfnames_r1);
     cond_free(params->outfnames_r2);
     cond_free(params->infnames_r1);
