@@ -482,7 +482,7 @@ int idmp_main(int argc, char *argv[])
             case 'v': settings.max_blen = atoi(optarg); break;
             case 'w': settings.cleanup = 0; break;
             case 'z': settings.gzip_output = 1; break;
-            case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
+            case 'T': sprintf(settings.mode, "wb%c", atoi(optarg) % 10 + '0'); break;
             case 'S': settings.is_se = 1; break;
             case '=': settings.to_stdout = 1; break;
             case '?': case 'h': idmp_usage(); exit(EXIT_SUCCESS);
@@ -773,7 +773,7 @@ int sdmp_main(int argc, char *argv[])
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 'o': settings.tmp_basename = strdup(optarg);break;
-            case 'T': sprintf(settings.mode, "wb%i", atoi(optarg) % 10); break;
+            case 'T': sprintf(settings.mode, "wb%c", atoi(optarg) % 10 + '0'); break;
             case 'p': settings.threads = atoi(optarg); break;
             case 's': settings.salt = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
