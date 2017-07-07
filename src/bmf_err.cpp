@@ -215,6 +215,7 @@ int err_main_usage(int exit_status)
     fprintf(stderr,
                     "Calculates error rates over a variety of variables."
                     "The primary output format consists of quality scores \n"
+                    "Note: Reads must be coordinated sorted and of uniform length for processing.\n"
                     "Usage: bmftools err main <reference.fasta> <input.csrt.bam>\n"
                     "Flags:\n"
                     "-h/-?\t\tThis helpful help menu!\n"
@@ -245,6 +246,7 @@ int err_fm_usage(int exit_status)
 {
     fprintf(stderr,
                     "Calculates error rates by family size.\n"
+                    "Note: Reads must be coordinated sorted and of uniform length for processing.\n"
                     "Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
                     "Flags:\n"
                     "-h/-?\t\tThis helpful help menu!\n"
