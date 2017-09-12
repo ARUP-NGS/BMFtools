@@ -17,6 +17,7 @@ struct rsq_aux_t {
     samFile *out;
     uint32_t mmlim:6;
     uint32_t is_se:1;
+    uint32_t use_ed_dist:1;
     uint32_t write_supp:1; // Write reads with supplementary alignments
     uint32_t infer:1; // Use inference instead of barcodes.
     uint32_t trust_unmasked:1;
@@ -31,7 +32,38 @@ inline void add_dummy_tags(bam1_t *b);
 void update_bam1(bam1_t *p, bam1_t *b);
 void update_bam1_unmasked(bam1_t *p, bam1_t *b);
 
-template<int (*fn)(bam1_t *, bam1_t *)>
+struct HammingDistance {
+    inline int operator()(const bam1_t *b, const bam1_t *p) const {
+        return read_hd(b, p);
+    }
+};
+
+struct LevenshteinDistance {
+    std::vector<std::uint8_t> mat;
+    // Based on levenshtein_distance from
+    // https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C.2B.2B
+    int operator()(const bam1_t *b, const bam1_t *p) {
+        const char *bn(bam_get_qname(b)), *pn(bam_get_qname(p));
+        assert(b->core.l_qname == p->core.l_qname);
+        unsigned nlen(b->core.l_qseq + 1);
+        assert(mat.size() & 1 == 0);
+        if(UNLIKELY(mat.size() == 0)) {
+            mat.resize(nlen * nlen);
+            for(unsigned i(0); i < nlen; ++i) mat[i] = mat[nlen * i] = i;
+        }
+        for(unsigned i(1); i < nlen; ++i) {
+            for(unsigned j(1); j < nlen; ++j) {
+                mat[nlen * i + j] = std::min(std::min(mat[nlen * (i - 1) + j] + 1,
+                                                      mat[nlen * i + j - 1]   + 1),
+                                             mat[nlen * (i - 1) + j - 1] + (bn[i - 1] != pn[j - 1]));
+            }
+        }
+        return mat[mat.size() - 1];
+    }
+    LevenshteinDistance(int size=0): mat(size * size) {}
+};
+
+template<typename StackFn, typename DistanceMetric=HammingDistance>
 struct Stack {
     uint16_t mmlim:8;
     uint16_t trust_unmasked:1;
@@ -40,6 +72,8 @@ struct Stack {
     unsigned m; // Maximum allocated
     bam1_t *a; // Array
     bam1_t **stack; // Pointers to reads.
+    StackFn fn;
+    DistanceMetric dm;
 
     Stack(rsq_aux_t *settings, unsigned _m=0):
             mmlim(settings->mmlim),
@@ -48,7 +82,7 @@ struct Stack {
             n(0),
             m(_m),
             a((bam1_t *)calloc(m, sizeof(bam1_t))),
-            stack((bam1_t **)malloc(m * sizeof(bam1_t *)))
+            stack((bam1_t **)malloc(m * sizeof(bam1_t *))), dm{}
     {
         for(unsigned i(0); i < m; ++i) stack[i] = a + i;
     }
@@ -80,15 +114,15 @@ struct Stack {
     void write_stack_pe(rsq_aux_t *settings);
     void write_stack_se(rsq_aux_t *settings);
     void flatten();
-    inline void flatten_infer();
+    void flatten_infer();
     void pe_core(rsq_aux_t *settings);
     void pe_core_infer(rsq_aux_t *settings);
     void se_core(rsq_aux_t *settings);
     void se_core_infer(rsq_aux_t *settings);
 };
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::se_core_infer(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
     if(strcmp(dlib::get_SO(settings->hdr).c_str(), SO_STR))
@@ -120,8 +154,8 @@ void Stack<fn>::se_core_infer(rsq_aux_t *settings) {
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::se_core(rsq_aux_t *settings) {
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::se_core(rsq_aux_t *settings) {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
     if(infer) return se_core_infer(settings);
@@ -155,8 +189,8 @@ void Stack<fn>::se_core(rsq_aux_t *settings) {
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::pe_core_infer(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
@@ -192,8 +226,8 @@ void Stack<fn>::pe_core_infer(rsq_aux_t *settings)
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::pe_core(rsq_aux_t *settings)
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::pe_core(rsq_aux_t *settings)
 {
     // This selects the proper function to use for deciding if reads belong in the same stack.
     // It chooses the single-end or paired-end based on is_se and the bmf or pos based on cmpkey.
@@ -233,8 +267,8 @@ void Stack<fn>::pe_core(rsq_aux_t *settings)
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-inline void Stack<fn>::flatten_infer()
+template<typename StackFn, typename DistanceMetric>
+inline void Stack<StackFn, DistanceMetric>::flatten_infer()
 {
     unsigned i, j;
     for(i = 0; i < n; ++i) stack[i] = a + i;
@@ -247,13 +281,15 @@ inline void Stack<fn>::flatten_infer()
             //assert(ucs == dlib::get_unclipped_start(a[j]));
             //assert(tid == a[j]->core.tid);
             //assert(mucs == bam_itag(a[j], "MU"));
-            if(stack[i]->core.l_qseq != stack[j]->core.l_qseq ||
+            if(stack[i]->core.l_qseq  != stack[j]->core.l_qseq ||
                stack[i]->core.l_qname != stack[j]->core.l_qname)
                 continue;
             //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(a[i]), bam_get_qname(a[j]));
+            if(dm(a + j, a + i) > mmlim) continue;
             if(trust_unmasked) update_bam1_unmasked(a + j, a + i);
-            else update_bam1(a + j, a + i);
+            else               update_bam1(a + j, a + i);
             (a + i)->data = nullptr;
+            free((a + i)->data), (a + i)->data = nullptr;
             break;
             // "break" in case there are multiple within hamming distance.
             // Otherwise, I'll end up having memory mistakes.
@@ -262,8 +298,8 @@ inline void Stack<fn>::flatten_infer()
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::flatten()
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::flatten()
 {
     if(infer) return flatten_infer();
     unsigned i, j;
@@ -281,24 +317,19 @@ void Stack<fn>::flatten()
                 continue;
             if(stack[i]->core.l_qname != stack[j]->core.l_qname)
                 continue;
-            if(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim) {
-                assert(dlib::stringhd(bam_get_qname(stack[i]), bam_get_qname(stack[j])) <= mmlim);
-                //LOG_DEBUG("Flattening %s into %s.\n", bam_get_qname(stack[i]), bam_get_qname(stack[j]));
-                if(trust_unmasked) update_bam1_unmasked(stack[j], stack[i]);
-                else update_bam1(stack[j], stack[i]);
-                free(stack[i]->data);
-                stack[i]->data = nullptr;
-                break;
-                // "break" in case there are multiple within hamming distance.
-                // Otherwise, I'll end up having memory mistakes.
-                // Besides, that read set will get merged into the later read in the set.
-            }
+            if(dm(a + j, a + i) > mmlim) continue;
+            if(trust_unmasked) update_bam1_unmasked(stack[j], stack[i]);
+            else               update_bam1(stack[j], stack[i]);
+            free(stack[i]->data), stack[i]->data = nullptr;
+            break;
+            // "break" in case there are multiple within hamming distance.
+            // Besides, that read set will get merged into the later read in the set.
         }
     }
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::write_stack_se(rsq_aux_t *settings)
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::write_stack_se(rsq_aux_t *settings)
 {
     LOG_DEBUG("Writing stack se.\n");
     flatten();
@@ -319,8 +350,8 @@ void Stack<fn>::write_stack_se(rsq_aux_t *settings)
     clear();
 }
 
-template<int (*fn)(bam1_t *, bam1_t *)>
-void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
+template<typename StackFn, typename DistanceMetric>
+void Stack<StackFn, DistanceMetric>::write_stack_pe(rsq_aux_t *settings)
 {
     flatten();
     if(settings->is_se) return write_stack_se(settings);
@@ -332,8 +363,7 @@ void Stack<fn>::write_stack_pe(rsq_aux_t *settings)
         if(a[i].data) {
             if((data = bam_aux_get(a + i, "NC"))) {
                 //LOG_DEBUG("Trying to write.\n");
-                qname = bam_get_qname(a + i);
-                if(settings->realign_pairs.find(qname) == settings->realign_pairs.end()) {
+                if(settings->realign_pairs.find((qname = bam_get_qname(a + i))) == settings->realign_pairs.end()) {
                     settings->realign_pairs.emplace(qname, dlib::bam2cppstr(a + i));
                 } else {
                     // Write read 1 out first.
@@ -740,11 +770,21 @@ inline void add_dummy_tags(bam1_t *b)
 void bam_rsq_bookends(rsq_aux_t *settings)
 {
     if(settings->is_se) {
-        Stack<same_stack_pos_se> stack(settings, 1 << 8);
-        stack.se_core(settings);
+        if(settings->use_ed_dist) {
+            Stack<StackFnPosSe, LevenshteinDistance> stack(settings, 1 << 8);
+            stack.se_core(settings);
+        } else {
+            Stack<StackFnPosSe, HammingDistance> stack(settings, 1 << 8);
+            stack.se_core(settings);
+        }
     } else {
-        Stack<same_stack_pos> stack(settings, 1 << 8);
-        stack.pe_core(settings);
+        if(settings->use_ed_dist) {
+            Stack<StackFnPosPe, LevenshteinDistance> stack(settings, 1 << 8);
+            stack.pe_core(settings);
+        } else {
+            Stack<StackFnPosPe, HammingDistance> stack(settings, 1 << 8);
+            stack.pe_core(settings);
+        }
     }
 }
 
@@ -763,6 +803,7 @@ int rsq_usage(int retcode)
                     "-S      Flag to indicate that this rescue is for single-end data.\n"
                     "-t      Mismatch limit. Default: 2\n"
                     "-l      Set bam compression level. Valid: 0-9. (0 == uncompressed)\n"
+                    "-L      Use Levenshtein edit distance rather than Hamming distance during rescue."
                     "-m      Trust unmasked bases if reads being collapsed disagree but one is unmasked. Default: mask anyways.\n"
                     "-i      Flag to ignore barcodes and infer solely by positional information.\n"
                     "-u      Ignore unbalanced pairs. Typically, unbalanced pairs means the bam is corrupted or unsorted.\n"
@@ -786,7 +827,7 @@ int rsq_main(int argc, char *argv[])
 
     if(argc < 3) return rsq_usage(EXIT_FAILURE);
 
-    while ((c = getopt(argc, argv, "l:f:t:miSHsh?")) >= 0) {
+    while ((c = getopt(argc, argv, "l:f:t:LmiSHsh?")) >= 0) {
         switch (c) {
         case 's': settings.write_supp = 1; break;
         case 'S': settings.is_se = 1; break;
@@ -796,6 +837,7 @@ int rsq_main(int argc, char *argv[])
         case 'f': fqname = optarg; break;
         case 'l': wmode[2] = atoi(optarg)%10 + '0';break;
         case 'i': settings.infer = 1; break;
+        case 'L': settings.use_ed_dist = 1; break;
         case '?': case 'h': case 'H': return rsq_usage(EXIT_SUCCESS);
         }
     }
