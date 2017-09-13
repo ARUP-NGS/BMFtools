@@ -5,6 +5,3 @@
 [submodule "dlib"]
 	path = dlib
 	url = https://github.com/noseatbelts/dlib
-[submodule "edlib"]
-	path = edlib
-	url = https://github.com/Martinsos/edlib
