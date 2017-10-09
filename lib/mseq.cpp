@@ -22,7 +22,7 @@ void mseq_destroy(mseq_t *mvar)
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2. Assumption: is_read2 is 0 or 1.
  */
-mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
+mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2, int maxrlen)
 {
     if(!seq) {
         fprintf(stderr, "kseq for initiating p7_mseq is null. Abort!\n");
@@ -34,7 +34,7 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
     std::strcpy(ret->seq, seq->seq.s);
     std::strcpy(ret->qual, seq->qual.s);
 
-    ret->l = seq->seq.l;
+    ret->l = maxrlen >= 0 ? maxrlen: seq->seq.l;
     if(rescaler)
         for(int i = 0; i < ret->l; i++)
             ret->qual[i] = rescale_qscore(is_read2 , seq->qual.s[i], i, ret->seq[i], seq->seq.l, rescaler);
@@ -48,7 +48,7 @@ mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2)
  * for holding information for conditional reverse complementing.
  * :param: [int] is_read2 - true if the read is read2.
  */
-mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2)
+mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2, int maxrlen)
 {
     mseq_t *ret(mseq_init(seq, rescaler, is_read2));
     //fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);

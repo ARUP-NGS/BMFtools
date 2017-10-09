@@ -15,6 +15,7 @@ struct marksplit_settings_t {
     char *input_r2_path;
     char *index_fq_path; // Make sure this is null if it's inline!
     int max_blen;
+    int maxrlen;
     int n_handles; // Number of handles
     int notification_interval; // How many sets of records do you want to process between progress reports?
     uint32_t n_nucs:10;

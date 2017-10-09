@@ -37,6 +37,7 @@ void idmp_usage()
                         "-I: Ignore homing sequence. Not recommended, but possible under certain experimental conditions.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: %i.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
+                        "-M: Set maximum readlength for cases with variable read length. Default: -1 (infer from first read)\n"
                         "-p: Number of threads to use if running uthash_dmp. Default: %i.\n"
                         "-D: Use this flag to only mark/split and avoid final demultiplexing/consolidation.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
@@ -283,7 +284,7 @@ mark_splitter_t pp_split_inline_se(marksplit_settings_t *settings)
     check_rescaler(settings, seq->seq.l * 4 * 2 * NQSCORES);
     tmp_mseq_t *tmp(init_tm_ptr(seq->seq.l, settings->blen));
     int n_len(nlen_homing_se(seq, settings, default_nlen, &pass_fail));
-    mseq_t *rseq(mseq_rescale_init(seq, settings->rescaler, tmp, 0));
+    mseq_t *rseq(mseq_rescale_init(seq, settings->rescaler, tmp, 0, settings->maxrlen));
     rseq->barcode[settings->blen] = '\0';
     std::memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
     pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
@@ -337,6 +338,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     mark_splitter_t splitter(init_splitter(settings));
     gzFile fp1(gzopen(settings->input_r1_path, "r"));
     gzFile fp2(gzopen(settings->input_r2_path, "r"));
+    if(fp1 == nullptr) LOG_EXIT("Could not open file at %s\n", settings->input_r1_path);
+    if(fp2 == nullptr) LOG_EXIT("Could not open file at %s\n", settings->input_r2_path);
     kseq_t *seq1(kseq_init(fp1));
     kseq_t *seq2(kseq_init(fp2));
     // Manually process the first pair of reads so that we have the read length.
@@ -353,8 +356,8 @@ mark_splitter_t pp_split_inline(marksplit_settings_t *settings)
     const int default_nlen(settings->blen1_2 + settings->offset + settings->homing_sequence_length);
     int n_len(settings->ignore_homing ? settings->blen1_2 + settings->offset + settings->homing_sequence_length
                                       : nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail));
-    mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0));
-    mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1));
+    mseq_t *rseq1(mseq_rescale_init(seq1, settings->rescaler, tmp, 0, settings->maxrlen));
+    mseq_t *rseq2(mseq_rescale_init(seq2, settings->rescaler, tmp, 1, settings->maxrlen));
     if(switch_reads) {
         std::memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
         std::memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -450,6 +453,7 @@ int idmp_main(int argc, char *argv[])
     settings.gzip_compression = 1;
     settings.cleanup = 1;
     settings.run_hash_dmp = 1;
+    settings.maxrlen = -1;
 #if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
 #pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
     // If not set, zlib compresses all our files enormously.
@@ -460,7 +464,7 @@ int idmp_main(int argc, char *argv[])
 
     //omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "T:t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdDh?S=")) > -1) {
+    while ((c = getopt(argc, argv, "T:t:o:n:s:l:m:M:r:p:f:v:u:g:i:zwcdDh?S=")) > -1) {
         switch(c) {
             case 'c': LOG_WARNING("Deprecated option -c.\n"); break;
             case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
@@ -469,6 +473,7 @@ int idmp_main(int argc, char *argv[])
             case 'g': settings.gzip_compression = (uint32_t)atoi(optarg)%10; break;
             case 'l': settings.blen = atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
+            case 'M': settings.maxrlen = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 'o': settings.tmp_basename = strdup(optarg); break;
             case 'p': settings.threads = atoi(optarg); break;
@@ -615,6 +620,7 @@ void sdmp_usage(char *argv[])
                         "-g: Gzip compression ratio if writing compressed. Default: 1 (mostly to reduce I/O).\n"
                         "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
                         "-m: Number of bases in the start of reads to skip when salting. Default: 0.\n"
+                        "-M: Set maximum readlength for cases with variable read length. Default: -1 (infer from first read)\n"
                         "-D: Use this flag to only mark/split and avoid final demultiplexing/consolidation.\n"
                         "-p: Number of threads to use if running hash_dmp. Default: %i.\n"
                         "-v: Set notification interval for split. Default: 1000000.\n"
@@ -754,6 +760,7 @@ int sdmp_main(int argc, char *argv[])
     settings.gzip_compression = 1;
     settings.cleanup = 1;
     settings.run_hash_dmp = 1;
+    settings.maxrlen = -1;
 #if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
 #pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
     // If not set, zlib compresses all our files enormously.
@@ -763,7 +770,7 @@ int sdmp_main(int argc, char *argv[])
 #endif
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:T:IhdDczw?S=")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:M:m:s:f:u:p:g:v:r:T:IhdDczw?S=")) > -1) {
         switch(c) {
             case 'd': LOG_WARNING("Deprecated option -d.\n"); break;
             case 'D': settings.run_hash_dmp = 0; break;
@@ -771,6 +778,7 @@ int sdmp_main(int argc, char *argv[])
             case 'i': settings.index_fq_path = strdup(optarg); break;
             case 'I': settings.ignore_homing = 1; break;
             case 'm': settings.offset = atoi(optarg); break;
+            case 'M': settings.maxrlen = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 'o': settings.tmp_basename = strdup(optarg);break;
             case 'T': sprintf(settings.mode, "wb%c", atoi(optarg) % 10 + '0'); break;
