@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
         dlib::BamHandle in(argv[i]);
         bam1_t *b(bam_init1());
         size_t count(0);
-        while(sam_read1(in.fp, in.header, b) >= 0) if((b->core.flag & 2304) == 0) ++count;
+        while(sam_read1(in.fp, in.header, b) >= 0) count += ((b->core.flag & 2304) == 0);
         bam_destroy1(b);
         fprintf(stdout, "%s: %lu\n", argv[i], count);
     }
