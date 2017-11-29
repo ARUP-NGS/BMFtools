@@ -122,8 +122,8 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, uint32_
 #define mask_mseq(seqvar, n_len) mask_mseq_chars(seqvar, n_len, 'N', '#')
 
 void mseq_destroy(mseq_t *mvar);
-mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
-mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
+mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2, int maxrlen=-1);
+mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2, int maxrlen=-1);
 static inline void mseq2fq_stranded(gzFile handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
 {
     gzprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",

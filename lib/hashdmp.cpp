@@ -162,9 +162,9 @@ void hash_inmem_inline_core(char *in1, char *in2, char *out1, char *out2,
 #if ZLIB_VER_MAJOR <= 1 && ZLIB_VER_MINOR <= 2 && ZLIB_VER_REVISION < 5
 #pragma message("Note: zlib version < 1.2.5 doesn't support transparent file writing. Writing uncompressed temporary gzip files by default.")
 // If not set, zlib compresses all our files enormously.
-sprintf(mode, level > 0 ? "wb%i": "wb0", level % 10);
+sprintf(mode, level > 0 ? "wb%c": "wb0", level % 10 + '0');
 #else
-sprintf(mode, level > 0 ? "wb%i": "wT", level % 10);
+sprintf(mode, level > 0 ? "wb%c": "wT", level % 10 + '0');
 #endif
     if(level > 0) {
         if(strcmp(out1, "-") && strcmp(strrchr(out1, '\0') - 3, ".gz") != 0) {

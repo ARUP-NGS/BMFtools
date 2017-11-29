@@ -26,6 +26,14 @@ CONST static inline int same_stack_ucs_se(bam1_t *b, bam1_t *p)
              b->core.l_qseq == p->core.l_qseq);
 }
 
+struct StackFnPosSe {
+    inline int operator()(bam1_t *b, bam1_t *p) const {return same_stack_pos_se(b, p);}
+};
+
+struct StackFnUcsSe {
+    inline int operator()(bam1_t *b, bam1_t *p) const {return same_stack_ucs_se(b, p);}
+};
+
 CONST static inline int same_stack_pos(bam1_t *b, bam1_t *p)
 {
     return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
@@ -52,7 +60,15 @@ CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p)
 #endif
 }
 
-CONST static inline int read_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)
+struct StackFnPosPe {
+    inline int operator()(bam1_t *b, bam1_t *p) const {return same_stack_pos(b, p);}
+};
+
+struct StackFnUcsPe {
+    inline int operator()(bam1_t *b, bam1_t *p) const {return same_stack_ucs(b, p);}
+};
+
+CONST static inline int read_hd(const bam1_t *b, const bam1_t *p, const int lim=READ_HD_LIMIT)
 {
     const uint8_t *const bseq = bam_get_seq(b);
     const uint8_t *const pseq = bam_get_seq(p);
@@ -69,7 +85,7 @@ CONST static inline int read_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMI
     return hd;
 }
 
-CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim=READ_HD_LIMIT)
+CONST static inline int read_pass_hd(const bam1_t *b, const bam1_t *p, const int lim=READ_HD_LIMIT)
 {
     const uint8_t *const bseq = bam_get_seq(b);
     const uint8_t *const pseq = bam_get_seq(p);
